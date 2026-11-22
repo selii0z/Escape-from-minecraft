@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "fr.taczoperations.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["ForestTerrainMixin"],
+  "injectors": {"defaultRequire": 1}
+}

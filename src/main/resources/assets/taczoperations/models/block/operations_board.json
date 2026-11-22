@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "taczoperations:block/operations_board",
+    "side": "minecraft:block/stripped_spruce_log",
+    "top": "minecraft:block/stripped_spruce_log_top"
+  }
+}
