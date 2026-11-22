@@ -12,6 +12,17 @@ neoForge {
     version = project.neo_version
 }
 
+repositories {
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+dependencies {
+    compileOnly 'maven.modrinth:timeless-and-classics-zero:O2Pfsh6w'
+}
+
 processResources {
     inputs.property 'mod_version', project.version
     filesMatching('META-INF/neoforge.mods.toml') {

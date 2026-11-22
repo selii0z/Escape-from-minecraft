@@ -1,6 +1,8 @@
 package fr.taczoperations;
 
 import fr.taczoperations.operations.ForestExpedition;
+import fr.taczoperations.operations.ForestCombat;
+import fr.taczoperations.operations.ForestRaid;
 import fr.taczoperations.operations.ForestProtection;
 import fr.taczoperations.operations.ForestPreparation;
 import fr.taczoperations.operations.OperationsBoardBlock;
@@ -48,6 +50,10 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::interact);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
+        NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);
+        NeoForge.EVENT_BUS.addListener(ForestRaid::onDrops);
+        NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
+        NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onExplosion);
     }
 }

@@ -1,6 +1,9 @@
 package fr.taczoperations.worldgen;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 public final class ForestRaidAnchors {
     public record Mark(int x, int y, int z) {}
@@ -12,6 +15,12 @@ public final class ForestRaidAnchors {
                 new Mark(site.x() + site.width() / 2, site.floor() + height(site), site.z() + 2),
                 new Mark(site.x() + site.width() / 2 + 1, site.floor() + height(site),
                     site.z() + site.length() - 2))).toList();
+    }
+
+    public static List<Mark> pickLoot(long seed) {
+        var shuffled = new ArrayList<>(loot());
+        Collections.shuffle(shuffled, new Random(seed));
+        return List.copyOf(shuffled.subList(0, Math.min(shuffled.size(), 20)));
     }
 
     private static int height(ForestPlan.Site site) {

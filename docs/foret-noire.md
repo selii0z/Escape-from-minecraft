@@ -29,3 +29,13 @@ La protection bloque les changements ordinaires du monde serveur par `Level#setB
 ```
 
 Un test hors jeu a généré 60 chunks et vérifié des points de contrôle du mur, du vide, de la rivière, des accès aux bâtiments, des points de départ et des extractions. La comparaison de blocs sur deux passages a vérifié la reproductibilité de ces chunks. La circulation complète, le relais en session, la sauvegarde après interruption et les performances du pack complet restent à tester en jeu.
+
+## Combat et fouille dans la version 0.5.0
+
+Le Tableau des opérations lance toujours le départ normal. En s'approchant des secteurs de Forêt Noire, une équipe peut rencontrer huit gardes sur des emplacements vérifiés. Les gardes essaient de s'équiper du pistolet TaCZ intégré `tacz:glock_17`. Une arbalète sert de repli si l'arme TaCZ est indisponible ou si l'adaptateur échoue. Après la mort d'un garde, fouiller le baril **Effets du garde** près du point de chute lorsque le terrain permet de le placer.
+
+À chaque départ, le serveur tire vingt emplacements de caisses et renouvelle leur contenu. Les barils se matérialisent dans les chunks chargés à proximité de l'équipe. Faire un clic droit pour récupérer les vivres, les fournitures ou les munitions TaCZ. En duo, les conteneurs sont partagés. Les anciennes caisses ne sont plus accessibles et sont retirées lorsque le nouveau raid approche. La carte permanente reste en place.
+
+Le filtre de la dimension refuse l'entrée des mobs ordinaires en laissant passer les gardes du raid courant. La synchronisation du ciel de Forêt Noire n'envoie plus l'heure globale en alternance avec l'heure de la sortie. Le ciel et la météo restent des effets visuels propres aux participants.
+
+La compilation utilise l'API officielle de TaCZ 1.2.0. Un test hors jeu a généré 76 chunks et testé huit points de garde ainsi que vingt positions de caisse distinctes et constructibles pour chacun de 32 tirages. Le tir réel des gardes, l'interface de fouille, le ciel et l'absence d'apparitions parasites dans AllTheMons doivent être vérifiés en jeu. La refonte graphique du menu, la régénération administrateur et le boss ne font pas partie de cette version.

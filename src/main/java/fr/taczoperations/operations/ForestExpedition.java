@@ -62,7 +62,9 @@ public final class ForestExpedition {
         if (partner != null && !enter(partner, forest, entry.south(), night, weather)) {
             returnToOrigin(player);
             player.sendSystemMessage(Component.literal("Départ annulé : ton équipier n’a pas pu entrer."));
+            return "";
         }
+        ForestRaid.begin(forest, player, partner);
         return "";
     }
 
@@ -103,11 +105,16 @@ public final class ForestExpedition {
             || !player.level().dimension().equals(FOREST)) {
             return;
         }
+        if (ForestRaid.hasRaidToken(player) && !ForestRaid.isParticipant(player)) {
+            returnToOrigin(player);
+            return;
+        }
         if (!ForestPlan.inside(player.getBlockX(), player.getBlockZ()) || player.getY() < 1
             || player.getY() >= player.level().getMaxBuildHeight()) {
             returnToOrigin(player);
             return;
         }
+        ForestRaid.populateNear(player);
         BlockPos primary = ForestLandmarks.position(ForestPlan.EXTRACTION);
         BlockPos secondary = ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         CompoundTag point = player.getPersistentData().getCompound(RETURN_POINT);
@@ -121,9 +128,6 @@ public final class ForestExpedition {
             return;
         }
         if (player.tickCount % 20 == 0) {
-            if (player.getPersistentData().contains(RETURN_POINT)) {
-                atmosphere(player, point);
-            }
             if (feet.equals(secondary) && !relay) {
                 player.displayClientMessage(Component.literal("Sortie verrouillée · active le relais de la station."), true);
                 return;
@@ -151,6 +155,14 @@ public final class ForestExpedition {
         BlockPos exit = ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         player.sendSystemMessage(Component.literal("Relais activé. Sortie secondaire ouverte pour toi · X "
             + exit.getX() + " Z " + exit.getZ() + "."));
+    }
+
+    public static void synchronizeAtmosphere(ServerLevel level) {
+        for (ServerPlayer player : level.players()) {
+            if (player.getPersistentData().contains(RETURN_POINT)) {
+                atmosphere(player, player.getPersistentData().getCompound(RETURN_POINT));
+            }
+        }
     }
 
     private static void atmosphere(ServerPlayer player, CompoundTag point) {
@@ -183,6 +195,7 @@ public final class ForestExpedition {
             return false;
         }
         player.getPersistentData().remove(RETURN_POINT);
+        ForestRaid.clearPlayer(player);
         return true;
     }
 
