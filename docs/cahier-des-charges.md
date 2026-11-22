@@ -18,10 +18,13 @@ Ennemis présents au départ et renforts occasionnels; un boss garanti par carte
 À chaque raid : emplacements **et** contenus des conteneurs aléatoires parmi des positions valides; ennemis renouvelés. Inventaire Minecraft standard, stockage du butin dans les coffres Minecraft ordinaires. Contrats facultatifs choisis avant raid, trois maximum par joueur, objectifs individuels en duo, récompenses immédiates conservées même si le joueur meurt. Récompenses : objets, crédits militaires, XP. Marchands dans le Tableau des Opérations; meilleures armes déverrouillées par rang puis achetables. Modalité de remise sécurisée des récompenses d'objets à concevoir sans imposer de coffre spécial permanent.
 
 ## Prototype Forêt Noire V0.1
-Zone initiale d'essai 300×300 blocs (carte cible ultérieure proposée 900×900), terrain forestier naturel, chemins, 5 bâtiments uniques visitables, 15–25 conteneurs aléatoires, 6–10 ennemis et renforts mesurés, boss Le Traqueur, 2 extractions dont une conditionnelle, raid de 30 min, solo/duo. Ces nombres ne sont pas des contraintes définitives.
+Carte complète de 900×900 blocs dès la première génération (pas de prototype réduit 300×300), terrain forestier naturel, chemins, 5 bâtiments uniques visitables, 15–25 conteneurs aléatoires, 6–10 ennemis et renforts mesurés, boss Le Traqueur, 2 extractions dont une conditionnelle, raid de 30 min, solo/duo. Ces nombres ne sont pas des contraintes définitives.
 
 ## Critères d'acceptation
 Compilation NeoForge; démarrage serveur dédié avec versions exactes ATMons et TaCZ; génération reproductible et persistante; accès aux bâtiments et extractions; protection contre les mécaniques d'autres mods; raid complet solo puis duo; loot et extraction corrects; mort, expiration, déconnexion et redémarrage sans duplication; réinitialisation de raid; mesures de performances.
 
 ## Points à confirmer
 Versions exactes ATMons, NeoForge et TaCZ installées, compatibilité entre elles, API TaCZ pour IA armée, règles détaillées de pertes selon difficulté, mécanismes de sécurisation des récompenses de contrat, paramètres de génération et performances sur Minestrator.
+
+## Décision validée — périmètre Forêt Noire 900×900
+Générer directement la carte complète dans la dimension dédiée. Prévoir mur physique continu adapté au terrain, barrière invisible au-dessus, zone extérieure vide/inaccessible, sans accès aux autres cartes. Génération incrémentale avec reprise après interruption et sans blocage prolongé du thread serveur; conserver le terrain et les bâtiments entre les raids. Les téléportations ont été signalées fonctionnelles par le testeur, mais ne présument pas de la validation des autres systèmes.
