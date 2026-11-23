@@ -113,12 +113,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     int status = view.contracts().get(start + i);
                     String label = switch (status) {
                         case SupplyContract.ACTIVE -> "Abandonner";
-                        case SupplyContract.COMPLETED -> "Terminé";
+                        case SupplyContract.COMPLETED -> "Rejouer";
                         default -> "Accepter";
                     };
                     final int action = OperationsMenu.CONTRACT_FIRST + i;
                     simple(446, 136 + i * 41, 94, 24, label, () -> send(action),
-                        () -> false, () -> status != SupplyContract.COMPLETED);
+                        () -> false, () -> true);
                 }
                 pager(view.page(), view.pages());
             }
@@ -366,11 +366,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 }
             }
             case OperationsMenu.PROGRESSION -> {
-                pageTitle(g, "»", "PROGRESSION", "Expérience obtenue avec les contrats");
+                pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
                 panel(g, 169, 130, 379, 115, DARK);
                 text(g, rank(view.experience()), 188, 145, 1.44F, WHITE, true);
                 progress(g, 188, 174, 310, 11, view.experience());
-                text(g, view.experience() + " / " + MAX_CONTRACT_XP + " XP", 188, 193, 1.0F, SOFT, false);
+                text(g, view.experience() + " XP cumulée", 188, 193, 1.0F, SOFT, false);
                 long completed = view.contracts().stream().filter(status -> status == SupplyContract.COMPLETED).count();
                 text(g, completed + " / " + view.contracts().size() + " contrats terminés", 188, 214, 1, GOLD, false);
             }
