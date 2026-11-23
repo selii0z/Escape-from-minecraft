@@ -253,6 +253,7 @@ public final class IndustrialZone {
                 if (!side && !b.factory && dx >= 5 && dx < b.width - 5
                     && dz >= 6 && dz < b.depth - 6
                     && Math.abs(dx - b.width / 2) > 5
+                    && Math.abs(dz - b.depth / 2) > 4
                     && dx % 13 >= 2 && dx % 13 <= 4 && dz % 9 >= 2 && dz % 9 <= 6) {
                     out.put(x, FLOOR + 1, z, Blocks.SPRUCE_PLANKS);
                     if (dz % 9 == 2 || dz % 9 == 6) {
