@@ -211,7 +211,7 @@ public enum SupplyContract {
         player.getPersistentData().putInt("taczoperations_run_search_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_crates", 0);
         player.getPersistentData().putInt("taczoperations_run_contracts", 0);
-        player.getPersistentData().putLong("taczoperations_run_started", player.serverLevel().getGameTime());
+        player.getPersistentData().putLong("taczoperations_run_started", player.server.overworld().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
             baseline.putInt(relic.id, count(player, relic.item()));
@@ -245,7 +245,7 @@ public enum SupplyContract {
         int bonus = finalizeRaidXp(player, player.getPersistentData(), true);
         int crates = player.getPersistentData().getInt("taczoperations_run_crates");
         long started = player.getPersistentData().getLong("taczoperations_run_started");
-        long seconds = started > 0 ? Math.max(0, (player.serverLevel().getGameTime() - started) / 20) : 0;
+        long seconds = started > 0 ? Math.max(0, (player.server.overworld().getGameTime() - started) / 20) : 0;
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "========== EXTRACTION RÉUSSIE ==========").withStyle(net.minecraft.ChatFormatting.GREEN));
