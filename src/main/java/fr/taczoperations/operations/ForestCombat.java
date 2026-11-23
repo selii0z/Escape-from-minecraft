@@ -26,7 +26,16 @@ public final class ForestCombat {
     static void arm(Pillager enemy) {
         try {
             GuardRole role = GuardRole.get(enemy);
-            ItemStack gun = OperationsShop.weapon(role.gun, role.magazine);
+            // Deterministic per-guard loadout variation; ammunition stays
+            // compatible with the assigned role's reserve pouch.
+            String gunId = role.gun;
+            long roll = guard.getUUID().getLeastSignificantBits() & Long.MAX_VALUE;
+            if (role == GuardRole.RAIDER && roll % 4 == 0) gunId = "hk_mp5a5";
+            if (role == GuardRole.SCOUT && roll % 5 == 0) gunId = "glock_17";
+            ItemStack gun = OperationsShop.weapon(gunId, role.magazine);
+            if (!gunId.equals(role.gun)) {
+                guard.getPersistentData().putString("taczoperations_guard_weapon", gunId);
+            }
             if (!gun.isEmpty()) {
                 enemy.setItemSlot(EquipmentSlot.MAINHAND, gun);
                 return;
