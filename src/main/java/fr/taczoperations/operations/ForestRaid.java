@@ -380,16 +380,41 @@ public final class ForestRaid extends SavedData {
             default -> name;
         }));
         barrel.applyComponentsFromItemStack(labeled);
-        var supplies = List.of(Items.BREAD, Items.BAKED_POTATO, Items.COOKED_BEEF, Items.TORCH,
-            Items.IRON_INGOT, Items.CHAINMAIL_BOOTS, Items.GOLDEN_CARROT);
-        barrel.setItem(random.nextInt(9), new ItemStack(supplies.get(random.nextInt(supplies.size())), 1));
+        // Sector-themed supplies: each container has a recognizable purpose.
+        var supplies = switch (index % 4) {
+            case 0 -> List.of(Items.BREAD, Items.BAKED_POTATO, Items.COOKED_BEEF,
+                Items.COOKED_CHICKEN, Items.GOLDEN_CARROT, Items.HONEY_BOTTLE);
+            case 1 -> List.of(Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE,
+                Items.COAL, Items.FLINT, Items.STRING, Items.PAPER);
+            case 2 -> List.of(Items.CHAINMAIL_BOOTS, Items.LEATHER_HELMET,
+                Items.IRON_HELMET, Items.SHIELD, Items.ARROW, Items.TORCH);
+            default -> List.of(Items.COMPASS, Items.CLOCK, Items.MAP,
+                Items.PAPER, Items.EMERALD, Items.GOLD_INGOT);
+        };
+        barrel.setItem(random.nextInt(9), new ItemStack(supplies.get(random.nextInt(supplies.size())),
+            1 + random.nextInt(index % 4 == 1 ? 5 : 2)));
         if (random.nextInt(100) < 53) barrel.setItem(9 + random.nextInt(9), RaidRelic.roll(random).stack());
-        int supply = 2 + random.nextInt(5);
-        String[] calibers = {"9mm", "762x39", "12g", "338", "556x45"};
-        ItemStack ammo = random.nextBoolean() ? OperationsShop.ammo(calibers[random.nextInt(calibers.length)], supply) : ItemStack.EMPTY;
-        barrel.setItem(18 + random.nextInt(8), ammo.isEmpty() ? new ItemStack(Items.IRON_INGOT, supply) : ammo);
+        int supply = 4 + random.nextInt(13);
+        var calibers = new java.util.ArrayList<net.minecraft.resources.ResourceLocation>();
+        for (var entry : com.tacz.guns.api.TimelessAPI.getAllCommonGunIndex()) {
+            var data = entry.getValue().getGunData();
+            if (data != null && data.getAmmoId() != null && !calibers.contains(data.getAmmoId())) {
+                calibers.add(data.getAmmoId());
+            }
+        }
+        if (random.nextBoolean() && !calibers.isEmpty()) {
+            var ammoId = calibers.get(random.nextInt(calibers.size()));
+            barrel.setItem(18 + random.nextInt(8),
+                com.tacz.guns.api.item.builder.AmmoItemBuilder.create().setId(ammoId).setCount(supply).build());
+        } else {
+            barrel.setItem(18 + random.nextInt(8), new ItemStack(Items.IRON_INGOT, supply));
+        }
         if (random.nextInt(3) == 0) {
-            barrel.setItem(26, new ItemStack(Items.GOLDEN_CARROT));
+            barrel.setItem(26, new ItemStack(random.nextBoolean() ? Items.GOLDEN_CARROT : Items.HONEY_BOTTLE));
+        }
+        if (random.nextInt(20) == 0) {
+            barrel.setItem(25, OperationsShop.attachment(
+                random.nextBoolean() ? "sight_552" : "extended_mag_1"));
         }
         barrel.setChanged();
         return true;
