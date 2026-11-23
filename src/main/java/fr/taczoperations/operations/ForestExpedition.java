@@ -11,6 +11,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -28,12 +30,39 @@ public final class ForestExpedition {
     public static final ResourceKey<Level> FOREST = ResourceKey.create(Registries.DIMENSION,
         ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, "black_forest"));
     private static final String RETURN_POINT = "taczoperations_forest_return";
+    private static final String RAID_INVENTORY = "taczoperations_raid_inventory";
 
     private ForestExpedition() {
     }
 
     static void clearReturnPoint(ServerPlayer player) {
         player.getPersistentData().remove(RETURN_POINT);
+        player.getPersistentData().remove(RAID_INVENTORY);
+    }
+
+    private static void snapshotInventory(ServerPlayer player) {
+        ListTag items = new ListTag();
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            CompoundTag entry = new CompoundTag();
+            entry.putInt("slot", slot);
+            entry.put("item", player.getInventory().getItem(slot).saveOptional(player.registryAccess()));
+            items.add(entry);
+        }
+        player.getPersistentData().put(RAID_INVENTORY, items);
+    }
+
+    private static void restoreInventory(ServerPlayer player) {
+        if (!player.getPersistentData().contains(RAID_INVENTORY, 9)) return;
+        ListTag items = player.getPersistentData().getList(RAID_INVENTORY, 10);
+        for (int i = 0; i < items.size(); i++) {
+            CompoundTag entry = items.getCompound(i);
+            int slot = entry.getInt("slot");
+            if (slot >= 0 && slot < player.getInventory().getContainerSize()) {
+                player.getInventory().setItem(slot,
+                    ItemStack.parseOptional(player.registryAccess(), entry.getCompound("item")));
+            }
+        }
+        player.getInventory().setChanged();
     }
 
     static boolean hasReturnPoint(ServerPlayer player) {
@@ -105,7 +134,8 @@ public final class ForestExpedition {
         if (player.level().dimension().equals(FOREST)) {
             return;
         }
-        player.getPersistentData().remove(RETURN_POINT);
+        if (!extracted) restoreInventory(player);
+        clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
     }
 
@@ -125,6 +155,7 @@ public final class ForestExpedition {
         point.putInt("weather", weather);
         point.putBoolean("industrial", industrial);
         player.getPersistentData().put(RETURN_POINT, point);
+        snapshotInventory(player);
 
         player.closeContainer();
         Vec3 spawn = Vec3.atBottomCenterOf(destination);
@@ -133,7 +164,7 @@ public final class ForestExpedition {
         }
         player.teleportTo(forest, spawn.x, spawn.y, spawn.z, Set.of(), -90, 0);
         if (player.level() != forest) {
-            player.getPersistentData().remove(RETURN_POINT);
+            clearReturnPoint(player);
             return false;
         }
         atmosphere(player, point);
@@ -150,7 +181,7 @@ public final class ForestExpedition {
         // A player without the current raid token must not remain in the
         // protected dimension (including after a server restart or stale login).
         if (!ForestRaid.isParticipant(player)) {
-            returnToOrigin(player);
+            returnToOrigin(player, false);
             return;
         }
         CompoundTag point = player.getPersistentData().getCompound(RETURN_POINT);
@@ -170,7 +201,7 @@ public final class ForestExpedition {
         if (!player.isSpectator() && player.onGround()
             && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
             boolean qualifies = ForestRaid.isParticipant(player);
-            if (returnToOrigin(player)) {
+            if (returnToOrigin(player, true)) {
                 if (qualifies) SupplyContract.extracted(player, industrial);
                 player.sendSystemMessage(Component.literal("Extraction réussie. Te voilà de retour."));
             }
@@ -233,6 +264,10 @@ public final class ForestExpedition {
     }
 
     private static boolean returnToOrigin(ServerPlayer player) {
+        return returnToOrigin(player, false);
+    }
+
+    private static boolean returnToOrigin(ServerPlayer player, boolean extracted) {
         ServerLevel raidLevel = player.serverLevel();
         boolean leavingRaid = raidLevel.dimension().equals(FOREST);
         CompoundTag point = player.getPersistentData().getCompound(RETURN_POINT);
