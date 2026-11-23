@@ -271,19 +271,10 @@ public enum SupplyContract {
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, bonus);
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
             new RaidResultPayload(true, seconds, kills, crates, completed, killXp, searchXp, bonus));
+        // The graphical report is authoritative; keep chat concise.
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "========== EXTRACTION RÉUSSIE ==========").withStyle(net.minecraft.ChatFormatting.GREEN));
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "Durée du raid : " + (seconds / 60) + " min " + (seconds % 60) + " s"));
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "Ennemis éliminés : " + kills + "    |    Coffres ouverts : " + crates));
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "XP combats : +" + killXp + "    |    XP fouilles : +" + searchXp));
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "XP du raid : +" + (killXp + searchXp + bonus) + " (bonus extraction : +" + bonus
-                + ")    |    Contrats terminés : " + completed));
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "======================================="));
+            "Extraction réussie · +" + (killXp + searchXp + bonus)
+                + " XP Escape (bonus +" + bonus + "). Bilan affiché à l'écran."));
         player.getPersistentData().remove("taczoperations_run_kill_xp");
         player.getPersistentData().remove("taczoperations_run_search_xp");
         player.getPersistentData().remove("taczoperations_run_crates");
