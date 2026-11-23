@@ -48,6 +48,12 @@ final class GuardPouch {
                 1 + random.nextInt(2)));
         }
         if (random.nextInt(12) == 0) items.set(4, RaidRelic.roll(random).stack());
+        // Rare equipment drops make veteran guards worth searching.
+        // The attachment remains a real TaCZ item, usable by the player.
+        if (GuardRole.get(guard).elite() && random.nextInt(10) == 0) {
+            items.set(7, OperationsShop.attachment(
+                random.nextBoolean() ? "sight_552" : "extended_mag_1"));
+        }
         save(guard, items);
         return items;
     }
