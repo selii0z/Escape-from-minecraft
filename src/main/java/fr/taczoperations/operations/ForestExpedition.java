@@ -199,6 +199,8 @@ public final class ForestExpedition {
     }
 
     private static boolean returnToOrigin(ServerPlayer player) {
+        ServerLevel raidLevel = player.serverLevel();
+        boolean leavingRaid = raidLevel.dimension().equals(FOREST);
         CompoundTag point = player.getPersistentData().getCompound(RETURN_POINT);
         ResourceLocation key = ResourceLocation.tryParse(point.getString("dimension"));
         ServerLevel origin = key == null ? null : player.server.getLevel(ResourceKey.create(Registries.DIMENSION, key));
@@ -214,6 +216,9 @@ public final class ForestExpedition {
         }
         player.getPersistentData().remove(RETURN_POINT);
         ForestRaid.clearPlayer(player);
+        if (leavingRaid) {
+            ForestRaid.cleanupWhenEmpty(raidLevel);
+        }
         return true;
     }
 
