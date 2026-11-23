@@ -56,7 +56,11 @@ public final class IndustrialZone {
     private static boolean road(int x, int z) {
         return (x >= 55 && x <= 595 && (Math.abs(z - 475) <= 7 || Math.abs(z - 290) <= 7))
             || (z >= 95 && z <= 575 && (Math.abs(x - 248) <= 7 || Math.abs(x - 455) <= 7))
-            || (z >= 420 && z <= 570 && Math.abs(x - 75) <= 6);
+            || (z >= 420 && z <= 570 && Math.abs(x - 75) <= 6)
+            // Dedicated extraction spur: connects the east-west service road
+            // to the exit without crossing the railway or the guardhouse.
+            || (x >= 455 && x <= 595 && Math.abs(z - 110) <= 6)
+            || (z >= 94 && z <= 110 && Math.abs(x - 586) <= 6);
     }
 
     private static boolean yard(int x, int z) {
