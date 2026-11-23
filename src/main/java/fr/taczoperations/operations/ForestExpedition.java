@@ -183,7 +183,7 @@ public final class ForestExpedition {
 
     public static void interact(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || !player.level().dimension().equals(FOREST)
-            || player.isSpectator() || !player.getPersistentData().contains(RETURN_POINT)) {
+            || player.isSpectator() || !ForestRaid.isParticipant(player)) {
             return;
         }
         BlockPos relay = ForestLandmarks.position(ForestPlan.RELAY);
