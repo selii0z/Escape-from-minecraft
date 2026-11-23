@@ -30,6 +30,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -91,7 +92,11 @@ public final class ForestRaid extends SavedData {
     // Called after a successful extraction. Keep the raid alive while a duo
     // partner is still inside; otherwise discard all temporary raid entities.
     static void cleanupWhenEmpty(ServerLevel level) {
-        if (level.players().stream().anyMatch(ForestRaid::isParticipant)) {
+        cleanupWhenEmpty(level, null);
+    }
+
+    private static void cleanupWhenEmpty(ServerLevel level, ServerPlayer leaving) {
+        if (level.players().stream().anyMatch(p -> p != leaving && isParticipant(p))) {
             return;
         }
         for (var entity : level.getAllEntities()) {
@@ -99,6 +104,15 @@ public final class ForestRaid extends SavedData {
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
                 entity.discard();
             }
+        }
+    }
+
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player
+            && player.serverLevel().dimension().equals(ForestExpedition.FOREST)) {
+            // The disconnecting player may still be in level.players() during
+            // this event; exclude them when checking whether the duo remains.
+            cleanupWhenEmpty(player.serverLevel(), player);
         }
     }
 
