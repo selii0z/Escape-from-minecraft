@@ -205,8 +205,16 @@ public final class ForestRaid extends SavedData {
             int adjustment = SupplyContract.finalizeRaidXp(respawned, oldRoot, false);
             int base = Math.max(0, oldRoot.getInt("taczoperations_run_kill_xp"))
                 + Math.max(0, oldRoot.getInt("taczoperations_run_search_xp"));
+            long started = oldRoot.getLong("taczoperations_run_started");
+            long duration = started > 0 ? Math.max(0, (original.serverLevel().getGameTime() - started) / 20) : 0;
             respawned.sendSystemMessage(Component.literal(
-                "Raid perdu · XP finale : " + (base + adjustment) + " (malus de 10 %)"));
+                "========== RAID ÉCHOUÉ ==========").withStyle(net.minecraft.ChatFormatting.RED));
+            respawned.sendSystemMessage(Component.literal(
+                "Durée : " + (duration / 60) + " min " + (duration % 60) + " s"
+                    + " | Éliminations : " + oldRoot.getInt("taczoperations_raid_kills")
+                    + " | Coffres : " + oldRoot.getInt("taczoperations_run_crates")));
+            respawned.sendSystemMessage(Component.literal(
+                "XP gagnée : " + (base + adjustment) + " (malus de 10 % : " + adjustment + " XP)"));
         }
         // The normal death-drop process has already run. Do not duplicate
         // equipment into a custom corpse or copy the raid token on respawn.
