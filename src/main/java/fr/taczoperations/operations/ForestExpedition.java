@@ -220,7 +220,10 @@ public final class ForestExpedition {
         ResourceLocation key = ResourceLocation.tryParse(point.getString("dimension"));
         ServerLevel origin = key == null ? null : player.server.getLevel(ResourceKey.create(Registries.DIMENSION, key));
         Vec3 destination = new Vec3(point.getDouble("x"), point.getDouble("y"), point.getDouble("z"));
-        if (origin == null || origin == player.level() || !standingRoom(player, origin, destination)) {
+        // A missing or corrupted return point must never send a player to
+        // arbitrary coordinates or back into the raid dimension.
+        if (!hasReturnPoint(player) || origin == null || origin == player.level()
+            || origin.dimension().equals(FOREST) || !standingRoom(player, origin, destination)) {
             origin = player.server.overworld();
             destination = safeSpawn(player, origin, origin.getSharedSpawnPos());
         }
