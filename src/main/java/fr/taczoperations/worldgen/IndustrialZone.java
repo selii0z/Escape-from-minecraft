@@ -206,6 +206,24 @@ public final class IndustrialZone {
                 if (side) out.put(x, roof + 1, z, Blocks.POLISHED_DEEPSLATE);
                 if (b.factory && !side && dx % 21 == 9 && dz % 7 == 0)
                     out.put(x, roof + 1, z, Blocks.IRON_BARS);
+                // Roof ventilation housings, skylights and factory exhausts.
+                if (!side && dx > 5 && dz > 5 && dx < b.width - 6 && dz < b.depth - 6) {
+                    if (b.factory && dx % 24 >= 4 && dx % 24 <= 7
+                        && dz % 19 >= 4 && dz % 19 <= 7) {
+                        out.put(x, roof + 1, z, Blocks.IRON_BLOCK);
+                        if (dx % 24 == 4 || dz % 19 == 4)
+                            out.put(x, roof + 2, z, Blocks.IRON_BARS);
+                    }
+                    if (!b.factory && dx % 17 >= 4 && dx % 17 <= 9
+                        && dz % 17 >= 4 && dz % 17 <= 8) {
+                        out.put(x, roof, z, Blocks.LIGHT_GRAY_STAINED_GLASS);
+                    }
+                    if (b.factory && dx % 31 == 15 && dz % 29 == 14) {
+                        for (int y = roof + 1; y <= roof + 8; y++)
+                            out.put(x, y, z, Blocks.DEEPSLATE_BRICKS);
+                        out.put(x, roof + 9, z, Blocks.IRON_BARS);
+                    }
+                }
                 // Warehouse interiors: racks and pallets run in aisles,
                 // leaving a clear central corridor and accessible entrances.
                 if (!side && !b.factory && dx >= 5 && dx < b.width - 5
