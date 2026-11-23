@@ -124,6 +124,18 @@ public final class IndustrialZone {
                         }
                     }
                 }
+                // Distinctive concrete loading docks along the depot rail yard.
+                if (x >= 472 && x <= 550 && z >= 151 && z <= 157) {
+                    out.put(x, FLOOR, z, Blocks.POLISHED_ANDESITE);
+                    if (z == 151) out.put(x, FLOOR + 1, z, Blocks.STONE_BRICK_SLAB);
+                    if (z == 157 && x % 9 >= 2 && x % 9 <= 6)
+                        out.put(x, FLOOR + 1, z, Blocks.YELLOW_CONCRETE);
+                }
+                // Drainage grates on the roadside; no obstructions in the lanes.
+                if ((z == 282 || z == 298 || z == 467 || z == 483)
+                    && x >= 85 && x <= 580 && x % 21 == 0) {
+                    out.put(x, FLOOR, z, Blocks.IRON_TRAPDOOR);
+                }
                 // Loading-yard cover is grouped into realistic pallet stacks.
                 // Keep roads and warehouse thresholds clear for navigation.
                 if (x >= 82 && x <= 234 && z >= 545 && z <= 560
