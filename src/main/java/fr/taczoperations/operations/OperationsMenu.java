@@ -29,15 +29,24 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int DEPART = 9;
     public static final int DEPART_NIGHT = 14;
     public static final int FIRST_ROW = 10;
+    public static final int SHOP = 20;
+    public static final int PROGRESSION = 21;
+    public static final int FILES = 22;
+    public static final int SETTINGS = 23;
+    public static final int TOGGLE_EXTRACTION = 24;
+    public static final int DEPART_DUO = 25;
+    public static final int DEPART_DUO_NIGHT = 26;
     private static final int PAGE_SIZE = 4;
 
-    public record View(int tab, int page, int pages, int credits, List<Integer> contracts,
+    public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, List<Integer> contracts,
                        String partner, String inviter, List<String> candidates, String notice) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
             buffer.writeVarInt(pages);
             buffer.writeVarInt(credits);
+            buffer.writeVarInt(experience);
+            buffer.writeBoolean(showExtraction);
             buffer.writeCollection(contracts, (buf, status) -> buf.writeVarInt(status));
             buffer.writeUtf(partner);
             buffer.writeUtf(inviter);
@@ -47,7 +56,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
         private static View read(RegistryFriendlyByteBuf buffer) {
             return new View(buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(),
-                buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
+                buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf());
         }
     }
@@ -88,6 +97,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         List<ServerPlayer> shown = online.subList(start, Math.min(online.size(), start + PAGE_SIZE));
         List<UUID> candidateIds = shown.stream().map(ServerPlayer::getUUID).toList();
         View view = new View(tab, page, pages, SupplyContract.balance(player),
+            SupplyContract.experienceEarned(player), SupplyContract.showExtraction(player),
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.status(player)).toList(),
             name(player, partner), name(player, inviter),
             shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice);
@@ -145,14 +155,23 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int tab = view.tab();
         int page = view.page();
         String notice = "";
-        if (button == CONTRACTS || button == GROUP || button == FOREST) {
+        if (button == CONTRACTS || button == GROUP || button == FOREST
+            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS) {
             tab = button;
             page = 0;
-        } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT)) {
-            notice = ForestExpedition.depart(serverPlayer, position, button == DEPART_NIGHT);
+        } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT
+            || button == DEPART_DUO || button == DEPART_DUO_NIGHT)) {
+            notice = ForestExpedition.depart(serverPlayer, position,
+                button == DEPART_NIGHT || button == DEPART_DUO_NIGHT,
+                button == DEPART_DUO || button == DEPART_DUO_NIGHT);
             if (notice.isEmpty()) {
                 return true;
             }
+        } else if (tab == SETTINGS && button == TOGGLE_EXTRACTION) {
+            SupplyContract.toggleExtraction(serverPlayer);
+            notice = "Préférence enregistrée.";
+        } else if (tab == SHOP && button >= FIRST_ROW && button < FIRST_ROW + OperationsShop.values().length) {
+            notice = OperationsShop.values()[button - FIRST_ROW].buy(serverPlayer);
         } else if (button != REFRESH) {
             int row = button - FIRST_ROW;
             OperationsGroups groups = OperationsGroups.of(serverPlayer);

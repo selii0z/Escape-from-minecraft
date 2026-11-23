@@ -36,7 +36,7 @@ public enum SupplyContract {
         this.experience = experience;
     }
 
-    private static CompoundTag account(ServerPlayer player) {
+    static CompoundTag account(ServerPlayer player) {
         CompoundTag root = player.getPersistentData();
         CompoundTag persisted = root.getCompound(Player.PERSISTED_NBT_TAG);
         CompoundTag account = persisted.getCompound("taczoperations");
@@ -47,6 +47,22 @@ public enum SupplyContract {
 
     static int balance(ServerPlayer player) {
         return account(player).getInt("credits");
+    }
+
+    static int experienceEarned(ServerPlayer player) {
+        int earned = 0;
+        for (SupplyContract contract : values()) {
+            if (contract.status(player) == COMPLETED) earned += contract.experience;
+        }
+        return earned;
+    }
+
+    static boolean showExtraction(ServerPlayer player) {
+        return !account(player).getBoolean("hide_extraction");
+    }
+
+    static void toggleExtraction(ServerPlayer player) {
+        account(player).putBoolean("hide_extraction", showExtraction(player));
     }
 
     int status(ServerPlayer player) {

@@ -31,7 +31,7 @@ public final class ForestExpedition {
     private ForestExpedition() {
     }
 
-    static String depart(ServerPlayer player, BlockPos board, boolean night) {
+    static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo) {
         ServerLevel forest = player.server.getLevel(FOREST);
         if (forest == null || !(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator)) {
             return "La dimension Forêt Noire est indisponible.";
@@ -43,7 +43,10 @@ public final class ForestExpedition {
             return "Tu dois être à pied et vivant.";
         }
 
-        UUID partnerId = OperationsGroups.of(player).partner(player);
+        UUID partnerId = duo ? OperationsGroups.of(player).partner(player) : null;
+        if (duo && partnerId == null) {
+            return "Invite d’abord un équipier.";
+        }
         ServerPlayer partner = partnerId == null ? null : player.server.getPlayerList().getPlayer(partnerId);
         if (partnerId != null && (partner == null || partner.level() != player.level()
             || board.distToCenterSqr(partner.position()) > 64 || !canDepart(partner))) {
@@ -130,6 +133,9 @@ public final class ForestExpedition {
         if (player.tickCount % 20 == 0) {
             if (feet.equals(secondary) && !relay) {
                 player.displayClientMessage(Component.literal("Sortie verrouillée · active le relais de la station."), true);
+                return;
+            }
+            if (!SupplyContract.showExtraction(player)) {
                 return;
             }
             BlockPos extraction = relay && secondary.distSqr(feet) < primary.distSqr(feet) ? secondary : primary;

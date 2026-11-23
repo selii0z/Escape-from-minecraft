@@ -39,3 +39,11 @@ Le Tableau des opérations lance toujours le départ normal. En s'approchant des
 Le filtre de la dimension refuse l'entrée des mobs ordinaires en laissant passer les gardes du raid courant. La synchronisation du ciel de Forêt Noire n'envoie plus l'heure globale en alternance avec l'heure de la sortie. Le ciel et la météo restent des effets visuels propres aux participants.
 
 La compilation utilise l'API officielle de TaCZ 1.2.0. Un test hors jeu a généré 76 chunks et testé huit points de garde ainsi que vingt positions de caisse distinctes et constructibles pour chacun de 32 tirages. Le tir réel des gardes, l'interface de fouille, le ciel et l'absence d'apparitions parasites dans AllTheMons doivent être vérifiés en jeu. La refonte graphique du menu, la régénération administrateur et le boss ne font pas partie de cette version.
+
+## Tableau des opérations dans la version 0.6.0
+
+Le tableau s'ouvre sur le tableau de bord illustré. Il affiche six secteurs, la fiche du secteur sélectionné et les données réelles du joueur. La Forêt Noire est disponible au départ. Les cinq autres fiches sont consultables et le lancement y est désactivé.
+
+Sélectionner **Jour** ou **Nuit**, puis **Solo** ou **Duo**, et cliquer sur **Lancer l’opération**. Le bouton **Duo** ouvre les invitations si aucun équipier n'est associé. L'onglet **Marchands** vend des vivres, des torches et des flèches en crédits militaires. **Progression** affiche l'XP obtenue avec les contrats et le rang correspondant. **Paramètres** enregistre la préférence d'affichage des coordonnées d'extraction.
+
+Remplacer l'ancien JAR dans `mods/` sur le client et, en multijoueur, sur le serveur dédié. Les six sections sont accessibles depuis le tableau placé dans le monde.

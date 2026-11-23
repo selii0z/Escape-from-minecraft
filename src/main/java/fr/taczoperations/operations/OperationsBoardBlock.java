@@ -53,7 +53,7 @@ public final class OperationsBoardBlock extends HorizontalDirectionalBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                 Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
-            OperationsMenu.open(serverPlayer, pos, OperationsMenu.CONTRACTS, 0, "");
+            OperationsMenu.open(serverPlayer, pos, OperationsMenu.FOREST, 0, "");
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
