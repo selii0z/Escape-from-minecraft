@@ -97,16 +97,18 @@ public enum SupplyContract {
 
     static int experienceEarned(ServerPlayer player) {
         CompoundTag account = account(player);
-        int earned = account.getInt("raid_activity_xp")
-            + (account.getInt("OUTPOST") == 2 ? 8 : 0) + (account.getInt("BARRICADE") == 2 ? 12 : 0)
+        long earned = Math.max(0, account.getInt("raid_activity_xp"))
+            + (account.getInt("OUTPOST") == 2 ? 8 : 0)
+            + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
         for (var contract : values()) {
             int times = account.contains("completed_" + contract.name())
                 ? account.getInt("completed_" + contract.name())
                 : (contract.status(player) == COMPLETED ? 1 : 0);
-            earned = (int) Math.min(Integer.MAX_VALUE, (long) earned + (long) contract.experience * times);
+            earned = Math.min(Integer.MAX_VALUE,
+                earned + (long) contract.experience * Math.max(0, times));
         }
-        return earned;
+        return (int) Math.min(Integer.MAX_VALUE, earned);
     }
 
     // Escape from Minecraft progression XP: distinct from vanilla experience.
