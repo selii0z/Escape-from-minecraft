@@ -214,9 +214,15 @@ public final class IndustrialZone {
                     out.put(x, FLOOR + dz - 6, z, Blocks.STONE_BRICK_STAIRS.defaultBlockState()
                         .setValue(StairBlock.FACING, Direction.SOUTH));
                 }
-                if (!side && dx % 11 == 3 && dz % 11 == 4 && Math.abs(dx - b.width / 2) > 3) {
-                    out.put(x, FLOOR + 1, z, Blocks.IRON_BLOCK);
-                    out.put(x, FLOOR + 2, z, Blocks.REDSTONE_LAMP);
+                // Ceiling-mounted lighting instead of freestanding lamp posts
+                // obstructing the floor and raid navigation.
+                if (!side && dx % 12 == 6 && dz % 12 == 6) {
+                    int ceiling = FLOOR + b.height - 1;
+                    out.put(x, ceiling, z, Blocks.SEA_LANTERN);
+                    if (dx > 1 && dx < b.width - 2) {
+                        out.put(x - 1, ceiling, z, Blocks.IRON_BLOCK);
+                        out.put(x + 1, ceiling, z, Blocks.IRON_BLOCK);
+                    }
                 }
                 // Raised sawtooth roof bays on factories, low parapets elsewhere.
                 int roof = FLOOR + b.height + (b.factory && dx % 21 < 10 ? 2 : 0);
