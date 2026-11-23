@@ -99,6 +99,12 @@ public final class ForestRaid extends SavedData {
         if (level.players().stream().anyMatch(p -> p != leaving && isParticipant(p))) {
             return;
         }
+        // If no raid is active, avoid deleting unrelated items in the
+        // dimension on repeated logout/death/exit events.
+        ForestRaid raid = get(level);
+        if (raid.id == null) {
+            return;
+        }
         for (var entity : level.getAllEntities()) {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
@@ -108,11 +114,8 @@ public final class ForestRaid extends SavedData {
         // Closing the session also invalidates the persistent raid token.
         // A player reconnecting after the last departure must not re-enter
         // a supposedly finished raid or access its remaining containers.
-        ForestRaid raid = get(level);
-        if (raid.id != null) {
-            raid.id = null;
-            raid.setDirty();
-        }
+        raid.id = null;
+        raid.setDirty();
     }
 
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
