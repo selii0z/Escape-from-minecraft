@@ -191,6 +191,14 @@ public final class ForestRaid extends SavedData {
             statistics.setValue(respawned, deaths,
                 Math.max(0, statistics.getValue(deaths) - 1));
         }
+        if (original.getPersistentData().hasUUID(PLAYER)
+            && get(original.serverLevel()).matches(original.getPersistentData(), PLAYER)) {
+            int adjustment = SupplyContract.finalizeRaidXp(respawned, original.getPersistentData(), false);
+            respawned.sendSystemMessage(Component.literal(
+                "Raid perdu · XP finale : " + (Math.max(0, original.getPersistentData().getInt("taczoperations_run_kill_xp"))
+                    + Math.max(0, original.getPersistentData().getInt("taczoperations_run_search_xp")) + adjustment)
+                    + " (malus de 10 %)"));
+        }
         // The normal death-drop process has already run. Do not duplicate
         // equipment into a custom corpse or copy the raid token on respawn.
         clearPlayer(respawned);
