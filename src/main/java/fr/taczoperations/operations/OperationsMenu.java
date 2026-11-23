@@ -39,7 +39,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     private static final int PAGE_SIZE = 4;
     public static final int LIST_ROWS = 6;
     public static final int VENDOR_FIRST = 35;
-    public static final int VENDOR_PAGES = 4;
+    public static final int VENDOR_PAGES = 32;
     public static final int TRADE_FIRST = 45;
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
