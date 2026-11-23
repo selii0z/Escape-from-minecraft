@@ -128,13 +128,12 @@ public enum SupplyContract {
     }
 
     static int finalizeRaidXp(ServerPlayer player, CompoundTag run, boolean success) {
-        int base = Math.max(0, run.getInt("taczoperations_run_kill_xp"))
+        long base = (long) Math.max(0, run.getInt("taczoperations_run_kill_xp"))
             + Math.max(0, run.getInt("taczoperations_run_search_xp"));
         if (run.getBoolean("taczoperations_run_xp_finalized")) return 0;
         run.putBoolean("taczoperations_run_xp_finalized", true);
-        int adjusted = (int) Math.min(Integer.MAX_VALUE,
-            ((long) base * (success ? 110 : 90) + 50) / 100);
-        int delta = adjusted - base;
+        long adjusted = Math.min(Integer.MAX_VALUE, (base * (success ? 110 : 90) + 50) / 100);
+        int delta = (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, adjusted - base));
         CompoundTag data = account(player);
         data.putInt("raid_activity_xp", (int) Math.max(0,
             Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + delta)));
@@ -153,7 +152,8 @@ public enum SupplyContract {
         report.putInt("combat_xp", Math.max(0, killXp));
         report.putInt("search_xp", Math.max(0, searchXp));
         report.putInt("adjustment_xp", adjustment);
-        report.putInt("final_xp", Math.max(0, killXp + searchXp + adjustment));
+        report.putInt("final_xp", (int) Math.min(Integer.MAX_VALUE,
+            Math.max(0L, (long) killXp + searchXp + adjustment)));
         account(player).put("last_raid_report", report);
     }
 
@@ -320,7 +320,9 @@ public enum SupplyContract {
         CompoundTag account = account(player);
         account.putInt("raid_" + name(), COMPLETED);
         account.putInt("completed_" + name(), account.getInt("completed_" + name()) + 1);
-        if (ForestRaid.isParticipant(player)) {
+        // Extraction objectives finish after teleport, when the raid token is gone.
+        // The run marker keeps these completions in the final raid report.
+        if (player.getPersistentData().contains("taczoperations_run_started")) {
             CompoundTag run = player.getPersistentData();
             run.putInt("taczoperations_run_contracts", run.getInt("taczoperations_run_contracts") + 1);
         }
