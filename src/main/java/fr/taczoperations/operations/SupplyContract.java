@@ -283,7 +283,7 @@ public enum SupplyContract {
             new RaidResultPayload(true, seconds, kills, crates, completed, killXp, searchXp, bonus));
         // The graphical report is authoritative; keep chat concise.
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "Extraction réussie · +" + (killXp + searchXp + bonus)
+            "Extraction réussie · +" + ((long) killXp + searchXp + bonus)
                 + " XP Escape (bonus +" + bonus + "). Bilan affiché à l'écran."));
         player.getPersistentData().remove("taczoperations_run_kill_xp");
         player.getPersistentData().remove("taczoperations_run_search_xp");
