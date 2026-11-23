@@ -124,9 +124,11 @@ public final class IndustrialZone {
                     }
                 }
                 // Perimeter fencing around industrial compounds, with road gates.
+                boolean entryGate = z == 570 && x >= 54 && x <= 91;
+                boolean exitGate = z == 100 && x >= 573 && x <= 602;
                 if ((x == 68 || x == 626 || z == 100 || z == 570)
                     && x >= 68 && x <= 626 && z >= 100 && z <= 570
-                    && !road(x, z)) {
+                    && !road(x, z) && !entryGate && !exitGate) {
                     out.put(x, FLOOR + 1, z, Blocks.COBBLESTONE_WALL);
                     out.put(x, FLOOR + 2, z, Blocks.IRON_BARS);
                     out.put(x, FLOOR + 3, z, Blocks.IRON_BARS);
