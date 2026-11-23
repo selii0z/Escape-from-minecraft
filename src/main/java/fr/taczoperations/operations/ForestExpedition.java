@@ -51,6 +51,10 @@ public final class ForestExpedition {
         if (!canDepart(player)) {
             return "Tu dois être à pied et vivant.";
         }
+        // Do not overwrite an unresolved return location with a new departure.
+        if (player.getPersistentData().contains(RETURN_POINT)) {
+            return "Ton précédent raid n'est pas encore terminé. Reconnecte-toi si nécessaire.";
+        }
 
         UUID partnerId = duo ? OperationsGroups.of(player).partner(player) : null;
         if (duo && partnerId == null) {
@@ -58,7 +62,8 @@ public final class ForestExpedition {
         }
         ServerPlayer partner = partnerId == null ? null : player.server.getPlayerList().getPlayer(partnerId);
         if (partnerId != null && (partner == null || partner.level() != player.level()
-            || board.distToCenterSqr(partner.position()) > 64 || !canDepart(partner))) {
+            || board.distToCenterSqr(partner.position()) > 64 || !canDepart(partner)
+            || partner.getPersistentData().contains(RETURN_POINT))) {
             return "Ton équipier doit être à pied près du tableau. Quitte le duo pour partir seul.";
         }
 
