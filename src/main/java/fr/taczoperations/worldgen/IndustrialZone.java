@@ -152,12 +152,20 @@ public final class IndustrialZone {
                 int x = b.x + dx, z = b.z + dz;
                 boolean side = dx == 0 || dx == b.width - 1 || dz == 0 || dz == b.depth - 1;
                 boolean doorway = (dz == 0 || dz == b.depth - 1) && Math.abs(dx - b.width / 2) < 4;
+                boolean sideDoor = (dx == 0 || dx == b.width - 1)
+                    && Math.abs(dz - b.depth / 2) < 2;
+                boolean column = side && (dx % 12 == 0 || dz % 12 == 0);
+                boolean window = side && !doorway && !sideDoor
+                    && (dx % 12 >= 3 && dx % 12 <= 8 || dz % 12 >= 3 && dz % 12 <= 8);
                 out.put(x, FLOOR, z, Blocks.SMOOTH_STONE);
                 if (side) {
                     for (int dy = 1; dy < b.height; dy++) {
-                        if (doorway && dy <= 4) continue;
-                        out.put(x, FLOOR + dy, z, dy > 3 && dy % 5 == 1 && (dx + dz) % 7 >= 2
-                            ? Blocks.WHITE_STAINED_GLASS : (dx + dz) % 10 == 0 ? Blocks.POLISHED_DEEPSLATE : b.wall);
+                        if ((doorway && dy <= 5) || (sideDoor && dy <= 3)) continue;
+                        Block facade = column ? Blocks.POLISHED_DEEPSLATE
+                            : dy >= 5 && dy <= 8 && window ? Blocks.GRAY_STAINED_GLASS
+                            : dy == 1 || dy == b.height - 1 ? Blocks.DEEPSLATE_BRICKS
+                            : b.wall;
+                        out.put(x, FLOOR + dy, z, facade);
                     }
                 } else if (b.factory && (dx <= 9 || dx >= b.width - 10 || dz >= b.depth - 12)) {
                     if (dx > 3 || dz < 7 || dz > 12) out.put(x, FLOOR + 6, z, Blocks.SMOOTH_STONE);
@@ -171,7 +179,16 @@ public final class IndustrialZone {
                     out.put(x, FLOOR + 1, z, Blocks.IRON_BLOCK);
                     out.put(x, FLOOR + 2, z, Blocks.REDSTONE_LAMP);
                 }
-                out.put(x, FLOOR + b.height + (b.factory && dx % 21 < 10 ? 2 : 0), z, Blocks.DEEPSLATE_TILES);
+                // Raised sawtooth roof bays on factories, low parapets elsewhere.
+                int roof = FLOOR + b.height + (b.factory && dx % 21 < 10 ? 2 : 0);
+                out.put(x, roof, z, Blocks.DEEPSLATE_TILES);
+                if (side) out.put(x, roof + 1, z, Blocks.POLISHED_DEEPSLATE);
+                if (b.factory && !side && dx % 21 == 9 && dz % 7 == 0)
+                    out.put(x, roof + 1, z, Blocks.IRON_BARS);
+                if (!side && !b.factory && dx % 15 == 5 && dz % 13 == 5) {
+                    out.put(x, FLOOR + 1, z, Blocks.BARREL);
+                    out.put(x, FLOOR + 2, z, Blocks.IRON_TRAPDOOR);
+                }
             }
         }
     }
