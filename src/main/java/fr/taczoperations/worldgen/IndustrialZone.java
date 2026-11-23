@@ -261,7 +261,9 @@ public final class IndustrialZone {
                     }
                 }
                 if (!side && b.factory && dx >= 14 && dx < b.width - 14
-                    && dz >= 10 && dz < b.depth - 14 && dx % 17 <= 3 && dz % 15 <= 3) {
+                    && dz >= 10 && dz < b.depth - 14
+                    && Math.abs(dx - b.width / 2) > 6
+                    && dx % 17 <= 3 && dz % 15 <= 3) {
                     out.put(x, FLOOR + 1, z, Blocks.DEEPSLATE_BRICKS);
                     out.put(x, FLOOR + 2, z, Blocks.IRON_BLOCK);
                     out.put(x, FLOOR + 3, z, Blocks.FURNACE);
