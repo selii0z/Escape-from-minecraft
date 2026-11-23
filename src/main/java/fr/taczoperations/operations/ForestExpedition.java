@@ -115,7 +115,9 @@ public final class ForestExpedition {
             || !player.level().dimension().equals(FOREST)) {
             return;
         }
-        if (ForestRaid.hasRaidToken(player) && !ForestRaid.isParticipant(player)) {
+        // A player without the current raid token must not remain in the
+        // protected dimension (including after a server restart or stale login).
+        if (!ForestRaid.isParticipant(player)) {
             returnToOrigin(player);
             return;
         }
