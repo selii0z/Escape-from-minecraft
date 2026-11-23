@@ -142,6 +142,10 @@ public final class ForestRaid extends SavedData {
         cleanupWhenEmpty(original.serverLevel(), original);
     }
 
+    static boolean hasActiveSession(ServerLevel level) {
+        return get(level).id != null;
+    }
+
     static boolean isParticipant(ServerPlayer player) {
         return player.level().dimension().equals(ForestExpedition.FOREST)
             && ForestExpedition.hasReturnPoint(player)
