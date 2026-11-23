@@ -111,11 +111,11 @@ public final class OperationsMenu extends AbstractContainerMenu {
         for (int i = 0; i < reports.size() && i < 10; i++) {
             var report = reports.getCompound(i);
             long seconds = report.getLong("duration_seconds");
-            history.add((report.getBoolean("success") ? "EXTRAIT" : "ÉCHEC")
-                + " | " + (seconds / 60) + "m" + String.format("%02d", seconds % 60)
-                + " | " + report.getInt("kills") + " élim."
-                + " | " + report.getInt("crates") + " coffres"
-                + " | " + report.getInt("final_xp") + " XP");
+            history.add((report.getBoolean("success") ? "OK" : "KO")
+                + " " + (seconds / 60) + ":" + String.format("%02d", seconds % 60)
+                + " | " + report.getInt("kills") + "K"
+                + " | " + report.getInt("crates") + "C"
+                + " | " + report.getInt("final_xp") + "XP");
         }
         return history;
     }
