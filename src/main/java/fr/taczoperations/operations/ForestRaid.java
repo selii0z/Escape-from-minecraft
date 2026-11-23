@@ -31,9 +31,12 @@ import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -47,6 +50,9 @@ public final class ForestRaid extends SavedData {
     private static final String CRATE_INDEX = "taczoperations_raid_crate_index";
     private static final Factory<ForestRaid> FACTORY = new Factory<>(ForestRaid::new, ForestRaid::read);
 
+    private static final long RECONNECT_GRACE_MS = 10 * 60 * 1000L;
+    private final Set<UUID> participants = new HashSet<>();
+    private long offlineSince;
     private UUID id;
     private long seed;
     private boolean industrial;
@@ -69,6 +75,10 @@ public final class ForestRaid extends SavedData {
             }
         }
         raid.id = UUID.randomUUID();
+        raid.participants.clear();
+        raid.participants.add(player.getUUID());
+        if (partner != null) raid.participants.add(partner.getUUID());
+        raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
         raid.industrial = industrial;
         raid.crates.clear();
@@ -89,41 +99,65 @@ public final class ForestRaid extends SavedData {
         raid.setDirty();
     }
 
-    // Called after a successful extraction. Keep the raid alive while a duo
-    // partner is still inside; otherwise discard all temporary raid entities.
-    static void cleanupWhenEmpty(ServerLevel level) {
-        cleanupWhenEmpty(level, null);
+    // Offline players retain their raid slot for a limited reconnection window.
+    static void finishParticipant(ServerPlayer player) {
+        ServerLevel level = player.serverLevel();
+        if (!level.dimension().equals(ForestExpedition.FOREST)) return;
+        ForestRaid raid = get(level);
+        raid.participants.remove(player.getUUID());
+        raid.setDirty();
     }
 
-    private static void cleanupWhenEmpty(ServerLevel level, ServerPlayer leaving) {
-        if (level.players().stream().anyMatch(p -> p != leaving && isParticipant(p))) {
-            return;
-        }
-        // If no raid is active, avoid deleting unrelated items in the
-        // dimension on repeated logout/death/exit events.
+    static void cleanupWhenEmpty(ServerLevel level) {
         ForestRaid raid = get(level);
-        if (raid.id == null) {
-            return;
-        }
+        if (raid.id == null || !raid.participants.isEmpty()) return;
+        raid.closeSession(level);
+    }
+
+    private void closeSession(ServerLevel level) {
         for (var entity : level.getAllEntities()) {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
                 entity.discard();
             }
         }
-        // Closing the session also invalidates the persistent raid token.
-        // A player reconnecting after the last departure must not re-enter
-        // a supposedly finished raid or access its remaining containers.
-        raid.id = null;
-        raid.setDirty();
+        id = null;
+        participants.clear();
+        offlineSince = 0;
+        setDirty();
     }
 
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player
-            && player.serverLevel().dimension().equals(ForestExpedition.FOREST)) {
-            // A disconnect is not an extraction or death. Keep the session
-            // available for reconnect while the server remains running.
-            // The saved player position and raid token remain unchanged.
+        if (!(event.getEntity() instanceof ServerPlayer player)
+            || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
+        ForestRaid raid = get(player.serverLevel());
+        if (raid.id == null || !raid.participants.contains(player.getUUID())) return;
+        // Exclude the disconnecting player, which can still appear in level.players().
+        boolean othersOnline = player.serverLevel().players().stream().anyMatch(other ->
+            other != player && raid.participants.contains(other.getUUID()));
+        if (!othersOnline) {
+            raid.offlineSince = System.currentTimeMillis();
+            raid.setDirty();
+        }
+    }
+
+    public static void onServerTick(ServerTickEvent.Post event) {
+        ServerLevel level = event.getServer().getLevel(ForestExpedition.FOREST);
+        if (level == null) return;
+        ForestRaid raid = get(level);
+        if (raid.id == null || raid.participants.isEmpty()) return;
+        boolean online = level.players().stream().anyMatch(p ->
+            raid.participants.contains(p.getUUID()) && isParticipant(p));
+        if (online) {
+            if (raid.offlineSince != 0) {
+                raid.offlineSince = 0;
+                raid.setDirty();
+            }
+        } else if (raid.offlineSince == 0) {
+            raid.offlineSince = System.currentTimeMillis();
+            raid.setDirty();
+        } else if (System.currentTimeMillis() - raid.offlineSince >= RECONNECT_GRACE_MS) {
+            raid.closeSession(level);
         }
     }
 
@@ -139,7 +173,8 @@ public final class ForestRaid extends SavedData {
         ForestExpedition.clearReturnPoint(respawned);
         clearPlayer(original);
         // A surviving duo member can still collect vanilla death drops.
-        cleanupWhenEmpty(original.serverLevel(), original);
+        finishParticipant(original);
+        cleanupWhenEmpty(original.serverLevel());
     }
 
     static boolean hasActiveSession(ServerLevel level) {
