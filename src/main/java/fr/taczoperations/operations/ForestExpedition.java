@@ -202,8 +202,11 @@ public final class ForestExpedition {
             && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
             boolean qualifies = ForestRaid.isParticipant(player);
             if (returnToOrigin(player, true)) {
-                if (qualifies) SupplyContract.extracted(player, industrial);
-                player.sendSystemMessage(Component.literal("Extraction réussie. Te voilà de retour."));
+                if (qualifies) {
+                    SupplyContract.extracted(player, industrial);
+                } else {
+                    player.sendSystemMessage(Component.literal("Retour au point de départ effectué."));
+                }
             }
             return;
         }
