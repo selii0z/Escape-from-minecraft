@@ -203,7 +203,7 @@ public final class ForestRaid extends SavedData {
                 Math.max(0, statistics.getValue(deaths) - 1));
 
             int adjustment = SupplyContract.finalizeRaidXp(respawned, oldRoot, false);
-            int base = Math.max(0, oldRoot.getInt("taczoperations_run_kill_xp"))
+            long base = (long) Math.max(0, oldRoot.getInt("taczoperations_run_kill_xp"))
                 + Math.max(0, oldRoot.getInt("taczoperations_run_search_xp"));
             long started = oldRoot.getLong("taczoperations_run_started");
             long duration = started > 0 ? Math.max(0, (original.server.overworld().getGameTime() - started) / 20) : 0;
