@@ -213,13 +213,8 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_contracts"),
                 oldRoot.getInt("taczoperations_run_kill_xp"),
                 oldRoot.getInt("taczoperations_run_search_xp"), adjustment);
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(respawned,
-                new RaidResultPayload(false, duration,
-                    oldRoot.getInt("taczoperations_raid_kills"),
-                    oldRoot.getInt("taczoperations_run_crates"),
-                    oldRoot.getInt("taczoperations_run_contracts"),
-                    oldRoot.getInt("taczoperations_run_kill_xp"),
-                    oldRoot.getInt("taczoperations_run_search_xp"), adjustment));
+            // Deliver the UI only after the new player has fully respawned.
+            respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(
                 "========== RAID ÉCHOUÉ ==========").withStyle(net.minecraft.ChatFormatting.RED));
             respawned.sendSystemMessage(Component.literal(
@@ -237,6 +232,19 @@ public final class ForestRaid extends SavedData {
         // A surviving duo member can still collect vanilla death drops.
         finishParticipant(original);
         cleanupWhenEmpty(original.serverLevel());
+    }
+
+    public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+            || !player.getPersistentData().getBoolean("taczoperations_pending_failed_report")) return;
+        player.getPersistentData().remove("taczoperations_pending_failed_report");
+        CompoundTag report = SupplyContract.account(player).getCompound("last_raid_report");
+        if (!report.contains("final_xp") || report.getBoolean("success")) return;
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+            new RaidResultPayload(false, report.getLong("duration_seconds"),
+                report.getInt("kills"), report.getInt("crates"), report.getInt("contracts"),
+                report.getInt("combat_xp"), report.getInt("search_xp"),
+                report.getInt("adjustment_xp")));
     }
 
     static boolean hasActiveSession(ServerLevel level) {
