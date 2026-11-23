@@ -25,10 +25,27 @@ final class GuardPouch {
         items.set(0, guard.getMainHandItem().getItem() instanceof IGun
             ? OperationsShop.ammo(GuardRole.get(guard).ammo, quantity)
             : new ItemStack(Items.ARROW, quantity));
-        items.set(1, new ItemStack(random.nextBoolean() ? Items.BREAD : Items.COOKED_BEEF, 1 + random.nextInt(3)));
-        items.set(2, new ItemStack(random.nextBoolean() ? Items.IRON_INGOT : Items.TORCH, 1 + random.nextInt(4)));
-        if (random.nextInt(4) == 0) {
-            items.set(3, new ItemStack(Items.GOLDEN_CARROT));
+        // Each guard carries a different mix of field supplies, scrap and valuables.
+        var food = new net.minecraft.world.item.Item[] {
+            Items.BREAD, Items.COOKED_BEEF, Items.BAKED_POTATO,
+            Items.COOKED_CHICKEN, Items.COOKED_PORKCHOP, Items.DRIED_KELP
+        };
+        var scrap = new net.minecraft.world.item.Item[] {
+            Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE,
+            Items.TORCH, Items.STRING, Items.FLINT, Items.PAPER, Items.COAL
+        };
+        items.set(1, new ItemStack(food[random.nextInt(food.length)], 1 + random.nextInt(4)));
+        items.set(2, new ItemStack(scrap[random.nextInt(scrap.length)], 1 + random.nextInt(5)));
+        if (random.nextInt(3) == 0) {
+            items.set(3, new ItemStack(random.nextBoolean() ? Items.GOLDEN_CARROT : Items.HONEY_BOTTLE,
+                1 + random.nextInt(2)));
+        }
+        if (random.nextInt(3) == 0) {
+            items.set(5, new ItemStack(scrap[random.nextInt(scrap.length)], 1 + random.nextInt(3)));
+        }
+        if (random.nextInt(7) == 0) {
+            items.set(6, new ItemStack(random.nextBoolean() ? Items.EMERALD : Items.GOLD_INGOT,
+                1 + random.nextInt(2)));
         }
         if (random.nextInt(12) == 0) items.set(4, RaidRelic.roll(random).stack());
         save(guard, items);
