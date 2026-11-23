@@ -432,15 +432,12 @@ public final class ForestRaid extends SavedData {
     }
 
     private static ForestRaid read(CompoundTag tag, HolderLookup.Provider registries) {
+        // Raids are temporary sessions, not persistent worlds. Never restore
+        // an active raid ID after a server restart: otherwise a returning
+        // player could rejoin an abandoned raid with stale loot and enemies.
+        // The next departure creates a fresh ID and clears nearby old crates.
         ForestRaid raid = new ForestRaid();
-        if (tag.hasUUID("id")) {
-            raid.id = tag.getUUID("id");
-            raid.seed = tag.getLong("seed");
-            raid.industrial = tag.getBoolean("industrial");
-            raid.crates = BitSet.valueOf(tag.getLongArray("crates"));
-            raid.enemies = BitSet.valueOf(tag.getLongArray("enemies"));
-            raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
-        }
+        raid.setDirty();
         return raid;
     }
 
