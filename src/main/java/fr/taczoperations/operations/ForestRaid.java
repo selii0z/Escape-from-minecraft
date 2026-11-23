@@ -62,7 +62,8 @@ public final class ForestRaid extends SavedData {
         // A previous raid may have left corpses in loaded chunks. Remove them
         // before assigning a new session ID, so their inventories cannot be looted.
         for (var entity : level.getAllEntities()) {
-            if (entity instanceof GuardCorpse || entity instanceof ItemEntity) {
+            if (entity instanceof GuardCorpse || entity instanceof ItemEntity
+                || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
                 entity.discard();
             }
         }
@@ -77,6 +78,12 @@ public final class ForestRaid extends SavedData {
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
             SupplyContract.departure(partner);
+        }
+        // Clear stale containers in the chunks around the spawn immediately,
+        // rather than waiting for the first scheduled player tick.
+        raid.removeOldCrates(level, player);
+        if (partner != null) {
+            raid.removeOldCrates(level, partner);
         }
         raid.setDirty();
     }
