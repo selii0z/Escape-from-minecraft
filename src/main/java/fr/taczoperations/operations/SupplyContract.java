@@ -125,6 +125,9 @@ public enum SupplyContract {
 
     String act(ServerPlayer player) {
         if (status(player) == COMPLETED) {
+            int active = 0;
+            for (var contract : values()) if (contract.status(player) == ACTIVE) active++;
+            if (active >= 3) return "Tu as déjà trois contrats actifs.";
             account(player).putInt("raid_" + name(), ACTIVE);
             account(player).putInt("progress_" + name(), 0);
             return "Contrat renouvelé. Bonne chasse !";
@@ -177,6 +180,8 @@ public enum SupplyContract {
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().putInt("taczoperations_run_kill_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_search_xp", 0);
+        player.getPersistentData().putInt("taczoperations_run_crates", 0);
+        player.getPersistentData().putLong("taczoperations_run_started", player.serverLevel().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
             baseline.putInt(relic.id, count(player, relic.item()));
@@ -207,11 +212,27 @@ public enum SupplyContract {
         }
         int killXp = player.getPersistentData().getInt("taczoperations_run_kill_xp");
         int searchXp = player.getPersistentData().getInt("taczoperations_run_search_xp");
+        int crates = player.getPersistentData().getInt("taczoperations_run_crates");
+        long started = player.getPersistentData().getLong("taczoperations_run_started");
+        long seconds = started > 0 ? Math.max(0, (player.serverLevel().getGameTime() - started) / 20) : 0;
+        int completed = 0;
+        for (var contract : values()) if (contract.status(player) == COMPLETED) completed++;
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "Bilan Escape · " + (killXp + searchXp) + " XP (combats : "
-                + killXp + ", fouilles : " + searchXp + ")"));
+            "========== EXTRACTION RÉUSSIE ==========").withStyle(net.minecraft.ChatFormatting.GREEN));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "Durée du raid : " + (seconds / 60) + " min " + (seconds % 60) + " s"));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "Ennemis éliminés : " + kills + "    |    Coffres ouverts : " + crates));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "XP combats : +" + killXp + "    |    XP fouilles : +" + searchXp));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "XP du raid : +" + (killXp + searchXp) + "    |    Contrats terminés : " + completed));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "======================================="));
         player.getPersistentData().remove("taczoperations_run_kill_xp");
         player.getPersistentData().remove("taczoperations_run_search_xp");
+        player.getPersistentData().remove("taczoperations_run_crates");
+        player.getPersistentData().remove("taczoperations_run_started");
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().remove("taczoperations_relic_baseline");
