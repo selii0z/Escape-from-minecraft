@@ -36,8 +36,12 @@ public final class ForestExpedition {
         CompoundTag data = player.getPersistentData();
         if (!data.contains(RETURN_POINT, 10)) return false;
         CompoundTag point = data.getCompound(RETURN_POINT);
-        return ResourceLocation.tryParse(point.getString("dimension")) != null
-            && point.contains("x", 99) && point.contains("y", 99) && point.contains("z", 99);
+        ResourceLocation dimension = ResourceLocation.tryParse(point.getString("dimension"));
+        return dimension != null && !dimension.equals(FOREST.location())
+            && point.contains("x", 99) && point.contains("y", 99) && point.contains("z", 99)
+            && Double.isFinite(point.getDouble("x"))
+            && Double.isFinite(point.getDouble("y"))
+            && Double.isFinite(point.getDouble("z"));
     }
 
     static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo, boolean industrial) {
