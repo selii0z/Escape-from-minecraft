@@ -185,9 +185,24 @@ public final class IndustrialZone {
                 if (side) out.put(x, roof + 1, z, Blocks.POLISHED_DEEPSLATE);
                 if (b.factory && !side && dx % 21 == 9 && dz % 7 == 0)
                     out.put(x, roof + 1, z, Blocks.IRON_BARS);
-                if (!side && !b.factory && dx % 15 == 5 && dz % 13 == 5) {
-                    out.put(x, FLOOR + 1, z, Blocks.BARREL);
-                    out.put(x, FLOOR + 2, z, Blocks.IRON_TRAPDOOR);
+                // Warehouse interiors: racks and pallets run in aisles,
+                // leaving a clear central corridor and accessible entrances.
+                if (!side && !b.factory && dx >= 5 && dx < b.width - 5
+                    && dz >= 6 && dz < b.depth - 6
+                    && Math.abs(dx - b.width / 2) > 5
+                    && dx % 13 >= 2 && dx % 13 <= 4 && dz % 9 >= 2 && dz % 9 <= 6) {
+                    out.put(x, FLOOR + 1, z, Blocks.SPRUCE_PLANKS);
+                    if (dz % 9 == 2 || dz % 9 == 6) {
+                        out.put(x, FLOOR + 2, z, Blocks.BARREL);
+                        out.put(x, FLOOR + 3, z, Blocks.IRON_TRAPDOOR);
+                    }
+                }
+                if (!side && b.factory && dx >= 14 && dx < b.width - 14
+                    && dz >= 10 && dz < b.depth - 14 && dx % 17 <= 3 && dz % 15 <= 3) {
+                    out.put(x, FLOOR + 1, z, Blocks.DEEPSLATE_BRICKS);
+                    out.put(x, FLOOR + 2, z, Blocks.IRON_BLOCK);
+                    out.put(x, FLOOR + 3, z, Blocks.FURNACE);
+                    out.put(x, FLOOR + 4, z, Blocks.IRON_TRAPDOOR);
                 }
             }
         }
