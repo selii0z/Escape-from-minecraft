@@ -121,9 +121,9 @@ public final class ForestRaid extends SavedData {
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player
             && player.serverLevel().dimension().equals(ForestExpedition.FOREST)) {
-            // The disconnecting player may still be in level.players() during
-            // this event; exclude them when checking whether the duo remains.
-            cleanupWhenEmpty(player.serverLevel(), player);
+            // A disconnect is not an extraction or death. Keep the session
+            // available for reconnect while the server remains running.
+            // The saved player position and raid token remain unchanged.
         }
     }
 
