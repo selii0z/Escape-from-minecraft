@@ -207,6 +207,12 @@ public final class ForestRaid extends SavedData {
                 + Math.max(0, oldRoot.getInt("taczoperations_run_search_xp"));
             long started = oldRoot.getLong("taczoperations_run_started");
             long duration = started > 0 ? Math.max(0, (original.server.overworld().getGameTime() - started) / 20) : 0;
+            SupplyContract.saveRaidReport(respawned, false, duration,
+                oldRoot.getInt("taczoperations_raid_kills"),
+                oldRoot.getInt("taczoperations_run_crates"),
+                oldRoot.getInt("taczoperations_run_contracts"),
+                oldRoot.getInt("taczoperations_run_kill_xp"),
+                oldRoot.getInt("taczoperations_run_search_xp"), adjustment);
             respawned.sendSystemMessage(Component.literal(
                 "========== RAID ÉCHOUÉ ==========").withStyle(net.minecraft.ChatFormatting.RED));
             respawned.sendSystemMessage(Component.literal(
