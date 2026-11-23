@@ -213,6 +213,13 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_contracts"),
                 oldRoot.getInt("taczoperations_run_kill_xp"),
                 oldRoot.getInt("taczoperations_run_search_xp"), adjustment);
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(respawned,
+                new RaidResultPayload(false, duration,
+                    oldRoot.getInt("taczoperations_raid_kills"),
+                    oldRoot.getInt("taczoperations_run_crates"),
+                    oldRoot.getInt("taczoperations_run_contracts"),
+                    oldRoot.getInt("taczoperations_run_kill_xp"),
+                    oldRoot.getInt("taczoperations_run_search_xp"), adjustment));
             respawned.sendSystemMessage(Component.literal(
                 "========== RAID ÉCHOUÉ ==========").withStyle(net.minecraft.ChatFormatting.RED));
             respawned.sendSystemMessage(Component.literal(
