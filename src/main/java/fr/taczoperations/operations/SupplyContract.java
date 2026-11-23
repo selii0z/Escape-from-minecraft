@@ -9,6 +9,13 @@ import net.minecraft.world.item.Items;
 
 public enum SupplyContract {
     CLEAR("Nettoyage", 5, 250, 15, Objective.KILL, null),
+    PATROL("Patrouille hostile", 12, 720, 34, Objective.KILL, null),
+    WARZONE("Zone de guerre", 25, 1650, 65, Objective.KILL, null),
+    ELITE_HUNT("Chasse aux vétérans", 7, 1350, 56, Objective.ELITE, null),
+    CLEAN_SWEEP("Nettoyage total", 15, 1250, 48, Objective.COMBAT_EXIT, null),
+    HARD_EXIT("Extraction risquée", 4, 640, 31, Objective.COMBAT_EXIT, null),
+    INDUSTRIAL_RUN("Retour au dépôt", 3, 1050, 48, Objective.INDUSTRIAL_EXIT, null),
+    LONG_HAUL("Convoi de ravitaillement", 6, 1850, 70, Objective.INDUSTRIAL_EXIT, null),
     ASSAULT("Fusil d’assaut", 10, 680, 36, Objective.ASSAULT, null),
     ELITES("Éliminer les élites", 3, 500, 30, Objective.ELITE, null),
     TRACKER("Le Traqueur", 1, 750, 40, Objective.BOSS, null),
@@ -58,7 +65,7 @@ public enum SupplyContract {
             case BOSS -> "Éliminer Le Traqueur";
             case EXIT -> "Réussir " + amount + (amount == 1 ? " extraction" : " extractions");
             case COMBAT_EXIT -> "S’extraire après " + amount + " éliminations dans le même raid";
-            case INDUSTRIAL_EXIT -> "S’extraire de la Zone industrielle";
+            case INDUSTRIAL_EXIT -> "Réussir " + amount + (amount == 1 ? " extraction" : " extractions") + " de la Zone industrielle";
             case BOSS_INTEL -> "Abattre Le Traqueur et extraire une puce de commandement";
             case RELIC -> "Extraire avec " + amount + " × " + relic.title;
         };
