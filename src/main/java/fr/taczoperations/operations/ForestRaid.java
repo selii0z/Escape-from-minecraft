@@ -104,6 +104,7 @@ public final class ForestRaid extends SavedData {
 
     static boolean isParticipant(ServerPlayer player) {
         return player.level().dimension().equals(ForestExpedition.FOREST)
+            && ForestExpedition.hasReturnPoint(player)
             && get(player.serverLevel()).matches(player.getPersistentData(), PLAYER);
     }
 
