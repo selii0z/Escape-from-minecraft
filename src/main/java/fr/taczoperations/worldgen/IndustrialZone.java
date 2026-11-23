@@ -15,9 +15,9 @@ public final class IndustrialZone {
     public static final ForestPlan.Point ENTRY = new ForestPlan.Point(64, 554);
     public static final ForestPlan.Point EXIT = new ForestPlan.Point(586, 94);
     public static final List<ForestPlan.Point> GUARDS = List.of(
-        new ForestPlan.Point(125, 540), new ForestPlan.Point(181, 448), new ForestPlan.Point(226, 396),
-        new ForestPlan.Point(278, 340), new ForestPlan.Point(331, 288), new ForestPlan.Point(376, 240),
-        new ForestPlan.Point(424, 179), new ForestPlan.Point(510, 145), new ForestPlan.Point(554, 120));
+        new ForestPlan.Point(125, 540), new ForestPlan.Point(160, 480), new ForestPlan.Point(245, 460),
+        new ForestPlan.Point(250, 380), new ForestPlan.Point(355, 385), new ForestPlan.Point(455, 335),
+        new ForestPlan.Point(460, 230), new ForestPlan.Point(555, 155), new ForestPlan.Point(590, 120));
 
     // Buildings form three legible districts around the road grid:
     // logistics (west), factory campus (centre), railway/depot (east).
