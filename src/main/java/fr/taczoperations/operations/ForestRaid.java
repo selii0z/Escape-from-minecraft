@@ -191,7 +191,8 @@ public final class ForestRaid extends SavedData {
         guard.getPersistentData().putInt("guard_home_y", pos.getY());
         guard.getPersistentData().putInt("guard_home_z", pos.getZ());
         guard.setCustomName(Component.literal(role.title));
-        guard.setCustomNameVisible(role.elite());
+        // Keep enemy identity in server data without revealing positions through foliage.
+        guard.setCustomNameVisible(false);
         guard.getAttribute(Attributes.MAX_HEALTH).setBaseValue(role.health);
         guard.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(role.speed);
         guard.setHealth(role.health);
@@ -281,7 +282,10 @@ public final class ForestRaid extends SavedData {
         if (!(event.getLevel() instanceof ServerLevel level) || !level.dimension().equals(ForestExpedition.FOREST)) {
             return;
         }
-        if (event.getEntity() instanceof Mob mob) {
+        if (event.getEntity() instanceof GuardCorpse corpse && !canKeepCorpse(level, corpse)) {
+            // Expired raid corpses must never survive into another session.
+            event.setCanceled(true);
+        } else if (event.getEntity() instanceof Mob mob) {
             if (!(mob instanceof Pillager) || !get(level).matches(mob.getPersistentData(), ENEMY)) {
                 event.setCanceled(true);
             }
