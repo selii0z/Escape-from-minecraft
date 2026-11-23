@@ -32,6 +32,10 @@ public final class ForestExpedition {
     private ForestExpedition() {
     }
 
+    static void clearReturnPoint(ServerPlayer player) {
+        player.getPersistentData().remove(RETURN_POINT);
+    }
+
     static boolean hasReturnPoint(ServerPlayer player) {
         CompoundTag data = player.getPersistentData();
         if (!data.contains(RETURN_POINT, 10)) return false;
