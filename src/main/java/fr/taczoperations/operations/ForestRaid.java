@@ -124,6 +124,21 @@ public final class ForestRaid extends SavedData {
         }
     }
 
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        if (!event.isWasDeath() || !(event.getOriginal() instanceof ServerPlayer original)
+            || !(event.getEntity() instanceof ServerPlayer respawned)
+            || !original.serverLevel().dimension().equals(ForestExpedition.FOREST)) {
+            return;
+        }
+        // The normal death-drop process has already run. Do not duplicate
+        // equipment into a custom corpse or copy the raid token on respawn.
+        clearPlayer(respawned);
+        ForestExpedition.clearReturnPoint(respawned);
+        clearPlayer(original);
+        // A surviving duo member can still collect vanilla death drops.
+        cleanupWhenEmpty(original.serverLevel(), original);
+    }
+
     static boolean isParticipant(ServerPlayer player) {
         return player.level().dimension().equals(ForestExpedition.FOREST)
             && ForestExpedition.hasReturnPoint(player)
