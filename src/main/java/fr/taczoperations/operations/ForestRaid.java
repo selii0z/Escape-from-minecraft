@@ -105,6 +105,14 @@ public final class ForestRaid extends SavedData {
                 entity.discard();
             }
         }
+        // Closing the session also invalidates the persistent raid token.
+        // A player reconnecting after the last departure must not re-enter
+        // a supposedly finished raid or access its remaining containers.
+        ForestRaid raid = get(level);
+        if (raid.id != null) {
+            raid.id = null;
+            raid.setDirty();
+        }
     }
 
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
