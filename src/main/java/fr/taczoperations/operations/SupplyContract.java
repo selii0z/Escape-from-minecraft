@@ -11,6 +11,11 @@ public enum SupplyContract {
     CLEAR("Nettoyage", 5, 250, 15, Objective.KILL, null),
     PATROL("Patrouille hostile", 12, 720, 34, Objective.KILL, null),
     WARZONE("Zone de guerre", 25, 1650, 65, Objective.KILL, null),
+    SKIRMISH("Escarmouche", 3, 170, 8, Objective.KILL, null),
+    INTERCEPTION("Interception", 8, 470, 24, Objective.KILL, null),
+    SIEGE("Siège prolongé", 40, 2600, 110, Objective.KILL, null),
+    VETERAN_PATROL("Patrouille vétéran", 2, 420, 20, Objective.ELITE, null),
+    ELITE_SWEEP("Escouade d'élite", 12, 2500, 105, Objective.ELITE, null),
     ELITE_HUNT("Chasse aux vétérans", 7, 1350, 56, Objective.ELITE, null),
     CLEAN_SWEEP("Nettoyage total", 15, 1250, 48, Objective.COMBAT_EXIT, null),
     HARD_EXIT("Extraction risquée", 4, 640, 31, Objective.COMBAT_EXIT, null),
@@ -21,6 +26,9 @@ public enum SupplyContract {
     TRACKER("Le Traqueur", 1, 750, 40, Objective.BOSS, null),
     GET_OUT("Première extraction", 1, 180, 12, Objective.EXIT, null),
     VETERAN("Rentrer trois fois", 3, 650, 35, Objective.EXIT, null),
+    SAFE_RETURN("Retour sécurisé", 2, 330, 18, Objective.EXIT, null),
+    EXTRACTOR("Extraction professionnelle", 8, 2100, 95, Objective.EXIT, null),
+    FACTORY_SHIFT("Quart de nuit industriel", 2, 600, 32, Objective.INDUSTRIAL_EXIT, null),
     COMBAT_EXIT("Sortie sous pression", 8, 850, 45, Objective.COMBAT_EXIT, null),
     INDUSTRY("Fret abandonné", 1, 350, 22, Objective.INDUSTRIAL_EXIT, null),
     DECAPITATION("Code du Traqueur", 1, 5200, 80, Objective.BOSS_INTEL, RaidRelic.CHIP),
@@ -87,7 +95,7 @@ public enum SupplyContract {
         int earned = account.getInt("raid_activity_xp")
             + (account.getInt("OUTPOST") == 2 ? 8 : 0) + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
-        for (var contract : values()) if (contract.status(player) == COMPLETED) earned += contract.experience;
+        for (var contract : values()) earned += contract.experience * account.getInt("completed_" + contract.name());
         return earned;
     }
 
@@ -116,7 +124,11 @@ public enum SupplyContract {
     int progress(ServerPlayer player) { return account(player).getInt("progress_" + name()); }
 
     String act(ServerPlayer player) {
-        if (status(player) == COMPLETED) return "Ce contrat est déjà terminé.";
+        if (status(player) == COMPLETED) {
+            account(player).putInt("raid_" + name(), ACTIVE);
+            account(player).putInt("progress_" + name(), 0);
+            return "Contrat renouvelé. Bonne chasse !";
+        }
         if (status(player) == ACTIVE) {
             account(player).remove("raid_" + name());
             account(player).remove("progress_" + name());
@@ -230,6 +242,7 @@ public enum SupplyContract {
     private void finish(ServerPlayer player) {
         CompoundTag account = account(player);
         account.putInt("raid_" + name(), COMPLETED);
+        account.putInt("completed_" + name(), account.getInt("completed_" + name()) + 1);
         account.putInt("progress_" + name(), amount);
         account.putInt("credits", Math.min(Integer.MAX_VALUE - credits, balance(player)) + credits);
         player.giveExperiencePoints(experience);
