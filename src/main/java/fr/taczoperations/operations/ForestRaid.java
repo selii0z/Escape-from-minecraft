@@ -322,7 +322,21 @@ public final class ForestRaid extends SavedData {
         guard.getAttribute(Attributes.MAX_HEALTH).setBaseValue(role.health);
         guard.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(role.speed);
         guard.setHealth(role.health);
-        guard.setItemSlot(EquipmentSlot.CHEST, new ItemStack(role.armor));
+        // Armor variants are deterministic for each guard and preserve role tiers.
+        int equipmentRoll = Math.floorMod(guard.getUUID().hashCode(), 6);
+        net.minecraft.world.item.Item vest = role.armor;
+        if (role == GuardRole.RAIDER || role == GuardRole.SCOUT) {
+            if (equipmentRoll == 0) vest = Items.CHAINMAIL_CHESTPLATE;
+        } else if (role == GuardRole.SOLDIER || role == GuardRole.MARKSMAN) {
+            if (equipmentRoll == 0) vest = Items.IRON_CHESTPLATE;
+        } else if (role != GuardRole.TRACKER && equipmentRoll == 0) {
+            vest = Items.DIAMOND_CHESTPLATE;
+        }
+        guard.setItemSlot(EquipmentSlot.CHEST, new ItemStack(vest));
+        if (equipmentRoll == 1 || equipmentRoll == 4) {
+            guard.setItemSlot(EquipmentSlot.LEGS, new ItemStack(
+                role.elite() ? Items.IRON_LEGGINGS : Items.LEATHER_LEGGINGS));
+        }
         if (role == GuardRole.SCOUT || role == GuardRole.MARKSMAN) {
             guard.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.LEATHER_BOOTS));
         } else if (role.elite()) {
