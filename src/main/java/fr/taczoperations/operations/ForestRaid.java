@@ -57,6 +57,13 @@ public final class ForestRaid extends SavedData {
 
     static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner, boolean industrial) {
         ForestRaid raid = get(level);
+        // A previous raid may have left corpses in loaded chunks. Remove them
+        // before assigning a new session ID, so their inventories cannot be looted.
+        for (var entity : level.getAllEntities()) {
+            if (entity instanceof GuardCorpse) {
+                entity.discard();
+            }
+        }
         raid.id = UUID.randomUUID();
         raid.seed = level.getRandom().nextLong();
         raid.industrial = industrial;
