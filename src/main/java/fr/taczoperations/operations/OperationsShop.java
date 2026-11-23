@@ -1,5 +1,6 @@
 package fr.taczoperations.operations;
 
+import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.builder.AmmoItemBuilder;
 import com.tacz.guns.api.item.builder.AttachmentItemBuilder;
 import com.tacz.guns.api.item.builder.GunItemBuilder;
@@ -51,6 +52,18 @@ public enum OperationsShop {
                 offers.add(buy("M870", 1150, () -> weapon("m870", 5), null, 45));
                 offers.add(buy("AWP", 2900, () -> weapon("ai_awp", 5), RaidRelic.CHIP, 0));
                 offers.add(buy("M4A1", 2450, () -> weapon("m4a1", 20), RaidRelic.OMEGA, 0));
+                // Enumerate every weapon actually loaded by TaCZ, including gun packs.
+                // Avoid hard-coded lists that silently omit most of the arsenal.
+                for (var entry : TimelessAPI.getAllCommonGunIndex().stream()
+                    .sorted(java.util.Comparator.comparing(e -> e.getKey().toString())).toList()) {
+                    ResourceLocation id = entry.getKey();
+                    var data = entry.getValue().getGunData();
+                    if (data == null || data.getFireModeSet().isEmpty()) continue;
+                    int rounds = Math.max(1, data.getAmmoAmount());
+                    int price = 600 + Math.min(3000, rounds * 28);
+                    offers.add(buy("TaCZ · " + id.getPath().replace('_', ' '), price,
+                        () -> weapon(id, rounds), null, 0));
+                }
                 offers.add(buy("24 × 9 mm", 65, () -> ammo("9mm", 24), null, 0));
                 offers.add(buy("30 × 7,62 × 39", 120, () -> ammo("762x39", 30), null, 0));
                 offers.add(buy("12 × calibre 12", 95, () -> ammo("12g", 12), null, 0));
@@ -96,8 +109,17 @@ public enum OperationsShop {
     }
 
     static ItemStack weapon(String id, int rounds) {
-        return GunItemBuilder.create().setId(tacz(id)).setFireMode(FireMode.SEMI)
-            .setAmmoCount(rounds).setAmmoInBarrel(rounds > 0).build();
+        return weapon(tacz(id), rounds);
+    }
+
+    static ItemStack weapon(ResourceLocation id, int rounds) {
+        var index = TimelessAPI.getCommonGunIndex(id);
+        if (index.isEmpty() || index.get().getGunData().getFireModeSet().isEmpty())
+            return ItemStack.EMPTY;
+        var data = index.get().getGunData();
+        return GunItemBuilder.create().setId(id).setFireMode(data.getFireModeSet().getFirst())
+            .setAmmoCount(Math.min(rounds, Math.max(1, data.getAmmoAmount())))
+            .setAmmoInBarrel(rounds > 0).build();
     }
 
     public static ItemStack ammo(String id, int count) {
