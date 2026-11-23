@@ -386,7 +386,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     text(g, fit(details, 345), 187, 325, .93F, SOFT, false);
                 }
                 panel(g, 169, 362, 379, 96, DARK);
-                text(g, "HISTORIQUE DES RAIDS", 181, 368, 1.02F, GOLD, true);
+                text(g, "HISTORIQUE DES RAIDS  ·  K = éliminations  ·  C = coffres", 181, 368, .91F, GOLD, true);
                 if (view.raidHistory().isEmpty()) {
                     text(g, "Les dix derniers raids apparaîtront ici.", 181, 396, .85F, SOFT, false);
                 } else {
@@ -394,8 +394,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         int column = i / 5;
                         int row = i % 5;
                         String line = (i + 1) + ". " + view.raidHistory().get(i);
-                        text(g, fit(line, 174), 181 + column * 181, 385 + row * 14,
-                            .72F, line.contains("ÉCHEC") ? 0xffdf9c94 : SOFT, false);
+                        text(g, fit(line, 230), 181 + column * 181, 385 + row * 14,
+                            .72F, line.contains("KO") ? 0xffdf9c94 : 0xffb9dcb6, false);
                     }
                 }
             }
