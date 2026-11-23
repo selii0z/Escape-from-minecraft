@@ -142,6 +142,9 @@ public final class ForestRaid extends SavedData {
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
+        // One maintenance pass per second is sufficient for a ten-minute
+        // grace period; avoid scanning the raid dimension 20 times a second.
+        if (event.getServer().getTickCount() % 20 != 0) return;
         ServerLevel level = event.getServer().getLevel(ForestExpedition.FOREST);
         if (level == null) return;
         ForestRaid raid = get(level);
