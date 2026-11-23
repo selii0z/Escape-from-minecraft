@@ -546,6 +546,7 @@ public final class ForestRaid extends SavedData {
             tracking.putInt("taczoperations_run_crates",
                 tracking.getInt("taczoperations_run_crates") + 1);
             SupplyContract.activityXp(player, 1, "Coffre fouillé");
+            SupplyContract.chestOpened(player);
         }
     }
 
