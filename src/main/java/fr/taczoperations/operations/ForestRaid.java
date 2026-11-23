@@ -19,6 +19,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Pillager;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -40,6 +41,7 @@ public final class ForestRaid extends SavedData {
     static final String ENEMY = "taczoperations_enemy";
     private static final String PLAYER = "taczoperations_raid_player";
     private static final String CORPSE = "taczoperations_raid_corpse";
+    private static final String DROP = "taczoperations_raid_drop";
     private static final String CRATE = "taczoperations_raid_crate";
     private static final String CRATE_INDEX = "taczoperations_raid_crate_index";
     private static final Factory<ForestRaid> FACTORY = new Factory<>(ForestRaid::new, ForestRaid::read);
@@ -60,7 +62,7 @@ public final class ForestRaid extends SavedData {
         // A previous raid may have left corpses in loaded chunks. Remove them
         // before assigning a new session ID, so their inventories cannot be looted.
         for (var entity : level.getAllEntities()) {
-            if (entity instanceof GuardCorpse) {
+            if (entity instanceof GuardCorpse || entity instanceof ItemEntity) {
                 entity.discard();
             }
         }
@@ -292,6 +294,19 @@ public final class ForestRaid extends SavedData {
         if (event.getEntity() instanceof GuardCorpse corpse && !canKeepCorpse(level, corpse)) {
             // Expired raid corpses must never survive into another session.
             event.setCanceled(true);
+        } else if (event.getEntity() instanceof ItemEntity item) {
+            // Items are temporary raid loot, including player death drops.
+            // Persist their raid identity so stale drops cannot enter a later raid.
+            ForestRaid raid = get(level);
+            if (event.loadedFromDisk()) {
+                if (!raid.matches(item.getPersistentData(), DROP)) {
+                    event.setCanceled(true);
+                }
+            } else if (raid.id != null) {
+                item.getPersistentData().putUUID(DROP, raid.id);
+            } else {
+                event.setCanceled(true);
+            }
         } else if (event.getEntity() instanceof Mob mob) {
             if (!(mob instanceof Pillager) || !get(level).matches(mob.getPersistentData(), ENEMY)) {
                 event.setCanceled(true);
