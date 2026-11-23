@@ -184,20 +184,29 @@ public final class ForestRaid extends SavedData {
         }
         // Raid deaths must not affect the vanilla Minecraft death statistic.
         // The vanilla death has already been counted when the clone event fires.
-        if (original.getPersistentData().hasUUID(PLAYER)
-            && get(original.serverLevel()).matches(original.getPersistentData(), PLAYER)) {
+        boolean raidDeath = original.getPersistentData().hasUUID(PLAYER)
+            && get(original.serverLevel()).matches(original.getPersistentData(), PLAYER);
+        if (raidDeath) {
+            // Explicitly transfer Escape progression before applying the penalty:
+            // a respawned player may not yet have the original persistent account.
+            CompoundTag oldRoot = original.getPersistentData();
+            CompoundTag oldPersisted = oldRoot.getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+            CompoundTag oldAccount = oldPersisted.getCompound("taczoperations");
+            CompoundTag newRoot = respawned.getPersistentData();
+            CompoundTag newPersisted = newRoot.getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+            newPersisted.put("taczoperations", oldAccount.copy());
+            newRoot.put(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG, newPersisted);
+
             var deaths = net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.DEATHS);
             var statistics = respawned.getStats();
             statistics.setValue(respawned, deaths,
                 Math.max(0, statistics.getValue(deaths) - 1));
-        }
-        if (original.getPersistentData().hasUUID(PLAYER)
-            && get(original.serverLevel()).matches(original.getPersistentData(), PLAYER)) {
-            int adjustment = SupplyContract.finalizeRaidXp(respawned, original.getPersistentData(), false);
+
+            int adjustment = SupplyContract.finalizeRaidXp(respawned, oldRoot, false);
+            int base = Math.max(0, oldRoot.getInt("taczoperations_run_kill_xp"))
+                + Math.max(0, oldRoot.getInt("taczoperations_run_search_xp"));
             respawned.sendSystemMessage(Component.literal(
-                "Raid perdu · XP finale : " + (Math.max(0, original.getPersistentData().getInt("taczoperations_run_kill_xp"))
-                    + Math.max(0, original.getPersistentData().getInt("taczoperations_run_search_xp")) + adjustment)
-                    + " (malus de 10 %)"));
+                "Raid perdu · XP finale : " + (base + adjustment) + " (malus de 10 %)"));
         }
         // The normal death-drop process has already run. Do not duplicate
         // equipment into a custom corpse or copy the raid token on respawn.
