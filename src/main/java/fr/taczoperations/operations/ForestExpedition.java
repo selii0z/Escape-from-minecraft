@@ -32,6 +32,14 @@ public final class ForestExpedition {
     private ForestExpedition() {
     }
 
+    static boolean hasReturnPoint(ServerPlayer player) {
+        CompoundTag data = player.getPersistentData();
+        if (!data.contains(RETURN_POINT, 10)) return false;
+        CompoundTag point = data.getCompound(RETURN_POINT);
+        return ResourceLocation.tryParse(point.getString("dimension")) != null
+            && point.contains("x", 99) && point.contains("y", 99) && point.contains("z", 99);
+    }
+
     static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo, boolean industrial) {
         ServerLevel forest = player.server.getLevel(FOREST);
         if (forest == null || !(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator)) {
