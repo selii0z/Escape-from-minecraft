@@ -182,6 +182,15 @@ public final class ForestRaid extends SavedData {
             || !original.serverLevel().dimension().equals(ForestExpedition.FOREST)) {
             return;
         }
+        // Raid deaths must not affect the vanilla Minecraft death statistic.
+        // The vanilla death has already been counted when the clone event fires.
+        if (original.getPersistentData().hasUUID(PLAYER)
+            && get(original.serverLevel()).matches(original.getPersistentData(), PLAYER)) {
+            var deaths = net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.DEATHS);
+            var statistics = respawned.getStats();
+            statistics.setValue(respawned, deaths,
+                Math.max(0, statistics.getValue(deaths) - 1));
+        }
         // The normal death-drop process has already run. Do not duplicate
         // equipment into a custom corpse or copy the raid token on respawn.
         clearPlayer(respawned);
