@@ -108,6 +108,7 @@ public enum SupplyContract {
     static void activityXp(ServerPlayer player, int amount, String source) {
         if (amount <= 0 || !ForestRaid.isParticipant(player)) return;
         CompoundTag data = account(player);
+        // Base XP is provisional until extraction or death applies its multiplier.
         data.putInt("raid_activity_xp",
             (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + amount));
         String counter = amount == 5 ? "raid_kill_xp" : "raid_search_xp";
@@ -119,6 +120,20 @@ public enum SupplyContract {
             (long) run.getInt(runCounter) + amount));
         player.displayClientMessage(net.minecraft.network.chat.Component.literal(
             "+" + amount + " XP Escape from Minecraft · " + source), true);
+    }
+
+    static int finalizeRaidXp(ServerPlayer player, CompoundTag run, boolean success) {
+        int base = Math.max(0, run.getInt("taczoperations_run_kill_xp"))
+            + Math.max(0, run.getInt("taczoperations_run_search_xp"));
+        if (run.getBoolean("taczoperations_run_xp_finalized")) return 0;
+        run.putBoolean("taczoperations_run_xp_finalized", true);
+        int adjusted = (int) Math.min(Integer.MAX_VALUE,
+            ((long) base * (success ? 110 : 90) + 50) / 100);
+        int delta = adjusted - base;
+        CompoundTag data = account(player);
+        data.putInt("raid_activity_xp", (int) Math.max(0,
+            Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + delta)));
+        return delta;
     }
 
     static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }
@@ -191,6 +206,7 @@ public enum SupplyContract {
     static void departure(ServerPlayer player) {
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
+        player.getPersistentData().remove("taczoperations_run_xp_finalized");
         player.getPersistentData().putInt("taczoperations_run_kill_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_search_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_crates", 0);
@@ -226,6 +242,7 @@ public enum SupplyContract {
         }
         int killXp = player.getPersistentData().getInt("taczoperations_run_kill_xp");
         int searchXp = player.getPersistentData().getInt("taczoperations_run_search_xp");
+        int bonus = finalizeRaidXp(player, player.getPersistentData(), true);
         int crates = player.getPersistentData().getInt("taczoperations_run_crates");
         long started = player.getPersistentData().getLong("taczoperations_run_started");
         long seconds = started > 0 ? Math.max(0, (player.serverLevel().getGameTime() - started) / 20) : 0;
@@ -239,7 +256,8 @@ public enum SupplyContract {
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "XP combats : +" + killXp + "    |    XP fouilles : +" + searchXp));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "XP du raid : +" + (killXp + searchXp) + "    |    Contrats terminés : " + completed));
+            "XP du raid : +" + (killXp + searchXp + bonus) + " (bonus extraction : +" + bonus
+                + ")    |    Contrats terminés : " + completed));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "======================================="));
         player.getPersistentData().remove("taczoperations_run_kill_xp");
