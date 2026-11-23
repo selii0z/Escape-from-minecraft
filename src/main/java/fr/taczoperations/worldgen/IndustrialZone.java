@@ -19,15 +19,23 @@ public final class IndustrialZone {
         new ForestPlan.Point(278, 340), new ForestPlan.Point(331, 288), new ForestPlan.Point(376, 240),
         new ForestPlan.Point(424, 179), new ForestPlan.Point(510, 145), new ForestPlan.Point(554, 120));
 
+    // Buildings form three legible districts around the road grid:
+    // logistics (west), factory campus (centre), railway/depot (east).
     private record Building(int x, int z, int width, int depth, int height, Block wall, boolean factory) {}
     private static final List<Building> BUILDINGS = List.of(
-        new Building(225, 307, 94, 70, 21, Blocks.BRICKS, true),
-        new Building(326, 318, 46, 39, 10, Blocks.GRAY_CONCRETE, false),
-        new Building(308, 234, 58, 37, 13, Blocks.CYAN_TERRACOTTA, false),
-        new Building(412, 181, 46, 24, 8, Blocks.BRICKS, false),
-        new Building(137, 445, 36, 25, 9, Blocks.SMOOTH_STONE, false),
-        new Building(497, 111, 25, 20, 7, Blocks.LIGHT_GRAY_CONCRETE, false),
-        new Building(565, 115, 16, 15, 6, Blocks.DEEPSLATE_BRICKS, false));
+        new Building(88, 420, 68, 48, 13, Blocks.STONE_BRICKS, false),
+        new Building(168, 420, 66, 48, 14, Blocks.BRICKS, false),
+        new Building(88, 488, 68, 42, 12, Blocks.GRAY_CONCRETE, false),
+        new Building(168, 488, 66, 42, 12, Blocks.TUFF_BRICKS, false),
+        new Building(260, 295, 94, 76, 23, Blocks.BRICKS, true),
+        new Building(372, 295, 68, 76, 19, Blocks.POLISHED_ANDESITE, true),
+        new Building(260, 390, 86, 48, 15, Blocks.STONE_BRICKS, false),
+        new Building(365, 390, 75, 48, 16, Blocks.DEEPSLATE_BRICKS, false),
+        new Building(472, 170, 78, 52, 17, Blocks.GRAY_CONCRETE, false),
+        new Building(472, 242, 78, 42, 13, Blocks.BRICKS, false),
+        new Building(472, 305, 78, 48, 14, Blocks.STONE_BRICKS, false),
+        new Building(472, 374, 78, 48, 12, Blocks.POLISHED_ANDESITE, false),
+        new Building(565, 115, 22, 20, 9, Blocks.DEEPSLATE_BRICKS, false));
 
     public static boolean inside(int x, int z) {
         return x >= ORIGIN && z >= ORIGIN && x < ORIGIN + SIZE && z < ORIGIN + SIZE;
@@ -44,13 +52,28 @@ public final class IndustrialZone {
         return List.copyOf(points.subList(0, 16));
     }
 
+    private static boolean road(int x, int z) {
+        return (x >= 55 && x <= 595 && (Math.abs(z - 405) <= 7 || Math.abs(z - 290) <= 7))
+            || (z >= 95 && z <= 575 && (Math.abs(x - 248) <= 7 || Math.abs(x - 455) <= 7))
+            || (z >= 420 && z <= 570 && Math.abs(x - 75) <= 6);
+    }
+
+    private static boolean yard(int x, int z) {
+        return (x >= 75 && x <= 244 && z >= 410 && z <= 540)
+            || (x >= 252 && x <= 448 && z >= 282 && z <= 447)
+            || (x >= 464 && x <= 558 && z >= 158 && z <= 432);
+    }
+
     static void generate(ForestChunkGenerator.Painter out) {
         for (int x = out.minX; x < out.minX + 16; x++) {
             for (int z = out.minZ; z < out.minZ + 16; z++) {
                 if (x < 0 || z < 0 || x >= SIZE || z >= SIZE) continue;
-                boolean road = Math.abs(x - (620 - z)) < 7 || Math.abs(z - 283) < 5;
-                var surface = road ? Blocks.GRAY_CONCRETE : (ForestPlan.hash(x, z, 400) & 7) == 0
-                    ? Blocks.GRAVEL : Blocks.COARSE_DIRT;
+                boolean asphalt = road(x, z);
+                boolean paved = yard(x, z);
+                int noise = ForestPlan.hash(x, z, 400);
+                Block surface = asphalt ? ((noise & 63) == 0 ? Blocks.ANDESITE : Blocks.GRAY_CONCRETE)
+                    : paved ? ((noise & 31) == 0 ? Blocks.CRACKED_STONE_BRICKS : Blocks.STONE_BRICKS)
+                    : (noise & 7) == 0 ? Blocks.GRAVEL : Blocks.COARSE_DIRT;
                 out.put(x, 0, z, Blocks.BEDROCK);
                 for (int y = 1; y < FLOOR; y++) out.put(x, y, z, Blocks.STONE);
                 out.put(x, FLOOR, z, surface);
@@ -62,31 +85,64 @@ public final class IndustrialZone {
                         for (int y = FLOOR + 7; y < 320; y++) out.put(x, y, z, Blocks.BARRIER);
                     }
                 }
-                if (x >= 381 && x <= 535 && (z == 158 || z == 163)) {
-                    out.put(x, FLOOR, z, Blocks.POLISHED_ANDESITE);
-                    out.put(x, FLOOR + 1, z, Blocks.RAIL.defaultBlockState()
-                        .setValue(net.minecraft.world.level.block.RailBlock.SHAPE,
-                            net.minecraft.world.level.block.state.properties.RailShape.EAST_WEST));
+                // Road markings, drains and street lighting follow the grid.
+                if (asphalt && (z == 405 || z == 290) && x % 12 < 5) {
+                    out.put(x, FLOOR, z, Blocks.YELLOW_CONCRETE);
                 }
-                if (x >= 384 && x <= 528 && z >= 155 && z <= 160 && (x - 384) % 24 < 17) {
-                    out.put(x, FLOOR + 1, z, Blocks.BLACK_CONCRETE);
-                    out.put(x, FLOOR + 2, z, Blocks.SMOOTH_STONE);
-                    if (z == 155 || z == 160) out.put(x, FLOOR + 3, z, Blocks.RED_TERRACOTTA);
+                if (asphalt && (x == 248 || x == 455) && z % 12 < 5) {
+                    out.put(x, FLOOR, z, Blocks.YELLOW_CONCRETE);
                 }
-                if (x >= 368 && x <= 419 && z >= 258 && z <= 299
-                    && (x - 368) % 17 < 13 && (z - 258) % 12 < 7) {
-                    var wall = (x / 17 + z / 12) % 2 == 0 ? Blocks.BLUE_TERRACOTTA : Blocks.ORANGE_TERRACOTTA;
-                    if ((x - 368) % 17 == 0 || (x - 368) % 17 == 12 || (z - 258) % 12 == 0) {
-                        for (int y = FLOOR + 1; y <= FLOOR + 3; y++) out.put(x, y, z, wall);
+                if ((x == 239 || x == 257 || x == 446 || x == 464)
+                    && z >= 110 && z <= 565 && z % 38 == 0) {
+                    streetlight(out, x, z);
+                }
+                if ((z == 396 || z == 414 || z == 281 || z == 299)
+                    && x >= 80 && x <= 580 && x % 45 == 0) {
+                    streetlight(out, x, z);
+                }
+                // The depot has continuous tracks, ballast and loading platforms.
+                if (x >= 465 && x <= 585 && z >= 130 && z <= 150) {
+                    out.put(x, FLOOR, z, Blocks.GRAVEL);
+                    if (z == 136 || z == 143) {
+                        out.put(x, FLOOR + 1, z, Blocks.RAIL.defaultBlockState()
+                            .setValue(net.minecraft.world.level.block.RailBlock.SHAPE,
+                                net.minecraft.world.level.block.state.properties.RailShape.EAST_WEST));
                     }
-                    out.put(x, FLOOR + 4, z, wall);
+                    if (x % 3 == 0 && z >= 135 && z <= 144) out.put(x, FLOOR, z, Blocks.DARK_OAK_PLANKS);
+                }
+                // Container stacks and cargo pallets, laid out in numbered bays.
+                if (x >= 565 && x <= 618 && z >= 175 && z <= 340) {
+                    int bx = (x - 565) % 15, bz = (z - 175) % 27;
+                    if (bx < 11 && bz < 19) {
+                        Block cargo = ((x - 565) / 15 + (z - 175) / 27) % 3 == 0
+                            ? Blocks.RED_TERRACOTTA : ((x - 565) / 15) % 2 == 0
+                            ? Blocks.BLUE_TERRACOTTA : Blocks.ORANGE_TERRACOTTA;
+                        for (int y = FLOOR + 1; y <= FLOOR + 5 + (((x - 565) / 15) % 2) * 5; y++) {
+                            if (bx == 0 || bx == 10 || bz == 0 || bz == 18 || y == FLOOR + 5 || y == FLOOR + 10)
+                                out.put(x, y, z, cargo);
+                        }
+                    }
+                }
+                // Perimeter fencing around industrial compounds, with road gates.
+                if ((x == 68 || x == 626 || z == 100 || z == 570)
+                    && x >= 68 && x <= 626 && z >= 100 && z <= 570
+                    && !road(x, z)) {
+                    out.put(x, FLOOR + 1, z, Blocks.COBBLESTONE_WALL);
+                    out.put(x, FLOOR + 2, z, Blocks.IRON_BARS);
+                    out.put(x, FLOOR + 3, z, Blocks.IRON_BARS);
                 }
             }
         }
-        for (Building b : BUILDINGS) building(out, b);
+        for (Building building : BUILDINGS) building(out, building);
         out.put(EXIT.x(), FLOOR, EXIT.z(), Blocks.GOLD_BLOCK);
         out.put(EXIT.x() + 1, FLOOR + 1, EXIT.z(), Blocks.TORCH);
         out.put(ENTRY.x(), FLOOR, ENTRY.z(), Blocks.POLISHED_ANDESITE);
+    }
+
+    private static void streetlight(ForestChunkGenerator.Painter out, int x, int z) {
+        for (int y = FLOOR + 1; y <= FLOOR + 6; y++) out.put(x, y, z, Blocks.IRON_BARS);
+        out.put(x, FLOOR + 7, z, Blocks.SEA_LANTERN);
+        out.put(x, FLOOR + 8, z, Blocks.POLISHED_DEEPSLATE);
     }
 
     private static void building(ForestChunkGenerator.Painter out, Building b) {
