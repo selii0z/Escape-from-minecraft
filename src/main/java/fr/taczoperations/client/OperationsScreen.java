@@ -373,6 +373,18 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 text(g, view.experience() + " XP cumulée", 188, 193, 1.0F, SOFT, false);
                 long completed = view.contracts().stream().filter(status -> status == SupplyContract.COMPLETED).count();
                 text(g, completed + " / " + view.contracts().size() + " contrats terminés", 188, 214, 1, GOLD, false);
+                panel(g, 169, 262, 379, 91, DARK);
+                text(g, "DERNIER RAID", 187, 278, 1.17F, GOLD, true);
+                if (view.raidReport().isEmpty()) {
+                    text(g, "Aucun raid terminé pour le moment", 187, 309, .94F, SOFT, false);
+                } else {
+                    String[] fields = view.raidReport().split(" \\| ");
+                    text(g, fields[0], 187, 300, 1.02F, WHITE, true);
+                    String details = fields.length > 1
+                        ? String.join(" · ", java.util.Arrays.copyOfRange(fields, 1, fields.length))
+                        : "";
+                    text(g, fit(details, 345), 187, 325, .93F, SOFT, false);
+                }
             }
             case OperationsMenu.FILES -> {
                 pageTitle(g, "▰", "DOSSIERS", "Renseignements sur la Forêt Noire");
