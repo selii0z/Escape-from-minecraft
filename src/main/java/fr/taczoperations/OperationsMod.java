@@ -75,6 +75,7 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onServerTick);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onPlayerClone);
+        NeoForge.EVENT_BUS.addListener(ForestRaid::onRespawn);
         NeoForge.EVENT_BUS.addListener(SupplyContract::assaultKill);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
         NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
