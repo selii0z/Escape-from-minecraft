@@ -30,7 +30,7 @@ public final class ForestCombat {
             // Deterministic per-guard loadout variation; ammunition stays
             // compatible with the assigned role's reserve pouch.
             String gunId = role.gun;
-            long roll = guard.getUUID().getLeastSignificantBits() & Long.MAX_VALUE;
+            long roll = enemy.getUUID().getLeastSignificantBits() & Long.MAX_VALUE;
             if (role == GuardRole.RAIDER && roll % 4 == 0) gunId = "hk_mp5a5";
             if (role == GuardRole.SCOUT && roll % 5 == 0) gunId = "glock_17";
             // One guard in four receives a weapon from the complete installed
@@ -55,7 +55,7 @@ public final class ForestCombat {
                 .orElse(role.magazine);
             ItemStack gun = OperationsShop.weapon(weaponId, rounds);
             if (!gunId.equals(role.gun)) {
-                guard.getPersistentData().putString("taczoperations_guard_weapon", gunId);
+                enemy.getPersistentData().putString("taczoperations_guard_weapon", gunId);
             }
             if (!gun.isEmpty()) {
                 enemy.setItemSlot(EquipmentSlot.MAINHAND, gun);
