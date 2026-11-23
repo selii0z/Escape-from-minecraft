@@ -1,6 +1,7 @@
 package fr.taczoperations.operations;
 
 import com.mojang.logging.LogUtils;
+import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ShootResult;
 import com.tacz.guns.api.item.IGun;
@@ -32,7 +33,27 @@ public final class ForestCombat {
             long roll = guard.getUUID().getLeastSignificantBits() & Long.MAX_VALUE;
             if (role == GuardRole.RAIDER && roll % 4 == 0) gunId = "hk_mp5a5";
             if (role == GuardRole.SCOUT && roll % 5 == 0) gunId = "glock_17";
-            ItemStack gun = OperationsShop.weapon(gunId, role.magazine);
+            // One guard in four receives a weapon from the complete installed
+            // TaCZ catalogue; gun packs are included automatically.
+            if (roll % 4 == 0) {
+                var guns = TimelessAPI.getAllCommonGunIndex().stream()
+                    .filter(entry -> entry.getValue().getGunData() != null
+                        && !entry.getValue().getGunData().getFireModeSet().isEmpty()
+                        && entry.getValue().getGunData().getAmmoId() != null)
+                    .sorted(java.util.Comparator.comparing(entry -> entry.getKey().toString()))
+                    .toList();
+                if (!guns.isEmpty()) {
+                    var selected = guns.get((int) ((roll / 4) % guns.size()));
+                    gunId = selected.getKey().toString();
+                }
+            }
+            net.minecraft.resources.ResourceLocation weaponId = gunId.contains(":")
+                ? net.minecraft.resources.ResourceLocation.parse(gunId)
+                : net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("tacz", gunId);
+            int rounds = TimelessAPI.getCommonGunIndex(weaponId)
+                .map(index -> Math.max(1, index.getGunData().getAmmoAmount()))
+                .orElse(role.magazine);
+            ItemStack gun = OperationsShop.weapon(weaponId, rounds);
             if (!gunId.equals(role.gun)) {
                 guard.getPersistentData().putString("taczoperations_guard_weapon", gunId);
             }
