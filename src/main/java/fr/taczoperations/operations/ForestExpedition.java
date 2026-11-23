@@ -251,6 +251,7 @@ public final class ForestExpedition {
         if (player.level() != origin) {
             return false;
         }
+        if (leavingRaid) ForestRaid.finishParticipant(player);
         player.getPersistentData().remove(RETURN_POINT);
         ForestRaid.clearPlayer(player);
         if (leavingRaid) {
