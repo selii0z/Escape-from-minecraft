@@ -488,6 +488,7 @@ public final class ForestRaid extends SavedData {
         GuardRole role = GuardRole.get(guard);
         if (event.getSource().getEntity() instanceof ServerPlayer killer) {
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
+            SupplyContract.activityXp(killer, 5, "Ennemi éliminé");
         }
         GuardCorpse corpse = OperationsMod.GUARD_CORPSE.get().create(level);
         if (corpse == null) {
@@ -525,6 +526,22 @@ public final class ForestRaid extends SavedData {
             event.setCancellationResult(InteractionResult.FAIL);
             event.setCanceled(true);
             player.displayClientMessage(Component.literal("Cette caisse ne fait pas partie de ton raid."), true);
+            return;
+        }
+        // One point per distinct raid container and player, not per click.
+        // Scope the record to the current raid UUID to prevent farming by reopening.
+        CompoundTag tracking = player.getPersistentData();
+        String raidKey = get(player.serverLevel()).id.toString();
+        if (!raidKey.equals(tracking.getString("taczoperations_xp_raid"))) {
+            tracking.putString("taczoperations_xp_raid", raidKey);
+            tracking.put("taczoperations_xp_crates", new CompoundTag());
+        }
+        CompoundTag opened = tracking.getCompound("taczoperations_xp_crates");
+        String crateKey = event.getPos().asLong() + "";
+        if (!opened.getBoolean(crateKey)) {
+            opened.putBoolean(crateKey, true);
+            tracking.put("taczoperations_xp_crates", opened);
+            SupplyContract.activityXp(player, 1, "Coffre fouillé");
         }
     }
 
