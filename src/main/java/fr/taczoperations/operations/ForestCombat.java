@@ -139,7 +139,10 @@ public final class ForestCombat {
             switch (result) {
                 case SUCCESS -> aim.failures = 0;
                 case NO_AMMO -> {
-                    int loaded = GuardPouch.consume(guard, role.magazine, false);
+                    int magazineCapacity = TimelessAPI.getCommonGunIndex(gun.getGunId(guard.getMainHandItem()))
+                        .map(index -> Math.max(1, index.getGunData().getAmmoAmount()))
+                        .orElse(role.magazine);
+                    int loaded = GuardPouch.consume(guard, magazineCapacity, false);
                     if (loaded > 0) {
                         gun.setCurrentAmmoCount(guard.getMainHandItem(), loaded);
                         aim.nextShot += 24;
