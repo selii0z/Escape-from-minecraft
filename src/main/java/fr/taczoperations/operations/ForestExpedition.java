@@ -59,10 +59,10 @@ public final class ForestExpedition {
         if (!canDepart(player)) {
             return "Tu dois être à pied et vivant.";
         }
-        // Do not overwrite an unresolved return location with a new departure.
-        if (player.getPersistentData().contains(RETURN_POINT)) {
-            return "Ton précédent raid n'est pas encore terminé. Reconnecte-toi si nécessaire.";
-        }
+        // A player outside the raid cannot be an active participant. Recover
+        // stale return data left by a death, command teleport or failed exit;
+        // otherwise the player would be permanently blocked from departing.
+        clearStaleDeparture(player);
 
         UUID partnerId = duo ? OperationsGroups.of(player).partner(player) : null;
         if (duo && partnerId == null) {
@@ -70,9 +70,11 @@ public final class ForestExpedition {
         }
         ServerPlayer partner = partnerId == null ? null : player.server.getPlayerList().getPlayer(partnerId);
         if (partnerId != null && (partner == null || partner.level() != player.level()
-            || board.distToCenterSqr(partner.position()) > 64 || !canDepart(partner)
-            || partner.getPersistentData().contains(RETURN_POINT))) {
+            || board.distToCenterSqr(partner.position()) > 64 || !canDepart(partner))) {
             return "Ton équipier doit être à pied près du tableau. Quitte le duo pour partir seul.";
+        }
+        if (partner != null) {
+            clearStaleDeparture(partner);
         }
 
         if (forest.players().stream().anyMatch(other -> !other.isSpectator())) {
@@ -96,6 +98,14 @@ public final class ForestExpedition {
 
     static BlockPos industrialPosition(ForestPlan.Point point) {
         return new BlockPos(IndustrialZone.ORIGIN + point.x(), IndustrialZone.FLOOR + 1, IndustrialZone.ORIGIN + point.z());
+    }
+
+    private static void clearStaleDeparture(ServerPlayer player) {
+        if (player.level().dimension().equals(FOREST)) {
+            return;
+        }
+        player.getPersistentData().remove(RETURN_POINT);
+        ForestRaid.clearPlayer(player);
     }
 
     private static boolean canDepart(ServerPlayer player) {
