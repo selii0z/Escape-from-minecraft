@@ -13,17 +13,27 @@ public record RaidResultPayload(boolean success, long duration, int kills, int c
     public static final Type<RaidResultPayload> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, "raid_result"));
 
-    public static final StreamCodec<ByteBuf, RaidResultPayload> STREAM_CODEC =
-        StreamCodec.composite(
-            ByteBufCodecs.BOOL, RaidResultPayload::success,
-            ByteBufCodecs.VAR_LONG, RaidResultPayload::duration,
-            ByteBufCodecs.VAR_INT, RaidResultPayload::kills,
-            ByteBufCodecs.VAR_INT, RaidResultPayload::crates,
-            ByteBufCodecs.VAR_INT, RaidResultPayload::contracts,
-            ByteBufCodecs.VAR_INT, RaidResultPayload::combatXp,
-            ByteBufCodecs.VAR_INT, RaidResultPayload::searchXp,
-            ByteBufCodecs.VAR_INT, RaidResultPayload::adjustment,
-            RaidResultPayload::new);
+    public static final StreamCodec<ByteBuf, RaidResultPayload> STREAM_CODEC = StreamCodec.of(
+        (buf, report) -> {
+            buf.writeBoolean(report.success());
+            ByteBufCodecs.VAR_LONG.encode(buf, report.duration());
+            ByteBufCodecs.VAR_INT.encode(buf, report.kills());
+            ByteBufCodecs.VAR_INT.encode(buf, report.crates());
+            ByteBufCodecs.VAR_INT.encode(buf, report.contracts());
+            ByteBufCodecs.VAR_INT.encode(buf, report.combatXp());
+            ByteBufCodecs.VAR_INT.encode(buf, report.searchXp());
+            ByteBufCodecs.VAR_INT.encode(buf, report.adjustment());
+        },
+        buf -> new RaidResultPayload(
+            buf.readBoolean(),
+            ByteBufCodecs.VAR_LONG.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf))
+    );
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
