@@ -269,6 +269,8 @@ public enum SupplyContract {
         long seconds = started > 0 ? Math.max(0, (player.server.overworld().getGameTime() - started) / 20) : 0;
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, bonus);
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+            new RaidResultPayload(true, seconds, kills, crates, completed, killXp, searchXp, bonus));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "========== EXTRACTION RÉUSSIE ==========").withStyle(net.minecraft.ChatFormatting.GREEN));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
