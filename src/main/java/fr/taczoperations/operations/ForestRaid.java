@@ -486,7 +486,9 @@ public final class ForestRaid extends SavedData {
             return;
         }
         GuardRole role = GuardRole.get(guard);
-        if (event.getSource().getEntity() instanceof ServerPlayer killer) {
+        if (event.getSource().getEntity() instanceof ServerPlayer killer
+            && !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
+            guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
             SupplyContract.activityXp(killer, 5, "Ennemi éliminé");
         }
