@@ -3,6 +3,7 @@ package fr.taczoperations;
 import fr.taczoperations.entity.GuardCorpse;
 import fr.taczoperations.operations.ForestExpedition;
 import fr.taczoperations.operations.RaidRelic;
+import fr.taczoperations.operations.RaidResultPayload;
 import fr.taczoperations.operations.SupplyContract;
 import fr.taczoperations.operations.ForestCombat;
 import fr.taczoperations.operations.ForestRaid;
@@ -23,6 +24,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 import java.util.function.Supplier;
 
@@ -51,12 +53,18 @@ public final class OperationsMod {
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
     }
 
+    private static void registerPayloads(RegisterPayloadHandlersEvent event) {
+        event.registrar("1").playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
+            fr.taczoperations.client.RaidResultHandler::handle);
+    }
+
     public OperationsMod(IEventBus bus) {
         BLOCKS.register(bus);
         ITEMS.register(bus);
         MENUS.register(bus);
         ENTITIES.register(bus);
         GENERATORS.register(bus);
+        bus.addListener(OperationsMod::registerPayloads);
         NeoForge.EVENT_BUS.addListener(ForestPreparation::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::interact);
