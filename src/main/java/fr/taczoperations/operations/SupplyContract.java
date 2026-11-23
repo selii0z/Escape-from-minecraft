@@ -84,10 +84,22 @@ public enum SupplyContract {
 
     static int experienceEarned(ServerPlayer player) {
         CompoundTag account = account(player);
-        int earned = (account.getInt("OUTPOST") == 2 ? 8 : 0) + (account.getInt("BARRICADE") == 2 ? 12 : 0)
+        int earned = account.getInt("raid_activity_xp")
+            + (account.getInt("OUTPOST") == 2 ? 8 : 0) + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
         for (var contract : values()) if (contract.status(player) == COMPLETED) earned += contract.experience;
         return earned;
+    }
+
+    // Escape from Minecraft progression XP: distinct from vanilla experience.
+    // Used by the existing progression and shop-rank display.
+    static void activityXp(ServerPlayer player, int amount, String source) {
+        if (amount <= 0 || !ForestRaid.isParticipant(player)) return;
+        CompoundTag data = account(player);
+        data.putInt("raid_activity_xp",
+            (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + amount));
+        player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+            "+" + amount + " XP Escape from Minecraft · " + source), true);
     }
 
     static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }
