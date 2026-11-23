@@ -98,6 +98,9 @@ public enum SupplyContract {
         CompoundTag data = account(player);
         data.putInt("raid_activity_xp",
             (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + amount));
+        String counter = amount == 5 ? "raid_kill_xp" : "raid_search_xp";
+        data.putInt(counter,
+            (int) Math.min(Integer.MAX_VALUE, (long) data.getInt(counter) + amount));
         player.displayClientMessage(net.minecraft.network.chat.Component.literal(
             "+" + amount + " XP Escape from Minecraft · " + source), true);
     }
