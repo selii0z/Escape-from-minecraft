@@ -127,6 +127,18 @@ public final class ForestRaid extends SavedData {
         setDirty();
     }
 
+    public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+            || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
+        if (isParticipant(player)) {
+            player.sendSystemMessage(Component.literal(
+                "Expédition reprise. Ton raid est toujours actif : rejoins l'extraction pour conserver ton butin."));
+        } else {
+            player.sendSystemMessage(Component.literal(
+                "Ton raid a expiré. Retour au point de départ et restauration de ton inventaire initial."));
+        }
+    }
+
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
