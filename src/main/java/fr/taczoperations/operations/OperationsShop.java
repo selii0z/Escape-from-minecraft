@@ -104,7 +104,7 @@ public enum OperationsShop {
         return AmmoItemBuilder.create().setId(tacz(id)).setCount(count).build();
     }
 
-    private static ItemStack attachment(String id) {
+    static ItemStack attachment(String id) {
         return AttachmentItemBuilder.create().setId(tacz(id)).build();
     }
 
