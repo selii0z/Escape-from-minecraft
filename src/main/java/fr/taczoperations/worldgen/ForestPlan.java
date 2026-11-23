@@ -3,7 +3,7 @@ package fr.taczoperations.worldgen;
 import java.util.List;
 
 public final class ForestPlan {
-    public static final int ORIGIN = 8192;
+    public static final int ORIGIN = 12288;
     public static final int SIZE = 900;
     public static final int EDGE = ORIGIN + SIZE - 1;
     public static final int WATER = 61;
@@ -36,7 +36,11 @@ public final class ForestPlan {
         new Site(Kind.CABIN, 746, 594, 9, 11), new Site(Kind.STATION, 704, 448, 18, 14),
         new Site(Kind.TOWER, 358, 170, 8, 8), new Site(Kind.TOWER, 786, 322, 9, 8),
         new Site(Kind.BUNKER, 654, 512, 15, 15), new Site(Kind.TRUCK, 481, 565, 6, 11),
-        new Site(Kind.TRUCK, 762, 758, 5, 10));
+        new Site(Kind.TRUCK, 762, 758, 5, 10),
+        new Site(Kind.CABIN, 151, 643, 13, 10), new Site(Kind.CABIN, 159, 659, 10, 12),
+        new Site(Kind.STATION, 174, 651, 16, 13), new Site(Kind.SHED, 146, 670, 12, 9),
+        new Site(Kind.GUARD, 204, 651, 8, 8), new Site(Kind.WAREHOUSE, 587, 601, 18, 13),
+        new Site(Kind.CABIN, 321, 349, 11, 9), new Site(Kind.SHED, 759, 627, 12, 9));
 
     private record Segment(Point from, Point to, int width) {
         double distance(int x, int z) {
@@ -64,6 +68,9 @@ public final class ForestPlan {
         add(tracks, 1, 251,267, 263,272, 276,294, 276,303);
         add(tracks, 1, 246,310, 231,310, 211,298);
         add(tracks, 1, 756,723, 773,704, 820,682);
+        add(tracks, 2, 193,642, 178,647, 167,654, 147,662, 141,676, 156,690, 193,701, 215,686, 226,672);
+        add(tracks, 1, 308,364, 320,356, 326,345);
+        add(tracks, 1, 542,590, 565,608, 591,596, 613,605, 626,622);
         return List.copyOf(tracks);
     }
 

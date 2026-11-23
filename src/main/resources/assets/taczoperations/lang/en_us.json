@@ -1,4 +1,14 @@
 {
   "block.taczoperations.operations_board": "Tableau des opérations",
-  "container.taczoperations.guard_corpse": "Guard corpse"
+  "container.taczoperations.guard_corpse": "Guard corpse",
+  "item.taczoperations.engraved_tag": "Plaque militaire gravée",
+  "item.taczoperations.tactical_radio": "Radio tactique endommagée",
+  "item.taczoperations.classified_documents": "Documents confidentiels",
+  "item.taczoperations.military_watch": "Montre militaire ancienne",
+  "item.taczoperations.secure_circuit": "Circuit électronique sécurisé",
+  "item.taczoperations.encrypted_drive": "Disque dur crypté",
+  "item.taczoperations.intel_case": "Mallette de renseignements",
+  "item.taczoperations.prototype_optic": "Prototype de viseur militaire",
+  "item.taczoperations.command_chip": "Puce de commandement",
+  "item.taczoperations.omega_file": "Dossier classifié Omega"
 }

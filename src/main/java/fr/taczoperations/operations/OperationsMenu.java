@@ -37,8 +37,14 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
     private static final int PAGE_SIZE = 4;
+    public static final int LIST_ROWS = 6;
+    public static final int VENDOR_FIRST = 35;
+    public static final int VENDOR_PAGES = 4;
+    public static final int TRADE_FIRST = 45;
+    public static final int CONTRACT_FIRST = 55;
+    public static final int INDUSTRIAL_FIRST = 65;
 
-    public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, List<Integer> contracts,
+    public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
@@ -47,7 +53,9 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeVarInt(credits);
             buffer.writeVarInt(experience);
             buffer.writeBoolean(showExtraction);
+            buffer.writeVarInt(unlocks);
             buffer.writeCollection(contracts, (buf, status) -> buf.writeVarInt(status));
+            buffer.writeCollection(progress, (buf, amount) -> buf.writeVarInt(amount));
             buffer.writeUtf(partner);
             buffer.writeUtf(inviter);
             buffer.writeCollection(candidates, (buf, name) -> buf.writeUtf(name));
@@ -56,7 +64,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
         private static View read(RegistryFriendlyByteBuf buffer) {
             return new View(buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(),
-                buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
+                buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
+                buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf());
         }
     }
@@ -91,14 +100,19 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 .sorted(Comparator.comparing(target -> target.getGameProfile().getName()))
                 .toList()
             : List.of();
-        int pages = Math.max(1, (online.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        int pages = switch (tab) {
+            case CONTRACTS -> (SupplyContract.values().length + LIST_ROWS - 1) / LIST_ROWS;
+            case SHOP -> OperationsShop.values().length * VENDOR_PAGES;
+            default -> Math.max(1, (online.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        };
         int page = Math.clamp(requestedPage, 0, pages - 1);
-        int start = page * PAGE_SIZE;
+        int start = tab == GROUP ? page * PAGE_SIZE : 0;
         List<ServerPlayer> shown = online.subList(start, Math.min(online.size(), start + PAGE_SIZE));
         List<UUID> candidateIds = shown.stream().map(ServerPlayer::getUUID).toList();
         View view = new View(tab, page, pages, SupplyContract.balance(player),
-            SupplyContract.experienceEarned(player), SupplyContract.showExtraction(player),
+            SupplyContract.experienceEarned(player), SupplyContract.showExtraction(player), OperationsShop.unlocks(player),
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.status(player)).toList(),
+            java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.progress(player)).toList(),
             name(player, partner), name(player, inviter),
             shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice);
         ServerLevel currentLevel = player.serverLevel();
@@ -159,25 +173,40 @@ public final class OperationsMenu extends AbstractContainerMenu {
             || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS) {
             tab = button;
             page = 0;
-        } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT
-            || button == DEPART_DUO || button == DEPART_DUO_NIGHT)) {
+        } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
+            || button == DEPART_DUO_NIGHT || (button >= INDUSTRIAL_FIRST && button < INDUSTRIAL_FIRST + 4))) {
+            boolean industrial = button >= INDUSTRIAL_FIRST;
+            int mode = industrial ? button - INDUSTRIAL_FIRST : -1;
             notice = ForestExpedition.depart(serverPlayer, position,
-                button == DEPART_NIGHT || button == DEPART_DUO_NIGHT,
-                button == DEPART_DUO || button == DEPART_DUO_NIGHT);
+                industrial ? (mode & 1) != 0 : button == DEPART_NIGHT || button == DEPART_DUO_NIGHT,
+                industrial ? (mode & 2) != 0 : button == DEPART_DUO || button == DEPART_DUO_NIGHT, industrial);
             if (notice.isEmpty()) {
                 return true;
             }
         } else if (tab == SETTINGS && button == TOGGLE_EXTRACTION) {
             SupplyContract.toggleExtraction(serverPlayer);
             notice = "Préférence enregistrée.";
-        } else if (tab == SHOP && button >= FIRST_ROW && button < FIRST_ROW + OperationsShop.values().length) {
-            notice = OperationsShop.values()[button - FIRST_ROW].buy(serverPlayer);
+        } else if (tab == SHOP && button >= VENDOR_FIRST && button < VENDOR_FIRST + OperationsShop.values().length) {
+            page = (button - VENDOR_FIRST) * VENDOR_PAGES;
+        } else if (tab == SHOP && button >= TRADE_FIRST && button < TRADE_FIRST + LIST_ROWS) {
+            var vendor = OperationsShop.values()[page / VENDOR_PAGES];
+            if (serverPlayer.level().dimension().equals(ForestExpedition.FOREST)) return false;
+            notice = vendor.trade(serverPlayer, page % VENDOR_PAGES * LIST_ROWS + button - TRADE_FIRST);
+        } else if (tab == SHOP && (button == PREVIOUS || button == NEXT)) {
+            int vendor = page / VENDOR_PAGES;
+            int offers = OperationsShop.values()[vendor].offers().size();
+            int max = Math.max(0, (offers - 1) / LIST_ROWS);
+            page = vendor * VENDOR_PAGES + Math.clamp(page % VENDOR_PAGES + (button == NEXT ? 1 : -1), 0, max);
+        } else if (tab == CONTRACTS && (button == PREVIOUS || button == NEXT)) {
+            page += button == NEXT ? 1 : -1;
         } else if (button != REFRESH) {
             int row = button - FIRST_ROW;
             OperationsGroups groups = OperationsGroups.of(serverPlayer);
-            if (tab == CONTRACTS && row >= 0 && row < view.contracts().size()) {
-                SupplyContract contract = SupplyContract.values()[row];
-                if (contract.status(serverPlayer) != view.contracts().get(row)) {
+            int contractIndex = page * LIST_ROWS + button - CONTRACT_FIRST;
+            if (tab == CONTRACTS && button >= CONTRACT_FIRST && button < CONTRACT_FIRST + LIST_ROWS
+                && contractIndex < view.contracts().size()) {
+                SupplyContract contract = SupplyContract.values()[contractIndex];
+                if (contract.status(serverPlayer) != view.contracts().get(contractIndex)) {
                     notice = "Le contrat a été mis à jour.";
                 } else {
                     notice = contract.act(serverPlayer);

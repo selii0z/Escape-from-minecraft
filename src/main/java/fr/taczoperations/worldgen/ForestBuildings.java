@@ -15,7 +15,7 @@ final class ForestBuildings {
         int y = site.floor();
         int x = site.x();
         int z = site.z();
-        if (!out.intersects(x, z, x + w - 1, z + d - 1)) {
+        if (!out.intersects(x, z - 3, x + w - 1, z + d - 1)) {
             return;
         }
         switch (site.kind()) {
@@ -50,6 +50,9 @@ final class ForestBuildings {
                 out.put(x + dx, y, z + dz, floor);
                 boolean side = dx == 0 || dx == w - 1;
                 boolean end = dz == 0 || dz == d - 1;
+                if ((side || end) && (dx + dz) % 7 == 0 && !(end && dx == door)) {
+                    out.put(x + dx, y - 1, z + dz, Blocks.MOSSY_COBBLESTONE);
+                }
                 if (side || end) {
                     boolean opening = (dx == door && dz == 0)
                         || (loadingBay && dz == d - 1 && Math.abs(dx - door) <= 1);
@@ -62,7 +65,12 @@ final class ForestBuildings {
                         out.put(x + dx, y + dy, z + dz, material);
                     }
                 }
-                int roof = top + (site.kind() == ForestPlan.Kind.WAREHOUSE ? 0 : Math.min(dx, w - 1 - dx) / 2);
+                int ridge = site.kind() == ForestPlan.Kind.CABIN && (w & 1) == 0 ? w / 3 : w / 2;
+                int roof = top + switch (site.kind()) {
+                    case WAREHOUSE -> dx < 3 || dx >= w - 3 ? 0 : (dx / 4) % 2;
+                    case SHED -> dx / 4;
+                    default -> Math.max(0, ridge - Math.abs(dx - ridge)) / 2;
+                };
                 out.put(x + dx, y + roof, z + dz,
                     site.kind() == ForestPlan.Kind.STATION ? Blocks.COPPER_BLOCK : Blocks.DEEPSLATE_TILES);
                 if (end || side) {
@@ -73,6 +81,17 @@ final class ForestBuildings {
             }
         }
         door(out, x + door, y + 1, z, Direction.NORTH);
+        if (site.kind() == ForestPlan.Kind.CABIN || site.kind() == ForestPlan.Kind.STATION) {
+            for (int dx = door - 2; dx <= door + 2; dx++) {
+                for (int dz = -3; dz < 0; dz++) {
+                    out.put(x + dx, y, z + dz, Blocks.SPRUCE_PLANKS);
+                    out.put(x + dx, y + 3, z + dz, Blocks.SPRUCE_SLAB);
+                }
+                if (dx != door) {
+                    out.put(x + dx, y + 1, z - 3, Blocks.SPRUCE_FENCE);
+                }
+            }
+        }
         if (site.kind() == ForestPlan.Kind.STATION || site.kind() == ForestPlan.Kind.WAREHOUSE) {
             for (int dx = 1; dx < w - 1; dx++) {
                 if (Math.abs(dx - w / 2) > 1) {

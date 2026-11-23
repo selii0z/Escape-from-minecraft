@@ -10,7 +10,7 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 public final class ForestProtection {
     private static final ThreadLocal<BlockPos> RAID_EDIT = new ThreadLocal<>();
 
-    static boolean setRaidBarrel(ServerLevel level, BlockPos pos, BlockState state) {
+    static boolean setRaidContainer(ServerLevel level, BlockPos pos, BlockState state) {
         RAID_EDIT.set(pos);
         try {
             return level.setBlockAndUpdate(pos, state);
@@ -19,8 +19,8 @@ public final class ForestProtection {
         }
     }
 
-    public static boolean allowsRaidBarrel(BlockPos pos, BlockState state) {
-        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.isAir());
+    public static boolean allowsRaidContainer(BlockPos pos, BlockState state) {
+        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.isAir());
     }
 
     public static void onBreak(BlockEvent.BreakEvent event) {

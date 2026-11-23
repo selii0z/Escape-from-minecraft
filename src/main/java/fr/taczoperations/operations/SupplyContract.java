@@ -2,38 +2,66 @@ package fr.taczoperations.operations;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public enum SupplyContract {
-    OUTPOST("Avant-poste", Items.SPRUCE_LOG, 8, Items.TORCH, 16, 25, 8),
-    BARRICADE("Barricades", Items.COBBLESTONE, 16, Items.ARROW, 12, 35, 12),
-    WORKSHOP("Atelier", Items.IRON_INGOT, 4, Items.GOLDEN_CARROT, 4, 50, 18);
+    CLEAR("Nettoyage", 5, 250, 15, Objective.KILL, null),
+    ASSAULT("Fusil d’assaut", 10, 680, 36, Objective.ASSAULT, null),
+    ELITES("Éliminer les élites", 3, 500, 30, Objective.ELITE, null),
+    TRACKER("Le Traqueur", 1, 750, 40, Objective.BOSS, null),
+    GET_OUT("Première extraction", 1, 180, 12, Objective.EXIT, null),
+    VETERAN("Rentrer trois fois", 3, 650, 35, Objective.EXIT, null),
+    COMBAT_EXIT("Sortie sous pression", 8, 850, 45, Objective.COMBAT_EXIT, null),
+    INDUSTRY("Fret abandonné", 1, 350, 22, Objective.INDUSTRIAL_EXIT, null),
+    DECAPITATION("Code du Traqueur", 1, 5200, 80, Objective.BOSS_INTEL, RaidRelic.CHIP),
+    TAGS(RaidRelic.PLAQUE, 3), RADIOS(RaidRelic.RADIO, 2), PAPERS(RaidRelic.DOCUMENTS, 1),
+    WATCH(RaidRelic.WATCH, 1), BOARD(RaidRelic.CIRCUIT, 1), ENCRYPTED(RaidRelic.DRIVE, 1),
+    SUITCASE(RaidRelic.CASE, 1), OPTIC(RaidRelic.OPTIC, 1), COMMAND(RaidRelic.CHIP, 1), OMEGA(RaidRelic.OMEGA, 1);
+
+    private enum Objective { KILL, ASSAULT, ELITE, BOSS, EXIT, COMBAT_EXIT, INDUSTRIAL_EXIT, BOSS_INTEL, RELIC }
 
     public static final int AVAILABLE = 0;
     public static final int ACTIVE = 1;
     public static final int COMPLETED = 2;
-
     public final String title;
-    public final Item requested;
     public final int amount;
-    public final Item reward;
-    public final int rewardAmount;
     public final int credits;
     public final int experience;
+    private final Objective objective;
+    private final RaidRelic relic;
 
-    SupplyContract(String title, Item requested, int amount, Item reward, int rewardAmount,
-                   int credits, int experience) {
+    SupplyContract(String title, int amount, int credits, int experience, Objective objective, RaidRelic relic) {
         this.title = title;
-        this.requested = requested;
         this.amount = amount;
-        this.reward = reward;
-        this.rewardAmount = rewardAmount;
         this.credits = credits;
         this.experience = experience;
+        this.objective = objective;
+        this.relic = relic;
+    }
+
+    SupplyContract(RaidRelic relic, int amount) {
+        this(relic.title, amount, relic.price * amount + relic.price / 3, 12 + 8 * relic.tier, Objective.RELIC, relic);
+    }
+
+    public Item icon() {
+        return relic == null ? (objective == Objective.EXIT ? Items.COMPASS : Items.IRON_SWORD) : relic.item();
+    }
+
+    public String description() {
+        return switch (objective) {
+            case KILL -> "Éliminer " + amount + " ennemis en raid";
+            case ASSAULT -> "Éliminer " + amount + " gardes avec un AK-47 ou un M4A1 TaCZ";
+            case ELITE -> "Éliminer " + amount + " ennemis d’élite";
+            case BOSS -> "Éliminer Le Traqueur";
+            case EXIT -> "Réussir " + amount + (amount == 1 ? " extraction" : " extractions");
+            case COMBAT_EXIT -> "S’extraire après " + amount + " éliminations dans le même raid";
+            case INDUSTRIAL_EXIT -> "S’extraire de la Zone industrielle";
+            case BOSS_INTEL -> "Abattre Le Traqueur et extraire une puce de commandement";
+            case RELIC -> "Extraire avec " + amount + " × " + relic.title;
+        };
     }
 
     static CompoundTag account(ServerPlayer player) {
@@ -45,63 +73,135 @@ public enum SupplyContract {
         return account;
     }
 
-    static int balance(ServerPlayer player) {
-        return account(player).getInt("credits");
-    }
+    static int balance(ServerPlayer player) { return account(player).getInt("credits"); }
 
     static int experienceEarned(ServerPlayer player) {
-        int earned = 0;
-        for (SupplyContract contract : values()) {
-            if (contract.status(player) == COMPLETED) earned += contract.experience;
-        }
+        CompoundTag account = account(player);
+        int earned = (account.getInt("OUTPOST") == 2 ? 8 : 0) + (account.getInt("BARRICADE") == 2 ? 12 : 0)
+            + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
+        for (var contract : values()) if (contract.status(player) == COMPLETED) earned += contract.experience;
         return earned;
     }
 
-    static boolean showExtraction(ServerPlayer player) {
-        return !account(player).getBoolean("hide_extraction");
-    }
+    static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }
+    static void toggleExtraction(ServerPlayer player) { account(player).putBoolean("hide_extraction", showExtraction(player)); }
 
-    static void toggleExtraction(ServerPlayer player) {
-        account(player).putBoolean("hide_extraction", showExtraction(player));
-    }
-
-    int status(ServerPlayer player) {
-        return account(player).getInt(name());
-    }
+    int status(ServerPlayer player) { return account(player).getInt("raid_" + name()); }
+    int progress(ServerPlayer player) { return account(player).getInt("progress_" + name()); }
 
     String act(ServerPlayer player) {
-        CompoundTag account = account(player);
-        int status = account.getInt(name());
-        if (status == COMPLETED) {
-            return "Récompense déjà remise.";
+        if (status(player) == COMPLETED) return "Ce contrat est déjà terminé.";
+        if (status(player) == ACTIVE) {
+            account(player).remove("raid_" + name());
+            account(player).remove("progress_" + name());
+            return "Contrat abandonné. Tu peux le reprendre plus tard.";
         }
-        if (status == AVAILABLE) {
-            account.putInt(name(), ACTIVE);
-            return "Contrat accepté.";
-        }
+        int active = 0;
+        for (var contract : values()) if (contract.status(player) == ACTIVE) active++;
+        if (active >= 3) return "Tu as déjà trois contrats actifs.";
+        account(player).putInt("raid_" + name(), ACTIVE);
+        return "Contrat accepté. Les récompenses sont versées automatiquement.";
+    }
 
-        Inventory inventory = player.getInventory();
-        int count = inventory.items.stream().filter(stack -> stack.is(requested))
-            .mapToInt(ItemStack::getCount).sum();
-        if (count < amount) {
-            return "Ravitaillement incomplet (" + count + "/" + amount + ").";
-        }
-        int remaining = amount;
-        for (ItemStack stack : inventory.items) {
-            if (stack.is(requested)) {
-                int used = Math.min(remaining, stack.getCount());
-                stack.shrink(used);
-                remaining -= used;
-                if (remaining == 0) {
-                    break;
-                }
+    static void kill(ServerPlayer player, boolean elite, boolean boss) {
+        if (!ForestRaid.isParticipant(player)) return;
+        CompoundTag data = player.getPersistentData();
+        data.putInt("taczoperations_raid_kills", data.getInt("taczoperations_raid_kills") + 1);
+        if (boss) data.putBoolean("taczoperations_raid_boss", true);
+        for (var contract : values()) {
+            if (contract.status(player) == ACTIVE && (contract.objective == Objective.KILL
+                || (elite && contract.objective == Objective.ELITE) || (boss && contract.objective == Objective.BOSS))) {
+                contract.advance(player);
             }
         }
-        account.putInt(name(), COMPLETED);
-        account.putInt("credits", account.getInt("credits") + credits);
-        inventory.placeItemBackInInventory(new ItemStack(reward, rewardAmount));
+    }
+
+    public static void assaultKill(com.tacz.guns.api.event.common.EntityKillByGunEvent event) {
+        if (event.getLogicalSide().isClient() || !(event.getAttacker() instanceof ServerPlayer player)
+            || !(event.getKilledEntity() instanceof net.minecraft.world.entity.monster.Pillager guard)
+            || !(guard.level() instanceof net.minecraft.server.level.ServerLevel level)
+            || !isAssaultRifle(event.getGunId()) || !ForestRaid.isParticipant(player)
+            || !ForestRaid.currentGuard(level, guard) || ASSAULT.status(player) != ACTIVE
+            || guard.getPersistentData().getBoolean("taczoperations_assault_counted")) {
+            return;
+        }
+        guard.getPersistentData().putBoolean("taczoperations_assault_counted", true);
+        ASSAULT.advance(player);
+    }
+
+    private static boolean isAssaultRifle(net.minecraft.resources.ResourceLocation gun) {
+        return gun != null && gun.getNamespace().equals("tacz")
+            && (gun.getPath().equals("ak47") || gun.getPath().equals("m4a1"));
+    }
+
+    static void departure(ServerPlayer player) {
+        player.getPersistentData().remove("taczoperations_raid_kills");
+        player.getPersistentData().remove("taczoperations_raid_boss");
+        CompoundTag baseline = new CompoundTag();
+        for (RaidRelic relic : RaidRelic.values()) {
+            baseline.putInt(relic.id, count(player, relic.item()));
+        }
+        player.getPersistentData().put("taczoperations_relic_baseline", baseline);
+    }
+
+    private static int count(ServerPlayer player, Item item) {
+        return player.getInventory().items.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+    }
+
+    static void extracted(ServerPlayer player, boolean industrial) {
+        int kills = player.getPersistentData().getInt("taczoperations_raid_kills");
+        CompoundTag baseline = player.getPersistentData().getCompound("taczoperations_relic_baseline");
+        for (var contract : values()) {
+            if (contract.status(player) != ACTIVE) continue;
+            if (contract.objective == Objective.EXIT || industrial && contract.objective == Objective.INDUSTRIAL_EXIT) {
+                contract.advance(player);
+            }
+            if (contract.objective == Objective.COMBAT_EXIT && kills >= contract.amount) contract.finish(player);
+            if ((contract.objective == Objective.RELIC
+                || contract.objective == Objective.BOSS_INTEL && player.getPersistentData().getBoolean("taczoperations_raid_boss"))
+                && baseline.contains(contract.relic.id)
+                && count(player, contract.relic.item()) - baseline.getInt(contract.relic.id) >= contract.amount
+                && consume(player, contract.relic.item(), contract.amount)) {
+                contract.finish(player);
+            }
+        }
+        player.getPersistentData().remove("taczoperations_raid_kills");
+        player.getPersistentData().remove("taczoperations_raid_boss");
+        player.getPersistentData().remove("taczoperations_relic_baseline");
+    }
+
+    static boolean consume(ServerPlayer player, Item item, int amount) {
+        var inventory = player.getInventory();
+        int count = inventory.items.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+        if (count < amount) return false;
+        int remaining = amount;
+        for (ItemStack stack : inventory.items) {
+            if (!stack.is(item)) continue;
+            int used = Math.min(remaining, stack.getCount());
+            stack.shrink(used);
+            remaining -= used;
+            if (remaining == 0) break;
+        }
         inventory.setChanged();
+        return true;
+    }
+
+    private void advance(ServerPlayer player) {
+        int next = progress(player) + 1;
+        account(player).putInt("progress_" + name(), next);
+        if (next >= amount) finish(player);
+    }
+
+    private void finish(ServerPlayer player) {
+        CompoundTag account = account(player);
+        account.putInt("raid_" + name(), COMPLETED);
+        account.putInt("progress_" + name(), amount);
+        account.putInt("credits", Math.min(Integer.MAX_VALUE - credits, balance(player)) + credits);
         player.giveExperiencePoints(experience);
-        return "Ravitaillement livré. Récompense remise.";
+        if (objective == Objective.BOSS || this == OMEGA) {
+            player.getInventory().placeItemBackInInventory(new ItemStack(Items.GOLDEN_APPLE, 2));
+        }
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "Contrat terminé · " + title + " · +" + credits + " crédits / +" + experience + " XP"));
     }
 }

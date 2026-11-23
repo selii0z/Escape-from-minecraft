@@ -3,5 +3,6 @@
   "package": "fr.taczoperations.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": ["ForestTerrainMixin", "ForestTimeMixin"],
+  "client": ["client.BoardTextureMixin", "client.BoardFontMixin"],
   "injectors": {"defaultRequire": 1}
 }

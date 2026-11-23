@@ -52,7 +52,16 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     @Override
     public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState random,
                                                        StructureManager structures, ChunkAccess chunk) {
-        Painter out = new Painter(chunk);
+        Painter industrial = new Painter(chunk, IndustrialZone.ORIGIN);
+        if (industrial.intersects(0, 0, IndustrialZone.SIZE - 1, IndustrialZone.SIZE - 1)) {
+            return CompletableFuture.supplyAsync(() -> {
+                IndustrialZone.generate(industrial);
+                Heightmap.primeHeightmaps(chunk, java.util.EnumSet.of(
+                    Heightmap.Types.OCEAN_FLOOR_WG, Heightmap.Types.WORLD_SURFACE_WG));
+                return chunk;
+            }, Util.backgroundExecutor());
+        }
+        Painter out = new Painter(chunk, ForestPlan.ORIGIN);
         if (!out.intersects(0, 0, ForestPlan.SIZE - 1, ForestPlan.SIZE - 1)) {
             return CompletableFuture.completedFuture(chunk);
         }
@@ -230,13 +239,15 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     static final class Painter {
         private final ChunkAccess chunk;
         private final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        private final int minX;
-        private final int minZ;
+        final int minX;
+        final int minZ;
+        private final int origin;
 
-        Painter(ChunkAccess chunk) {
+        Painter(ChunkAccess chunk, int origin) {
             this.chunk = chunk;
-            minX = chunk.getPos().getMinBlockX() - ForestPlan.ORIGIN;
-            minZ = chunk.getPos().getMinBlockZ() - ForestPlan.ORIGIN;
+            this.origin = origin;
+            minX = chunk.getPos().getMinBlockX() - origin;
+            minZ = chunk.getPos().getMinBlockZ() - origin;
         }
 
         boolean intersects(int x1, int z1, int x2, int z2) {
@@ -249,13 +260,13 @@ public final class ForestChunkGenerator extends ChunkGenerator {
 
         void put(int x, int y, int z, BlockState state) {
             if (intersects(x, z, x, z)) {
-                chunk.setBlockState(cursor.set(x + ForestPlan.ORIGIN, y, z + ForestPlan.ORIGIN), state, false);
+                chunk.setBlockState(cursor.set(x + origin, y, z + origin), state, false);
             }
         }
 
         void putIfAir(int x, int y, int z, BlockState state) {
             if (intersects(x, z, x, z)
-                && chunk.getBlockState(cursor.set(x + ForestPlan.ORIGIN, y, z + ForestPlan.ORIGIN)).isAir()) {
+                && chunk.getBlockState(cursor.set(x + origin, y, z + origin)).isAir()) {
                 chunk.setBlockState(cursor, state, false);
             }
         }
@@ -285,6 +296,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor level, RandomState random) {
+        if (IndustrialZone.inside(x, z)) return IndustrialZone.FLOOR + 1;
         if (!ForestPlan.inside(x, z)) {
             return level.getMinBuildHeight();
         }
@@ -295,7 +307,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor level, RandomState random) {
         BlockState[] column = new BlockState[level.getHeight()];
         Arrays.fill(column, Blocks.AIR.defaultBlockState());
-        if (ForestPlan.inside(x, z)) {
+        if (ForestPlan.inside(x, z) || IndustrialZone.inside(x, z)) {
             int y = getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
             Arrays.fill(column, FOUNDATION - level.getMinBuildHeight(), y - level.getMinBuildHeight(),
                 Blocks.STONE.defaultBlockState());

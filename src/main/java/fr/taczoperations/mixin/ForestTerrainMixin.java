@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,8 +23,8 @@ public abstract class ForestTerrainMixin {
                                                int recursion, CallbackInfoReturnable<Boolean> result) {
         if ((Object) this instanceof ServerLevel level && level.dimension().equals(ForestExpedition.FOREST)) {
             var block = replacement.getBlock();
-            if (ForestProtection.allowsRaidBarrel(position, replacement)
-                || ((block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof BarrelBlock)
+            if (ForestProtection.allowsRaidContainer(position, replacement)
+                || ((block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof BarrelBlock || block instanceof ChestBlock)
                     && level.getBlockState(position).is(block))) {
                 return;
             }

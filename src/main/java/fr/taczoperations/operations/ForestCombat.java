@@ -4,9 +4,6 @@ import com.mojang.logging.LogUtils;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ShootResult;
 import com.tacz.guns.api.item.IGun;
-import com.tacz.guns.api.item.builder.GunItemBuilder;
-import com.tacz.guns.api.item.gun.FireMode;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -19,8 +16,6 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 public final class ForestCombat {
-    private static final ResourceLocation PISTOL = ResourceLocation.fromNamespaceAndPath("tacz", "glock_17");
-    private static final int MAGAZINE = 12;
     private static final Map<Pillager, Aim> AIM = new WeakHashMap<>();
 
     private static final class Aim {
@@ -30,8 +25,8 @@ public final class ForestCombat {
 
     static void arm(Pillager enemy) {
         try {
-            ItemStack gun = GunItemBuilder.create().setId(PISTOL).setFireMode(FireMode.SEMI)
-                .setAmmoCount(MAGAZINE).setAmmoInBarrel(true).build();
+            GuardRole role = GuardRole.get(enemy);
+            ItemStack gun = OperationsShop.weapon(role.gun, role.magazine);
             if (!gun.isEmpty()) {
                 enemy.setItemSlot(EquipmentSlot.MAINHAND, gun);
                 return;
@@ -57,6 +52,7 @@ public final class ForestCombat {
         if (!(guard.getMainHandItem().getItem() instanceof IGun gun)) {
             return;
         }
+        GuardRole role = GuardRole.get(guard);
         Aim aim = AIM.get(guard);
         try {
             IGunOperator operator = IGunOperator.fromLivingEntity(guard);
@@ -68,7 +64,7 @@ public final class ForestCombat {
                 aim.nextShot = guard.tickCount + 20;
             }
             ServerPlayer target = null;
-            double range = 32 * 32;
+            double range = (role.range + 12) * (role.range + 12);
             for (ServerPlayer candidate : level.players()) {
                 double distance = guard.distanceToSqr(candidate);
                 if (distance < range && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
@@ -79,11 +75,18 @@ public final class ForestCombat {
             }
             if (target == null) {
                 operator.aim(false);
+                if (guard.tickCount % 80 == 0 && guard.getNavigation().isDone()) {
+                    var home = guard.getPersistentData();
+                    if (home.contains("guard_home_x")) {
+                        guard.getNavigation().moveTo(home.getInt("guard_home_x") + guard.getRandom().nextInt(11) - 5,
+                            home.getInt("guard_home_y"), home.getInt("guard_home_z") + guard.getRandom().nextInt(11) - 5, .75);
+                    }
+                }
                 return;
             }
             guard.setTarget(target);
             guard.getLookControl().setLookAt(target, 60, 60);
-            if (range > 22 * 22 || !guard.hasLineOfSight(target)) {
+            if (range > role.range * role.range || !guard.hasLineOfSight(target)) {
                 operator.aim(false);
                 if (guard.tickCount % 12 == 0) {
                     guard.getNavigation().moveTo(target, 1.05);
@@ -102,11 +105,11 @@ public final class ForestCombat {
             float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90);
             float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
             ShootResult result = operator.shoot(() -> pitch, () -> yaw);
-            aim.nextShot = guard.tickCount + 24 + guard.getRandom().nextInt(17);
+            aim.nextShot = guard.tickCount + role.pause + guard.getRandom().nextInt(17);
             switch (result) {
                 case SUCCESS -> aim.failures = 0;
                 case NO_AMMO -> {
-                    int loaded = GuardPouch.consume(guard, MAGAZINE, false);
+                    int loaded = GuardPouch.consume(guard, role.magazine, false);
                     if (loaded > 0) {
                         gun.setCurrentAmmoCount(guard.getMainHandItem(), loaded);
                         aim.nextShot += 24;

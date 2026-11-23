@@ -1,10 +1,10 @@
 package fr.taczoperations.operations;
 
-import com.tacz.guns.api.item.builder.AmmoItemBuilder;
 import fr.taczoperations.OperationsMod;
 import fr.taczoperations.entity.GuardCorpse;
 import fr.taczoperations.worldgen.ForestPlan;
 import fr.taczoperations.worldgen.ForestRaidAnchors;
+import fr.taczoperations.worldgen.IndustrialZone;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -13,17 +13,17 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Pillager;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BarrelBlockEntity;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
@@ -42,11 +42,11 @@ public final class ForestRaid extends SavedData {
     private static final String CORPSE = "taczoperations_raid_corpse";
     private static final String CRATE = "taczoperations_raid_crate";
     private static final String CRATE_INDEX = "taczoperations_raid_crate_index";
-    private static final ResourceLocation PISTOL_AMMO = ResourceLocation.fromNamespaceAndPath("tacz", "9mm");
     private static final Factory<ForestRaid> FACTORY = new Factory<>(ForestRaid::new, ForestRaid::read);
 
     private UUID id;
     private long seed;
+    private boolean industrial;
     private BitSet crates = new BitSet();
     private BitSet enemies = new BitSet();
     private List<ForestRaidAnchors.Mark> locations = List.of();
@@ -55,16 +55,19 @@ public final class ForestRaid extends SavedData {
         return level.getDataStorage().computeIfAbsent(FACTORY, "taczoperations_raid");
     }
 
-    static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner) {
+    static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner, boolean industrial) {
         ForestRaid raid = get(level);
         raid.id = UUID.randomUUID();
         raid.seed = level.getRandom().nextLong();
+        raid.industrial = industrial;
         raid.crates.clear();
         raid.enemies.clear();
-        raid.locations = ForestRaidAnchors.pickLoot(raid.seed);
+        raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
         player.getPersistentData().putUUID(PLAYER, raid.id);
+        SupplyContract.departure(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
+            SupplyContract.departure(partner);
         }
         raid.setDirty();
     }
@@ -112,7 +115,8 @@ public final class ForestRaid extends SavedData {
                 continue;
             }
             var mark = raid.locations.get(i);
-            BlockPos center = new BlockPos(ForestPlan.ORIGIN + mark.x(), mark.y(), ForestPlan.ORIGIN + mark.z());
+            int origin = raid.industrial ? IndustrialZone.ORIGIN : ForestPlan.ORIGIN;
+            BlockPos center = new BlockPos(origin + mark.x(), mark.y(), origin + mark.z());
             if (!near(player, center) || !level.hasChunkAt(center)) {
                 continue;
             }
@@ -129,16 +133,21 @@ public final class ForestRaid extends SavedData {
             }
         }
 
-        for (int i = 0; i < ForestRaidAnchors.ENEMIES.size() && budget > 0; i++) {
+        var guards = raid.industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES;
+        for (int i = 0; i < guards.size() + (raid.industrial ? 0 : 1) && budget > 0; i++) {
             if (raid.enemies.get(i)) {
                 continue;
             }
-            BlockPos center = ForestLandmarks.position(ForestRaidAnchors.ENEMIES.get(i));
+            boolean boss = i == guards.size();
+            GuardRole role = boss ? GuardRole.TRACKER : GuardRole.values()[Math.floorMod(i + (int) raid.seed, 6)];
+            var point = boss ? ForestRaidAnchors.TRACKER.get(Math.floorMod(raid.seed, ForestRaidAnchors.TRACKER.size()))
+                : guards.get(i);
+            BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
             if (!near(player, center) || !level.hasChunkAt(center)) {
                 continue;
             }
             BlockPos place = findFloor(level, center, 4, true);
-            if (place != null && raid.spawnGuard(level, place)) {
+            if (place != null && raid.spawnGuard(level, place, role)) {
                 raid.enemies.set(i);
                 raid.setDirty();
                 budget--;
@@ -152,7 +161,7 @@ public final class ForestRaid extends SavedData {
 
     private static BlockPos findFloor(ServerLevel level, BlockPos center, int radius, boolean headroom) {
         for (BlockPos pos : BlockPos.withinManhattan(center, radius, headroom ? 3 : 0, radius)) {
-            if (!ForestPlan.inside(pos.getX(), pos.getZ()) || !level.hasChunkAt(pos)
+            if ((!ForestPlan.inside(pos.getX(), pos.getZ()) && !IndustrialZone.inside(pos.getX(), pos.getZ())) || !level.hasChunkAt(pos)
                 || !level.getBlockState(pos).isAir() || (headroom && !level.getBlockState(pos.above()).isAir())) {
                 continue;
             }
@@ -166,7 +175,7 @@ public final class ForestRaid extends SavedData {
         return null;
     }
 
-    private boolean spawnGuard(ServerLevel level, BlockPos pos) {
+    private boolean spawnGuard(ServerLevel level, BlockPos pos, GuardRole role) {
         Pillager guard = EntityType.PILLAGER.create(level);
         if (guard == null) {
             return false;
@@ -177,8 +186,23 @@ public final class ForestRaid extends SavedData {
         }
         guard.getPersistentData().putUUID(ENEMY, id);
         guard.setPersistenceRequired();
-        guard.setCustomName(Component.literal("Garde de la Forêt Noire"));
-        guard.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.CHAINMAIL_CHESTPLATE));
+        role.assign(guard);
+        guard.getPersistentData().putInt("guard_home_x", pos.getX());
+        guard.getPersistentData().putInt("guard_home_y", pos.getY());
+        guard.getPersistentData().putInt("guard_home_z", pos.getZ());
+        guard.setCustomName(Component.literal(role.title));
+        guard.setCustomNameVisible(role.elite());
+        guard.getAttribute(Attributes.MAX_HEALTH).setBaseValue(role.health);
+        guard.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(role.speed);
+        guard.setHealth(role.health);
+        guard.setItemSlot(EquipmentSlot.CHEST, new ItemStack(role.armor));
+        if (role == GuardRole.SCOUT || role == GuardRole.MARKSMAN) {
+            guard.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.LEATHER_BOOTS));
+        } else if (role.elite()) {
+            guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(role == GuardRole.TRACKER ? Items.DIAMOND_HELMET : Items.IRON_HELMET));
+        }
+        guard.setDropChance(EquipmentSlot.HEAD, 0);
+        guard.setDropChance(EquipmentSlot.FEET, 0);
         guard.setDropChance(EquipmentSlot.MAINHAND, 0);
         guard.setDropChance(EquipmentSlot.CHEST, 0);
         ForestCombat.arm(guard);
@@ -188,7 +212,7 @@ public final class ForestRaid extends SavedData {
 
     private boolean existingCrate(ServerLevel level, BlockPos center, int index) {
         for (BlockPos pos : BlockPos.withinManhattan(center, 2, 0, 2)) {
-            if (level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof BarrelBlockEntity barrel) {
+            if (level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel) {
                 CompoundTag data = barrel.getPersistentData();
                 if (matches(data, CRATE) && data.contains(CRATE_INDEX) && data.getInt(CRATE_INDEX) == index) {
                     return true;
@@ -199,24 +223,32 @@ public final class ForestRaid extends SavedData {
     }
 
     private boolean putCrate(ServerLevel level, BlockPos pos, String name, Random random, int index) {
-        if (!ForestProtection.setRaidBarrel(level, pos, Blocks.BARREL.defaultBlockState())) {
+        var block = index % 3 == 0 ? Blocks.CHEST : Blocks.BARREL;
+        if (!ForestProtection.setRaidContainer(level, pos, block.defaultBlockState())) {
             return false;
         }
-        if (!(level.getBlockEntity(pos) instanceof BarrelBlockEntity barrel)) {
+        if (!(level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel)) {
             return false;
         }
         barrel.getPersistentData().putUUID(CRATE, id);
         barrel.getPersistentData().putInt(CRATE_INDEX, index);
         ItemStack labeled = new ItemStack(Items.BARREL);
-        labeled.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+        labeled.set(DataComponents.CUSTOM_NAME, Component.literal(switch (index % 3) {
+            case 0 -> "Coffre de terrain";
+            case 1 -> "Casier de campagne";
+            default -> name;
+        }));
         barrel.applyComponentsFromItemStack(labeled);
-        barrel.setItem(random.nextInt(9), new ItemStack(Items.BREAD, 1 + random.nextInt(4)));
+        var supplies = List.of(Items.BREAD, Items.BAKED_POTATO, Items.COOKED_BEEF, Items.TORCH,
+            Items.IRON_INGOT, Items.CHAINMAIL_BOOTS, Items.GOLDEN_CARROT);
+        barrel.setItem(random.nextInt(9), new ItemStack(supplies.get(random.nextInt(supplies.size())), 1));
+        if (random.nextInt(100) < 53) barrel.setItem(9 + random.nextInt(9), RaidRelic.roll(random).stack());
         int supply = 2 + random.nextInt(5);
-        ItemStack ammo = random.nextBoolean() ? AmmoItemBuilder.create().setId(PISTOL_AMMO)
-            .setCount(supply).build() : ItemStack.EMPTY;
-        barrel.setItem(9 + random.nextInt(9), ammo.isEmpty() ? new ItemStack(Items.IRON_INGOT, supply) : ammo);
+        String[] calibers = {"9mm", "762x39", "12g", "338", "556x45"};
+        ItemStack ammo = random.nextBoolean() ? OperationsShop.ammo(calibers[random.nextInt(calibers.length)], supply) : ItemStack.EMPTY;
+        barrel.setItem(18 + random.nextInt(8), ammo.isEmpty() ? new ItemStack(Items.IRON_INGOT, supply) : ammo);
         if (random.nextInt(3) == 0) {
-            barrel.setItem(18 + random.nextInt(9), new ItemStack(Items.GOLDEN_CARROT));
+            barrel.setItem(26, new ItemStack(Items.GOLDEN_CARROT));
         }
         barrel.setChanged();
         return true;
@@ -231,14 +263,14 @@ public final class ForestRaid extends SavedData {
                 List<BlockPos> expired = new ArrayList<>();
                 for (BlockEntity block : chunk.getBlockEntities().values()) {
                     CompoundTag data = block.getPersistentData();
-                    if (block instanceof BarrelBlockEntity && data.hasUUID(CRATE) && !matches(data, CRATE)) {
+                    if (block instanceof RandomizableContainerBlockEntity && data.hasUUID(CRATE) && !matches(data, CRATE)) {
                         expired.add(block.getBlockPos());
                     }
                 }
                 for (BlockPos pos : expired) {
-                    if (level.getBlockEntity(pos) instanceof BarrelBlockEntity barrel) {
+                    if (level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel) {
                         barrel.clearContent();
-                        ForestProtection.setRaidBarrel(level, pos, Blocks.AIR.defaultBlockState());
+                        ForestProtection.setRaidContainer(level, pos, Blocks.AIR.defaultBlockState());
                     }
                 }
             }
@@ -271,6 +303,10 @@ public final class ForestRaid extends SavedData {
         if (!raid.matches(guard.getPersistentData(), ENEMY)) {
             return;
         }
+        GuardRole role = GuardRole.get(guard);
+        if (event.getSource().getEntity() instanceof ServerPlayer killer) {
+            SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
+        }
         GuardCorpse corpse = OperationsMod.GUARD_CORPSE.get().create(level);
         if (corpse == null) {
             return;
@@ -286,6 +322,9 @@ public final class ForestRaid extends SavedData {
         for (int i = 0; i < pouch.size(); i++) {
             corpse.put(9 + i, pouch.get(i));
         }
+        if (role == GuardRole.TRACKER) {
+            corpse.put(18, RaidRelic.CHIP.stack());
+        }
         if (level.addFreshEntity(corpse)) {
             for (EquipmentSlot slot : equipment) {
                 guard.setItemSlot(slot, ItemStack.EMPTY);
@@ -296,7 +335,7 @@ public final class ForestRaid extends SavedData {
 
     public static void onInspect(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || !player.level().dimension().equals(ForestExpedition.FOREST)
-            || !(player.level().getBlockEntity(event.getPos()) instanceof BarrelBlockEntity barrel)
+            || !(player.level().getBlockEntity(event.getPos()) instanceof RandomizableContainerBlockEntity barrel)
             || !barrel.getPersistentData().hasUUID(CRATE)) {
             return;
         }
@@ -312,9 +351,10 @@ public final class ForestRaid extends SavedData {
         if (tag.hasUUID("id")) {
             raid.id = tag.getUUID("id");
             raid.seed = tag.getLong("seed");
+            raid.industrial = tag.getBoolean("industrial");
             raid.crates = BitSet.valueOf(tag.getLongArray("crates"));
             raid.enemies = BitSet.valueOf(tag.getLongArray("enemies"));
-            raid.locations = ForestRaidAnchors.pickLoot(raid.seed);
+            raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
         }
         return raid;
     }
@@ -324,6 +364,7 @@ public final class ForestRaid extends SavedData {
         if (id != null) {
             tag.putUUID("id", id);
             tag.putLong("seed", seed);
+            tag.putBoolean("industrial", industrial);
             tag.putLongArray("crates", crates.toLongArray());
             tag.putLongArray("enemies", enemies.toLongArray());
         }

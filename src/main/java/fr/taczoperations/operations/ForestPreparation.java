@@ -38,7 +38,7 @@ public final class ForestPreparation extends SavedData {
             return;
         }
         var preparation = server.overworld().getDataStorage().computeIfAbsent(
-            FACTORY, "taczoperations_forest_preparation");
+            FACTORY, "taczoperations_forest_preparation_v2");
         if (preparation.nextChunk >= CHUNKS) {
             return;
         }

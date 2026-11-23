@@ -2,6 +2,8 @@ package fr.taczoperations;
 
 import fr.taczoperations.entity.GuardCorpse;
 import fr.taczoperations.operations.ForestExpedition;
+import fr.taczoperations.operations.RaidRelic;
+import fr.taczoperations.operations.SupplyContract;
 import fr.taczoperations.operations.ForestCombat;
 import fr.taczoperations.operations.ForestRaid;
 import fr.taczoperations.operations.ForestProtection;
@@ -45,6 +47,7 @@ public final class OperationsMod {
 
     static {
         GENERATORS.register("forest", () -> ForestChunkGenerator.CODEC);
+        RaidRelic.register(ITEMS);
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
     }
 
@@ -60,6 +63,7 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onDrops);
+        NeoForge.EVENT_BUS.addListener(SupplyContract::assaultKill);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
         NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onExplosion);
