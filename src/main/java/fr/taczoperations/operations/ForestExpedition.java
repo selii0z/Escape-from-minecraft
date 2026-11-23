@@ -77,8 +77,9 @@ public final class ForestExpedition {
             clearStaleDeparture(partner);
         }
 
-        if (forest.players().stream().anyMatch(other -> !other.isSpectator())) {
-            return "Une équipe occupe déjà la dimension de raid.";
+        if (ForestRaid.hasActiveSession(forest)
+            || forest.players().stream().anyMatch(other -> !other.isSpectator())) {
+            return "Une équipe occupe déjà la dimension de raid (joueurs déconnectés inclus).";
         }
         var random = forest.getRandom();
         var entry = industrial ? industrialPosition(IndustrialZone.ENTRY)
