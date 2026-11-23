@@ -12,6 +12,9 @@ public enum SupplyContract {
     PATROL("Patrouille hostile", 12, 720, 34, Objective.KILL, null),
     WARZONE("Zone de guerre", 25, 1650, 65, Objective.KILL, null),
     SKIRMISH("Escarmouche", 3, 170, 8, Objective.KILL, null),
+    SCAVENGER("Récupération rapide", 3, 150, 8, Objective.CHEST, null),
+    SEARCH_PARTY("Inspection de secteur", 8, 420, 22, Objective.CHEST, null),
+    DEEP_SEARCH("Fouille méthodique", 20, 1150, 52, Objective.CHEST, null),
     INTERCEPTION("Interception", 8, 470, 24, Objective.KILL, null),
     SIEGE("Siège prolongé", 40, 2600, 110, Objective.KILL, null),
     VETERAN_PATROL("Patrouille vétéran", 2, 420, 20, Objective.ELITE, null),
@@ -36,7 +39,7 @@ public enum SupplyContract {
     WATCH(RaidRelic.WATCH, 1), BOARD(RaidRelic.CIRCUIT, 1), ENCRYPTED(RaidRelic.DRIVE, 1),
     SUITCASE(RaidRelic.CASE, 1), OPTIC(RaidRelic.OPTIC, 1), COMMAND(RaidRelic.CHIP, 1), OMEGA(RaidRelic.OMEGA, 1);
 
-    private enum Objective { KILL, ASSAULT, ELITE, BOSS, EXIT, COMBAT_EXIT, INDUSTRIAL_EXIT, BOSS_INTEL, RELIC }
+    private enum Objective { KILL, CHEST, ASSAULT, ELITE, BOSS, EXIT, COMBAT_EXIT, INDUSTRIAL_EXIT, BOSS_INTEL, RELIC }
 
     public static final int AVAILABLE = 0;
     public static final int ACTIVE = 1;
@@ -68,6 +71,7 @@ public enum SupplyContract {
     public String description() {
         return switch (objective) {
             case KILL -> "Éliminer " + amount + " ennemis en raid";
+            case CHEST -> "Fouiller " + amount + " coffres de raid différents";
             case ASSAULT -> "Éliminer " + amount + " gardes avec un AK-47 ou un M4A1 TaCZ";
             case ELITE -> "Éliminer " + amount + " ennemis d’élite";
             case BOSS -> "Éliminer Le Traqueur";
@@ -142,6 +146,15 @@ public enum SupplyContract {
         if (active >= 3) return "Tu as déjà trois contrats actifs.";
         account(player).putInt("raid_" + name(), ACTIVE);
         return "Contrat accepté. Les récompenses sont versées automatiquement.";
+    }
+
+    static void chestOpened(ServerPlayer player) {
+        if (!ForestRaid.isParticipant(player)) return;
+        for (var contract : values()) {
+            if (contract.objective == Objective.CHEST && contract.status(player) == ACTIVE) {
+                contract.advance(player);
+            }
+        }
     }
 
     static void kill(ServerPlayer player, boolean elite, boolean boss) {
