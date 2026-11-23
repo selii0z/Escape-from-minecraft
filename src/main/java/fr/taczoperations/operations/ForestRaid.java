@@ -216,13 +216,8 @@ public final class ForestRaid extends SavedData {
             // Deliver the UI only after the new player has fully respawned.
             respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(
-                "========== RAID ÉCHOUÉ ==========").withStyle(net.minecraft.ChatFormatting.RED));
-            respawned.sendSystemMessage(Component.literal(
-                "Durée : " + (duration / 60) + " min " + (duration % 60) + " s"
-                    + " | Éliminations : " + oldRoot.getInt("taczoperations_raid_kills")
-                    + " | Coffres : " + oldRoot.getInt("taczoperations_run_crates")));
-            respawned.sendSystemMessage(Component.literal(
-                "XP gagnée : " + (base + adjustment) + " (malus de 10 % : " + adjustment + " XP)"));
+                "Raid échoué · +" + (base + adjustment)
+                    + " XP Escape (malus " + adjustment + "). Bilan affiché à l'écran."));
         }
         // The normal death-drop process has already run. Do not duplicate
         // equipment into a custom corpse or copy the raid token on respawn.
@@ -238,6 +233,15 @@ public final class ForestRaid extends SavedData {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || !player.getPersistentData().getBoolean("taczoperations_pending_failed_report")) return;
         player.getPersistentData().remove("taczoperations_pending_failed_report");
+        // Remove stale run state only after its report has been persisted.
+        for (String key : new String[] {
+            "taczoperations_run_kill_xp", "taczoperations_run_search_xp",
+            "taczoperations_run_crates", "taczoperations_run_contracts",
+            "taczoperations_run_started", "taczoperations_run_xp_finalized",
+            "taczoperations_raid_kills", "taczoperations_raid_boss",
+            "taczoperations_relic_baseline"
+        }) player.getPersistentData().remove(key);
+
         CompoundTag report = SupplyContract.account(player).getCompound("last_raid_report");
         if (!report.contains("final_xp") || report.getBoolean("success")) return;
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
