@@ -45,7 +45,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int INDUSTRIAL_FIRST = 65;
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
-                       String partner, String inviter, List<String> candidates, String notice) {
+                       String partner, String inviter, List<String> candidates, String notice, String raidReport) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -60,13 +60,14 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeUtf(inviter);
             buffer.writeCollection(candidates, (buf, name) -> buf.writeUtf(name));
             buffer.writeUtf(notice);
+            buffer.writeUtf(raidReport);
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
             return new View(buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(),
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
-                buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf());
+                buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf());
         }
     }
 
@@ -88,6 +89,17 @@ public final class OperationsMenu extends AbstractContainerMenu {
         this.level = level;
         this.candidates = candidates;
         this.inviter = inviter;
+    }
+
+    private static String lastRaidSummary(ServerPlayer player) {
+        var report = SupplyContract.account(player).getCompound("last_raid_report");
+        if (!report.contains("final_xp")) return "";
+        long seconds = report.getLong("duration_seconds");
+        return (report.getBoolean("success") ? "EXTRACTION RÉUSSIE" : "RAID ÉCHOUÉ")
+            + " | " + (seconds / 60) + "m " + (seconds % 60) + "s"
+            + " | " + report.getInt("kills") + " kills"
+            + " | " + report.getInt("crates") + " coffres"
+            + " | " + report.getInt("final_xp") + " XP";
     }
 
     static void open(ServerPlayer player, BlockPos position, int tab, int requestedPage, String notice) {
@@ -114,7 +126,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.status(player)).toList(),
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.progress(player)).toList(),
             name(player, partner), name(player, inviter),
-            shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice);
+            shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice,
+            lastRaidSummary(player));
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
