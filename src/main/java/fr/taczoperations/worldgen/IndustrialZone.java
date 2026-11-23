@@ -123,6 +123,25 @@ public final class IndustrialZone {
                         }
                     }
                 }
+                // Loading-yard cover is grouped into realistic pallet stacks.
+                // Keep roads and warehouse thresholds clear for navigation.
+                if (x >= 82 && x <= 234 && z >= 545 && z <= 560
+                    && !asphalt && (x - 82) % 17 < 9 && (z - 545) % 8 < 5) {
+                    int localX = (x - 82) % 17;
+                    int localZ = (z - 545) % 8;
+                    out.put(x, FLOOR, z, Blocks.SPRUCE_PLANKS);
+                    if (localX > 0 && localX < 8 && localZ > 0 && localZ < 4) {
+                        out.put(x, FLOOR + 1, z, Blocks.BARREL);
+                        if (((x - 82) / 17) % 3 == 0) out.put(x, FLOOR + 2, z, Blocks.BARREL);
+                    }
+                }
+                // Low concrete barricades and scattered debris provide cover
+                // between the logistics, factory and railway districts.
+                if (!asphalt && !paved && x > 85 && x < 615 && z > 115 && z < 560
+                    && (ForestPlan.hash(x / 5, z / 5, 971) & 127) == 0
+                    && x % 5 <= 2 && z % 5 == 0) {
+                    out.put(x, FLOOR + 1, z, Blocks.STONE_BRICK_WALL);
+                }
                 // Perimeter fencing around industrial compounds, with road gates.
                 boolean entryGate = z == 570 && x >= 54 && x <= 91;
                 boolean exitGate = z == 100 && x >= 573 && x <= 602;
