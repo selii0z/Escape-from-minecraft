@@ -47,3 +47,9 @@ Le tableau s'ouvre sur le tableau de bord illustré. Il affiche six secteurs, la
 Sélectionner **Jour** ou **Nuit**, puis **Solo** ou **Duo**, et cliquer sur **Lancer l’opération**. Le bouton **Duo** ouvre les invitations si aucun équipier n'est associé. L'onglet **Marchands** vend des vivres, des torches et des flèches en crédits militaires. **Progression** affiche l'XP obtenue avec les contrats et le rang correspondant. **Paramètres** enregistre la préférence d'affichage des coordonnées d'extraction.
 
 Remplacer l'ancien JAR dans `mods/` sur le client et, en multijoueur, sur le serveur dédié. Les six sections sont accessibles depuis le tableau placé dans le monde.
+
+## Fouiller les corps dans la version 0.7.0
+
+Abattre un garde en Forêt Noire puis faire un clic droit sur son corps au sol. La première rangée contient son arme et son équipement. La deuxième contient sa réserve de munitions restante et ses effets personnels. L'arme TaCZ garde les données du chargeur, de la chambre et des accessoires au moment où le garde tombe.
+
+Les gardes disposent d'une réserve limitée et y prélèvent les munitions au rechargement. Le corps conserve les objets restants lorsqu'on ferme la fouille ou que le chunk se sauvegarde. Un duo accède au même inventaire. La fouille permet de prendre des objets et les corps sont supprimés lorsqu'ils appartiennent à un ancien raid.

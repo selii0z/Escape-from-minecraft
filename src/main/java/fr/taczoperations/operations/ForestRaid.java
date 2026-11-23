@@ -1,6 +1,8 @@
 package fr.taczoperations.operations;
 
 import com.tacz.guns.api.item.builder.AmmoItemBuilder;
+import fr.taczoperations.OperationsMod;
+import fr.taczoperations.entity.GuardCorpse;
 import fr.taczoperations.worldgen.ForestPlan;
 import fr.taczoperations.worldgen.ForestRaidAnchors;
 import net.minecraft.core.BlockPos;
@@ -17,6 +19,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Pillager;
+import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -36,6 +39,7 @@ import java.util.UUID;
 public final class ForestRaid extends SavedData {
     static final String ENEMY = "taczoperations_enemy";
     private static final String PLAYER = "taczoperations_raid_player";
+    private static final String CORPSE = "taczoperations_raid_corpse";
     private static final String CRATE = "taczoperations_raid_crate";
     private static final String CRATE_INDEX = "taczoperations_raid_crate_index";
     private static final ResourceLocation PISTOL_AMMO = ResourceLocation.fromNamespaceAndPath("tacz", "9mm");
@@ -72,6 +76,15 @@ public final class ForestRaid extends SavedData {
 
     static boolean currentGuard(ServerLevel level, Pillager guard) {
         return get(level).matches(guard.getPersistentData(), ENEMY);
+    }
+
+    public static boolean canKeepCorpse(ServerLevel level, GuardCorpse corpse) {
+        return level.dimension().equals(ForestExpedition.FOREST)
+            && get(level).matches(corpse.getPersistentData(), CORPSE);
+    }
+
+    public static boolean canSearchCorpse(ServerPlayer player, GuardCorpse corpse) {
+        return isParticipant(player) && canKeepCorpse(player.serverLevel(), corpse);
     }
 
     static boolean hasRaidToken(ServerPlayer player) {
@@ -169,6 +182,7 @@ public final class ForestRaid extends SavedData {
         guard.setDropChance(EquipmentSlot.MAINHAND, 0);
         guard.setDropChance(EquipmentSlot.CHEST, 0);
         ForestCombat.arm(guard);
+        GuardPouch.load(guard);
         return level.addFreshEntity(guard);
     }
 
@@ -192,20 +206,17 @@ public final class ForestRaid extends SavedData {
             return false;
         }
         barrel.getPersistentData().putUUID(CRATE, id);
-        boolean body = index < 0;
-        if (!body) {
-            barrel.getPersistentData().putInt(CRATE_INDEX, index);
-        }
+        barrel.getPersistentData().putInt(CRATE_INDEX, index);
         ItemStack labeled = new ItemStack(Items.BARREL);
         labeled.set(DataComponents.CUSTOM_NAME, Component.literal(name));
         barrel.applyComponentsFromItemStack(labeled);
-        barrel.setItem(random.nextInt(9), new ItemStack(Items.BREAD, 1 + random.nextInt(body ? 2 : 4)));
+        barrel.setItem(random.nextInt(9), new ItemStack(Items.BREAD, 1 + random.nextInt(4)));
         int supply = 2 + random.nextInt(5);
         ItemStack ammo = random.nextBoolean() ? AmmoItemBuilder.create().setId(PISTOL_AMMO)
             .setCount(supply).build() : ItemStack.EMPTY;
         barrel.setItem(9 + random.nextInt(9), ammo.isEmpty() ? new ItemStack(Items.IRON_INGOT, supply) : ammo);
         if (random.nextInt(3) == 0) {
-            barrel.setItem(18 + random.nextInt(9), new ItemStack(body ? Items.COOKED_BEEF : Items.GOLDEN_CARROT));
+            barrel.setItem(18 + random.nextInt(9), new ItemStack(Items.GOLDEN_CARROT));
         }
         barrel.setChanged();
         return true;
@@ -235,11 +246,18 @@ public final class ForestRaid extends SavedData {
     }
 
     public static void onEntityJoin(EntityJoinLevelEvent event) {
-        if (event.getLevel() instanceof ServerLevel level && level.dimension().equals(ForestExpedition.FOREST)
-            && event.getEntity() instanceof Mob mob) {
+        if (!(event.getLevel() instanceof ServerLevel level) || !level.dimension().equals(ForestExpedition.FOREST)) {
+            return;
+        }
+        if (event.getEntity() instanceof Mob mob) {
             if (!(mob instanceof Pillager) || !get(level).matches(mob.getPersistentData(), ENEMY)) {
                 event.setCanceled(true);
             }
+        } else if (!event.loadedFromDisk() && event.getEntity() instanceof AbstractArrow arrow
+            && arrow.getOwner() instanceof Pillager guard && guard.getMainHandItem().is(Items.CROSSBOW)
+            && guard.getPersistentData().hasUUID(ENEMY)
+            && (!currentGuard(level, guard) || GuardPouch.consume(guard, 1, true) == 0)) {
+            event.setCanceled(true);
         }
     }
 
@@ -253,9 +271,26 @@ public final class ForestRaid extends SavedData {
         if (!raid.matches(guard.getPersistentData(), ENEMY)) {
             return;
         }
-        BlockPos pos = findFloor(level, guard.blockPosition(), 2, true);
-        if (pos != null) {
-            raid.putCrate(level, pos, "Effets du garde", new Random(level.getRandom().nextLong()), -1);
+        GuardCorpse corpse = OperationsMod.GUARD_CORPSE.get().create(level);
+        if (corpse == null) {
+            return;
+        }
+        corpse.moveTo(guard.getX(), guard.getY(), guard.getZ(), guard.getYRot(), 0);
+        corpse.getPersistentData().putUUID(CORPSE, raid.id);
+        EquipmentSlot[] equipment = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+        for (int i = 0; i < equipment.length; i++) {
+            corpse.put(i, guard.getItemBySlot(equipment[i]));
+        }
+        var pouch = GuardPouch.load(guard);
+        for (int i = 0; i < pouch.size(); i++) {
+            corpse.put(9 + i, pouch.get(i));
+        }
+        if (level.addFreshEntity(corpse)) {
+            for (EquipmentSlot slot : equipment) {
+                guard.setItemSlot(slot, ItemStack.EMPTY);
+            }
+            GuardPouch.clear(guard);
         }
     }
 

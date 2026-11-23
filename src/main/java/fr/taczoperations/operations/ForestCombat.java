@@ -106,8 +106,13 @@ public final class ForestCombat {
             switch (result) {
                 case SUCCESS -> aim.failures = 0;
                 case NO_AMMO -> {
-                    gun.setCurrentAmmoCount(guard.getMainHandItem(), MAGAZINE);
-                    aim.nextShot += 24;
+                    int loaded = GuardPouch.consume(guard, MAGAZINE, false);
+                    if (loaded > 0) {
+                        gun.setCurrentAmmoCount(guard.getMainHandItem(), loaded);
+                        aim.nextShot += 24;
+                    } else {
+                        operator.aim(false);
+                    }
                 }
                 case NOT_DRAW -> operator.draw(guard::getMainHandItem);
                 case NEED_BOLT -> operator.bolt();
@@ -126,6 +131,7 @@ public final class ForestCombat {
 
     private static void crossbow(Pillager guard) {
         AIM.remove(guard);
+        GuardPouch.switchToArrows(guard);
         guard.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
     }
 

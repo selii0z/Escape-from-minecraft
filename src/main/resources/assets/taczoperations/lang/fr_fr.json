@@ -1,1 +1,4 @@
-{"block.taczoperations.operations_board": "Tableau des opérations"}
+{
+  "block.taczoperations.operations_board": "Tableau des opérations",
+  "container.taczoperations.guard_corpse": "Corps du garde"
+}
