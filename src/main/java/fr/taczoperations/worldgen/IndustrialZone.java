@@ -53,7 +53,7 @@ public final class IndustrialZone {
     }
 
     private static boolean road(int x, int z) {
-        return (x >= 55 && x <= 595 && (Math.abs(z - 405) <= 7 || Math.abs(z - 290) <= 7))
+        return (x >= 55 && x <= 595 && (Math.abs(z - 475) <= 7 || Math.abs(z - 290) <= 7))
             || (z >= 95 && z <= 575 && (Math.abs(x - 248) <= 7 || Math.abs(x - 455) <= 7))
             || (z >= 420 && z <= 570 && Math.abs(x - 75) <= 6);
     }
@@ -86,7 +86,7 @@ public final class IndustrialZone {
                     }
                 }
                 // Road markings, drains and street lighting follow the grid.
-                if (asphalt && (z == 405 || z == 290) && x % 12 < 5) {
+                if (asphalt && (z == 475 || z == 290) && x % 12 < 5) {
                     out.put(x, FLOOR, z, Blocks.YELLOW_CONCRETE);
                 }
                 if (asphalt && (x == 248 || x == 455) && z % 12 < 5) {
@@ -96,7 +96,7 @@ public final class IndustrialZone {
                     && z >= 110 && z <= 565 && z % 38 == 0) {
                     streetlight(out, x, z);
                 }
-                if ((z == 396 || z == 414 || z == 281 || z == 299)
+                if ((z == 466 || z == 484 || z == 281 || z == 299)
                     && x >= 80 && x <= 580 && x % 45 == 0) {
                     streetlight(out, x, z);
                 }
