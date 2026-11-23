@@ -101,6 +101,10 @@ public enum SupplyContract {
         String counter = amount == 5 ? "raid_kill_xp" : "raid_search_xp";
         data.putInt(counter,
             (int) Math.min(Integer.MAX_VALUE, (long) data.getInt(counter) + amount));
+        String runCounter = amount == 5 ? "taczoperations_run_kill_xp" : "taczoperations_run_search_xp";
+        CompoundTag run = player.getPersistentData();
+        run.putInt(runCounter, (int) Math.min(Integer.MAX_VALUE,
+            (long) run.getInt(runCounter) + amount));
         player.displayClientMessage(net.minecraft.network.chat.Component.literal(
             "+" + amount + " XP Escape from Minecraft · " + source), true);
     }
@@ -159,6 +163,8 @@ public enum SupplyContract {
     static void departure(ServerPlayer player) {
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
+        player.getPersistentData().putInt("taczoperations_run_kill_xp", 0);
+        player.getPersistentData().putInt("taczoperations_run_search_xp", 0);
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
             baseline.putInt(relic.id, count(player, relic.item()));
@@ -187,6 +193,13 @@ public enum SupplyContract {
                 contract.finish(player);
             }
         }
+        int killXp = player.getPersistentData().getInt("taczoperations_run_kill_xp");
+        int searchXp = player.getPersistentData().getInt("taczoperations_run_search_xp");
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            "Bilan Escape · " + (killXp + searchXp) + " XP (combats : "
+                + killXp + ", fouilles : " + searchXp + ")"));
+        player.getPersistentData().remove("taczoperations_run_kill_xp");
+        player.getPersistentData().remove("taczoperations_run_search_xp");
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().remove("taczoperations_relic_baseline");
