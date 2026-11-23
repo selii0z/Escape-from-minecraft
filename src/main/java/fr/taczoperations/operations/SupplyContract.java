@@ -181,6 +181,7 @@ public enum SupplyContract {
         player.getPersistentData().putInt("taczoperations_run_kill_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_search_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_crates", 0);
+        player.getPersistentData().putInt("taczoperations_run_contracts", 0);
         player.getPersistentData().putLong("taczoperations_run_started", player.serverLevel().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
@@ -215,8 +216,7 @@ public enum SupplyContract {
         int crates = player.getPersistentData().getInt("taczoperations_run_crates");
         long started = player.getPersistentData().getLong("taczoperations_run_started");
         long seconds = started > 0 ? Math.max(0, (player.serverLevel().getGameTime() - started) / 20) : 0;
-        int completed = 0;
-        for (var contract : values()) if (contract.status(player) == COMPLETED) completed++;
+        int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "========== EXTRACTION RÉUSSIE ==========").withStyle(net.minecraft.ChatFormatting.GREEN));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -232,6 +232,7 @@ public enum SupplyContract {
         player.getPersistentData().remove("taczoperations_run_kill_xp");
         player.getPersistentData().remove("taczoperations_run_search_xp");
         player.getPersistentData().remove("taczoperations_run_crates");
+        player.getPersistentData().remove("taczoperations_run_contracts");
         player.getPersistentData().remove("taczoperations_run_started");
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
@@ -264,6 +265,10 @@ public enum SupplyContract {
         CompoundTag account = account(player);
         account.putInt("raid_" + name(), COMPLETED);
         account.putInt("completed_" + name(), account.getInt("completed_" + name()) + 1);
+        if (ForestRaid.isParticipant(player)) {
+            CompoundTag run = player.getPersistentData();
+            run.putInt("taczoperations_run_contracts", run.getInt("taczoperations_run_contracts") + 1);
+        }
         account.putInt("progress_" + name(), amount);
         account.putInt("credits", Math.min(Integer.MAX_VALUE - credits, balance(player)) + credits);
         player.giveExperiencePoints(experience);
