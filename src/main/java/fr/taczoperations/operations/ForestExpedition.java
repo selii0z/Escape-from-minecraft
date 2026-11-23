@@ -134,7 +134,7 @@ public final class ForestExpedition {
         if (player.level().dimension().equals(FOREST)) {
             return;
         }
-        if (!extracted) restoreInventory(player);
+        restoreInventory(player);
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
     }
@@ -287,7 +287,8 @@ public final class ForestExpedition {
             return false;
         }
         if (leavingRaid) ForestRaid.finishParticipant(player);
-        player.getPersistentData().remove(RETURN_POINT);
+        if (!extracted) restoreInventory(player);
+        clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
         if (leavingRaid) {
             ForestRaid.cleanupWhenEmpty(raidLevel);
