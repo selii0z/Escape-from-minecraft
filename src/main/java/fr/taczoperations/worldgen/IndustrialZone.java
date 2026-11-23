@@ -70,7 +70,7 @@ public final class IndustrialZone {
                 if (x < 0 || z < 0 || x >= SIZE || z >= SIZE) continue;
                 boolean asphalt = road(x, z);
                 boolean paved = yard(x, z);
-                int noise = ForestPlan.hash(x, z, 400);
+                long noise = ForestPlan.hash(x, z, 400);
                 Block surface = asphalt ? ((noise & 63) == 0 ? Blocks.ANDESITE : Blocks.GRAY_CONCRETE)
                     : paved ? ((noise & 31) == 0 ? Blocks.CRACKED_STONE_BRICKS : Blocks.STONE_BRICKS)
                     : (noise & 7) == 0 ? Blocks.GRAVEL : Blocks.COARSE_DIRT;
