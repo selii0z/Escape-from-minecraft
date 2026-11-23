@@ -88,6 +88,20 @@ public final class ForestRaid extends SavedData {
         raid.setDirty();
     }
 
+    // Called after a successful extraction. Keep the raid alive while a duo
+    // partner is still inside; otherwise discard all temporary raid entities.
+    static void cleanupWhenEmpty(ServerLevel level) {
+        if (level.players().stream().anyMatch(ForestRaid::isParticipant)) {
+            return;
+        }
+        for (var entity : level.getAllEntities()) {
+            if (entity instanceof GuardCorpse || entity instanceof ItemEntity
+                || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
+                entity.discard();
+            }
+        }
+    }
+
     static boolean isParticipant(ServerPlayer player) {
         return player.level().dimension().equals(ForestExpedition.FOREST)
             && get(player.serverLevel()).matches(player.getPersistentData(), PLAYER);
