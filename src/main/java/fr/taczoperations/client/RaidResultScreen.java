@@ -51,7 +51,7 @@ public final class RaidResultScreen extends Screen {
             (success ? "Bonus extraction : +" : "Malus de défaite : ") + adjustment + " XP",
             x, y + 19, success ? 0xff91dca1 : 0xffed9288);
         graphics.drawCenteredString(font,
-            "XP FINALE : " + Math.max(0, combatXp + searchXp + adjustment),
+            "XP FINALE : " + Math.max(0L, (long) combatXp + searchXp + adjustment),
             x, y + 54, 0xffe9d394);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
