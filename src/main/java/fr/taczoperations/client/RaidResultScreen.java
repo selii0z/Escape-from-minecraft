@@ -32,9 +32,9 @@ public final class RaidResultScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        graphics.fill(0, 0, width, height, 0x88000000);
         int x = width / 2, y = height / 2;
-        graphics.fill(x - 175, y - 125, x + 175, y + 130, 0xee151a1b);
+        graphics.fill(x - 175, y - 125, x + 175, y + 130, 0xff202426);
         graphics.fill(x - 175, y - 125, x + 175, y - 121,
             success ? 0xff72ba87 : 0xffc76862);
         graphics.drawCenteredString(font, title, x, y - 107,
@@ -54,6 +54,11 @@ public final class RaidResultScreen extends Screen {
             "XP FINALE : " + Math.max(0L, (long) combatXp + searchXp + adjustment),
             x, y + 54, 0xffe9d394);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // The report draws its own dim overlay; never blur its foreground.
     }
 
     @Override
