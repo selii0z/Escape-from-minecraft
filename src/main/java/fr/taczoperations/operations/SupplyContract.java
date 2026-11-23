@@ -141,6 +141,22 @@ public enum SupplyContract {
         return delta;
     }
 
+    // Saved after each raid so a future result screen can reopen the last report.
+    static void saveRaidReport(ServerPlayer player, boolean success, long seconds,
+                               int kills, int crates, int contracts, int killXp, int searchXp, int adjustment) {
+        CompoundTag report = new CompoundTag();
+        report.putBoolean("success", success);
+        report.putLong("duration_seconds", Math.max(0, seconds));
+        report.putInt("kills", Math.max(0, kills));
+        report.putInt("crates", Math.max(0, crates));
+        report.putInt("contracts", Math.max(0, contracts));
+        report.putInt("combat_xp", Math.max(0, killXp));
+        report.putInt("search_xp", Math.max(0, searchXp));
+        report.putInt("adjustment_xp", adjustment);
+        report.putInt("final_xp", Math.max(0, killXp + searchXp + adjustment));
+        account(player).put("last_raid_report", report);
+    }
+
     static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }
     static void toggleExtraction(ServerPlayer player) { account(player).putBoolean("hide_extraction", showExtraction(player)); }
 
@@ -252,6 +268,7 @@ public enum SupplyContract {
         long started = player.getPersistentData().getLong("taczoperations_run_started");
         long seconds = started > 0 ? Math.max(0, (player.server.overworld().getGameTime() - started) / 20) : 0;
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
+        saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, bonus);
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "========== EXTRACTION RÉUSSIE ==========").withStyle(net.minecraft.ChatFormatting.GREEN));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
