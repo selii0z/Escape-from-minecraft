@@ -1,6 +1,8 @@
 package fr.taczoperations.operations;
 
+import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
+import com.tacz.guns.api.item.builder.AmmoItemBuilder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.ContainerHelper;
@@ -22,9 +24,14 @@ final class GuardPouch {
         }
         var random = new Random(guard.getUUID().getLeastSignificantBits());
         int quantity = 9 + random.nextInt(16);
-        items.set(0, guard.getMainHandItem().getItem() instanceof IGun
-            ? OperationsShop.ammo(GuardRole.get(guard).ammo, quantity)
-            : new ItemStack(Items.ARROW, quantity));
+        if (guard.getMainHandItem().getItem() instanceof IGun gun) {
+            var ammoId = TimelessAPI.getCommonGunIndex(gun.getGunId(guard.getMainHandItem()))
+                .map(index -> index.getGunData().getAmmoId()).orElse(null);
+            items.set(0, ammoId == null ? ItemStack.EMPTY
+                : AmmoItemBuilder.create().setId(ammoId).setCount(quantity).build());
+        } else {
+            items.set(0, new ItemStack(Items.ARROW, quantity));
+        }
         // Each guard carries a different mix of field supplies, scrap and valuables.
         var food = new net.minecraft.world.item.Item[] {
             Items.BREAD, Items.COOKED_BEEF, Items.BAKED_POTATO,
