@@ -1,6 +1,7 @@
 package fr.taczoperations.operations;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -154,7 +155,16 @@ public enum SupplyContract {
         report.putInt("adjustment_xp", adjustment);
         report.putInt("final_xp", (int) Math.min(Integer.MAX_VALUE,
             Math.max(0L, (long) killXp + searchXp + adjustment)));
-        account(player).put("last_raid_report", report);
+        CompoundTag data = account(player);
+        data.put("last_raid_report", report);
+        // Retain the ten most recent runs, newest first, for a future history tab.
+        ListTag previous = data.getList("raid_history", 10);
+        ListTag history = new ListTag();
+        history.add(report.copy());
+        for (int i = 0; i < previous.size() && i < 9; i++) {
+            history.add(previous.getCompound(i).copy());
+        }
+        data.put("raid_history", history);
     }
 
     static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }
