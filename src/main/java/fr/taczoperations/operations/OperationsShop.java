@@ -64,6 +64,17 @@ public enum OperationsShop {
                     offers.add(buy("TaCZ · " + id.getPath().replace('_', ' '), price,
                         () -> weapon(id, rounds), null, 0));
                 }
+                // Sell ammunition for every loaded gun family, including addon packs.
+                var ammoTypes = new java.util.TreeSet<ResourceLocation>(
+                    java.util.Comparator.comparing(ResourceLocation::toString));
+                for (var entry : TimelessAPI.getAllCommonGunIndex()) {
+                    var gunData = entry.getValue().getGunData();
+                    if (gunData != null && gunData.getAmmoId() != null) ammoTypes.add(gunData.getAmmoId());
+                }
+                for (ResourceLocation ammoId : ammoTypes) {
+                    offers.add(buy("Munitions · " + ammoId.getPath().replace('_', ' '), 110,
+                        () -> AmmoItemBuilder.create().setId(ammoId).setCount(30).build(), null, 0));
+                }
                 offers.add(buy("24 × 9 mm", 65, () -> ammo("9mm", 24), null, 0));
                 offers.add(buy("30 × 7,62 × 39", 120, () -> ammo("762x39", 30), null, 0));
                 offers.add(buy("12 × calibre 12", 95, () -> ammo("12g", 12), null, 0));
