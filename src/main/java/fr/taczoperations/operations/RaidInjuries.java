@@ -25,7 +25,7 @@ public final class RaidInjuries {
         if(random.nextFloat()<Math.min(.45F,damage*.045F)) {
             int old=data.getInt(BLEED);
             data.putInt(BLEED,Math.min(2,old+1));
-            if(old<2)p.sendSystemMessage(Component.literal(old==0?"Blessure : saignement. Utilise un bandage.":"Saignement important : kit hémostatique requis."));
+            if(old<2)p.sendSystemMessage(Component.literal(old==0?"Blessure : saignement. Utilise un bandage.":"Saignement important : deux bandages ou un kit hémostatique."));
         }
         if((zone==EquipmentSlot.LEGS||zone==EquipmentSlot.FEET)&&!data.getBoolean(FRACTURE)&&damage>=2.5F&&random.nextFloat()<.22F){
             data.putBoolean(FRACTURE,true);p.sendSystemMessage(Component.literal("Fracture à la jambe : attelle requise."));
@@ -48,12 +48,20 @@ public final class RaidInjuries {
         if(!active(p))return false;
         var d=p.getPersistentData();
         switch(kind) {
-            case "bandage" -> {if(d.getInt(BLEED)!=1)return false;d.remove(BLEED);}
+            case "bandage" -> {
+                int bleed=d.getInt(BLEED);
+                if(bleed<=0)return false;
+                if(bleed==1)d.remove(BLEED);else d.putInt(BLEED,bleed-1);
+            }
             case "hemostat" -> {if(d.getInt(BLEED)<=0)return false;d.remove(BLEED);}
             case "splint" -> {if(!d.getBoolean(FRACTURE))return false;d.remove(FRACTURE);}
+            case "salewa" -> {
+                if(p.getHealth()>=p.getMaxHealth())return false;
+                p.heal(8F);
+            }
             case "medkit" -> {
-                if(!d.getBoolean(ARM)&&p.getHealth()>=p.getMaxHealth())return false;
-                d.remove(ARM);p.heal(6F);
+                if(!d.getBoolean(ARM))return false;
+                d.remove(ARM);
             }
             default -> {return false;}
         }

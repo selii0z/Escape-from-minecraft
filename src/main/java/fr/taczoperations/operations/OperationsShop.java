@@ -122,6 +122,7 @@ public enum OperationsShop {
                 offers.add(buy("Attelle",95,()->medical("splint"),null,0));
                 offers.add(buy("Kit hémostatique",120,()->medical("hemostat"),null,0));
                 offers.add(buy("Kit de premiers secours",180,()->medical("medkit"),null,0));
+                offers.add(buy("Salewa",150,()->medical("salewa"),null,0));
                 offers.add(buy("Rations de terrain", 80, () -> new ItemStack(Items.COOKED_BEEF, 4), null, 0));
                 offers.add(buy("Soupe de survie", 55, () -> new ItemStack(Items.RABBIT_STEW), null, 0));
                 offers.add(buy("Pomme dorée", 190, () -> new ItemStack(Items.GOLDEN_APPLE), RaidRelic.WATCH, 0));

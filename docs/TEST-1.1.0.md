@@ -13,3 +13,5 @@ La livraison complète est en développement. Ne pas remplacer le JAR stable tan
 - Blessures : saignements, fractures et soins ; vérifier effets et retour hors raid.
 
 Les fonctionnalités restantes du roadmap ne sont pas terminées.
+
+- Bandage : stoppe un saignement léger, réduit un saignement important d'un cran ; ne rend aucun PV. Salewa : rend jusqu'à 8 PV (4 cœurs), sans nourriture et sans traiter le saignement. Attelle : fracture ; kit hémostatique : hémorragie ; kit de premiers secours : bras blessé. Vérifier que les objets ne sont consommés que si le soin est utile.
