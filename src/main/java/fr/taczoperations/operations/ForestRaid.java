@@ -400,6 +400,11 @@ public final class ForestRaid extends SavedData {
         } else if (role != GuardRole.TRACKER && equipmentRoll == 0) {
             vest = Items.DIAMOND_CHESTPLATE;
         }
+        if (role == GuardRole.PMC) {
+            int rarity = guard.getRandom().nextInt(100);
+            guard.getPersistentData().putInt("taczoperations_pmc_rarity", rarity < 40 ? 0 : rarity < 70 ? 1 : rarity < 90 ? 2 : rarity < 98 ? 3 : 4);
+            vest = rarity < 40 ? Items.LEATHER_CHESTPLATE : rarity < 70 ? Items.CHAINMAIL_CHESTPLATE : rarity < 98 ? Items.IRON_CHESTPLATE : Items.DIAMOND_CHESTPLATE;
+        }
         guard.setItemSlot(EquipmentSlot.CHEST, new ItemStack(vest));
         if (equipmentRoll == 1 || equipmentRoll == 4) {
             guard.setItemSlot(EquipmentSlot.LEGS, new ItemStack(
@@ -410,6 +415,13 @@ public final class ForestRaid extends SavedData {
         } else if (role.elite()) {
             guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(role == GuardRole.TRACKER ? Items.DIAMOND_HELMET : Items.IRON_HELMET));
         }
+        if (role == GuardRole.PMC) {
+            int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");
+            guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(tier >= 4 ? Items.DIAMOND_HELMET : tier >= 2 ? Items.IRON_HELMET : Items.LEATHER_HELMET));
+            guard.setItemSlot(EquipmentSlot.LEGS, new ItemStack(tier >= 4 ? Items.DIAMOND_LEGGINGS : tier >= 2 ? Items.IRON_LEGGINGS : Items.LEATHER_LEGGINGS));
+            guard.setItemSlot(EquipmentSlot.FEET, new ItemStack(tier >= 4 ? Items.DIAMOND_BOOTS : tier >= 2 ? Items.IRON_BOOTS : Items.LEATHER_BOOTS));
+        }
+        guard.setDropChance(EquipmentSlot.LEGS, 0);
         guard.setDropChance(EquipmentSlot.HEAD, 0);
         guard.setDropChance(EquipmentSlot.FEET, 0);
         guard.setDropChance(EquipmentSlot.MAINHAND, 0);
