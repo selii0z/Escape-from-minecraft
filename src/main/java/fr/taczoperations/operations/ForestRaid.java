@@ -428,6 +428,18 @@ public final class ForestRaid extends SavedData {
                 guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations", id))));
             }
         }
+        if (role == GuardRole.PMC) {
+            int[] uniformColors = {0x414A35, 0x70644C, 0x33383B, 0x555C4B};
+            int color = uniformColors[Math.floorMod(guard.getUUID().hashCode(), uniformColors.length)];
+            for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+                ItemStack armor = guard.getItemBySlot(slot);
+                if (armor.is(Items.LEATHER_HELMET) || armor.is(Items.LEATHER_CHESTPLATE)
+                    || armor.is(Items.LEATHER_LEGGINGS) || armor.is(Items.LEATHER_BOOTS)) {
+                    armor.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
+                        new net.minecraft.world.item.component.DyedItemColor(color, false));
+                }
+            }
+        }
         guard.setDropChance(EquipmentSlot.LEGS, 0);
         guard.setDropChance(EquipmentSlot.HEAD, 0);
         guard.setDropChance(EquipmentSlot.FEET, 0);
