@@ -236,7 +236,7 @@ public enum SupplyContract {
 
     // Saved after each raid so a future result screen can reopen the last report.
     static void saveRaidReport(ServerPlayer player, boolean success, long seconds,
-                               int kills, int crates, int contracts, int killXp, int searchXp, int adjustment) {
+                               int kills, int crates, int contracts, int killXp, int searchXp, int contractXp, int adjustment) {
         CompoundTag report = new CompoundTag();
         report.putBoolean("success", success);
         report.putLong("duration_seconds", Math.max(0, seconds));
@@ -245,9 +245,10 @@ public enum SupplyContract {
         report.putInt("contracts", Math.max(0, contracts));
         report.putInt("combat_xp", Math.max(0, killXp));
         report.putInt("search_xp", Math.max(0, searchXp));
+        report.putInt("contract_xp", Math.max(0, contractXp));
         report.putInt("adjustment_xp", adjustment);
         report.putInt("final_xp", (int) Math.min(Integer.MAX_VALUE,
-            Math.max(0L, (long) killXp + searchXp + adjustment)));
+            Math.max(0L, (long) killXp + searchXp + contractXp + adjustment)));
         CompoundTag data = account(player);
         data.put("last_raid_report", report);
         // Retain the ten most recent runs, newest first, for a future history tab.
@@ -330,6 +331,7 @@ public enum SupplyContract {
         player.getPersistentData().putInt("taczoperations_run_search_xp", 0);
         player.getPersistentData().putInt("taczoperations_run_crates", 0);
         player.getPersistentData().putInt("taczoperations_run_contracts", 0);
+        player.getPersistentData().putInt("taczoperations_run_contract_xp", 0);
         player.getPersistentData().putLong("taczoperations_run_started", player.server.overworld().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
@@ -366,17 +368,19 @@ public enum SupplyContract {
         long started = player.getPersistentData().getLong("taczoperations_run_started");
         long seconds = started > 0 ? Math.max(0, (player.server.overworld().getGameTime() - started) / 20) : 0;
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
-        saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, bonus);
+        int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
+        saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus);
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-            new RaidResultPayload(true, seconds, kills, crates, completed, killXp, searchXp, bonus));
+            new RaidResultPayload(true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus));
         // The graphical report is authoritative; keep chat concise.
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-            "Extraction réussie · +" + ((long) killXp + searchXp + bonus)
+            "Extraction réussie · +" + ((long) killXp + searchXp + contractXp + bonus)
                 + " XP Escape (bonus +" + bonus + "). Bilan affiché à l'écran."));
         player.getPersistentData().remove("taczoperations_run_kill_xp");
         player.getPersistentData().remove("taczoperations_run_search_xp");
         player.getPersistentData().remove("taczoperations_run_crates");
         player.getPersistentData().remove("taczoperations_run_contracts");
+        player.getPersistentData().remove("taczoperations_run_contract_xp");
         player.getPersistentData().remove("taczoperations_run_started");
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
@@ -418,6 +422,7 @@ public enum SupplyContract {
         if (player.getPersistentData().contains("taczoperations_run_started")) {
             CompoundTag run = player.getPersistentData();
             run.putInt("taczoperations_run_contracts", run.getInt("taczoperations_run_contracts") + 1);
+            trackContractXp(player, experience);
         }
         account.putInt("progress_" + name(), amount);
         account.putInt("credits", Math.min(Integer.MAX_VALUE - credits, balance(player)) + credits);
@@ -429,6 +434,13 @@ public enum SupplyContract {
             "Contrat terminé · " + title + " · +" + credits + " crédits / +" + experience + " XP"));
         renewCycle(player);
         rewardLevels(player);
+    }
+
+    private static void trackContractXp(ServerPlayer player, int amount) {
+        CompoundTag run = player.getPersistentData();
+        if (!run.contains("taczoperations_run_started")) return;
+        run.putInt("taczoperations_run_contract_xp", (int)Math.min(Integer.MAX_VALUE,
+            (long)Math.max(0, run.getInt("taczoperations_run_contract_xp")) + amount));
     }
 
     static void rewardLevels(ServerPlayer player) {
@@ -471,6 +483,7 @@ public enum SupplyContract {
         }
         data.putInt("contract_cycles", (int) Math.min(Integer.MAX_VALUE, (long) cyclesCompleted(player) + 1));
         data.putInt("contract_cycle_xp", (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("contract_cycle_xp") + 2500));
+        trackContractXp(player, 2500);
         data.putInt("credits", (int) Math.min(Integer.MAX_VALUE, (long) balance(player) + 25000));
         player.getInventory().placeItemBackInInventory(RaidRelic.OPTIC.stack());
         player.getInventory().placeItemBackInInventory(new ItemStack(Items.GOLDEN_APPLE, 4));

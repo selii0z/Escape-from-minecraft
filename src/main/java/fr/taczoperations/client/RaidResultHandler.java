@@ -10,6 +10,6 @@ public final class RaidResultHandler {
     public static void handle(RaidResultPayload report, IPayloadContext context) {
         context.enqueueWork(() -> Minecraft.getInstance().setScreen(new RaidResultScreen(
             report.success(), report.duration(), report.kills(), report.crates(),
-            report.contracts(), report.combatXp(), report.searchXp(), report.adjustment())));
+            report.contracts(), report.combatXp(), report.searchXp(), report.contractXp(), report.adjustment())));
     }
 }

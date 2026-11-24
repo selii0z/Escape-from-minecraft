@@ -71,7 +71,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1").playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
+        event.registrar("2").playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
             (report, context) -> {
                 // Never resolve client-only screen classes on a dedicated server.
                 if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {

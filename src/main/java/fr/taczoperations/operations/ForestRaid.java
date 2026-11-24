@@ -212,11 +212,12 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_crates"),
                 oldRoot.getInt("taczoperations_run_contracts"),
                 oldRoot.getInt("taczoperations_run_kill_xp"),
-                oldRoot.getInt("taczoperations_run_search_xp"), adjustment);
+                oldRoot.getInt("taczoperations_run_search_xp"),
+                oldRoot.getInt("taczoperations_run_contract_xp"), adjustment);
             // Deliver the UI only after the new player has fully respawned.
             respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(
-                "Raid échoué · +" + (base + adjustment)
+                "Raid échoué · +" + (base + oldRoot.getInt("taczoperations_run_contract_xp") + adjustment)
                     + " XP Escape (malus " + adjustment + "). Bilan affiché à l'écran."));
         }
         // The normal death-drop process has already run. Do not duplicate
@@ -236,7 +237,7 @@ public final class ForestRaid extends SavedData {
         // Remove stale run state only after its report has been persisted.
         for (String key : new String[] {
             "taczoperations_run_kill_xp", "taczoperations_run_search_xp",
-            "taczoperations_run_crates", "taczoperations_run_contracts",
+            "taczoperations_run_crates", "taczoperations_run_contracts", "taczoperations_run_contract_xp",
             "taczoperations_run_started", "taczoperations_run_xp_finalized",
             "taczoperations_raid_kills", "taczoperations_raid_boss",
             "taczoperations_relic_baseline"
@@ -248,7 +249,7 @@ public final class ForestRaid extends SavedData {
             new RaidResultPayload(false, report.getLong("duration_seconds"),
                 report.getInt("kills"), report.getInt("crates"), report.getInt("contracts"),
                 report.getInt("combat_xp"), report.getInt("search_xp"),
-                report.getInt("adjustment_xp")));
+                report.getInt("contract_xp"), report.getInt("adjustment_xp")));
     }
 
     static boolean hasActiveSession(ServerLevel level) {

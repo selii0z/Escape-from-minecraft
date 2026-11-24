@@ -9,10 +9,10 @@ import net.minecraft.network.chat.Component;
 public final class RaidResultScreen extends Screen {
     private final boolean success;
     private final long duration;
-    private final int kills, crates, contracts, combatXp, searchXp, adjustment;
+    private final int kills, crates, contracts, combatXp, searchXp, contractXp, adjustment;
 
     public RaidResultScreen(boolean success, long duration, int kills, int crates,
-                            int contracts, int combatXp, int searchXp, int adjustment) {
+                            int contracts, int combatXp, int searchXp, int contractXp, int adjustment) {
         super(Component.literal(success ? "EXTRACTION RÉUSSIE" : "RAID ÉCHOUÉ"));
         this.success = success;
         this.duration = duration;
@@ -21,6 +21,7 @@ public final class RaidResultScreen extends Screen {
         this.contracts = contracts;
         this.combatXp = combatXp;
         this.searchXp = searchXp;
+        this.contractXp = contractXp;
         this.adjustment = adjustment;
     }
 
@@ -51,7 +52,7 @@ public final class RaidResultScreen extends Screen {
             x, y - 77, 0xffdadada);
         graphics.drawCenteredString(font, "Éliminations : " + kills + "   |   Coffres : " + crates,
             x, y - 54, 0xffdadada);
-        graphics.drawCenteredString(font, "Contrats terminés : " + contracts,
+        graphics.drawCenteredString(font, "Contrats terminés : " + contracts + "   |   XP contrats : " + contractXp,
             x, y - 31, 0xffdadada);
         graphics.drawCenteredString(font, "XP combats : " + combatXp + "   |   XP fouilles : " + searchXp,
             x, y - 8, 0xffdadada);
@@ -59,7 +60,7 @@ public final class RaidResultScreen extends Screen {
             (success ? "Bonus extraction : +" : "Malus de défaite : ") + adjustment + " XP",
             x, y + 19, success ? 0xff91dca1 : 0xffed9288);
         graphics.drawCenteredString(font,
-            "XP FINALE : " + Math.max(0L, (long) combatXp + searchXp + adjustment),
+            "XP FINALE : " + Math.max(0L, (long) combatXp + searchXp + contractXp + adjustment),
             x, y + 54, 0xffe9d394);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
