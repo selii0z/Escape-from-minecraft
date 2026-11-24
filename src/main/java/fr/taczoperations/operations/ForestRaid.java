@@ -439,49 +439,56 @@ public final class ForestRaid extends SavedData {
         }
         barrel.getPersistentData().putUUID(CRATE, id);
         barrel.getPersistentData().putInt(CRATE_INDEX, index);
+        int kind = index % 4;
         ItemStack labeled = new ItemStack(Items.BARREL);
-        labeled.set(DataComponents.CUSTOM_NAME, Component.literal(switch (index % 3) {
-            case 0 -> "Coffre de terrain";
-            case 1 -> "Casier de campagne";
-            default -> name;
+        labeled.set(DataComponents.CUSTOM_NAME, Component.literal(switch (kind) {
+            case 0 -> "Caisse médicale";
+            case 1 -> "Caisse industrielle";
+            case 2 -> "Caisse militaire";
+            default -> "Coffre confidentiel";
         }));
         barrel.applyComponentsFromItemStack(labeled);
-        // Sector-themed supplies: each container has a recognizable purpose.
-        var supplies = switch (index % 4) {
-            case 0 -> List.of(Items.BREAD, Items.BAKED_POTATO, Items.COOKED_BEEF,
-                Items.COOKED_CHICKEN, Items.GOLDEN_CARROT, Items.HONEY_BOTTLE);
-            case 1 -> List.of(Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE,
-                Items.COAL, Items.FLINT, Items.STRING, Items.PAPER);
-            case 2 -> List.of(Items.CHAINMAIL_BOOTS, Items.LEATHER_HELMET,
-                Items.IRON_HELMET, Items.SHIELD, Items.ARROW, Items.TORCH);
-            default -> List.of(Items.COMPASS, Items.CLOCK, Items.MAP,
-                Items.PAPER, Items.EMERALD, Items.GOLD_INGOT);
+        var supplies = switch (kind) {
+            case 0 -> List.of(Items.COOKED_BEEF, Items.BREAD, Items.GOLDEN_CARROT, Items.HONEY_BOTTLE);
+            case 1 -> List.of(Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE, Items.COAL, Items.FLINT);
+            case 2 -> List.of(Items.CHAINMAIL_BOOTS, Items.LEATHER_HELMET, Items.IRON_HELMET, Items.SHIELD, Items.ARROW);
+            default -> List.of(Items.COMPASS, Items.CLOCK, Items.PAPER, Items.EMERALD, Items.GOLD_INGOT);
         };
-        barrel.setItem(random.nextInt(9), new ItemStack(supplies.get(random.nextInt(supplies.size())),
-            1 + random.nextInt(index % 4 == 1 ? 5 : 2)));
-        if (random.nextInt(100) < (industrial ? 65 : 53)) barrel.setItem(9 + random.nextInt(9), RaidRelic.roll(random).stack());
-        if (random.nextInt(100) < (industrial ? 12 : 6)) barrel.setItem(17, RaidRelic.roll(random).stack());
-        int supply = 4 + random.nextInt(13);
-        var calibers = new java.util.ArrayList<net.minecraft.resources.ResourceLocation>();
-        for (var entry : com.tacz.guns.api.TimelessAPI.getAllCommonGunIndex()) {
-            var data = entry.getValue().getGunData();
-            if (data != null && data.getAmmoId() != null && !calibers.contains(data.getAmmoId())) {
-                calibers.add(data.getAmmoId());
+        var item = supplies.get(random.nextInt(supplies.size()));
+        ItemStack primary = new ItemStack(item);
+        primary.setCount(Math.min(primary.getMaxStackSize(), 1 + random.nextInt(kind == 1 ? 6 : 3)));
+        barrel.setItem(random.nextInt(9), primary);
+        int relicChance = switch (kind) { case 0 -> 30; case 1 -> 50; case 2 -> 55; default -> 77; };
+        if (random.nextInt(100) < relicChance + (industrial ? 10 : 0))
+            barrel.setItem(9 + random.nextInt(8), RaidRelic.roll(random).stack());
+        if (random.nextInt(100) < (kind == 3 ? 15 : 4) + (industrial ? 5 : 0))
+            barrel.setItem(17, RaidRelic.roll(random).stack());
+        switch (kind) {
+            case 0 -> {
+                barrel.setItem(18, net.minecraft.world.item.alchemy.PotionContents.createItemStack(
+                    Items.POTION, net.minecraft.world.item.alchemy.Potions.HEALING));
+                if (random.nextInt(5) == 0) barrel.setItem(26, new ItemStack(Items.GOLDEN_APPLE));
             }
-        }
-        if (random.nextBoolean() && !calibers.isEmpty()) {
-            var ammoId = calibers.get(random.nextInt(calibers.size()));
-            barrel.setItem(18 + random.nextInt(8),
-                com.tacz.guns.api.item.builder.AmmoItemBuilder.create().setId(ammoId).setCount(supply).build());
-        } else {
-            barrel.setItem(18 + random.nextInt(8), new ItemStack(Items.IRON_INGOT, supply));
-        }
-        if (random.nextInt(3) == 0) {
-            barrel.setItem(26, new ItemStack(random.nextBoolean() ? Items.GOLDEN_CARROT : Items.HONEY_BOTTLE));
-        }
-        if (random.nextInt(industrial ? 12 : 20) == 0) {
-            barrel.setItem(25, OperationsShop.attachment(
-                random.nextBoolean() ? "sight_552" : "extended_mag_1"));
+            case 1 -> {
+                barrel.setItem(18, new ItemStack(Items.IRON_INGOT, 4 + random.nextInt(9)));
+                barrel.setItem(26, new ItemStack(Items.REDSTONE, 2 + random.nextInt(7)));
+            }
+            case 2 -> {
+                var calibers = new java.util.ArrayList<net.minecraft.resources.ResourceLocation>();
+                for (var entry : com.tacz.guns.api.TimelessAPI.getAllCommonGunIndex()) {
+                    var data = entry.getValue().getGunData();
+                    if (data != null && data.getAmmoId() != null && !calibers.contains(data.getAmmoId()))
+                        calibers.add(data.getAmmoId());
+                }
+                if (!calibers.isEmpty()) {
+                    var ammoId = calibers.get(random.nextInt(calibers.size()));
+                    barrel.setItem(18, com.tacz.guns.api.item.builder.AmmoItemBuilder.create()
+                        .setId(ammoId).setCount(12 + random.nextInt(19)).build());
+                }
+                if (random.nextInt(industrial ? 5 : 8) == 0)
+                    barrel.setItem(25, OperationsShop.attachment(random.nextBoolean() ? "sight_552" : "extended_mag_1"));
+            }
+            default -> barrel.setItem(18, new ItemStack(Items.PAPER, 2 + random.nextInt(5)));
         }
         barrel.setChanged();
         return true;
