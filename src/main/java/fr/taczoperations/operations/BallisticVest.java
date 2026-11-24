@@ -16,7 +16,15 @@ import net.minecraft.world.phys.Vec3;
 public final class BallisticVest {
     private static final String KEY = "taczoperations_ballistic_class";
     private static final String CONDITION = "taczoperations_ballistic_condition";
-    private static final int[] COLORS = {0x414A35, 0x70644C, 0x33383B, 0x555C4B};
+    public static int classColor(int tier) {
+        return switch (tier) {
+            case 2 -> 0x9A8058; // desert sand
+            case 3 -> 0x4F633A; // olive green
+            case 4 -> 0x465661; // slate blue-grey
+            case 5 -> 0x101114; // tactical black
+            default -> 0x4F633A;
+        };
+    }
     public static final EquipmentSlot[] SLOTS = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
     public static Item item(EquipmentSlot slot) {
@@ -48,7 +56,7 @@ public final class BallisticVest {
         tag.putInt(KEY, tier);
         tag.putInt(CONDITION, 100);
         piece.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-        piece.set(DataComponents.DYED_COLOR, new DyedItemColor(color, false));
+        piece.set(DataComponents.DYED_COLOR, new DyedItemColor(classColor(tier), false));
         piece.set(DataComponents.CUSTOM_NAME, Component.literal(name(slot) + " · Classe " + tier));
         updateLore(piece, slot, tier, 100);
         return piece;
@@ -62,7 +70,7 @@ public final class BallisticVest {
         int n = random.nextInt(100);
         int tier = premium ? (n < 15 ? 2 : n < 60 ? 3 : n < 98 ? 4 : 5)
             : (n < 55 ? 2 : n < 87 ? 3 : n < 99 ? 4 : 5);
-        return create(slot, tier, COLORS[random.nextInt(COLORS.length)]);
+        return create(slot, tier, classColor(tier));
     }
 
     private static float multiplier(int tier) {
@@ -84,6 +92,29 @@ public final class BallisticVest {
         return tag.contains(CONDITION) ? Math.clamp(tag.getInt(CONDITION), 0, 100) : 100;
     }
 
+    // Restore the canonical appearance of older pieces and prevent vanilla dyes
+    // from disguising the ballistic class. This never changes the tier or wear.
+    private static void normalizeColor(ItemStack stack) {
+        for (EquipmentSlot slot : SLOTS) {
+            int tier = tier(stack,slot);
+            if (tier == 0) continue;
+            var expected = new DyedItemColor(classColor(tier), false);
+            if (!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
+                stack.set(DataComponents.DYED_COLOR, expected);
+                updateLore(stack,slot,tier,condition(stack));
+            }
+            return;
+        }
+    }
+
+    public static void normalizePlayerEquipment(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)
+            || player.tickCount % 20 != 0) return;
+        for (var stack : player.getInventory().items) normalizeColor(stack);
+        for (var stack : player.getInventory().armor) normalizeColor(stack);
+        normalizeColor(player.getOffhandItem());
+    }
+
     private static void updateLore(ItemStack stack, EquipmentSlot slot, int tier, int condition) {
         String zone = switch (slot) {
             case HEAD -> "Tête";
@@ -102,6 +133,7 @@ public final class BallisticVest {
         CustomData old = stack.get(DataComponents.CUSTOM_DATA);
         CompoundTag tag = old == null ? new CompoundTag() : old.copyTag();
         tag.putInt(CONDITION, value);
+        stack.set(DataComponents.DYED_COLOR,new DyedItemColor(classColor(tier),false));
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         updateLore(stack,slot,tier,value);
     }

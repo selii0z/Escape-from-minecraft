@@ -128,7 +128,7 @@ public enum OperationsShop {
                         final int t = tier;
                         int base = tier==2?900:tier==3?2400:6500;
                         offers.add(buy(BallisticVest.name(slot)+" · Classe "+tier,base*percent/100,
-                            () -> BallisticVest.create(slot,t,0x414A35),null,tier==2?20:tier==3?100:190));
+                            () -> BallisticVest.create(slot,t,BallisticVest.classColor(t)),null,tier==2?20:tier==3?100:190));
                     }
                     offers.add(new Offer("Réparation · "+BallisticVest.name(slot)+" portée", 300*percent/100,
                         Action.REPAIR, () -> new ItemStack(BallisticVest.item(slot)),null,0));
