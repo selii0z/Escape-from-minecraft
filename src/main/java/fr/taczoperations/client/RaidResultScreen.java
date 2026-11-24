@@ -32,9 +32,17 @@ public final class RaidResultScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0x88000000);
+        var illustration = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",
+            success ? "textures/gui/raid_success.png" : "textures/gui/raid_failure.png");
+        if (minecraft.getResourceManager().getResource(illustration).isPresent()) {
+            int imageWidth = Math.max(width, (height * 16 + 8) / 9);
+            int imageHeight = imageWidth * 9 / 16;
+            graphics.blit(illustration, (width - imageWidth) / 2, (height - imageHeight) / 2,
+                imageWidth, imageHeight, 0f, 0f, 1024, 576, 1024, 576);
+        }
+        graphics.fill(0, 0, width, height, 0x55000000);
         int x = width / 2, y = height / 2;
-        graphics.fill(x - 175, y - 125, x + 175, y + 130, 0xff202426);
+        graphics.fill(x - 175, y - 125, x + 175, y + 130, 0xe6202426);
         graphics.fill(x - 175, y - 125, x + 175, y - 121,
             success ? 0xff72ba87 : 0xffc76862);
         graphics.drawCenteredString(font, title, x, y - 107,
