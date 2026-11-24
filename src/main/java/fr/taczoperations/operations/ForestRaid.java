@@ -459,7 +459,8 @@ public final class ForestRaid extends SavedData {
         };
         barrel.setItem(random.nextInt(9), new ItemStack(supplies.get(random.nextInt(supplies.size())),
             1 + random.nextInt(index % 4 == 1 ? 5 : 2)));
-        if (random.nextInt(100) < 53) barrel.setItem(9 + random.nextInt(9), RaidRelic.roll(random).stack());
+        if (random.nextInt(100) < (industrial ? 65 : 53)) barrel.setItem(9 + random.nextInt(9), RaidRelic.roll(random).stack());
+        if (random.nextInt(100) < (industrial ? 12 : 6)) barrel.setItem(17, RaidRelic.roll(random).stack());
         int supply = 4 + random.nextInt(13);
         var calibers = new java.util.ArrayList<net.minecraft.resources.ResourceLocation>();
         for (var entry : com.tacz.guns.api.TimelessAPI.getAllCommonGunIndex()) {
@@ -478,7 +479,7 @@ public final class ForestRaid extends SavedData {
         if (random.nextInt(3) == 0) {
             barrel.setItem(26, new ItemStack(random.nextBoolean() ? Items.GOLDEN_CARROT : Items.HONEY_BOTTLE));
         }
-        if (random.nextInt(20) == 0) {
+        if (random.nextInt(industrial ? 12 : 20) == 0) {
             barrel.setItem(25, OperationsShop.attachment(
                 random.nextBoolean() ? "sight_552" : "extended_mag_1"));
         }
