@@ -57,6 +57,9 @@ public final class ForestCombat {
                 enemy.getPersistentData().putString("taczoperations_guard_weapon", gunId);
             }
             if (!gun.isEmpty()) {
+                if (role == GuardRole.PMC) {
+                    gun = customizePmcWeapon(enemy, gun);
+                }
                 enemy.setItemSlot(EquipmentSlot.MAINHAND, gun);
                 return;
             }
@@ -169,6 +172,40 @@ public final class ForestCombat {
         } catch (RuntimeException | LinkageError exception) {
             LogUtils.getLogger().warn("Forest guard switched to a crossbow after a TaCZ error", exception);
             crossbow(guard);
+        }
+    }
+
+    private static ItemStack customizePmcWeapon(Pillager guard, ItemStack base) {
+        if (!(base.getItem() instanceof IGun gun)) return base;
+        ItemStack modified = base.copy();
+        try {
+            int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");
+            int chance = 25 + 15 * Math.max(0, Math.min(4, tier));
+            var candidates = new java.util.ArrayList<>(TimelessAPI.getAllCommonAttachmentIndex());
+            // Shuffle with the entity RNG so installed gun packs participate too.
+            for (int i = candidates.size() - 1; i > 0; i--) {
+                java.util.Collections.swap(candidates, i, guard.getRandom().nextInt(i + 1));
+            }
+            var installed = java.util.EnumSet.noneOf(com.tacz.guns.api.item.attachment.AttachmentType.class);
+            int limit = 1 + Math.max(0, Math.min(4, tier));
+            for (var candidate : candidates) {
+                if (installed.size() >= limit) break;
+                var type = candidate.getValue().getType();
+                if (type == null || installed.contains(type) || !gun.allowAttachmentType(modified, type)
+                    || !gun.getAttachment(guard.registryAccess(), modified, type).isEmpty()
+                    || !gun.getBuiltinAttachment(modified, type).isEmpty()) continue;
+                ItemStack attachment = com.tacz.guns.api.item.builder.AttachmentItemBuilder.create()
+                    .setId(candidate.getKey()).build();
+                if (attachment.isEmpty() || !gun.allowAttachment(modified, attachment)) continue;
+                installed.add(type);
+                if (guard.getRandom().nextInt(100) < chance) {
+                    gun.installAttachment(guard.registryAccess(), modified, attachment);
+                }
+            }
+            return modified;
+        } catch (RuntimeException | LinkageError exception) {
+            LogUtils.getLogger().warn("PMC attachment generation failed; keeping original weapon", exception);
+            return base;
         }
     }
 
