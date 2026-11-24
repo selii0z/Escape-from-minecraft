@@ -29,11 +29,11 @@ public enum OperationsShop {
     }
 
     public static int reputationLevel(int points) {
-        return points >= 150 ? 4 : points >= 75 ? 3 : points >= 25 ? 2 : 1;
+        return points >= 2000 ? 4 : points >= 800 ? 3 : points >= 200 ? 2 : 1;
     }
 
     public static int nextReputation(int points) {
-        return points >= 150 ? 150 : points >= 75 ? 150 : points >= 25 ? 75 : 25;
+        return points >= 800 ? 2000 : points >= 200 ? 800 : 200;
     }
 
     int reputation(ServerPlayer player) {
@@ -72,41 +72,36 @@ public enum OperationsShop {
         var offers = new ArrayList<Offer>();
         switch (this) {
             case ARMORER -> {
-                offers.add(buy("Glock 17", 380, () -> weapon("glock_17", 12), null, 0));
-                offers.add(buy("MP5", 950, () -> weapon("hk_mp5a5", 20), null, 35));
-                offers.add(buy("AK-47", 1600, () -> weapon("ak47", 20), null, 80));
-                offers.add(buy("M870", 1150, () -> weapon("m870", 5), null, 45));
-                offers.add(buy("AWP", 2900, () -> weapon("ai_awp", 5), RaidRelic.CHIP, 0));
-                offers.add(buy("M4A1", 2450, () -> weapon("m4a1", 20), RaidRelic.OMEGA, 0));
-                // Enumerate every weapon actually loaded by TaCZ, including gun packs.
-                // Avoid hard-coded lists that silently omit most of the arsenal.
+                // Build a single authoritative catalogue from the installed TaCZ packs.
+                // Each calibre inherits the lowest tier of a weapon using it, with
+                // a minimum tier for the calibre itself. No duplicate cheap ammo offers.
+                var ammoLevels = new java.util.TreeMap<ResourceLocation,Integer>(
+                    java.util.Comparator.comparing(ResourceLocation::toString));
                 for (var entry : TimelessAPI.getAllCommonGunIndex().stream()
                     .sorted(java.util.Comparator.comparing(e -> e.getKey().toString())).toList()) {
                     ResourceLocation id = entry.getKey();
-                    if (id.getNamespace().equals("tacz") && java.util.Set.of("glock_17", "hk_mp5a5", "ak47", "m870", "ai_awp", "m4a1").contains(id.getPath())) continue;
                     var data = entry.getValue().getGunData();
                     if (data == null || data.getFireModeSet().isEmpty()) continue;
                     int rounds = Math.max(1, data.getAmmoAmount());
-                    int price = 850 + Math.min(3000, rounds * 35);
-                    offers.add(buy(id.getPath().replace('_', ' ').toUpperCase(java.util.Locale.ROOT), price,
-                        () -> weapon(id, rounds), null, price >= 1900 ? 100 : 35));
+                    int tier = weaponTier(id,data.getAmmoId(),rounds);
+                    int price = switch (tier) {
+                        case 1 -> 380 + Math.min(400,rounds*12);
+                        case 2 -> 950 + Math.min(950,rounds*20);
+                        case 3 -> 1600 + Math.min(1600,rounds*30);
+                        default -> 2900 + Math.min(4500,rounds*40);
+                    };
+                    offers.add(buy(id.getPath().replace('_',' ').toUpperCase(java.util.Locale.ROOT),price,
+                        () -> weapon(id,rounds),null,tierRequirement(tier)));
+                    if (data.getAmmoId()!=null) ammoLevels.merge(data.getAmmoId(),tier,Math::min);
                 }
-                // Sell ammunition for every loaded gun family, including addon packs.
-                var ammoTypes = new java.util.TreeSet<ResourceLocation>(
-                    java.util.Comparator.comparing(ResourceLocation::toString));
-                for (var entry : TimelessAPI.getAllCommonGunIndex()) {
-                    var gunData = entry.getValue().getGunData();
-                    if (gunData != null && gunData.getAmmoId() != null) ammoTypes.add(gunData.getAmmoId());
+                for (var entry : ammoLevels.entrySet()) {
+                    ResourceLocation ammoId=entry.getKey();
+                    int tier=Math.max(calibreTier(ammoId),entry.getValue());
+                    int count=tier==4?10:30;
+                    int price=switch(tier){case 1->65;case 2->95;case 3->125;default->160;};
+                    offers.add(buy("Munitions · "+ammoId.getPath().replace('_',' '),price,
+                        () -> AmmoItemBuilder.create().setId(ammoId).setCount(count).build(),null,tierRequirement(tier)));
                 }
-                for (ResourceLocation ammoId : ammoTypes) {
-                    offers.add(buy("Munitions · " + ammoId.getPath().replace('_', ' '), 110,
-                        () -> AmmoItemBuilder.create().setId(ammoId).setCount(30).build(), null, 0));
-                }
-                offers.add(buy("24 × 9 mm", 65, () -> ammo("9mm", 24), null, 0));
-                offers.add(buy("30 × 7,62 × 39", 120, () -> ammo("762x39", 30), null, 0));
-                offers.add(buy("12 × calibre 12", 95, () -> ammo("12g", 12), null, 0));
-                offers.add(buy("10 × .338", 160, () -> ammo("338", 10), null, 0));
-                offers.add(buy("30 × 5,56 × 45", 125, () -> ammo("556x45", 30), null, 0));
                 offers.add(buy("Chargeur étendu", 460, () -> attachment("extended_mag_1"), RaidRelic.CIRCUIT, 0));
                 offers.add(buy("Viseur 552", 900, () -> attachment("sight_552"), RaidRelic.OPTIC, 0));
             }
@@ -134,8 +129,8 @@ public enum OperationsShop {
                         Action.REPAIR, () -> new ItemStack(BallisticVest.item(slot)),null,0));
                 }
                 // Class 5 is raid loot only.
-                offers.add(buy("Lunettes de vision nocturne", 15000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))), null, 0));
-                offers.add(buy("Lunettes thermiques", 60000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:thermal_goggles"))), null, 0));
+                offers.add(buy("Lunettes de vision nocturne", 15000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))), null, 180));
+                offers.add(buy("Lunettes thermiques", 60000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:thermal_goggles"))), null, 180));
                 offers.add(buy("Casque en cuir", 95, () -> new ItemStack(Items.LEATHER_HELMET), null, 0));
                 offers.add(buy("Bottes en cuir", 85, () -> new ItemStack(Items.LEATHER_BOOTS), null, 0));
                 offers.add(buy("Casque en mailles", 250, () -> new ItemStack(Items.CHAINMAIL_HELMET), null, 20));
@@ -162,6 +157,7 @@ public enum OperationsShop {
             }
         }
         if (this == ARMORER) {
+            offers.sort(java.util.Comparator.comparingInt(Offer::loyaltyLevel));
             for (Offer offer : List.copyOf(offers)) {
                 if (offer.action != Action.BUY) continue;
                 ItemStack sample = offer.stack.get();
@@ -171,6 +167,29 @@ public enum OperationsShop {
             }
         }
         return offers;
+    }
+
+    private static int tierRequirement(int tier) {
+        return switch(tier) { case 1 -> 0; case 2 -> 20; case 3 -> 80; default -> 180; };
+    }
+
+    private static int calibreTier(ResourceLocation id) {
+        if (id==null) return 4;
+        String s=id.getPath().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]","");
+        if (java.util.Set.of("9mm","9x19","9x19mm","45acp","45auto","380acp","22lr","22longrifle","9x18","9x18mm").contains(s)) return 1;
+        if (java.util.Set.of("12g","12ga","12gauge","20g","20ga","357magnum","357","44magnum","44mag","57x28","57x28mm","46x30","46x30mm").contains(s)) return 2;
+        if (java.util.Set.of("762x39","762x39mm","556x45","556x45mm","545x39","545x39mm","300blk","300blackout","762x35","223","223rem").contains(s)) return 3;
+        return 4; // high-power and unclassified addon ammunition unlock last
+    }
+
+    private static int weaponTier(ResourceLocation id, ResourceLocation ammo, int rounds) {
+        String s=id.getPath().toLowerCase(java.util.Locale.ROOT);
+        int base=calibreTier(ammo);
+        if (s.matches(".*(sniper|awp|barrett|m82|m107|m249|m240|pkm|minigun|launcher|rpg|scar_h|sr25|m110|svd|m200|intervention|mg42|mg3).*")) return 4;
+        if (s.matches(".*(glock|m1911|p226|p320|m9|beretta|makarov|usp|cz75|pistol|revolver).*")) return base;
+        if (s.matches(".*(mp5|mp7|mp9|ump|uzi|vector|p90|pp19|bizon|smg|m870|shotgun|spas|aa12|ksg).*")) return Math.max(2,base);
+        if (s.matches(".*(m4a1|hk416|scar_l|ak12|aug|famas|g36|ar15|m16|mk18|sopmod|as_val|vss).*")) return Math.max(3,base);
+        return base==1 && rounds>18 ? 2 : base;
     }
 
     private static Offer sale(RaidRelic relic) {

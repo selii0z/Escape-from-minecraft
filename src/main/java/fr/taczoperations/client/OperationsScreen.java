@@ -429,7 +429,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     var offer = offers.get(start + i);
                     int y = 128 + i * 41;
                     panel(g, 169, y, 379, 37, DARK);
-                    text(g, fit(offer.title(), 253), 181, y + 6, 1.04F, WHITE, true);
+                    boolean locked = offer.action() == OperationsShop.Action.BUY &&
+                        (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal())) < offer.loyaltyLevel()
+                         || offer.key() != null && !unlocked(offer.key()));
+                    text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
                     String cost = switch (offer.action()) {
                         case BUY, REPAIR -> offer.price() + " crédits";
                         case SELL -> "+" + offer.price() + " crédits";
@@ -527,7 +530,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             text(g, vendor.title, 669, 109, 1.2F, GOLD, true);
             int reputation = view.reputation().get(vendor.ordinal());
             text(g, "Fidélité " + OperationsShop.reputationLevel(reputation) + " / 4", 669, 130, 1.0F, GOLD, true);
-            text(g, reputation + " / " + OperationsShop.nextReputation(reputation) + " rép.", 669, 148, .85F, SOFT, false);
+            text(g, reputation >= 2000 ? "Fidélité maximale" : reputation + " / " + OperationsShop.nextReputation(reputation) + " rép.", 669, 148, .85F, SOFT, false);
             return;
         }
         image(g, AREAS[FOREST].texture(), 578, 88, 239, 108);
