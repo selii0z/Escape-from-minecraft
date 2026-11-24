@@ -233,7 +233,8 @@ public final class ForestRaid extends SavedData {
         }
         if (dropPos != null && !dropLanded) {
             if (now >= dropLanding) {
-                if (level.hasChunkAt(dropPos) && createAirdrop(level)) {
+                if (!level.hasChunkAt(dropPos)) level.getChunk(dropPos.getX() >> 4, dropPos.getZ() >> 4);
+                if (createAirdrop(level)) {
                     dropLanded = true;
                     if (dropVisual != null && level.getEntity(dropVisual) != null) level.getEntity(dropVisual).discard();
                 }
@@ -636,6 +637,7 @@ public final class ForestRaid extends SavedData {
     }
 
     private boolean putCrate(ServerLevel level, BlockPos pos, String name, Random random, int index) {
+        if (pos.equals(dropPos)) return false;
         var block = index % 3 == 0 ? Blocks.CHEST : Blocks.BARREL;
         if (!ForestProtection.setRaidContainer(level, pos, block.defaultBlockState())) {
             return false;
