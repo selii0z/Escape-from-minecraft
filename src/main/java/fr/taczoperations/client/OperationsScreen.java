@@ -392,6 +392,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 text(g, view.experience() + " XP · Prochain niveau : " + MilitaryProgression.threshold(MilitaryProgression.level(view.experience())+1), 188, 193, 1.0F, SOFT, false);
                 long completed = view.contracts().stream().filter(status -> status == SupplyContract.COMPLETED).count();
                 text(g, completed + "/" + view.contracts().size() + " contrats · " + view.cycles() + " cycles accomplis", 188, 214, 1, GOLD, false);
+                text(g, "Prochain palier : +" + MilitaryProgression.reward(MilitaryProgression.level(view.experience())+1) + " crédits", 188, 232, .85F, GOLD, false);
                 panel(g, 169, 262, 379, 91, DARK);
                 text(g, "DERNIER RAID", 187, 278, 1.17F, GOLD, true);
                 if (view.raidReport().isEmpty()) {

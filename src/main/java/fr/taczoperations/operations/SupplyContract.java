@@ -433,6 +433,12 @@ public enum SupplyContract {
         long credits = 0;
         for (int l = previous + 1; l <= reached; l++) credits += MilitaryProgression.reward(l);
         data.putInt("military_rewarded_level", reached);
+        for (int l = previous + 1; l <= reached; l++) {
+            if (l == 200) player.getInventory().placeItemBackInInventory(RaidRelic.OMEGA.stack());
+            else if (l % 25 == 0) player.getInventory().placeItemBackInInventory(RaidRelic.OPTIC.stack());
+            else if (l % 10 == 0) player.getInventory().placeItemBackInInventory(new ItemStack(Items.GOLDEN_APPLE, 2));
+            else if (l % 5 == 0) player.getInventory().placeItemBackInInventory(new ItemStack(Items.IRON_INGOT, 4));
+        }
         data.putInt("credits", (int)Math.min(Integer.MAX_VALUE, balance(player) + credits));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Progression militaire : " + MilitaryProgression.label(experienceEarned(player)) + " · +" + credits + " crédits"));
     }
@@ -457,6 +463,8 @@ public enum SupplyContract {
         data.putInt("contract_cycles", (int) Math.min(Integer.MAX_VALUE, (long) cyclesCompleted(player) + 1));
         data.putInt("contract_cycle_xp", (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("contract_cycle_xp") + 2500));
         data.putInt("credits", (int) Math.min(Integer.MAX_VALUE, (long) balance(player) + 25000));
+        player.getInventory().placeItemBackInInventory(RaidRelic.OPTIC.stack());
+        player.getInventory().placeItemBackInInventory(new ItemStack(Items.GOLDEN_APPLE, 4));
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Cycle terminé ! +25 000 crédits / +2 500 XP. Nouveau cycle disponible."));
     }
 }
