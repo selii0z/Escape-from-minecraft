@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Random;
 
 public final class ForestRaidAnchors {
-    public record Mark(int x, int y, int z) {}
+    public record Mark(int x, int y, int z, int kind) {
+        public Mark(int x, int y, int z) { this(x, y, z, 2); }
+    }
 
     public static List<Mark> loot() {
         var marks = new ArrayList<Mark>();
@@ -14,9 +16,16 @@ public final class ForestRaidAnchors {
             if (site.kind() == ForestPlan.Kind.TRUCK) continue;
             int y = site.floor() + height(site);
             int middle = site.x() + site.width() / 2;
-            marks.add(new Mark(middle, y, site.z() + 2));
-            marks.add(new Mark(middle + 1, y, site.z() + site.length() - 2));
-            if (site.width() >= 12) marks.add(new Mark(middle - 2, y, site.z() + 4));
+            int kind = switch (site.kind()) {
+                case SAWMILL, SHED, WAREHOUSE -> 1;
+                case CAMP, CABIN -> 0;
+                case GUARD, TOWER -> 2;
+                case BUNKER, STATION -> 3;
+                default -> 2;
+            };
+            marks.add(new Mark(middle, y, site.z() + 2, kind));
+            marks.add(new Mark(middle + 1, y, site.z() + site.length() - 2, kind));
+            if (site.width() >= 12) marks.add(new Mark(middle - 2, y, site.z() + 4, kind));
         }
         for (ForestPlan.Point spot : OUTDOOR) marks.add(new Mark(spot.x(), ForestPlan.surfaceY(spot), spot.z()));
         return List.copyOf(marks);
