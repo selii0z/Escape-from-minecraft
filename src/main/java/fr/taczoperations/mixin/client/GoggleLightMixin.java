@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(GameRenderer.class)
 public abstract class GoggleLightMixin {
-    @Inject(method = "getNightVisionScale", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getNightVisionScale", at = @At("HEAD"), cancellable = true, require = 0)
     private static void gogglesLight(LivingEntity entity, float partialTick, CallbackInfoReturnable<Float> cir) {
         if (GoggleControls.nightVision() && entity == net.minecraft.client.Minecraft.getInstance().player) cir.setReturnValue(1.0F);
     }
