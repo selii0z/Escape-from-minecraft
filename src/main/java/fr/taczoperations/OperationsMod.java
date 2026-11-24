@@ -50,6 +50,8 @@ public final class OperationsMod {
     static {
         GENERATORS.register("forest", () -> ForestChunkGenerator.CODEC);
         RaidRelic.register(ITEMS);
+        ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(net.minecraft.world.item.ArmorMaterials.LEATHER, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(net.minecraft.world.item.ArmorMaterials.LEATHER, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
     }
 

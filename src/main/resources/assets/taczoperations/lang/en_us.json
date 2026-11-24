@@ -10,5 +10,7 @@
   "item.taczoperations.intel_case": "Mallette de renseignements",
   "item.taczoperations.prototype_optic": "Prototype de viseur militaire",
   "item.taczoperations.command_chip": "Puce de commandement",
-  "item.taczoperations.omega_file": "Dossier classifié Omega"
+  "item.taczoperations.omega_file": "Dossier classifié Omega",
+  "item.taczoperations.night_vision_goggles": "Night vision goggles",
+  "item.taczoperations.thermal_goggles": "Thermal goggles"
 }
