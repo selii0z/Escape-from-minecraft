@@ -32,6 +32,12 @@ import java.util.function.Supplier;
 public final class OperationsMod {
     public static final String ID = "taczoperations";
     private static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(ID);
+    private static final DeferredRegister<net.minecraft.world.item.ArmorMaterial> ARMOR_MATERIALS =
+        DeferredRegister.create(Registries.ARMOR_MATERIAL, ID);
+    private static final net.minecraft.core.Holder<net.minecraft.world.item.ArmorMaterial> NVG_MATERIAL =
+        ARMOR_MATERIALS.register("night_vision_goggles", () -> goggleMaterial("night_vision_goggles"));
+    private static final net.minecraft.core.Holder<net.minecraft.world.item.ArmorMaterial> THERMAL_MATERIAL =
+        ARMOR_MATERIALS.register("thermal_goggles", () -> goggleMaterial("thermal_goggles"));
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ID);
     private static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, ID);
     private static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ID);
@@ -50,9 +56,18 @@ public final class OperationsMod {
     static {
         GENERATORS.register("forest", () -> ForestChunkGenerator.CODEC);
         RaidRelic.register(ITEMS);
-        ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(net.minecraft.world.item.ArmorMaterials.LEATHER, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
-        ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(net.minecraft.world.item.ArmorMaterials.LEATHER, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
+    }
+
+    private static net.minecraft.world.item.ArmorMaterial goggleMaterial(String id) {
+        var leather = net.minecraft.world.item.ArmorMaterials.LEATHER.value();
+        return new net.minecraft.world.item.ArmorMaterial(leather.defense(), leather.enchantmentValue(),
+            leather.equipSound(), leather.repairIngredient(),
+            java.util.List.of(new net.minecraft.world.item.ArmorMaterial.Layer(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(ID, id))),
+            leather.toughness(), leather.knockbackResistance());
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -67,6 +82,7 @@ public final class OperationsMod {
 
     public OperationsMod(IEventBus bus) {
         BLOCKS.register(bus);
+        ARMOR_MATERIALS.register(bus);
         ITEMS.register(bus);
         MENUS.register(bus);
         ENTITIES.register(bus);
