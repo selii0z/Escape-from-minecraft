@@ -48,7 +48,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, List<Integer> filtered) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, List<Integer> filtered, int cycles) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -67,6 +67,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeCollection(raidHistory, (buf, line) -> buf.writeUtf(line));
             buffer.writeVarInt(category); buffer.writeVarInt(difficulty); buffer.writeVarInt(statusFilter);
             buffer.writeCollection(filtered, (buf, index) -> buf.writeVarInt(index));
+            buffer.writeVarInt(cycles);
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -74,7 +75,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()));
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt());
         }
     }
 
@@ -134,6 +135,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 .sorted(Comparator.comparing(target -> target.getGameProfile().getName()))
                 .toList()
             : List.of();
+        SupplyContract.renewCycle(player);
         var account = SupplyContract.account(player);
         int category = Math.clamp(account.getInt("filter_category"), 0, 5);
         int difficulty = Math.clamp(account.getInt("filter_difficulty"), 0, 5);
@@ -141,7 +143,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         var filtered = java.util.Arrays.stream(SupplyContract.values())
             .filter(c -> category == 0 || c.category() == category)
             .filter(c -> difficulty == 0 || c.difficulty() == difficulty)
-            .filter(c -> statusFilter == 0 || c.status(player) == statusFilter - 1)
+            .filter(c -> statusFilter == 0 ? c.status(player) != SupplyContract.COMPLETED : c.status(player) == statusFilter - 1)
             .map(Enum::ordinal).toList();
         int pages = switch (tab) {
             case CONTRACTS -> Math.max(1, (filtered.size() + LIST_ROWS - 1) / LIST_ROWS);
@@ -158,7 +160,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.progress(player)).toList(),
             name(player, partner), name(player, inviter),
             shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice,
-            lastRaidSummary(player), raidHistory(player), category, difficulty, statusFilter, filtered);
+            lastRaidSummary(player), raidHistory(player), category, difficulty, statusFilter, filtered, SupplyContract.cyclesCompleted(player));
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);

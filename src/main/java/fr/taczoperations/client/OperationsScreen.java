@@ -113,12 +113,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     int status = view.contracts().get(view.filtered().get(start + i));
                     String label = switch (status) {
                         case SupplyContract.ACTIVE -> "Abandonner";
-                        case SupplyContract.COMPLETED -> "Rejouer";
+                        case SupplyContract.COMPLETED -> "Terminé";
                         default -> "Accepter";
                     };
                     final int action = OperationsMenu.CONTRACT_FIRST + i;
                     simple(446, 136 + i * 41, 94, 24, label, () -> send(action),
-                        () -> false, () -> true);
+                        () -> false, () -> status != SupplyContract.COMPLETED);
                 }
                 filterButtons(OperationsMenu.FILTER_CATEGORY, view.category(), 134, new String[]{"Tous", "Combat", "Exploration", "Extraction", "Récupération", "Boss"});
                 filterButtons(OperationsMenu.FILTER_DIFFICULTY, view.difficulty(), 194, new String[]{"Toutes", "Facile", "Moyen", "Difficile", "Épique", "Mythique"});
@@ -344,7 +344,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         switch (view.tab()) {
             case OperationsMenu.CONTRACTS -> {
                 long active = view.contracts().stream().filter(status -> status == SupplyContract.ACTIVE).count();
-                pageTitle(g, "▤", "CONTRATS", active + " / 3 actifs · " + view.filtered().size() + " résultats");
+                pageTitle(g, "▤", "CONTRATS", "Cycle " + ((long) view.cycles() + 1) + " · " + active + "/3 actifs · " + view.contracts().stream().filter(v -> v == SupplyContract.COMPLETED).count() + "/" + view.contracts().size());
+                g.fill(169, 119, 548, 123, DARK);
+                g.fill(169, 119, 169 + (int)(379L * view.contracts().stream().filter(v -> v == SupplyContract.COMPLETED).count() / view.contracts().size()), 123, GOLD);
                 text(g, "CATÉGORIE", 581, 121, .9F, GOLD, true);
                 text(g, "DIFFICULTÉ", 581, 181, .9F, GOLD, true);
                 text(g, "STATUT", 581, 241, .9F, GOLD, true);
@@ -388,7 +390,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 progress(g, 188, 174, 310, 11, view.experience());
                 text(g, view.experience() + " XP cumulée", 188, 193, 1.0F, SOFT, false);
                 long completed = view.contracts().stream().filter(status -> status == SupplyContract.COMPLETED).count();
-                text(g, completed + " / " + view.contracts().size() + " contrats terminés", 188, 214, 1, GOLD, false);
+                text(g, completed + "/" + view.contracts().size() + " contrats · " + view.cycles() + " cycles accomplis", 188, 214, 1, GOLD, false);
                 panel(g, 169, 262, 379, 91, DARK);
                 text(g, "DERNIER RAID", 187, 278, 1.17F, GOLD, true);
                 if (view.raidReport().isEmpty()) {

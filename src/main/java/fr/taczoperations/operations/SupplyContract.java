@@ -303,12 +303,14 @@ public enum SupplyContract {
             || !(event.getKilledEntity() instanceof net.minecraft.world.entity.monster.Pillager guard)
             || !(guard.level() instanceof net.minecraft.server.level.ServerLevel level)
             || !isAssaultRifle(event.getGunId()) || !ForestRaid.isParticipant(player)
-            || !ForestRaid.currentGuard(level, guard) || ASSAULT.status(player) != ACTIVE
+            || !ForestRaid.currentGuard(level, guard) 
             || guard.getPersistentData().getBoolean("taczoperations_assault_counted")) {
             return;
         }
         guard.getPersistentData().putBoolean("taczoperations_assault_counted", true);
-        ASSAULT.advance(player);
+        for (var contract : values()) {
+            if (contract.objective == Objective.ASSAULT && contract.status(player) == ACTIVE) contract.advance(player);
+        }
     }
 
     private static boolean isAssaultRifle(net.minecraft.resources.ResourceLocation gun) {
