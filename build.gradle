@@ -14,12 +14,17 @@ neoForge {
 
 repositories {
     maven {
+        url = 'https://maven.blamejared.com'
+        content { includeGroup 'info.journeymap' }
+    }
+    maven {
         url = 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
     }
 }
 
 dependencies {
+    compileOnly 'info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1'
     compileOnly 'maven.modrinth:timeless-and-classics-zero:O2Pfsh6w'
 }
 
