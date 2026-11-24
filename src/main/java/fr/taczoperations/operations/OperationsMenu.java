@@ -44,9 +44,11 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
 
+    public static final int FILTER_CATEGORY = 100, FILTER_DIFFICULTY = 110, FILTER_STATUS = 120;
+
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, List<Integer> filtered) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -63,6 +65,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeUtf(notice);
             buffer.writeUtf(raidReport);
             buffer.writeCollection(raidHistory, (buf, line) -> buf.writeUtf(line));
+            buffer.writeVarInt(category); buffer.writeVarInt(difficulty); buffer.writeVarInt(statusFilter);
+            buffer.writeCollection(filtered, (buf, index) -> buf.writeVarInt(index));
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -70,7 +74,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()));
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()));
         }
     }
 
@@ -130,8 +134,17 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 .sorted(Comparator.comparing(target -> target.getGameProfile().getName()))
                 .toList()
             : List.of();
+        var account = SupplyContract.account(player);
+        int category = Math.clamp(account.getInt("filter_category"), 0, 5);
+        int difficulty = Math.clamp(account.getInt("filter_difficulty"), 0, 5);
+        int statusFilter = Math.clamp(account.getInt("filter_status"), 0, 3);
+        var filtered = java.util.Arrays.stream(SupplyContract.values())
+            .filter(c -> category == 0 || c.category() == category)
+            .filter(c -> difficulty == 0 || c.difficulty() == difficulty)
+            .filter(c -> statusFilter == 0 || c.status(player) == statusFilter - 1)
+            .map(Enum::ordinal).toList();
         int pages = switch (tab) {
-            case CONTRACTS -> (SupplyContract.values().length + LIST_ROWS - 1) / LIST_ROWS;
+            case CONTRACTS -> Math.max(1, (filtered.size() + LIST_ROWS - 1) / LIST_ROWS);
             case SHOP -> OperationsShop.values().length * VENDOR_PAGES;
             default -> Math.max(1, (online.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         };
@@ -145,7 +158,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.progress(player)).toList(),
             name(player, partner), name(player, inviter),
             shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice,
-            lastRaidSummary(player), raidHistory(player));
+            lastRaidSummary(player), raidHistory(player), category, difficulty, statusFilter, filtered);
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -228,6 +241,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
             int offers = OperationsShop.values()[vendor].offers().size();
             int max = Math.max(0, (offers - 1) / LIST_ROWS);
             page = vendor * VENDOR_PAGES + Math.clamp(page % VENDOR_PAGES + (button == NEXT ? 1 : -1), 0, max);
+        } else if (tab == CONTRACTS && button >= FILTER_CATEGORY && button <= FILTER_CATEGORY + 5) {
+            SupplyContract.account(serverPlayer).putInt("filter_category", button - FILTER_CATEGORY); page = 0;
+        } else if (tab == CONTRACTS && button >= FILTER_DIFFICULTY && button <= FILTER_DIFFICULTY + 5) {
+            SupplyContract.account(serverPlayer).putInt("filter_difficulty", button - FILTER_DIFFICULTY); page = 0;
+        } else if (tab == CONTRACTS && button >= FILTER_STATUS && button <= FILTER_STATUS + 3) {
+            SupplyContract.account(serverPlayer).putInt("filter_status", button - FILTER_STATUS); page = 0;
         } else if (tab == CONTRACTS && (button == PREVIOUS || button == NEXT)) {
             page += button == NEXT ? 1 : -1;
         } else if (button != REFRESH) {
@@ -235,7 +254,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             OperationsGroups groups = OperationsGroups.of(serverPlayer);
             int contractIndex = page * LIST_ROWS + button - CONTRACT_FIRST;
             if (tab == CONTRACTS && button >= CONTRACT_FIRST && button < CONTRACT_FIRST + LIST_ROWS
-                && contractIndex < view.contracts().size()) {
+                && contractIndex >= 0 && contractIndex < view.filtered().size()) {
+                contractIndex = view.filtered().get(contractIndex);
                 SupplyContract contract = SupplyContract.values()[contractIndex];
                 if (contract.status(serverPlayer) != view.contracts().get(contractIndex)) {
                     notice = "Le contrat a été mis à jour.";
