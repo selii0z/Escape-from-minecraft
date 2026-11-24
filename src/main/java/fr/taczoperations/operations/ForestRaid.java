@@ -456,7 +456,9 @@ public final class ForestRaid extends SavedData {
             guard.getPersistentData().putInt("taczoperations_pmc_rarity", rarity < 40 ? 0 : rarity < 70 ? 1 : rarity < 90 ? 2 : rarity < 98 ? 3 : 4);
             vest = rarity < 40 ? Items.LEATHER_CHESTPLATE : rarity < 70 ? Items.CHAINMAIL_CHESTPLATE : rarity < 98 ? Items.IRON_CHESTPLATE : Items.DIAMOND_CHESTPLATE;
         }
-        guard.setItemSlot(EquipmentSlot.CHEST, new ItemStack(vest));
+        guard.setItemSlot(EquipmentSlot.CHEST, role == GuardRole.PMC
+            ? BallisticVest.roll(new Random(guard.getUUID().getLeastSignificantBits()), false)
+            : new ItemStack(vest));
         if (equipmentRoll == 1 || equipmentRoll == 4) {
             guard.setItemSlot(EquipmentSlot.LEGS, new ItemStack(
                 role.elite() ? Items.IRON_LEGGINGS : Items.LEATHER_LEGGINGS));

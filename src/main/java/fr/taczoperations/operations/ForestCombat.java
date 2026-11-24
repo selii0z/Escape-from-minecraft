@@ -27,12 +27,18 @@ public final class ForestCombat {
 
     // Balance NPC damage only; player-fired TaCZ weapons keep their original stats.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
-        if (event.getLogicalSide().isClient()
-            || !(event.getAttacker() instanceof Pillager guard)
+        if (event.getLogicalSide().isClient()) return;
+        // Apply the vest to both player and guard hits, including outside raids.
+        float protection = event.getHurtEntity() instanceof net.minecraft.world.entity.LivingEntity target
+            ? BallisticVest.protection(target, event.isHeadShot()) : 1F;
+        if (!(event.getAttacker() instanceof Pillager guard)
             || !(event.getHurtEntity() instanceof ServerPlayer player)
             || !(guard.level() instanceof ServerLevel level)
             || player.level() != level || !level.dimension().equals(ForestExpedition.FOREST)
-            || !ForestRaid.currentGuard(level, guard) || !ForestRaid.isParticipant(player)) return;
+            || !ForestRaid.currentGuard(level, guard) || !ForestRaid.isParticipant(player)) {
+            if (protection < 1F) event.setBaseAmount(event.getBaseAmount() * protection);
+            return;
+        }
 
         GuardRole role = GuardRole.get(guard);
         float multiplier = role == GuardRole.TRACKER ? .65F : role == GuardRole.PMC ? .55F : .45F;
@@ -55,7 +61,7 @@ public final class ForestCombat {
             return;
         }
         budget.used += damage;
-        event.setBaseAmount(damage / headshot);
+        event.setBaseAmount(damage * protection / headshot);
     }
 
     private static final class Aim {
