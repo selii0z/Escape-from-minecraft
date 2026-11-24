@@ -421,6 +421,13 @@ public final class ForestRaid extends SavedData {
             guard.setItemSlot(EquipmentSlot.LEGS, new ItemStack(tier >= 4 ? Items.DIAMOND_LEGGINGS : tier >= 2 ? Items.IRON_LEGGINGS : Items.LEATHER_LEGGINGS));
             guard.setItemSlot(EquipmentSlot.FEET, new ItemStack(tier >= 4 ? Items.DIAMOND_BOOTS : tier >= 2 ? Items.IRON_BOOTS : Items.LEATHER_BOOTS));
         }
+        if (role == GuardRole.PMC) {
+            int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");
+            if (tier >= 3 && guard.getRandom().nextInt(100) < (tier == 4 ? 30 : 10)) {
+                String id = tier == 4 && guard.getRandom().nextBoolean() ? "thermal_goggles" : "night_vision_goggles";
+                guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations", id))));
+            }
+        }
         guard.setDropChance(EquipmentSlot.LEGS, 0);
         guard.setDropChance(EquipmentSlot.HEAD, 0);
         guard.setDropChance(EquipmentSlot.FEET, 0);
