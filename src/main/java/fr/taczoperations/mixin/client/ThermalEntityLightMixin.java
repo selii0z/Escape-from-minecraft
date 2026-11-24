@@ -3,6 +3,7 @@ package fr.taczoperations.mixin.client;
 import fr.taczoperations.client.GoggleControls;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,7 +20,7 @@ public abstract class ThermalEntityLightMixin {
             && entity instanceof LivingEntity living && living.isAlive()
             && !living.isInvisibleTo(player) && player.distanceToSqr(living) <= 4096
             && player.hasLineOfSight(living)) {
-            cir.setReturnValue(15728880);
+            cir.setReturnValue(LightTexture.FULL_BRIGHT);
         }
     }
 }
