@@ -183,6 +183,20 @@ public enum SupplyContract {
         this(relic.title, amount, relic.price * amount + relic.price / 3, 12 + 8 * relic.tier, Objective.RELIC, relic);
     }
 
+    public int category() {
+        return switch (objective) {
+            case KILL, ELITE, ASSAULT -> 1;
+            case CHEST -> 2;
+            case EXIT, COMBAT_EXIT, INDUSTRIAL_EXIT -> 3;
+            case RELIC -> 4;
+            case BOSS, BOSS_INTEL -> 5;
+        };
+    }
+
+    public int difficulty() {
+        return credits < 400 ? 1 : credits < 900 ? 2 : credits < 1800 ? 3 : credits < 3500 ? 4 : 5;
+    }
+
     public Item icon() {
         return relic != null ? relic.item() : switch (objective) { case CHEST -> Items.CHEST; case EXIT, COMBAT_EXIT, INDUSTRIAL_EXIT -> Items.COMPASS; default -> Items.IRON_SWORD; };
     }
