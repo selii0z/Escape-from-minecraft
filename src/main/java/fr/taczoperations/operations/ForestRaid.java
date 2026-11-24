@@ -65,6 +65,7 @@ public final class ForestRaid extends SavedData {
     private BitSet crates = new BitSet();
     private BitSet enemies = new BitSet();
     private BitSet pmcGroups = new BitSet();
+    private List<ForestPlan.Point> encounterPoints = List.of();
     private List<ForestRaidAnchors.Mark> locations = List.of();
 
     private static ForestRaid get(ServerLevel level) {
@@ -93,7 +94,8 @@ public final class ForestRaid extends SavedData {
         raid.industrial = industrial;
         raid.crates.clear();
         raid.enemies.clear();
-        raid.pmcGroups = assignFactions(industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES, raid.seed);
+        raid.encounterPoints = chooseEncounterPoints(industrial, raid.seed);
+        raid.pmcGroups = assignFactions(raid.encounterPoints, raid.seed);
         raid.dropDue = level.getGameTime() + 20L * (45 + new Random(raid.seed).nextInt(46));
         raid.dropLanding = 0;
         raid.dropAttempts = 0;
@@ -479,7 +481,7 @@ public final class ForestRaid extends SavedData {
             }
         }
 
-        var guards = raid.industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES;
+        var guards = raid.encounterPoints;
         // Prefer the nearest encounter anchors rather than always the first list entries.
         var ordered = new java.util.ArrayList<Integer>();
         for (int i = 0; i < guards.size(); i++) ordered.add(i);
@@ -504,9 +506,13 @@ public final class ForestRaid extends SavedData {
                 // Search several separate positions; never spawn two members on the same block.
                 Random positions = new Random(raid.seed ^ (slot * 31L) ^ (player.tickCount / 20L));
                 for (int attempt = 0; attempt < 6; attempt++) {
-                    BlockPos around = center.offset(positions.nextInt(13) - 6, 0, positions.nextInt(13) - 6);
+                    int dx = positions.nextInt(17) - 8, dz = positions.nextInt(17) - 8;
+                    var local = new ForestPlan.Point(point.x() + dx, point.z() + dz);
+                    BlockPos around = raid.industrial ? ForestExpedition.industrialPosition(local) : ForestLandmarks.position(local);
                     BlockPos place = findFloor(level, around, 4, true);
-                    if (place == null || !level.getEntitiesOfClass(Pillager.class,
+                    if (place == null || !validEncounterPosition(raid.industrial, place)
+                        || level.players().stream().anyMatch(p -> isParticipant(p) && place.distToCenterSqr(p.position()) < 20*20)
+                        || !level.getEntitiesOfClass(Pillager.class,
                         new net.minecraft.world.phys.AABB(place).inflate(1.5),
                         e -> e.isAlive() && currentGuard(level, e)).isEmpty()) continue;
                     if (raid.spawnGuard(level, place, role, group)) {
@@ -532,6 +538,61 @@ public final class ForestRaid extends SavedData {
                 }
             }
         }
+    }
+
+    // Sample a new, stable layout once per raid. Existing landmarks are
+    // regional hints, not fixed spawn coordinates. No respawn after a kill.
+    private static List<ForestPlan.Point> chooseEncounterPoints(boolean industrial, long seed) {
+        var base = new java.util.ArrayList<>(industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES);
+        Random random = new Random(seed ^ 0x657a34deL);
+        java.util.Collections.shuffle(base, random);
+        int count = industrial ? 7 + random.nextInt(3) : 22 + random.nextInt(7);
+        var result = new java.util.ArrayList<ForestPlan.Point>();
+        int radius = industrial ? 24 : 48;
+        for (var anchor : base) {
+            if (result.size() >= count) break;
+            for (int attempt = 0; attempt < 40; attempt++) {
+                double angle = random.nextDouble() * Math.PI * 2;
+                double distance = (attempt < 32 ? radius * (.35 + random.nextDouble() * .65) : random.nextDouble() * radius);
+                var candidate = new ForestPlan.Point(anchor.x() + (int)Math.round(Math.cos(angle)*distance),
+                    anchor.z() + (int)Math.round(Math.sin(angle)*distance));
+                if (!validEncounterPoint(industrial, candidate)) continue;
+                if (result.stream().anyMatch(p -> pointDistanceSquared(p, candidate) < 26L*26L)) continue;
+                result.add(candidate);
+                break;
+            }
+        }
+        // Fall back to unused landmark hints if the random terrain samples
+        // are insufficient; retain the planned encounter population.
+        for (var anchor : base) {
+            if (result.size() >= count) break;
+            if (validEncounterPoint(industrial, anchor)
+                && result.stream().noneMatch(p -> pointDistanceSquared(p, anchor) < 18L*18L))
+                result.add(anchor);
+        }
+        return List.copyOf(result);
+    }
+
+    private static long pointDistanceSquared(ForestPlan.Point a, ForestPlan.Point b) {
+        long dx = a.x()-b.x(), dz = a.z()-b.z();
+        return dx*dx+dz*dz;
+    }
+
+    private static boolean validEncounterPoint(boolean industrial, ForestPlan.Point point) {
+        int size = industrial ? IndustrialZone.SIZE : ForestPlan.SIZE;
+        if (point.x()<12 || point.z()<12 || point.x()>=size-12 || point.z()>=size-12) return false;
+        if (industrial) return pointDistanceSquared(point, IndustrialZone.ENTRY) >= 32L*32L
+            && pointDistanceSquared(point, IndustrialZone.EXIT) >= 24L*24L;
+        return ForestPlan.surfaceY(point) > ForestPlan.WATER + 1
+            && ForestPlan.ENTRIES.stream().noneMatch(p -> pointDistanceSquared(p, point)<32L*32L)
+            && pointDistanceSquared(point, ForestPlan.EXTRACTION)>=24L*24L
+            && pointDistanceSquared(point, ForestPlan.CONDITIONAL_EXIT)>=24L*24L
+            && pointDistanceSquared(point, ForestPlan.RELAY)>=16L*16L;
+    }
+
+    private static boolean validEncounterPosition(boolean industrial, BlockPos pos) {
+        int origin = industrial ? IndustrialZone.ORIGIN : ForestPlan.ORIGIN;
+        return validEncounterPoint(industrial, new ForestPlan.Point(pos.getX()-origin,pos.getZ()-origin));
     }
 
     // Group nearby anchors, without allowing an entire chain of distant
