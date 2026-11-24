@@ -57,12 +57,13 @@ public enum OperationsShop {
                 for (var entry : TimelessAPI.getAllCommonGunIndex().stream()
                     .sorted(java.util.Comparator.comparing(e -> e.getKey().toString())).toList()) {
                     ResourceLocation id = entry.getKey();
+                    if (id.getNamespace().equals("tacz") && java.util.Set.of("glock_17", "hk_mp5a5", "ak47", "m870", "ai_awp", "m4a1").contains(id.getPath())) continue;
                     var data = entry.getValue().getGunData();
                     if (data == null || data.getFireModeSet().isEmpty()) continue;
                     int rounds = Math.max(1, data.getAmmoAmount());
-                    int price = 600 + Math.min(3000, rounds * 28);
+                    int price = 850 + Math.min(3000, rounds * 35);
                     offers.add(buy("TaCZ · " + id.getPath().replace('_', ' '), price,
-                        () -> weapon(id, rounds), null, 0));
+                        () -> weapon(id, rounds), null, price >= 1900 ? 100 : 35));
                 }
                 // Sell ammunition for every loaded gun family, including addon packs.
                 var ammoTypes = new java.util.TreeSet<ResourceLocation>(
@@ -84,6 +85,7 @@ public enum OperationsShop {
                 offers.add(buy("Viseur 552", 900, () -> attachment("sight_552"), RaidRelic.OPTIC, 0));
             }
             case MEDIC -> {
+                offers.add(buy("Rations de terrain", 80, () -> new ItemStack(Items.COOKED_BEEF, 4), null, 0));
                 offers.add(buy("Soupe de survie", 55, () -> new ItemStack(Items.RABBIT_STEW), null, 0));
                 offers.add(buy("Pomme dorée", 190, () -> new ItemStack(Items.GOLDEN_APPLE), RaidRelic.WATCH, 0));
                 offers.add(buy("Potion de soin", 140, () -> net.minecraft.world.item.alchemy.PotionContents.createItemStack(
