@@ -64,6 +64,7 @@ public final class ForestRaid extends SavedData {
     private boolean dropLanded;
     private BitSet crates = new BitSet();
     private BitSet enemies = new BitSet();
+    private BitSet pmcGroups = new BitSet();
     private List<ForestRaidAnchors.Mark> locations = List.of();
 
     private static ForestRaid get(ServerLevel level) {
@@ -79,9 +80,10 @@ public final class ForestRaid extends SavedData {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
                 || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
-                entity.discard();
+                expired.add(entity);
             }
         }
+        expired.forEach(net.minecraft.world.entity.Entity::discard);
         raid.id = UUID.randomUUID();
         raid.participants.clear();
         raid.participants.add(player.getUUID());
@@ -91,6 +93,7 @@ public final class ForestRaid extends SavedData {
         raid.industrial = industrial;
         raid.crates.clear();
         raid.enemies.clear();
+        raid.pmcGroups = assignFactions(industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES, raid.seed);
         raid.dropDue = level.getGameTime() + 20L * (45 + new Random(raid.seed).nextInt(46));
         raid.dropLanding = 0;
         raid.dropAttempts = 0;
@@ -129,6 +132,7 @@ public final class ForestRaid extends SavedData {
     }
 
     private void closeSession(ServerLevel level) {
+        java.util.List<net.minecraft.world.entity.Entity> expired = new java.util.ArrayList<>();
         for (var entity : level.getAllEntities()) {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
                 || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
@@ -476,13 +480,20 @@ public final class ForestRaid extends SavedData {
         }
 
         var guards = raid.industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES;
-        for (int group = 0; group < guards.size() && budget > 0; group++) {
+        // Prefer the nearest encounter anchors rather than always the first list entries.
+        var ordered = new java.util.ArrayList<Integer>();
+        for (int i = 0; i < guards.size(); i++) ordered.add(i);
+        ordered.sort(java.util.Comparator.comparingDouble(i -> {
+            var p = guards.get(i);
+            BlockPos pos = raid.industrial ? ForestExpedition.industrialPosition(p) : ForestLandmarks.position(p);
+            return pos.distToCenterSqr(player.position());
+        }));
+        for (int group : ordered) {
+            if (budget <= 0) break;
             var point = guards.get(group);
             BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
             if (!near(player, center) || !level.hasChunkAt(center)) continue;
-            int sector = squadSector(guards, group);
-            Random factionRandom = new Random(raid.seed ^ (0x9E3779B97F4A7C15L * (sector + 1)));
-            boolean pmc = factionRandom.nextInt(100) < 45;
+            boolean pmc = raid.pmcGroups.get(group);
             Random squadRandom = new Random(raid.seed ^ (0x632BE59BD9B4E019L * (group + 1)));
             int members = 2 + squadRandom.nextInt(2);
             for (int member = 0; member < members && budget > 0; member++) {
@@ -523,29 +534,35 @@ public final class ForestRaid extends SavedData {
         }
     }
 
-    // Nearby encounter anchors share a faction to avoid instant battles at spawn.
-    // Connected components are deterministic for the entire raid and both maps.
-    private static int squadSector(List<ForestPlan.Point> points, int start) {
-        BitSet visited = new BitSet(points.size());
-        java.util.ArrayDeque<Integer> pending = new java.util.ArrayDeque<>();
-        visited.set(start);
-        pending.add(start);
-        int sector = start;
-        while (!pending.isEmpty()) {
-            int index = pending.removeFirst();
-            sector = Math.min(sector, index);
-            var a = points.get(index);
-            for (int i = 0; i < points.size(); i++) {
-                if (visited.get(i)) continue;
-                var b = points.get(i);
-                long dx = a.x() - b.x(), dz = a.z() - b.z();
-                if (dx * dx + dz * dz <= 75L * 75L) {
-                    visited.set(i);
-                    pending.add(i);
-                }
-            }
+    // Group nearby anchors, without allowing an entire chain of distant
+    // encounters to become one giant faction. Randomize once per raid.
+    private static BitSet assignFactions(List<ForestPlan.Point> points, long seed) {
+        java.util.List<java.util.List<Integer>> sectors = new java.util.ArrayList<>();
+        for (int i = 0; i < points.size(); i++) {
+            final int idx = i;
+            var a = points.get(i);
+            var sector = sectors.stream().filter(s -> s.stream().allMatch(j -> {
+                var b = points.get(j);
+                long dx = a.x()-b.x(), dz = a.z()-b.z();
+                return dx*dx+dz*dz <= 75L*75L;
+            })).findFirst();
+            if (sector.isPresent()) sector.get().add(idx);
+            else sectors.add(new java.util.ArrayList<>(java.util.List.of(idx)));
         }
-        return sector;
+        java.util.Collections.shuffle(sectors, new Random(seed ^ 0x74c1de92L));
+        BitSet result = new BitSet(points.size());
+        int target = Math.max(2, Math.min(points.size()-2, (int)Math.round(points.size()*.45)));
+        int assigned = 0;
+        for (var sector : sectors) {
+            if (assigned >= target || assigned + sector.size() > points.size()-2) continue;
+            for (int i : sector) result.set(i);
+            assigned += sector.size();
+        }
+        // Preserve a minimum of two groups of each faction for these maps.
+        for (int i=0; assigned<2 && i<points.size()-2; i++) {
+            if (!result.get(i)) { result.set(i); assigned++; }
+        }
+        return result;
     }
 
     private static boolean near(ServerPlayer player, BlockPos pos) {

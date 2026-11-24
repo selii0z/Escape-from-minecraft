@@ -175,12 +175,28 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    private static final int[] DIFFICULTY_COLORS = {WHITE, 0xff9bce88, 0xff89bce5, GOLD, 0xffc39ae8, 0xffee7777};
+
     private void topFilters(int base, int mask, int y, String[] labels) {
         int w = 93;
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
-            simple(253 + i * (w + 2), y, w, 19, labels[i],
-                () -> send(base + index), () -> index == 0 ? mask == 0 : (mask & (1 << (index - 1))) != 0, () -> true);
+            int x = 253 + i * (w + 2);
+            BooleanSupplier selected = () -> index == 0 ? mask == 0 : (mask & (1 << (index - 1))) != 0;
+            if (base == OperationsMenu.FILTER_DIFFICULTY && index > 0) {
+                int accent = DIFFICULTY_COLORS[index];
+                widget(x, y, w, 19, labels[i], () -> send(base + index), () -> true, (g, hover) -> {
+                    boolean active = selected.getAsBoolean();
+                    int rgb = accent & 0xffffff;
+                    g.fillGradient(x, y, x+w, y+19, 0xff30342d, 0xff181c17);
+                    g.fill(x+1,y+1,x+w-1,y+18,(active ? 0x60300000 : hover ? 0x30300000 : 0x10300000) & 0xff000000 | rgb);
+                    g.renderOutline(x,y,w,19,active || hover ? accent : FRAME);
+                    g.fill(x+2,y+16,x+w-2,y+18,active ? accent : (0x90000000 | rgb));
+                    centered(g,labels[index],x+w/2,y+4,1,active ? WHITE : accent,true);
+                });
+            } else {
+                simple(x, y, w, 19, labels[i], () -> send(base + index), selected, () -> true);
+            }
         }
     }
 
@@ -394,9 +410,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     var contract = SupplyContract.values()[index];
                     int y = 212 + 31*i;
                     panel(g, 169, y, 650, 29, DARK);
+                    g.fill(170, y+1, 174, y+28, DIFFICULTY_COLORS[contract.difficulty()]);
                     item(g, new ItemStack(contract.icon()), 178, y+5, 1.1F);
                     text(g, fit(contract.title + " · " + new String[]{"","Facile","Moyen","Difficile","Épique","Mythique"}[contract.difficulty()], 280),
-                        205,y+3,1.0F,new int[]{WHITE,0xff9bce88,0xff89bce5,GOLD,0xffc39ae8,0xffee7777}[contract.difficulty()],true);
+                        205,y+3,1.0F,DIFFICULTY_COLORS[contract.difficulty()],true);
                     text(g, fit(contract.description(), 305),205,y+16,.85F,SOFT,false);
                     text(g, contract.merchant().title + " · +" + contract.reputationReward() + " rép.", 505,y+3,.85F,GOLD,true);
                     text(g, "+"+contract.credits+" cr. · "+contract.experience+" XP · "+view.progress().get(index)+"/"+contract.amount,
