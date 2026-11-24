@@ -121,6 +121,15 @@ public enum OperationsShop {
                 }
             }
         }
+        if (this == ARMORER) {
+            for (Offer offer : List.copyOf(offers)) {
+                if (offer.action != Action.BUY) continue;
+                ItemStack sample = offer.stack.get();
+                if (!(sample.getItem() instanceof com.tacz.guns.api.item.IGun)) continue;
+                offers.add(new Offer("Reprise · " + offer.title, Math.max(1, offer.price * 30 / 100),
+                    Action.SELL, offer.stack, null, 0));
+            }
+        }
         return offers;
     }
 
@@ -183,7 +192,15 @@ public enum OperationsShop {
         int balance = account.getInt("credits");
         if (offer.action == Action.SELL) {
             if (balance > Integer.MAX_VALUE - offer.price) return "Solde maximal atteint.";
-            if (!SupplyContract.consume(player, stack.getItem(), 1)) return "Tu ne possèdes pas cet objet.";
+            if (stack.getItem() instanceof com.tacz.guns.api.item.IGun gun) {
+                var expected = gun.getGunId(stack);
+                var found = player.getInventory().items.stream().filter(candidate ->
+                    candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
+                    && expected.equals(actual.getGunId(candidate))).findFirst();
+                if (found.isEmpty()) return "Tu ne possèdes pas cette arme.";
+                found.get().shrink(1);
+                player.getInventory().setChanged();
+            } else if (!SupplyContract.consume(player, stack.getItem(), 1)) return "Tu ne possèdes pas cet objet.";
             account.putInt("credits", balance + offer.price);
             return "Vente effectuée · +" + offer.price + " crédits.";
         }
