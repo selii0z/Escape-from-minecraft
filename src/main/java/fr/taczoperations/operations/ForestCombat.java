@@ -27,15 +27,13 @@ public final class ForestCombat {
     static void arm(Pillager enemy) {
         try {
             GuardRole role = GuardRole.get(enemy);
-            // Deterministic per-guard loadout variation; ammunition stays
-            // compatible with the assigned role's reserve pouch.
+            // Per-guard loadout variation; magazine size comes from the selected gun.
             String gunId = role.gun;
             if (role == GuardRole.RAIDER || role == GuardRole.SCOUT) gunId = new String[]{"glock_17","hk_mp5a5","m870"}[enemy.getRandom().nextInt(3)];
             long roll = enemy.getUUID().getLeastSignificantBits() & Long.MAX_VALUE;
             if (role == GuardRole.RAIDER && roll % 4 == 0) gunId = "hk_mp5a5";
             if (role == GuardRole.SCOUT && roll % 5 == 0) gunId = "glock_17";
-            // One guard in four receives a weapon from the complete installed
-            // TaCZ catalogue; gun packs are included automatically.
+            // PMC weapons are selected from the installed TaCZ catalogue, including gun packs.
             if (role == GuardRole.PMC) {
                 var guns = TimelessAPI.getAllCommonGunIndex().stream()
                     .filter(entry -> entry.getValue().getGunData() != null
@@ -104,7 +102,8 @@ public final class ForestCombat {
                     range = distance;
                 }
             }
-            if (guard.tickCount % 12 == 0 || target == null) {
+            {
+                // Evaluate opposing guards on every combat update to avoid target flicker.
                 for (Pillager candidate : level.getEntitiesOfClass(Pillager.class, guard.getBoundingBox().inflate(role.range), e -> e != guard && e.isAlive() && ForestRaid.currentGuard(level, e) && ((GuardRole.get(e) == GuardRole.PMC) != (role == GuardRole.PMC)) && GuardRole.get(e) != GuardRole.TRACKER)) {
                     double distance = guard.distanceToSqr(candidate);
                     if (distance < range && guard.hasLineOfSight(candidate)) { target = candidate; range = distance; }
@@ -117,7 +116,7 @@ public final class ForestCombat {
                     var home = guard.getPersistentData();
                     if (home.contains("guard_home_x")) {
                         guard.getNavigation().moveTo(home.getInt("guard_home_x") + guard.getRandom().nextInt(role == GuardRole.PMC ? 41 : 11) - (role == GuardRole.PMC ? 20 : 5),
-                            home.getInt("guard_home_y"), home.getInt("guard_home_z") + guard.getRandom().nextInt(11) - 5, .75);
+                            home.getInt("guard_home_y"), home.getInt("guard_home_z") + guard.getRandom().nextInt(role == GuardRole.PMC ? 41 : 11) - (role == GuardRole.PMC ? 20 : 5), .75);
                     }
                 }
                 return;
