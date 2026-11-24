@@ -30,12 +30,13 @@ public final class ForestCombat {
             // Deterministic per-guard loadout variation; ammunition stays
             // compatible with the assigned role's reserve pouch.
             String gunId = role.gun;
+            if (role == GuardRole.RAIDER || role == GuardRole.SCOUT) gunId = new String[]{"glock_17","hk_mp5a5","m870"}[enemy.getRandom().nextInt(3)];
             long roll = enemy.getUUID().getLeastSignificantBits() & Long.MAX_VALUE;
             if (role == GuardRole.RAIDER && roll % 4 == 0) gunId = "hk_mp5a5";
             if (role == GuardRole.SCOUT && roll % 5 == 0) gunId = "glock_17";
             // One guard in four receives a weapon from the complete installed
             // TaCZ catalogue; gun packs are included automatically.
-            if (roll % 4 == 0) {
+            if (role == GuardRole.PMC) {
                 var guns = TimelessAPI.getAllCommonGunIndex().stream()
                     .filter(entry -> entry.getValue().getGunData() != null
                         && !entry.getValue().getGunData().getFireModeSet().isEmpty()
@@ -93,7 +94,7 @@ public final class ForestCombat {
                 operator.draw(guard::getMainHandItem);
                 aim.nextShot = guard.tickCount + 20;
             }
-            ServerPlayer target = null;
+            net.minecraft.world.entity.LivingEntity target = null;
             double range = (role.range + 12) * (role.range + 12);
             for (ServerPlayer candidate : level.players()) {
                 double distance = guard.distanceToSqr(candidate);
@@ -103,12 +104,19 @@ public final class ForestCombat {
                     range = distance;
                 }
             }
+            if (guard.tickCount % 12 == 0 || target == null) {
+                for (Pillager candidate : level.getEntitiesOfClass(Pillager.class, guard.getBoundingBox().inflate(role.range), e -> e != guard && e.isAlive() && ForestRaid.currentGuard(level, e) && ((GuardRole.get(e) == GuardRole.PMC) != (role == GuardRole.PMC)) && GuardRole.get(e) != GuardRole.TRACKER)) {
+                    double distance = guard.distanceToSqr(candidate);
+                    if (distance < range && guard.hasLineOfSight(candidate)) { target = candidate; range = distance; }
+                }
+            }
             if (target == null) {
+                guard.setTarget(null);
                 operator.aim(false);
                 if (guard.tickCount % 80 == 0 && guard.getNavigation().isDone()) {
                     var home = guard.getPersistentData();
                     if (home.contains("guard_home_x")) {
-                        guard.getNavigation().moveTo(home.getInt("guard_home_x") + guard.getRandom().nextInt(11) - 5,
+                        guard.getNavigation().moveTo(home.getInt("guard_home_x") + guard.getRandom().nextInt(role == GuardRole.PMC ? 41 : 11) - (role == GuardRole.PMC ? 20 : 5),
                             home.getInt("guard_home_y"), home.getInt("guard_home_z") + guard.getRandom().nextInt(11) - 5, .75);
                     }
                 }

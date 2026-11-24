@@ -11,7 +11,8 @@ enum GuardRole {
     MARKSMAN("Tireur d’élite", "ai_awp", "338", 5, 47, 58, Items.CHAINMAIL_CHESTPLATE, 23, .30),
     HEAVY("Soldat lourd", "m870", "12g", 5, 14, 42, Items.IRON_CHESTPLATE, 38, .26),
     LEADER("Chef d’escouade", "m4a1", "556x45", 28, 33, 22, Items.IRON_CHESTPLATE, 33, .35),
-    TRACKER("Le Traqueur", "ak47", "762x39", 30, 36, 16, Items.DIAMOND_CHESTPLATE, 65, .39);
+    TRACKER("Le Traqueur", "ak47", "762x39", 30, 36, 16, Items.DIAMOND_CHESTPLATE, 65, .39),
+    PMC("Opérateur PMC", "m4a1", "556x45", 30, 38, 19, Items.IRON_CHESTPLATE, 34, .36);
 
     private static final String TAG = "taczoperations_guard_role";
     final String title, gun, ammo;

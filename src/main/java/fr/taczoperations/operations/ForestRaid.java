@@ -326,18 +326,20 @@ public final class ForestRaid extends SavedData {
         }
 
         var guards = raid.industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES;
-        for (int i = 0; i < guards.size() + (raid.industrial ? 0 : 1) && budget > 0; i++) {
+        for (int i = 0; i < guards.size() * 2 + (raid.industrial ? 0 : 1) && budget > 0; i++) {
             if (raid.enemies.get(i)) {
                 continue;
             }
-            boolean boss = i == guards.size();
-            GuardRole role = boss ? GuardRole.TRACKER : GuardRole.values()[Math.floorMod(i + (int) raid.seed, 6)];
+            boolean boss = !raid.industrial && i == guards.size();
+            boolean extra = i > guards.size() || raid.industrial && i == guards.size();
+            GuardRole role = boss ? GuardRole.TRACKER : extra ? GuardRole.PMC : Math.floorMod(i + (int) raid.seed, 5) == 0 ? GuardRole.HEAVY : Math.floorMod(i, 2) == 0 ? GuardRole.RAIDER : GuardRole.SCOUT;
             var point = boss ? ForestRaidAnchors.TRACKER.get(Math.floorMod(raid.seed, ForestRaidAnchors.TRACKER.size()))
-                : guards.get(i);
+                : guards.get(i % guards.size());
             BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
             if (!near(player, center) || !level.hasChunkAt(center)) {
                 continue;
             }
+            if (extra) center = center.offset(Math.floorMod(raid.seed + i * 31L, 17) - 8, 0, Math.floorMod(raid.seed + i * 47L, 17) - 8);
             BlockPos place = findFloor(level, center, 4, true);
             if (place != null && raid.spawnGuard(level, place, role)) {
                 raid.enemies.set(i);
