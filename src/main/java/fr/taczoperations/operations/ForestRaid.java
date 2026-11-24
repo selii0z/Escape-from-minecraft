@@ -528,12 +528,13 @@ public final class ForestRaid extends SavedData {
 
         // The Tracker is a separate boss, not a member of either faction.
         int bossSlot = guards.size() * 3;
-        if (!raid.industrial && budget > 0 && !raid.enemies.get(bossSlot)) {
-            var point = ForestRaidAnchors.TRACKER.get(Math.floorMod(raid.seed, ForestRaidAnchors.TRACKER.size()));
-            BlockPos center = ForestLandmarks.position(point);
-            if (near(player, center) && level.hasChunkAt(center)) {
+        if (budget > 0 && !raid.enemies.get(bossSlot)) {
+            var locations = raid.industrial ? IndustrialZone.BOSSES : ForestRaidAnchors.TRACKER;
+            var point = locations.get(Math.floorMod(raid.seed, locations.size()));
+            BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
+            if (center.distToCenterSqr(player.position()) <= 160.0*160.0 && level.hasChunkAt(center)) {
                 BlockPos place = findFloor(level, center, 4, true);
-                if (place != null && raid.spawnGuard(level, place, GuardRole.TRACKER, -1)) {
+                if (place != null && raid.spawnGuard(level, place, raid.industrial ? GuardRole.FOREMAN : GuardRole.TRACKER, -1)) {
                     raid.enemies.set(bossSlot);
                     raid.setDirty();
                 }
@@ -547,7 +548,7 @@ public final class ForestRaid extends SavedData {
         var base = new java.util.ArrayList<>(industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES);
         Random random = new Random(seed ^ 0x657a34deL);
         java.util.Collections.shuffle(base, random);
-        int count = industrial ? 7 + random.nextInt(3) : 22 + random.nextInt(7);
+        int count = industrial ? 12 + random.nextInt(5) : 22 + random.nextInt(7);
         var result = new java.util.ArrayList<ForestPlan.Point>();
         int radius = industrial ? 24 : 48;
         for (var anchor : base) {
@@ -871,7 +872,7 @@ public final class ForestRaid extends SavedData {
             && !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
-            int xp = role == GuardRole.TRACKER ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
+            int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
             SupplyContract.activityXp(killer, xp, true, role.title + " éliminé");
         }
         GuardCorpse corpse = OperationsMod.GUARD_CORPSE.get().create(level);
@@ -891,6 +892,8 @@ public final class ForestRaid extends SavedData {
         }
         if (role == GuardRole.TRACKER) {
             corpse.put(18, RaidRelic.CHIP.stack());
+        } else if (role == GuardRole.FOREMAN) {
+            corpse.put(18, RaidRelic.CIRCUIT.stack());
         }
         if (level.addFreshEntity(corpse)) {
             for (EquipmentSlot slot : equipment) {

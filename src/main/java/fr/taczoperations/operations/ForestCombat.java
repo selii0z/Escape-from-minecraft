@@ -42,8 +42,8 @@ public final class ForestCombat {
         }
 
         GuardRole role = GuardRole.get(guard);
-        float multiplier = role == GuardRole.TRACKER ? .65F : role == GuardRole.PMC ? .55F : .45F;
-        float hitCap = role == GuardRole.TRACKER ? 10F : role == GuardRole.PMC ? 7F : 5F;
+        float multiplier = role.boss() ? .65F : role == GuardRole.PMC ? .55F : .45F;
+        float hitCap = role.boss() ? 10F : role == GuardRole.PMC ? 7F : 5F;
         float headshot = event.isHeadShot() ? Math.clamp(event.getHeadshotMultiplier(), 1F, 1.25F) : 1F;
         event.setHeadshotMultiplier(headshot);
         float raw = event.getBaseAmount();
@@ -166,7 +166,7 @@ public final class ForestCombat {
             }
             {
                 // Evaluate opposing guards on every combat update to avoid target flicker.
-                for (Pillager candidate : level.getEntitiesOfClass(Pillager.class, guard.getBoundingBox().inflate(role.range), e -> e != guard && e.isAlive() && ForestRaid.currentGuard(level, e) && ((GuardRole.get(e) == GuardRole.PMC) != (role == GuardRole.PMC)) && GuardRole.get(e) != GuardRole.TRACKER)) {
+                for (Pillager candidate : level.getEntitiesOfClass(Pillager.class, guard.getBoundingBox().inflate(role.range), e -> e != guard && e.isAlive() && ForestRaid.currentGuard(level, e) && ((GuardRole.get(e) == GuardRole.PMC) != (role == GuardRole.PMC)) && !GuardRole.get(e).boss())) {
                     double distance = guard.distanceToSqr(candidate);
                     if (distance < range && guard.hasLineOfSight(candidate)) { target = candidate; range = distance; }
                 }
