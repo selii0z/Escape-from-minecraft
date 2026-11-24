@@ -1,0 +1,41 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+group = 'fr.taczoperations'
+version = mod_version
+base.archivesName = 'taczoperations'
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+}
+
+repositories {
+    maven {
+        url = 'https://maven.theillusivec4.top/'
+        content { includeGroup 'top.theillusivec4.curios' }
+    }
+    maven {
+        url = 'https://maven.blamejared.com'
+        content { includeGroup 'info.journeymap' }
+    }
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+dependencies {
+    compileOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api'
+    compileOnly 'info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1'
+    compileOnly 'maven.modrinth:timeless-and-classics-zero:O2Pfsh6w'
+}
+
+processResources {
+    inputs.property 'mod_version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(mod_version: project.version)
+    }
+}

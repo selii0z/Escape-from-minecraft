@@ -1,0 +1,40 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "taczoperations"
+version = "${mod_version}"
+displayName = "Escape from Minecraft / TaCZ Operations"
+description = "Raids d'extraction dans Minecraft."
+
+[[dependencies.taczoperations]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1]"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.taczoperations]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1.249],[21.1.266]"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.taczoperations]]
+modId = "tacz"
+type = "required"
+versionRange = "[1.2.0],[1.2.0-hotfix]"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.taczoperations]]
+modId = "curios"
+type = "optional"
+versionRange = "[9,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[mixins]]
+config = "taczoperations.mixins.json"

@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "package": "fr.taczoperations.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ForestTerrainMixin",
+    "ForestTimeMixin",
+    "GuardTrackingMixin"
+  ],
+  "client": [
+    "client.BoardTextureMixin",
+    "client.BoardFontMixin",
+    "client.GoggleLightMixin",
+    "client.ThermalEntityLightMixin",
+    "client.GoggleLightTextureMixin",
+    "client.ThermalEntityTintMixin",
+    "client.GuardRenderDistanceMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
