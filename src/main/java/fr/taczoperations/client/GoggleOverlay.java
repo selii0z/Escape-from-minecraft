@@ -31,6 +31,21 @@ public final class GoggleOverlay {
         g.fill(7, 7, 23 + mc.font.width(mode), 23, 0x99000000);
         g.fill(11, 12, 15, 16, color);
         g.drawString(mc.font, mode, 19, 11, color, false);
+        if (thermal) {
+            var hit = mc.hitResult;
+            if (hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
+                && entityHit.getEntity() instanceof net.minecraft.world.entity.LivingEntity living
+                && living.isAlive() && !living.isInvisibleTo(mc.player)
+                && mc.player.hasLineOfSight(living)) {
+                int cx = w / 2, cy = h / 2;
+                int hot = 0xFFFFB060;
+                g.fill(cx - 14, cy - 14, cx - 7, cy - 13, hot);
+                g.fill(cx + 7, cy - 14, cx + 14, cy - 13, hot);
+                g.fill(cx - 14, cy + 13, cx - 7, cy + 14, hot);
+                g.fill(cx + 7, cy + 13, cx + 14, cy + 14, hot);
+                g.drawCenteredString(mc.font, "HEAT", cx, cy + 20, hot);
+            }
+        }
         for (int y = 0; y < h; y += 4) {
             g.fill(0, y, w, y + 1, 0x10000000);
         }
