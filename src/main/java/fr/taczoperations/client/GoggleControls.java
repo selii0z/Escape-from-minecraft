@@ -41,6 +41,12 @@ public final class GoggleControls {
             mc.player.displayClientMessage(Component.literal(active.isEmpty() ? "Lunettes désactivées" : "Lunettes activées"), true);
         }
     }
-    public static boolean nightVision() { return active.equals("taczoperations:night_vision_goggles"); }
-    public static boolean thermal() { return active.equals("taczoperations:thermal_goggles"); }
+    private static boolean isActive(String id) {
+        Minecraft mc = Minecraft.getInstance();
+        return active.equals(id) && mc.player != null && mc.level != null
+            && mc.player == previousPlayer && mc.level == previousLevel && mc.player.isAlive()
+            && BuiltInRegistries.ITEM.getKey(mc.player.getItemBySlot(EquipmentSlot.HEAD).getItem()).toString().equals(id);
+    }
+    public static boolean nightVision() { return isActive("taczoperations:night_vision_goggles"); }
+    public static boolean thermal() { return isActive("taczoperations:thermal_goggles"); }
 }
