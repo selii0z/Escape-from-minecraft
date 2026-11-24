@@ -74,6 +74,7 @@ public final class ForestRaid extends SavedData {
         ForestRaid raid = get(level);
         // A previous raid may have left corpses in loaded chunks. Remove them
         // before assigning a new session ID, so their inventories cannot be looted.
+        java.util.List<net.minecraft.world.entity.Entity> expired = new java.util.ArrayList<>();
         for (var entity : level.getAllEntities()) {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
                 || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
@@ -132,9 +133,10 @@ public final class ForestRaid extends SavedData {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
                 || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
-                entity.discard();
+                expired.add(entity);
             }
         }
+        expired.forEach(net.minecraft.world.entity.Entity::discard);
         id = null;
         participants.clear();
         offlineSince = 0;
@@ -364,13 +366,39 @@ public final class ForestRaid extends SavedData {
             "taczoperations_relic_baseline"
         }) player.getPersistentData().remove(key);
 
-        CompoundTag report = SupplyContract.account(player).getCompound("last_raid_report");
-        if (!report.contains("final_xp") || report.getBoolean("success")) return;
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-            new RaidResultPayload(false, report.getLong("duration_seconds"),
-                report.getInt("kills"), report.getInt("crates"), report.getInt("contracts"),
-                report.getInt("combat_xp"), report.getInt("search_xp"),
-                report.getInt("contract_xp"), report.getInt("adjustment_xp")));
+        // The same delayed delivery path handles both success and failure.
+    }
+
+    private static final java.util.Map<ServerPlayer, Integer> REPORT_READY = new java.util.WeakHashMap<>();
+
+    public static void deliverReport(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        var account = SupplyContract.account(player);
+        if (!account.getBoolean("pending_raid_report") || !player.isAlive()
+            || player.serverLevel().dimension().equals(ForestExpedition.FOREST)) {
+            REPORT_READY.remove(player);
+            return;
+        }
+        int ready = REPORT_READY.computeIfAbsent(player, p -> p.tickCount + 40);
+        if (player.tickCount < ready) return;
+        CompoundTag report = account.getCompound("last_raid_report");
+        if (!report.contains("final_xp")) {
+            account.remove("pending_raid_report");
+            REPORT_READY.remove(player);
+            return;
+        }
+        try {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new RaidResultPayload(report.getBoolean("success"), report.getLong("duration_seconds"),
+                    report.getInt("kills"), report.getInt("crates"), report.getInt("contracts"),
+                    report.getInt("combat_xp"), report.getInt("search_xp"),
+                    report.getInt("contract_xp"), report.getInt("adjustment_xp")));
+            account.remove("pending_raid_report");
+            REPORT_READY.remove(player);
+        } catch (RuntimeException exception) {
+            com.mojang.logging.LogUtils.getLogger().warn("Raid report delivery failed; retained for retry", exception);
+            REPORT_READY.put(player, player.tickCount + 100);
+        }
     }
 
     static boolean hasActiveSession(ServerLevel level) {

@@ -262,6 +262,7 @@ public enum SupplyContract {
             Math.max(0L, (long) killXp + searchXp + contractXp + adjustment)));
         CompoundTag data = account(player);
         data.put("last_raid_report", report);
+        data.putBoolean("pending_raid_report", true);
         // Retain the ten most recent runs, newest first, for a future history tab.
         ListTag previous = data.getList("raid_history", 10);
         ListTag history = new ListTag();
@@ -381,12 +382,11 @@ public enum SupplyContract {
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus);
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-            new RaidResultPayload(true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus));
+        // The persistent report is delivered by the player tick after the dimension transition.
         // The graphical report is authoritative; keep chat concise.
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "Extraction réussie · +" + ((long) killXp + searchXp + contractXp + bonus)
-                + " XP Escape (bonus +" + bonus + "). Bilan affiché à l'écran."));
+                + " XP Escape (bonus +" + bonus + "). Bilan enregistré."));
         player.getPersistentData().remove("taczoperations_run_kill_xp");
         player.getPersistentData().remove("taczoperations_run_search_xp");
         player.getPersistentData().remove("taczoperations_run_crates");
