@@ -10,7 +10,8 @@
     "client.BoardTextureMixin",
     "client.BoardFontMixin",
     "client.GoggleLightMixin",
-    "client.ThermalEntityLightMixin"
+    "client.ThermalEntityLightMixin",
+    "client.GoggleLightTextureMixin"
   ],
   "injectors": {
     "defaultRequire": 1
