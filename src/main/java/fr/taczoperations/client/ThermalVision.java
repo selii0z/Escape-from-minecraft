@@ -5,7 +5,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
 public final class ThermalVision {
-    private static final double RANGE_SQUARED = 64.0 * 64.0;
+    private static final double RANGE_SQUARED = 150.0 * 150.0;
 
     public static boolean detects(Entity entity) {
         var player = Minecraft.getInstance().player;
@@ -16,10 +16,7 @@ public final class ThermalVision {
     }
 
     public static int tint(int color) {
-        int red = (color >>> 16) & 255;
-        int green = (color >>> 8) & 255;
-        int blue = color & 255;
-        return (color & 0xFF000000) | (red << 16) | ((green * 185 / 255) << 8) | (blue * 95 / 255);
+        return 0xFFFFFFFF;
     }
 
     private ThermalVision() {}

@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ForestTerrainMixin",
-    "ForestTimeMixin"
+    "ForestTimeMixin",
+    "GuardTrackingMixin"
   ],
   "client": [
     "client.BoardTextureMixin",
@@ -12,7 +13,8 @@
     "client.GoggleLightMixin",
     "client.ThermalEntityLightMixin",
     "client.GoggleLightTextureMixin",
-    "client.ThermalEntityTintMixin"
+    "client.ThermalEntityTintMixin",
+    "client.GuardRenderDistanceMixin"
   ],
   "injectors": {
     "defaultRequire": 1

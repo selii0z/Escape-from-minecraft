@@ -13,6 +13,15 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(LivingEntityRenderer.class)
 public abstract class ThermalEntityTintMixin {
+    @org.spongepowered.asm.mixin.injection.Inject(method = "getRenderType", at = @At("RETURN"), cancellable = true, require = 0)
+    private void thermalSurface(LivingEntity entity, boolean bodyVisible, boolean translucent, boolean glowing,
+        org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<net.minecraft.client.renderer.RenderType> cir) {
+        if (bodyVisible && cir.getReturnValue() != null && ThermalVision.detects(entity)) {
+            cir.setReturnValue(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","textures/misc/thermal_white.png")));
+        }
+    }
+
     @Redirect(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"),
         require = 0)

@@ -495,7 +495,7 @@ public final class ForestRaid extends SavedData {
             if (budget <= 0) break;
             var point = guards.get(group);
             BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
-            if (!near(player, center) || !level.hasChunkAt(center)) continue;
+            if (center.distToCenterSqr(player.position()) > 160.0 * 160.0 || !level.hasChunkAt(center)) continue;
             boolean pmc = raid.pmcGroups.get(group);
             Random squadRandom = new Random(raid.seed ^ (0x632BE59BD9B4E019L * (group + 1)));
             int members = 2 + squadRandom.nextInt(2);
