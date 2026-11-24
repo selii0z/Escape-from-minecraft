@@ -265,6 +265,9 @@ public enum SupplyContract {
         report.putInt("xp_after", xpAfter);
         if (xpBefore >= 0) report.putInt("final_xp", Math.max(0,xpAfter-xpBefore));
         CompoundTag data = account(player);
+        var totals = raidTotals(player);
+        addRaidTotals(totals, report);
+        data.put("raid_totals_v1",totals);
         data.put("last_raid_report", report);
         data.putBoolean("pending_raid_report", true);
         // Retain the ten most recent runs, newest first, for a future history tab.
@@ -275,6 +278,31 @@ public enum SupplyContract {
             history.add(previous.getCompound(i).copy());
         }
         data.put("raid_history", history);
+    }
+
+    // Migrate the available ten-raid history once. Earlier records are not reconstructible.
+    static CompoundTag raidTotals(ServerPlayer player) {
+        var data=account(player);
+        if(data.contains("raid_totals_v1"))return data.getCompound("raid_totals_v1");
+        var totals=new CompoundTag();
+        var history=data.getList("raid_history",10);
+        for(int i=0;i<history.size();i++)addRaidTotals(totals,history.getCompound(i));
+        data.put("raid_totals_v1",totals);
+        return totals;
+    }
+    private static void addRaidTotals(CompoundTag totals,CompoundTag report) {
+        incrementTotal(totals,"raids",1);
+        incrementTotal(totals,report.getBoolean("success")?"wins":"losses",1);
+        incrementTotal(totals,"kills",report.getInt("kills"));
+        incrementTotal(totals,"crates",report.getInt("crates"));
+        incrementTotal(totals,"contracts",report.getInt("contracts"));
+        incrementTotal(totals,"seconds",report.getLong("duration_seconds"));
+        incrementTotal(totals,"xp",report.getInt("final_xp"));
+        totals.putLong("best_kills",Math.max(totals.getLong("best_kills"),report.getInt("kills")));
+    }
+    private static void incrementTotal(CompoundTag totals,String key,long value) {
+        long current=Math.max(0L,totals.getLong(key));
+        totals.putLong(key,current+Math.min(Long.MAX_VALUE-current,Math.max(0L,value)));
     }
 
     static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }

@@ -555,6 +555,24 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             return;
         }
+        if(view.tab()==OperationsMenu.PROGRESSION) {
+            var totals=view.raidTotals();
+            panel(g,575,88,249,145,DARK);
+            text(g,"STATISTIQUES DE RAID",585,97,1.17F,GOLD,true);
+            long raids=totals.get(0),wins=totals.get(1),losses=totals.get(2),kills=totals.get(3);
+            text(g,"Raids terminés : "+raids,585,117,.93F,WHITE,false);
+            text(g,"Extractions : "+wins+" · Morts : "+losses,585,132,.93F,SOFT,false);
+            text(g,"Survie : "+(raids==0?"—":String.format(java.util.Locale.FRANCE,"%.1f %%",100.0*wins/raids)),585,147,.93F,LIME,true);
+            text(g,"Éliminations : "+kills+" · K/D : "+(losses==0?"—":String.format(java.util.Locale.FRANCE,"%.2f",(double)kills/losses)),585,162,.9F,WHITE,false);
+            text(g,"Record : "+totals.get(8)+" éliminations",585,177,.91F,SOFT,false);
+            text(g,"Coffres : "+totals.get(4)+" · Contrats : "+totals.get(5),585,192,.89F,SOFT,false);
+            long seconds=totals.get(6);
+            text(g,"Temps : "+seconds/3600+" h "+seconds%3600/60+" min",585,207,.89F,SOFT,false);
+            panel(g,575,283,249,55,DARK);
+            text(g,"XP GAGNÉE EN RAID",585,293,.94F,SOFT,true);
+            text(g,Long.toString(totals.get(7)),585,312,1.32F,LIME,true);
+            return;
+        }
         image(g, AREAS[FOREST].texture(), 578, 88, 239, 108);
         g.renderOutline(578, 88, 239, 108, FRAME);
         text(g, "FORÊT NOIRE", 585, 205, 1.24F, WHITE, true);
