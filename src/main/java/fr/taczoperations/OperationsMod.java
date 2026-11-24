@@ -58,6 +58,7 @@ public final class OperationsMod {
         RaidRelic.register(ITEMS);
         ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        ITEMS.registerItem("secure_case", fr.taczoperations.operations.SecureCaseItem::new, new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
     }
 
@@ -106,6 +107,8 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onServerTick);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onPlayerClone);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::cloneCases);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::returnCases);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onRespawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::deliverReport);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.BallisticVest::normalizePlayerEquipment);

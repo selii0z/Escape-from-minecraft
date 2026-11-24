@@ -247,12 +247,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 return true;
             }
         } else if (tab == SETTINGS && button == SECURE_POUCH) {
-            RaidSecurity.open(serverPlayer);
-            return true;
+            notice = "Clic droit avec le coffre sécurisé en main pour ouvrir ses 5 places.";
         } else if (tab == SETTINGS && button == INSURE_GEAR) {
             notice = RaidSecurity.insure(serverPlayer);
         } else if (tab == SETTINGS && button == CLAIM_INSURANCE) {
-            notice = RaidSecurity.claim(serverPlayer);
+            serverPlayer.sendSystemMessage(net.minecraft.network.chat.Component.literal(RaidSecurity.claim(serverPlayer)));
+            return true;
         } else if (tab == SETTINGS && button == TOGGLE_EXTRACTION) {
             SupplyContract.toggleExtraction(serverPlayer);
             notice = "Préférence enregistrée.";

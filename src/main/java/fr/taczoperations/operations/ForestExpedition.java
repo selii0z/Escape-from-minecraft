@@ -38,7 +38,6 @@ public final class ForestExpedition {
     static void clearReturnPoint(ServerPlayer player) {
         player.getPersistentData().remove(RETURN_POINT);
         player.getPersistentData().remove(RAID_INVENTORY);
-        RaidSecurity.clearSnapshot(player);
     }
 
     private static void snapshotInventory(ServerPlayer player) {
@@ -140,7 +139,6 @@ public final class ForestExpedition {
             return;
         }
         restoreInventory(player);
-        RaidSecurity.rollback(player);
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
     }
@@ -163,7 +161,6 @@ public final class ForestExpedition {
         player.getPersistentData().put(RETURN_POINT, point);
         player.closeContainer();
         snapshotInventory(player);
-        RaidSecurity.snapshot(player);
 
         player.closeContainer();
         Vec3 spawn = Vec3.atBottomCenterOf(destination);
@@ -300,7 +297,6 @@ public final class ForestExpedition {
         if (leavingRaid) ForestRaid.finishParticipant(player);
         if (!extracted) {
             restoreInventory(player);
-            RaidSecurity.rollback(player);
         }
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);

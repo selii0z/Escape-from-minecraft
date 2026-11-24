@@ -17,5 +17,6 @@
   "key.categories.taczoperations": "Escape from Minecraft",
   "message.taczoperations.goggles.off": "Lunettes désactivées",
   "message.taczoperations.goggles.nvg": "Vision nocturne activée",
-  "message.taczoperations.goggles.thermal": "Vision thermique activée"
+  "message.taczoperations.goggles.thermal": "Vision thermique activée",
+  "item.taczoperations.secure_case": "Coffre sécurisé"
 }
