@@ -40,6 +40,10 @@ public enum SupplyContract {
     RECON("Reconnaissance approfondie", 5, 290, 15, Objective.CHEST, null),
     ELITE_OFFICERS("Officiers hostiles", 5, 980, 42, Objective.ELITE, null),
     INDUSTRIAL_VETERAN("Spécialiste industriel", 4, 1350, 55, Objective.INDUSTRIAL_EXIT, null),
+    RADIO_CACHE("Réseau de communication", 4, 680, 30, Objective.RELIC, RaidRelic.RADIO),
+    INTEL_CACHE("Archives sensibles", 3, 1100, 45, Objective.RELIC, RaidRelic.DOCUMENTS),
+    CIRCUIT_CACHE("Composants stratégiques", 2, 1650, 55, Objective.RELIC, RaidRelic.CIRCUIT),
+    BOUNTY("Prime du Traqueur", 3, 2700, 110, Objective.BOSS, null),
     TAGS(RaidRelic.PLAQUE, 3), RADIOS(RaidRelic.RADIO, 2), PAPERS(RaidRelic.DOCUMENTS, 1),
     WATCH(RaidRelic.WATCH, 1), BOARD(RaidRelic.CIRCUIT, 1), ENCRYPTED(RaidRelic.DRIVE, 1),
     SUITCASE(RaidRelic.CASE, 1), OPTIC(RaidRelic.OPTIC, 1), COMMAND(RaidRelic.CHIP, 1), OMEGA(RaidRelic.OMEGA, 1);
@@ -79,7 +83,7 @@ public enum SupplyContract {
             case CHEST -> "Fouiller " + amount + " coffres de raid différents";
             case ASSAULT -> "Éliminer " + amount + " gardes avec un AK-47 ou un M4A1 TaCZ";
             case ELITE -> "Éliminer " + amount + " ennemis d’élite";
-            case BOSS -> "Éliminer Le Traqueur";
+            case BOSS -> "Éliminer Le Traqueur" + (amount > 1 ? " " + amount + " fois" : "");
             case EXIT -> "Réussir " + amount + (amount == 1 ? " extraction" : " extractions");
             case COMBAT_EXIT -> "S’extraire après " + amount + " éliminations dans le même raid";
             case INDUSTRIAL_EXIT -> "Réussir " + amount + (amount == 1 ? " extraction" : " extractions") + " de la Zone industrielle";
