@@ -28,12 +28,24 @@ public enum OperationsShop {
         this.specialty = specialty;
     }
 
-    public static int reputationLevel(int points) {
-        return points >= 2000 ? 4 : points >= 800 ? 3 : points >= 200 ? 2 : 1;
+    public static int requiredPlayerLevel(int loyalty) {
+        return switch (loyalty) { case 2 -> 20; case 3 -> 50; case 4 -> 100; default -> 1; };
     }
 
-    public static int nextReputation(int points) {
-        return points >= 800 ? 2000 : points >= 200 ? 800 : 200;
+    public static int requiredReputation(int loyalty) {
+        return switch (loyalty) { case 2 -> 200; case 3 -> 800; case 4 -> 2000; default -> 0; };
+    }
+
+    public static int reputationLevel(int points, int experience) {
+        int level = MilitaryProgression.level(experience);
+        for (int loyalty = 4; loyalty >= 2; loyalty--) {
+            if (points >= requiredReputation(loyalty) && level >= requiredPlayerLevel(loyalty)) return loyalty;
+        }
+        return 1;
+    }
+
+    public static int nextReputation(int points, int experience) {
+        return requiredReputation(Math.min(4,reputationLevel(points,experience)+1));
     }
 
     int reputation(ServerPlayer player) {
@@ -278,8 +290,14 @@ public enum OperationsShop {
             account.putInt("credits", balance + offer.price);
             return "Vente effectuée · +" + offer.price + " crédits.";
         }
-        if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id)
-            || reputationLevel(reputation(player)) < offer.loyaltyLevel()) return "Accès ou fidélité marchand requis.";
+        int experience = SupplyContract.experienceEarned(player);
+        int loyalty = offer.loyaltyLevel();
+        if (MilitaryProgression.level(experience) < requiredPlayerLevel(loyalty))
+            return "Niveau militaire " + requiredPlayerLevel(loyalty) + " requis.";
+        if (reputationLevel(reputation(player),experience) < loyalty)
+            return "Fidélité " + loyalty + " requise · " + requiredReputation(loyalty) + " rép.";
+        if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id))
+            return "Accès permanent requis.";
         if (balance < offer.price) return "Crédits insuffisants.";
         var inventory = player.getInventory();
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()

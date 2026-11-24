@@ -142,7 +142,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     final int action = OperationsMenu.TRADE_FIRST + i;
                     simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
                         () -> offer.action() == OperationsShop.Action.UNLOCK ? !unlocked(offer.key())
-                            : offer.action() != OperationsShop.Action.BUY || (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal())) >= offer.loyaltyLevel()
+                            : offer.action() != OperationsShop.Action.BUY || (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) >= offer.loyaltyLevel()
                             && (offer.key() == null || unlocked(offer.key()))));
                 }
                 for (var merchant : OperationsShop.values()) {
@@ -430,7 +430,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     int y = 128 + i * 41;
                     panel(g, 169, y, 379, 37, DARK);
                     boolean locked = offer.action() == OperationsShop.Action.BUY &&
-                        (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal())) < offer.loyaltyLevel()
+                        (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) < offer.loyaltyLevel()
                          || offer.key() != null && !unlocked(offer.key()));
                     text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
                     String cost = switch (offer.action()) {
@@ -438,7 +438,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         case SELL -> "+" + offer.price() + " crédits";
                         case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
                     };
-                    text(g, fit(cost + (offer.requirement().isEmpty() ? "" : " · " + offer.requirement()), 250),
+                    String requirement = offer.requirement();
+                    if (offer.action() == OperationsShop.Action.BUY && offer.loyaltyLevel() > 1)
+                        requirement += " · Niv. " + OperationsShop.requiredPlayerLevel(offer.loyaltyLevel());
+                    text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
                         181, y + 23, .95F, GOLD, false);
                 }
             }
@@ -529,8 +532,14 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             image(g, texture("merchant_" + vendor.name().toLowerCase(java.util.Locale.ROOT)), 593, 102, 62, 82);
             text(g, vendor.title, 669, 109, 1.2F, GOLD, true);
             int reputation = view.reputation().get(vendor.ordinal());
-            text(g, "Fidélité " + OperationsShop.reputationLevel(reputation) + " / 4", 669, 130, 1.0F, GOLD, true);
-            text(g, reputation >= 2000 ? "Fidélité maximale" : reputation + " / " + OperationsShop.nextReputation(reputation) + " rép.", 669, 148, .85F, SOFT, false);
+            int loyalty = OperationsShop.reputationLevel(reputation,view.experience());
+            text(g, "Fidélité " + loyalty + " / 4", 669, 130, 1.0F, GOLD, true);
+            text(g, loyalty == 4 ? "Fidélité maximale" : reputation + " / " + OperationsShop.nextReputation(reputation,view.experience()) + " rép.", 669, 148, .85F, SOFT, false);
+            if (loyalty < 4) {
+                int required = OperationsShop.requiredPlayerLevel(loyalty+1);
+                boolean reached = MilitaryProgression.level(view.experience()) >= required;
+                text(g, "Niv. " + required + " requis", 669, 164, .85F, reached ? LIME : 0xffee9990, true);
+            }
             return;
         }
         image(g, AREAS[FOREST].texture(), 578, 88, 239, 108);
