@@ -51,7 +51,7 @@ public final class ForestPlan {
         }
     }
 
-    private static final List<Segment> TRACKS = buildTracks();
+    private static final byte[] TRACKS = buildTrackMask(buildTracks());
 
     private static List<Segment> buildTracks() {
         var tracks = new java.util.ArrayList<Segment>();
@@ -76,9 +76,98 @@ public final class ForestPlan {
 
     private static void add(List<Segment> tracks, int width, int... points) {
         for (int i = 2; i < points.length; i += 2) {
-            tracks.add(new Segment(new Point(points[i - 2], points[i - 1]),
-                new Point(points[i], points[i + 1]), width));
+            Point from = new Point(points[i - 2], points[i - 1]);
+            Point to = new Point(points[i], points[i + 1]);
+            route(tracks, from, to, width);
         }
+    }
+
+    // Route between existing landmarks using a narrow corridor of candidate
+    // waypoints. Dynamic programming favors gentle slopes and smooth bends.
+    private static void route(List<Segment> tracks, Point from, Point to, int width) {
+        double dx = to.x - from.x, dz = to.z - from.z;
+        double length = Math.hypot(dx, dz);
+        if (length < 1) return;
+        int steps = Math.max(1, (int) Math.ceil(length / 7.0));
+        int middle = 6, choices = 13;
+        Point[][] points = new Point[steps + 1][choices];
+        int[][] height = new int[steps + 1][choices];
+        double[][] cost = new double[steps + 1][choices];
+        int[][] back = new int[steps + 1][choices];
+        for (int s = 0; s <= steps; s++) {
+            java.util.Arrays.fill(cost[s], Double.POSITIVE_INFINITY);
+            double t = s / (double) steps;
+            for (int j = 0; j < choices; j++) {
+                if ((s == 0 || s == steps) && j != middle) continue;
+                double offset = (j - middle) * 3.0;
+                int x = (int) Math.round(from.x + t * dx - dz / length * offset);
+                int z = (int) Math.round(from.z + t * dz + dx / length * offset);
+                if (edge(x, z) < 5) continue;
+                points[s][j] = new Point(x, z);
+                height[s][j] = ground(x, z);
+            }
+        }
+        cost[0][middle] = 0;
+        for (int s = 1; s <= steps; s++) {
+            for (int j = 0; j < choices; j++) {
+                Point p = points[s][j];
+                if (p == null) continue;
+                for (int k = Math.max(0, j - 2); k <= Math.min(choices - 1, j + 2); k++) {
+                    Point prev = points[s - 1][k];
+                    if (prev == null || !Double.isFinite(cost[s - 1][k])) continue;
+                    double run = Math.max(1, Math.hypot(p.x - prev.x, p.z - prev.z));
+                    double rise = Math.abs(height[s][j] - height[s - 1][k]);
+                    boolean water = height[s][j] < WATER || height[s - 1][k] < WATER;
+                    // Inspect intermediate blocks as well as waypoint heights.
+                    int steep = 0, last = height[s - 1][k];
+                    for (int m = 1; m <= 4; m++) {
+                        int h = ground(prev.x + (p.x - prev.x) * m / 4, prev.z + (p.z - prev.z) * m / 4);
+                        steep += Math.max(0, Math.abs(h - last) - 1);
+                        last = h;
+                    }
+                    double preferred = noise(p.x, p.z, 26, 932) * 8;
+                    double value = cost[s - 1][k] + run + rise * rise * 2.0 + steep * 8.0
+                        + (water ? 12 : 0) + Math.abs((j - middle) * 3.0 - preferred) * .22
+                        + Math.abs(j - k) * 1.8;
+                    if (value < cost[s][j]) {
+                        cost[s][j] = value;
+                        back[s][j] = k;
+                    }
+                }
+            }
+        }
+        if (!Double.isFinite(cost[steps][middle])) {
+            tracks.add(new Segment(from, to, width));
+            return;
+        }
+        int j = middle;
+        for (int s = steps; s > 0; s--) {
+            int k = back[s][j];
+            Point p = points[s - 1][k], q = points[s][j];
+            if (!p.equals(q)) tracks.add(new Segment(p, q, width));
+            j = k;
+        }
+    }
+
+    // Rasterize once so chunk generation does not search hundreds of segments
+    // per block. Width is a diameter target rather than the old radius.
+    private static byte[] buildTrackMask(List<Segment> segments) {
+        byte[] mask = new byte[SIZE * SIZE];
+        for (Segment s : segments) {
+            for (int x = Math.max(0, Math.min(s.from.x, s.to.x) - 3);
+                 x <= Math.min(SIZE - 1, Math.max(s.from.x, s.to.x) + 3); x++) {
+                for (int z = Math.max(0, Math.min(s.from.z, s.to.z) - 3);
+                     z <= Math.min(SIZE - 1, Math.max(s.from.z, s.to.z) + 3); z++) {
+                    double radius = (s.width == 3 ? 1.6 : s.width == 2 ? 1.3 : 1.05)
+                        + noise(x, z, 7, 734) * .42;
+                    if (s.distance(x, z) <= radius) {
+                        int i = z * SIZE + x;
+                        mask[i] = (byte) Math.max(mask[i], s.width);
+                    }
+                }
+            }
+        }
+        return mask;
     }
 
     public static boolean inside(int x, int z) {
@@ -99,18 +188,14 @@ public final class ForestPlan {
     }
 
     static int track(int x, int z) {
-        int width = 0;
-        double variation = noise(x, z, 9, 734) * .65;
-        for (Segment segment : TRACKS) {
-            if (x >= Math.min(segment.from.x, segment.to.x) - 4
-                && x <= Math.max(segment.from.x, segment.to.x) + 4
-                && z >= Math.min(segment.from.z, segment.to.z) - 4
-                && z <= Math.max(segment.from.z, segment.to.z) + 4
-                && segment.distance(x, z) <= segment.width + variation) {
-                width = Math.max(width, segment.width);
-            }
-        }
-        return width;
+        return edge(x, z) < 0 ? 0 : TRACKS[z * SIZE + x];
+    }
+
+    static boolean nearTrack(int x, int z, int radius) {
+        for (int dx = -radius; dx <= radius; dx++)
+            for (int dz = -radius; dz <= radius; dz++)
+                if (dx * dx + dz * dz <= radius * radius && track(x + dx, z + dz) > 0) return true;
+        return false;
     }
 
     private static int natural(int x, int z) {
