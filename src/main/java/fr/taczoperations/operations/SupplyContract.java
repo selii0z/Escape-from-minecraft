@@ -36,6 +36,10 @@ public enum SupplyContract {
     COMBAT_EXIT("Sortie sous pression", 8, 850, 45, Objective.COMBAT_EXIT, null),
     INDUSTRY("Fret abandonné", 1, 350, 22, Objective.INDUSTRIAL_EXIT, null),
     DECAPITATION("Code du Traqueur", 1, 5200, 80, Objective.BOSS_INTEL, RaidRelic.CHIP),
+    QUICK_ESCAPE("Opération éclair", 2, 320, 16, Objective.COMBAT_EXIT, null),
+    RECON("Reconnaissance approfondie", 5, 290, 15, Objective.CHEST, null),
+    ELITE_OFFICERS("Officiers hostiles", 5, 980, 42, Objective.ELITE, null),
+    INDUSTRIAL_VETERAN("Spécialiste industriel", 4, 1350, 55, Objective.INDUSTRIAL_EXIT, null),
     TAGS(RaidRelic.PLAQUE, 3), RADIOS(RaidRelic.RADIO, 2), PAPERS(RaidRelic.DOCUMENTS, 1),
     WATCH(RaidRelic.WATCH, 1), BOARD(RaidRelic.CIRCUIT, 1), ENCRYPTED(RaidRelic.DRIVE, 1),
     SUITCASE(RaidRelic.CASE, 1), OPTIC(RaidRelic.OPTIC, 1), COMMAND(RaidRelic.CHIP, 1), OMEGA(RaidRelic.OMEGA, 1);
@@ -66,7 +70,7 @@ public enum SupplyContract {
     }
 
     public Item icon() {
-        return relic == null ? (objective == Objective.EXIT ? Items.COMPASS : Items.IRON_SWORD) : relic.item();
+        return relic != null ? relic.item() : switch (objective) { case CHEST -> Items.CHEST; case EXIT, COMBAT_EXIT, INDUSTRIAL_EXIT -> Items.COMPASS; default -> Items.IRON_SWORD; };
     }
 
     public String description() {
