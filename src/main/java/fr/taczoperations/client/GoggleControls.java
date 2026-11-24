@@ -31,8 +31,7 @@ public final class GoggleControls {
         }
         String equipped = "";
         if (mc.player != null && mc.level != null && mc.player.isAlive()) {
-            String id = BuiltInRegistries.ITEM.getKey(mc.player.getItemBySlot(EquipmentSlot.HEAD).getItem()).toString();
-            if (id.equals("taczoperations:night_vision_goggles") || id.equals("taczoperations:thermal_goggles")) equipped = id;
+            equipped = equippedGoggles(mc.player);
         }
         if (!active.equals(equipped)) active = "";
         while (TOGGLE.consumeClick()) {
@@ -44,11 +43,22 @@ public final class GoggleControls {
             mc.player.displayClientMessage(Component.translatable(message), true);
         }
     }
+    private static String equippedGoggles(net.minecraft.world.entity.LivingEntity player) {
+        if (net.neoforged.fml.ModList.get().isLoaded("curios")) {
+            String curio = fr.taczoperations.compat.CuriosGoggles.equipped(player);
+            if (!curio.isEmpty()) return curio;
+        }
+        String id = BuiltInRegistries.ITEM.getKey(player.getItemBySlot(EquipmentSlot.HEAD).getItem()).toString();
+        return isGoggles(id) ? id : "";
+    }
+    public static boolean isGoggles(String id) {
+        return id.equals("taczoperations:night_vision_goggles") || id.equals("taczoperations:thermal_goggles");
+    }
     private static boolean isActive(String id) {
         Minecraft mc = Minecraft.getInstance();
         return active.equals(id) && mc.player != null && mc.level != null
             && mc.player == previousPlayer && mc.level == previousLevel && mc.player.isAlive()
-            && BuiltInRegistries.ITEM.getKey(mc.player.getItemBySlot(EquipmentSlot.HEAD).getItem()).toString().equals(id);
+            && equippedGoggles(mc.player).equals(id);
     }
     public static boolean nightVision() { return isActive("taczoperations:night_vision_goggles"); }
     public static boolean thermal() { return isActive("taczoperations:thermal_goggles"); }

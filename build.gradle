@@ -14,6 +14,10 @@ neoForge {
 
 repositories {
     maven {
+        url = 'https://maven.theillusivec4.top/'
+        content { includeGroup 'top.theillusivec4.curios' }
+    }
+    maven {
         url = 'https://maven.blamejared.com'
         content { includeGroup 'info.journeymap' }
     }
@@ -24,6 +28,7 @@ repositories {
 }
 
 dependencies {
+    compileOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api'
     compileOnly 'info.journeymap:journeymap-api-neoforge:2.0.0-1.21.1'
     compileOnly 'maven.modrinth:timeless-and-classics-zero:O2Pfsh6w'
 }

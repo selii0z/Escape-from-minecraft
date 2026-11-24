@@ -11,8 +11,10 @@ public final class ThermalVision {
         var player = Minecraft.getInstance().player;
         return GoggleControls.thermal() && player != null && entity != player
             && entity instanceof LivingEntity living && living.isAlive()
-            && !living.isInvisibleTo(player) && player.distanceToSqr(living) <= RANGE_SQUARED
-            && player.hasLineOfSight(living);
+            && !living.isInvisibleTo(player) && player.distanceToSqr(living) <= RANGE_SQUARED;
+        // The entity is rendered with a depth-tested cutout, so walls and terrain
+        // hide its covered pixels. Do not reject the entire model when its eyes
+        // are hidden: a visible arm or leg must still appear warm.
     }
 
     public static int tint(int color) {
