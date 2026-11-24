@@ -343,7 +343,8 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_contracts"),
                 oldRoot.getInt("taczoperations_run_kill_xp"),
                 oldRoot.getInt("taczoperations_run_search_xp"),
-                oldRoot.getInt("taczoperations_run_contract_xp"), adjustment);
+                oldRoot.getInt("taczoperations_run_contract_xp"), adjustment,
+                oldRoot.contains("taczoperations_run_xp_before") ? oldRoot.getInt("taczoperations_run_xp_before") : -1);
             // Deliver the UI only after the new player has fully respawned.
             respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(
@@ -368,7 +369,7 @@ public final class ForestRaid extends SavedData {
         for (String key : new String[] {
             "taczoperations_run_kill_xp", "taczoperations_run_search_xp",
             "taczoperations_run_crates", "taczoperations_run_contracts", "taczoperations_run_contract_xp",
-            "taczoperations_run_started", "taczoperations_run_xp_finalized",
+            "taczoperations_run_started", "taczoperations_run_xp_finalized", "taczoperations_run_xp_before",
             "taczoperations_raid_kills", "taczoperations_raid_boss",
             "taczoperations_relic_baseline"
         }) player.getPersistentData().remove(key);
@@ -399,7 +400,9 @@ public final class ForestRaid extends SavedData {
                 new RaidResultPayload(report.getBoolean("success"), report.getLong("duration_seconds"),
                     report.getInt("kills"), report.getInt("crates"), report.getInt("contracts"),
                     report.getInt("combat_xp"), report.getInt("search_xp"),
-                    report.getInt("contract_xp"), report.getInt("adjustment_xp")));
+                    report.getInt("contract_xp"), report.getInt("adjustment_xp"),
+                    report.contains("xp_before") ? report.getInt("xp_before") : -1,
+                    report.contains("xp_after") ? report.getInt("xp_after") : -1));
             account.remove("pending_raid_report");
             REPORT_READY.remove(player);
         } catch (RuntimeException exception) {

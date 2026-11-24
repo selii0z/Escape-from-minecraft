@@ -71,7 +71,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("3");
+        var registrar = event.registrar("4");
         registrar.playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
             (report, context) -> {
                 // Never resolve client-only screen classes on a dedicated server.
