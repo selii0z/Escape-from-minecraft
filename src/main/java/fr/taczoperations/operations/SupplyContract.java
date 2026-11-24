@@ -122,6 +122,7 @@ public enum SupplyContract {
     public final int amount;
     public final int credits;
     public final int experience;
+    private final int legacyExperience;
     private final Objective objective;
     private final RaidRelic relic;
 
@@ -129,7 +130,8 @@ public enum SupplyContract {
         this.title = title;
         this.amount = amount;
         this.credits = credits;
-        this.experience = experience;
+        this.legacyExperience = experience;
+        this.experience = experience * 3;
         this.objective = objective;
         this.relic = relic;
     }
@@ -185,6 +187,7 @@ public enum SupplyContract {
     static int experienceEarned(ServerPlayer player) {
         CompoundTag account = account(player);
         long earned = (long) Math.max(0, account.getInt("raid_activity_xp")) + Math.max(0, account.getInt("contract_cycle_xp"))
+            + Math.max(0, account.getInt("contract_xp_bonus_v2"))
             + (account.getInt("OUTPOST") == 2 ? 8 : 0)
             + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
@@ -193,23 +196,23 @@ public enum SupplyContract {
                 ? account.getInt("completed_" + contract.name())
                 : (contract.status(player) == COMPLETED ? 1 : 0);
             earned = Math.min(Integer.MAX_VALUE,
-                earned + (long) contract.experience * Math.max(0, times));
+                earned + (long) contract.legacyExperience * Math.max(0, times));
         }
         return (int) Math.min(Integer.MAX_VALUE, earned);
     }
 
     // Escape from Minecraft progression XP: distinct from vanilla experience.
     // Used by the existing progression and shop-rank display.
-    static void activityXp(ServerPlayer player, int amount, String source) {
+    static void activityXp(ServerPlayer player, int amount, boolean combat, String source) {
         if (amount <= 0 || !ForestRaid.isParticipant(player)) return;
         CompoundTag data = account(player);
         // Base XP is provisional until extraction or death applies its multiplier.
         data.putInt("raid_activity_xp",
             (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + amount));
-        String counter = amount == 5 ? "raid_kill_xp" : "raid_search_xp";
+        String counter = combat ? "raid_kill_xp" : "raid_search_xp";
         data.putInt(counter,
             (int) Math.min(Integer.MAX_VALUE, (long) data.getInt(counter) + amount));
-        String runCounter = amount == 5 ? "taczoperations_run_kill_xp" : "taczoperations_run_search_xp";
+        String runCounter = combat ? "taczoperations_run_kill_xp" : "taczoperations_run_search_xp";
         CompoundTag run = player.getPersistentData();
         run.putInt(runCounter, (int) Math.min(Integer.MAX_VALUE,
             (long) run.getInt(runCounter) + amount));
@@ -222,7 +225,7 @@ public enum SupplyContract {
             + Math.max(0, run.getInt("taczoperations_run_search_xp"));
         if (run.getBoolean("taczoperations_run_xp_finalized")) return 0;
         run.putBoolean("taczoperations_run_xp_finalized", true);
-        long adjusted = Math.min(Integer.MAX_VALUE, (base * (success ? 110 : 90) + 50) / 100);
+        long adjusted = Math.min(Integer.MAX_VALUE, (base * (success ? 120 : 90) + 50) / 100);
         int delta = (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, adjusted - base));
         CompoundTag data = account(player);
         data.putInt("raid_activity_xp", (int) Math.max(0,
@@ -407,6 +410,9 @@ public enum SupplyContract {
         CompoundTag account = account(player);
         account.putInt("raid_" + name(), COMPLETED);
         account.putInt("completed_" + name(), (int) Math.min(Integer.MAX_VALUE, (long) account.getInt("completed_" + name()) + 1));
+        // Preserve past XP: only completions after this update earn the new bonus.
+        account.putInt("contract_xp_bonus_v2", (int) Math.min(Integer.MAX_VALUE,
+            (long) Math.max(0, account.getInt("contract_xp_bonus_v2")) + experience - legacyExperience));
         // Extraction objectives finish after teleport, when the raid token is gone.
         // The run marker keeps these completions in the final raid report.
         if (player.getPersistentData().contains("taczoperations_run_started")) {
@@ -415,7 +421,7 @@ public enum SupplyContract {
         }
         account.putInt("progress_" + name(), amount);
         account.putInt("credits", Math.min(Integer.MAX_VALUE - credits, balance(player)) + credits);
-        player.giveExperiencePoints(experience);
+        player.giveExperiencePoints(legacyExperience);
         if (objective == Objective.BOSS || this == OMEGA) {
             player.getInventory().placeItemBackInInventory(new ItemStack(Items.GOLDEN_APPLE, 2));
         }
@@ -426,6 +432,9 @@ public enum SupplyContract {
     }
 
     static void rewardLevels(ServerPlayer player) {
+        CompoundTag run = player.getPersistentData();
+        // Never award a level based on provisional raid XP before the death/extraction adjustment.
+        if (run.contains("taczoperations_run_started") && !run.getBoolean("taczoperations_run_xp_finalized")) return;
         CompoundTag data = account(player);
         int reached = MilitaryProgression.level(experienceEarned(player));
         int previous = Math.max(1, data.getInt("military_rewarded_level"));

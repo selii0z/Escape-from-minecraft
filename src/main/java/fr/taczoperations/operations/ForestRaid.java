@@ -647,7 +647,8 @@ public final class ForestRaid extends SavedData {
             && !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
-            SupplyContract.activityXp(killer, 5, "Ennemi éliminé");
+            int xp = role == GuardRole.TRACKER ? 100 : role.elite() ? 35 : role == GuardRole.PMC ? 25 : 15;
+            SupplyContract.activityXp(killer, xp, true, role.title + " éliminé");
         }
         GuardCorpse corpse = OperationsMod.GUARD_CORPSE.get().create(level);
         if (corpse == null) {
@@ -702,7 +703,7 @@ public final class ForestRaid extends SavedData {
             tracking.put("taczoperations_xp_crates", opened);
             tracking.putInt("taczoperations_run_crates",
                 tracking.getInt("taczoperations_run_crates") + 1);
-            SupplyContract.activityXp(player, 1, "Coffre fouillé");
+            SupplyContract.activityXp(player, 8, false, "Coffre fouillé");
             SupplyContract.chestOpened(player);
         }
     }
