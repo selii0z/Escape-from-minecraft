@@ -62,7 +62,7 @@ public enum OperationsShop {
                     if (data == null || data.getFireModeSet().isEmpty()) continue;
                     int rounds = Math.max(1, data.getAmmoAmount());
                     int price = 850 + Math.min(3000, rounds * 35);
-                    offers.add(buy("TaCZ · " + id.getPath().replace('_', ' '), price,
+                    offers.add(buy(id.getPath().replace('_', ' ').toUpperCase(java.util.Locale.ROOT), price,
                         () -> weapon(id, rounds), null, price >= 1900 ? 100 : 35));
                 }
                 // Sell ammunition for every loaded gun family, including addon packs.

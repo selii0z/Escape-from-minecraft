@@ -65,6 +65,10 @@ public final class ForestExpedition {
         player.getInventory().setChanged();
     }
 
+    static boolean isNightRaid(ServerPlayer player) {
+        return player.getPersistentData().getCompound(RETURN_POINT).getBoolean("night");
+    }
+
     static boolean hasReturnPoint(ServerPlayer player) {
         CompoundTag data = player.getPersistentData();
         if (!data.contains(RETURN_POINT, 10)) return false;

@@ -139,8 +139,19 @@ public final class ForestCombat {
             double range = (role.range + 12) * (role.range + 12);
             for (ServerPlayer candidate : level.players()) {
                 double distance = guard.distanceToSqr(candidate);
-                if (distance < range && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
-                    && ForestRaid.isParticipant(candidate)) {
+                double detection = role.range + 12;
+                if (ForestExpedition.isNightRaid(candidate)) {
+                    var helmet = guard.getItemBySlot(EquipmentSlot.HEAD);
+                    boolean goggles = java.util.Set.of("taczoperations:night_vision_goggles", "taczoperations:thermal_goggles")
+                        .contains(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(helmet.getItem()).toString());
+                    int light = level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, candidate.blockPosition());
+                    detection = goggles ? detection * .85 : Math.min(detection, 7 + light * 1.4);
+                    if (candidate.isCrouching() && !goggles) detection *= .75;
+                    if (candidate.getUUID().equals(aim.visibleTarget)) detection *= 1.25;
+                }
+                if (distance < range && distance < detection * detection
+                    && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
+                    && ForestRaid.isParticipant(candidate) && guard.hasLineOfSight(candidate)) {
                     target = candidate;
                     range = distance;
                 }
