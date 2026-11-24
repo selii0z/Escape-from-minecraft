@@ -24,7 +24,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 import java.util.function.BooleanSupplier;
 
-@EventBusSubscriber(modid = OperationsMod.ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = OperationsMod.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public final class OperationsScreen extends AbstractContainerScreen<OperationsMenu> {
     private static final int WIDTH = 836;
     private static final int HEIGHT = 470;
