@@ -184,7 +184,7 @@ public enum SupplyContract {
 
     static int experienceEarned(ServerPlayer player) {
         CompoundTag account = account(player);
-        long earned = Math.max(0, account.getInt("raid_activity_xp"))
+        long earned = (long) Math.max(0, account.getInt("raid_activity_xp")) + Math.max(0, account.getInt("contract_cycle_xp"))
             + (account.getInt("OUTPOST") == 2 ? 8 : 0)
             + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
@@ -263,14 +263,7 @@ public enum SupplyContract {
     int progress(ServerPlayer player) { return account(player).getInt("progress_" + name()); }
 
     String act(ServerPlayer player) {
-        if (status(player) == COMPLETED) {
-            int active = 0;
-            for (var contract : values()) if (contract.status(player) == ACTIVE) active++;
-            if (active >= 3) return "Tu as déjà trois contrats actifs.";
-            account(player).putInt("raid_" + name(), ACTIVE);
-            account(player).putInt("progress_" + name(), 0);
-            return "Contrat renouvelé. Bonne chasse !";
-        }
+        if (status(player) == COMPLETED) return "Contrat déjà terminé pour ce cycle.";
         if (status(player) == ACTIVE) {
             account(player).remove("raid_" + name());
             account(player).remove("progress_" + name());
@@ -407,9 +400,10 @@ public enum SupplyContract {
     }
 
     private void finish(ServerPlayer player) {
+        if (status(player) != ACTIVE) return;
         CompoundTag account = account(player);
         account.putInt("raid_" + name(), COMPLETED);
-        account.putInt("completed_" + name(), account.getInt("completed_" + name()) + 1);
+        account.putInt("completed_" + name(), (int) Math.min(Integer.MAX_VALUE, (long) account.getInt("completed_" + name()) + 1));
         // Extraction objectives finish after teleport, when the raid token is gone.
         // The run marker keeps these completions in the final raid report.
         if (player.getPersistentData().contains("taczoperations_run_started")) {
@@ -424,5 +418,29 @@ public enum SupplyContract {
         }
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "Contrat terminé · " + title + " · +" + credits + " crédits / +" + experience + " XP"));
+        renewCycle(player);
+    }
+
+    static int cyclesCompleted(ServerPlayer player) { return account(player).getInt("contract_cycles"); }
+
+    static int cycleProgress(ServerPlayer player) {
+        int count = 0;
+        for (var contract : values()) if (contract.status(player) == COMPLETED) count++;
+        return count;
+    }
+
+    static void renewCycle(ServerPlayer player) {
+        if (cycleProgress(player) != values().length) return;
+        CompoundTag data = account(player);
+        for (var contract : values()) {
+            String key = "completed_" + contract.name();
+            if (!data.contains(key)) data.putInt(key, 1);
+            data.remove("raid_" + contract.name());
+            data.remove("progress_" + contract.name());
+        }
+        data.putInt("contract_cycles", (int) Math.min(Integer.MAX_VALUE, (long) cyclesCompleted(player) + 1));
+        data.putInt("contract_cycle_xp", (int) Math.min(Integer.MAX_VALUE, (long) data.getInt("contract_cycle_xp") + 2500));
+        data.putInt("credits", (int) Math.min(Integer.MAX_VALUE, (long) balance(player) + 25000));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Cycle terminé ! +25 000 crédits / +2 500 XP. Nouveau cycle disponible."));
     }
 }
