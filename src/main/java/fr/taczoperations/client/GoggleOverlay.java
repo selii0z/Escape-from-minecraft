@@ -12,11 +12,11 @@ public final class GoggleOverlay {
     public static void render(RenderGuiEvent.Post event) {
         if (!GoggleControls.nightVision() && !GoggleControls.thermal()) return;
         var mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
+        if (mc.level == null || mc.player == null || mc.options.hideGui) return;
         var g = event.getGuiGraphics();
         int w = mc.getWindow().getGuiScaledWidth(), h = mc.getWindow().getGuiScaledHeight();
         boolean thermal = GoggleControls.thermal();
-        g.fill(0, 0, w, h, thermal ? 0x660A0A0A : 0x4530C040);
+        g.fill(0, 0, w, h, thermal ? 0x330A0A0A : 0x2530C040);
         int color = thermal ? 0xFFDDDDDD : 0xFF80DD80;
         int edge = Math.max(8, Math.min(w, h) / 12);
         for (int i = 0; i < edge; i++) {
@@ -36,6 +36,7 @@ public final class GoggleOverlay {
             if (hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
                 && entityHit.getEntity() instanceof net.minecraft.world.entity.LivingEntity living
                 && living.isAlive() && !living.isInvisibleTo(mc.player)
+                && mc.player.distanceToSqr(living) <= 4096
                 && mc.player.hasLineOfSight(living)) {
                 int cx = w / 2, cy = h / 2;
                 int hot = 0xFFFFB060;
@@ -43,7 +44,7 @@ public final class GoggleOverlay {
                 g.fill(cx + 7, cy - 14, cx + 14, cy - 13, hot);
                 g.fill(cx - 14, cy + 13, cx - 7, cy + 14, hot);
                 g.fill(cx + 7, cy + 13, cx + 14, cy + 14, hot);
-                g.drawCenteredString(mc.font, "HEAT", cx, cy + 20, hot);
+                g.drawCenteredString(mc.font, "HEAT " + Math.round(mc.player.distanceTo(living)) + "m", cx, cy + 20, hot);
             }
         }
         for (int y = 0; y < h; y += 4) {
