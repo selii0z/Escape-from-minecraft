@@ -38,7 +38,10 @@ public final class GoggleControls {
         while (TOGGLE.consumeClick()) {
             if (mc.player == null || mc.screen != null || equipped.isEmpty()) continue;
             active = active.isEmpty() ? equipped : "";
-            mc.player.displayClientMessage(Component.literal(active.isEmpty() ? "Lunettes désactivées" : "Lunettes activées"), true);
+            String message = active.isEmpty() ? "message.taczoperations.goggles.off"
+                : active.equals("taczoperations:thermal_goggles")
+                    ? "message.taczoperations.goggles.thermal" : "message.taczoperations.goggles.nvg";
+            mc.player.displayClientMessage(Component.translatable(message), true);
         }
     }
     private static boolean isActive(String id) {

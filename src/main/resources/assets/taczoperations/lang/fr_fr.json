@@ -12,5 +12,10 @@
   "item.taczoperations.command_chip": "Puce de commandement",
   "item.taczoperations.omega_file": "Dossier classifié Omega",
   "item.taczoperations.night_vision_goggles": "Lunettes de vision nocturne",
-  "item.taczoperations.thermal_goggles": "Lunettes thermiques"
+  "item.taczoperations.thermal_goggles": "Lunettes thermiques",
+  "key.taczoperations.goggles": "Activer / désactiver les lunettes",
+  "key.categories.taczoperations": "Escape from Minecraft",
+  "message.taczoperations.goggles.off": "Lunettes désactivées",
+  "message.taczoperations.goggles.nvg": "Vision nocturne activée",
+  "message.taczoperations.goggles.thermal": "Vision thermique activée"
 }

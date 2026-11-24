@@ -12,5 +12,10 @@
   "item.taczoperations.command_chip": "Puce de commandement",
   "item.taczoperations.omega_file": "Dossier classifié Omega",
   "item.taczoperations.night_vision_goggles": "Night vision goggles",
-  "item.taczoperations.thermal_goggles": "Thermal goggles"
+  "item.taczoperations.thermal_goggles": "Thermal goggles",
+  "key.taczoperations.goggles": "Toggle goggles",
+  "key.categories.taczoperations": "Escape from Minecraft",
+  "message.taczoperations.goggles.off": "Goggles disabled",
+  "message.taczoperations.goggles.nvg": "Night vision enabled",
+  "message.taczoperations.goggles.thermal": "Thermal vision enabled"
 }
