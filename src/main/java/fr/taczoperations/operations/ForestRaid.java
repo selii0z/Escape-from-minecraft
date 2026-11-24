@@ -293,7 +293,8 @@ public final class ForestRaid extends SavedData {
             barrel.setItem(6+i,com.tacz.guns.api.item.builder.AttachmentItemBuilder.create().setId(a.getKey()).build());
         }
         barrel.setItem(9,BallisticVest.roll(rng,true));
-        barrel.setItem(10,new ItemStack(Items.IRON_HELMET));
+        barrel.setItem(10,BallisticVest.roll(EquipmentSlot.HEAD,rng,true));
+        barrel.setItem(17,BallisticVest.roll(rng.nextBoolean()?EquipmentSlot.LEGS:EquipmentSlot.FEET,rng,true));
         barrel.setItem(11,new ItemStack(Items.GOLDEN_APPLE,2));
         barrel.setItem(12,RaidRelic.CIRCUIT.stack());
         barrel.setItem(13,RaidRelic.values()[5+rng.nextInt(4)].stack());
@@ -696,10 +697,8 @@ public final class ForestRaid extends SavedData {
             guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(role == GuardRole.TRACKER ? Items.DIAMOND_HELMET : Items.IRON_HELMET));
         }
         if (role == GuardRole.PMC) {
-            int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");
-            guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(tier >= 4 ? Items.DIAMOND_HELMET : tier >= 2 ? Items.IRON_HELMET : Items.LEATHER_HELMET));
-            guard.setItemSlot(EquipmentSlot.LEGS, new ItemStack(tier >= 4 ? Items.DIAMOND_LEGGINGS : tier >= 2 ? Items.IRON_LEGGINGS : Items.LEATHER_LEGGINGS));
-            guard.setItemSlot(EquipmentSlot.FEET, new ItemStack(tier >= 4 ? Items.DIAMOND_BOOTS : tier >= 2 ? Items.IRON_BOOTS : Items.LEATHER_BOOTS));
+            for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.LEGS,EquipmentSlot.FEET})
+                guard.setItemSlot(slot, BallisticVest.roll(slot,new Random(guard.getRandom().nextLong()),false));
         }
         if (role == GuardRole.PMC) {
             int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");

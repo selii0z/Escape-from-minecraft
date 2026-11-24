@@ -431,7 +431,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     panel(g, 169, y, 379, 37, DARK);
                     text(g, fit(offer.title(), 253), 181, y + 6, 1.04F, WHITE, true);
                     String cost = switch (offer.action()) {
-                        case BUY -> offer.price() + " crédits";
+                        case BUY, REPAIR -> offer.price() + " crédits";
                         case SELL -> "+" + offer.price() + " crédits";
                         case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
                     };

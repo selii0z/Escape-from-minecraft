@@ -50,7 +50,7 @@ public enum OperationsShop {
     }
 
     public enum Action {
-        BUY("Acheter"), SELL("Vendre"), UNLOCK("Débloquer");
+        BUY("Acheter"), SELL("Vendre"), UNLOCK("Débloquer"), REPAIR("Réparer");
         public final String label;
         Action(String label) { this.label = label; }
     }
@@ -122,9 +122,17 @@ public enum OperationsShop {
                 offers.add(buy("Lot de torches", 45, () -> new ItemStack(Items.TORCH, 24), RaidRelic.PLAQUE, 0));
                 offers.add(buy("Lot de flèches", 65, () -> new ItemStack(Items.ARROW, 24), RaidRelic.RADIO, 0));
                 offers.add(buy("Veste en cuir", 160, () -> new ItemStack(Items.LEATHER_CHESTPLATE), null, 0));
-                offers.add(buy("Tunique PMC · Classe 2", 900, () -> BallisticVest.create(2, 0x414A35), null, 20));
-                offers.add(buy("Tunique PMC · Classe 3", 2400, () -> BallisticVest.create(3, 0x33383B), null, 100));
-                offers.add(buy("Tunique PMC · Classe 4", 6500, () -> BallisticVest.create(4, 0x555C4B), null, 190));
+                for (var slot : BallisticVest.SLOTS) {
+                    int percent = switch (slot) { case HEAD -> 80; case LEGS -> 75; case FEET -> 50; default -> 100; };
+                    for (int tier=2;tier<=4;tier++) {
+                        final int t = tier;
+                        int base = tier==2?900:tier==3?2400:6500;
+                        offers.add(buy(BallisticVest.name(slot)+" · Classe "+tier,base*percent/100,
+                            () -> BallisticVest.create(slot,t,0x414A35),null,tier==2?20:tier==3?100:190));
+                    }
+                    offers.add(new Offer("Réparation · "+BallisticVest.name(slot)+" portée", 300*percent/100,
+                        Action.REPAIR, () -> new ItemStack(BallisticVest.item(slot)),null,0));
+                }
                 // Class 5 is raid loot only.
                 offers.add(buy("Lunettes de vision nocturne", 15000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))), null, 0));
                 offers.add(buy("Lunettes thermiques", 60000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:thermal_goggles"))), null, 0));
@@ -222,6 +230,21 @@ public enum OperationsShop {
         ItemStack stack = offer.stack.get();
         if (stack.isEmpty()) return "Article indisponible dans cette installation TaCZ.";
         int balance = account.getInt("credits");
+        if (offer.action == Action.REPAIR) {
+            if (this != SALVAGER) return "Service indisponible.";
+            for (var slot : BallisticVest.SLOTS) {
+                if (!stack.is(BallisticVest.item(slot))) continue;
+                ItemStack worn = player.getItemBySlot(slot);
+                if (BallisticVest.tier(worn,slot) == 0) return "Équipe d’abord la protection balistique à réparer.";
+                if (BallisticVest.condition(worn) == 100 && worn.getDamageValue() == 0) return "Protection déjà en parfait état.";
+                if (balance < offer.price) return "Crédits insuffisants.";
+                if (!BallisticVest.repair(worn,slot)) return "Réparation impossible.";
+                account.putInt("credits", balance-offer.price);
+                player.getInventory().setChanged();
+                return "Protection réparée · état 100/100.";
+            }
+            return "Protection indisponible.";
+        }
         if (offer.action == Action.SELL) {
             if (balance > Integer.MAX_VALUE - offer.price) return "Solde maximal atteint.";
             if (stack.getItem() instanceof com.tacz.guns.api.item.IGun gun) {
