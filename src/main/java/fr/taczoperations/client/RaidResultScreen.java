@@ -102,14 +102,14 @@ public final class RaidResultScreen extends Screen {
         g.fill(left-1,y+15,left+w+1,y+29,0xff626964);
         g.fill(left,y+16,left+w,y+28,0xff303639);
         if(priorWidth>0) g.fill(left,y+16,left+priorWidth,y+28,0xff829d75);
-        if(filled>priorWidth) g.fill(left+priorWidth,y+16,left+filled,y+28,0xffe7c366);
+        if(filled>priorWidth) g.fill(left+priorWidth,y+16,left+filled,y+28,0xff8fdc57);
         g.drawCenteredString(font,number(shown)+" / "+number(upper)+" XP",x,y+33,0xffdadada);
         g.fill(left,y+48,left+8,y+56,0xff829d75);
         g.drawString(font,"Avant raid",left+12,y+48,0xffb8bdba,false);
-        g.fill(x+14,y+48,x+22,y+56,0xffe7c366);
-        g.drawString(font,"XP gagnee : +"+number(shown-xpBefore),x+26,y+48,0xffe7c366,false);
+        g.fill(x+14,y+48,x+22,y+56,0xff8fdc57);
+        g.drawString(font,"XP gagnée : +"+number(shown-xpBefore),x+26,y+48,0xff8fdc57,false);
         if(afterLevel>beforeLevel) {
-            g.drawCenteredString(font,"+"+(afterLevel-beforeLevel)+" niveau(x) · "+MilitaryProgression.label(xpAfter),x,y+67,0xffe7c366);
+            g.drawCenteredString(font,"+"+(afterLevel-beforeLevel)+" niveau(x) · "+MilitaryProgression.label(xpAfter),x,y+67,0xff8fdc57);
         } else {
             g.drawCenteredString(font,number(Math.max(0,upper-shown))+" XP avant le prochain niveau",x,y+67,0xffb8bdba);
         }
