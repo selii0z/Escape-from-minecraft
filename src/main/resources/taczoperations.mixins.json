@@ -11,7 +11,8 @@
     "client.BoardFontMixin",
     "client.GoggleLightMixin",
     "client.ThermalEntityLightMixin",
-    "client.GoggleLightTextureMixin"
+    "client.GoggleLightTextureMixin",
+    "client.ThermalEntityTintMixin"
   ],
   "injectors": {
     "defaultRequire": 1

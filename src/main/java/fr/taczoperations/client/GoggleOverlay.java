@@ -35,9 +35,7 @@ public final class GoggleOverlay {
             var hit = mc.hitResult;
             if (hit instanceof net.minecraft.world.phys.EntityHitResult entityHit
                 && entityHit.getEntity() instanceof net.minecraft.world.entity.LivingEntity living
-                && living.isAlive() && !living.isInvisibleTo(mc.player)
-                && mc.player.distanceToSqr(living) <= 4096
-                && mc.player.hasLineOfSight(living)) {
+                && ThermalVision.detects(living)) {
                 int cx = w / 2, cy = h / 2;
                 int hot = 0xFFFFB060;
                 g.fill(cx - 14, cy - 14, cx - 7, cy - 13, hot);
