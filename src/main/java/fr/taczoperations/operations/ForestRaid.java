@@ -326,27 +326,76 @@ public final class ForestRaid extends SavedData {
         }
 
         var guards = raid.industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.ENEMIES;
-        for (int i = 0; i < guards.size() * 2 + (raid.industrial ? 0 : 1) && budget > 0; i++) {
-            if (raid.enemies.get(i)) {
-                continue;
-            }
-            boolean boss = !raid.industrial && i == guards.size();
-            boolean extra = i > guards.size() || raid.industrial && i == guards.size();
-            GuardRole role = boss ? GuardRole.TRACKER : extra ? GuardRole.PMC : Math.floorMod(i + (int) raid.seed, 5) == 0 ? GuardRole.HEAVY : Math.floorMod(i, 2) == 0 ? GuardRole.RAIDER : GuardRole.SCOUT;
-            var point = boss ? ForestRaidAnchors.TRACKER.get(Math.floorMod(raid.seed, ForestRaidAnchors.TRACKER.size()))
-                : guards.get(i % guards.size());
+        for (int group = 0; group < guards.size() && budget > 0; group++) {
+            var point = guards.get(group);
             BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
-            if (!near(player, center) || !level.hasChunkAt(center)) {
-                continue;
-            }
-            if (extra) center = center.offset(Math.floorMod(raid.seed + i * 31L, 17) - 8, 0, Math.floorMod(raid.seed + i * 47L, 17) - 8);
-            BlockPos place = findFloor(level, center, 4, true);
-            if (place != null && raid.spawnGuard(level, place, role)) {
-                raid.enemies.set(i);
-                raid.setDirty();
-                budget--;
+            if (!near(player, center) || !level.hasChunkAt(center)) continue;
+            int sector = squadSector(guards, group);
+            Random factionRandom = new Random(raid.seed ^ (0x9E3779B97F4A7C15L * (sector + 1)));
+            boolean pmc = factionRandom.nextInt(100) < 45;
+            Random squadRandom = new Random(raid.seed ^ (0x632BE59BD9B4E019L * (group + 1)));
+            int members = 2 + squadRandom.nextInt(2);
+            for (int member = 0; member < members && budget > 0; member++) {
+                int slot = group * 3 + member;
+                if (raid.enemies.get(slot)) continue;
+                GuardRole role = pmc ? GuardRole.PMC : Math.floorMod(slot + (int) raid.seed, 5) == 0
+                    ? GuardRole.HEAVY : member == 0 ? GuardRole.RAIDER : GuardRole.SCOUT;
+                // Search several separate positions; never spawn two members on the same block.
+                Random positions = new Random(raid.seed ^ (slot * 31L) ^ (player.tickCount / 20L));
+                for (int attempt = 0; attempt < 6; attempt++) {
+                    BlockPos around = center.offset(positions.nextInt(13) - 6, 0, positions.nextInt(13) - 6);
+                    BlockPos place = findFloor(level, around, 4, true);
+                    if (place == null || !level.getEntitiesOfClass(Pillager.class,
+                        new net.minecraft.world.phys.AABB(place).inflate(1.5),
+                        e -> e.isAlive() && currentGuard(level, e)).isEmpty()) continue;
+                    if (raid.spawnGuard(level, place, role, group)) {
+                        raid.enemies.set(slot);
+                        raid.setDirty();
+                        budget--;
+                        break;
+                    }
+                }
             }
         }
+
+        // The Tracker is a separate boss, not a member of either faction.
+        int bossSlot = guards.size() * 3;
+        if (!raid.industrial && budget > 0 && !raid.enemies.get(bossSlot)) {
+            var point = ForestRaidAnchors.TRACKER.get(Math.floorMod(raid.seed, ForestRaidAnchors.TRACKER.size()));
+            BlockPos center = ForestLandmarks.position(point);
+            if (near(player, center) && level.hasChunkAt(center)) {
+                BlockPos place = findFloor(level, center, 4, true);
+                if (place != null && raid.spawnGuard(level, place, GuardRole.TRACKER, -1)) {
+                    raid.enemies.set(bossSlot);
+                    raid.setDirty();
+                }
+            }
+        }
+    }
+
+    // Nearby encounter anchors share a faction to avoid instant battles at spawn.
+    // Connected components are deterministic for the entire raid and both maps.
+    private static int squadSector(List<ForestPlan.Point> points, int start) {
+        BitSet visited = new BitSet(points.size());
+        java.util.ArrayDeque<Integer> pending = new java.util.ArrayDeque<>();
+        visited.set(start);
+        pending.add(start);
+        int sector = start;
+        while (!pending.isEmpty()) {
+            int index = pending.removeFirst();
+            sector = Math.min(sector, index);
+            var a = points.get(index);
+            for (int i = 0; i < points.size(); i++) {
+                if (visited.get(i)) continue;
+                var b = points.get(i);
+                long dx = a.x() - b.x(), dz = a.z() - b.z();
+                if (dx * dx + dz * dz <= 75L * 75L) {
+                    visited.set(i);
+                    pending.add(i);
+                }
+            }
+        }
+        return sector;
     }
 
     private static boolean near(ServerPlayer player, BlockPos pos) {
@@ -369,7 +418,7 @@ public final class ForestRaid extends SavedData {
         return null;
     }
 
-    private boolean spawnGuard(ServerLevel level, BlockPos pos, GuardRole role) {
+    private boolean spawnGuard(ServerLevel level, BlockPos pos, GuardRole role, int squad) {
         Pillager guard = EntityType.PILLAGER.create(level);
         if (guard == null) {
             return false;
@@ -381,6 +430,7 @@ public final class ForestRaid extends SavedData {
         guard.getPersistentData().putUUID(ENEMY, id);
         guard.setPersistenceRequired();
         role.assign(guard);
+        guard.getPersistentData().putInt("taczoperations_squad", squad);
         guard.getPersistentData().putInt("guard_home_x", pos.getX());
         guard.getPersistentData().putInt("guard_home_y", pos.getY());
         guard.getPersistentData().putInt("guard_home_z", pos.getZ());
