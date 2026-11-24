@@ -136,6 +136,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 .toList()
             : List.of();
         SupplyContract.renewCycle(player);
+        SupplyContract.rewardLevels(player);
         var account = SupplyContract.account(player);
         int category = Math.clamp(account.getInt("filter_category"), 0, 5);
         int difficulty = Math.clamp(account.getInt("filter_difficulty"), 0, 5);

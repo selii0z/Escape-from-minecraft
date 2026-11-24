@@ -6,6 +6,7 @@ import fr.taczoperations.OperationsMod;
 import fr.taczoperations.operations.OperationsMenu;
 import fr.taczoperations.operations.OperationsShop;
 import fr.taczoperations.operations.SupplyContract;
+import fr.taczoperations.operations.MilitaryProgression;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
@@ -277,7 +278,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g, "Rang · " + rank(xp), 601, 27, .91F, WHITE, false);
         icon(g, 3, 575, 29, 20);
         progress(g, 601, 39, 108, 8, xp);
-        text(g, "XP · " + xp + " / " + MAX_CONTRACT_XP, 605, 48, .74F, SOFT, false);
+        text(g, "XP · " + xp + " / " + MilitaryProgression.threshold(MilitaryProgression.level(xp)+1), 605, 48, .74F, SOFT, false);
 
         panel(g, 730, 7, 98, 49, 0xec0f1311);
         item(g, new ItemStack(Items.GOLD_INGOT), 740, 19, 1.25F);
@@ -388,7 +389,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 panel(g, 169, 130, 379, 115, DARK);
                 text(g, rank(view.experience()), 188, 145, 1.44F, WHITE, true);
                 progress(g, 188, 174, 310, 11, view.experience());
-                text(g, view.experience() + " XP cumulée", 188, 193, 1.0F, SOFT, false);
+                text(g, view.experience() + " XP · Prochain niveau : " + MilitaryProgression.threshold(MilitaryProgression.level(view.experience())+1), 188, 193, 1.0F, SOFT, false);
                 long completed = view.contracts().stream().filter(status -> status == SupplyContract.COMPLETED).count();
                 text(g, completed + "/" + view.contracts().size() + " contrats · " + view.cycles() + " cycles accomplis", 188, 214, 1, GOLD, false);
                 panel(g, 169, 262, 379, 91, DARK);
@@ -620,13 +621,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     private static void progress(GuiGraphics g, int x, int y, int width, int height, int xp) {
         g.fill(x, y, x + width, y + height, 0xff111710);
-        g.fillGradient(x + 1, y + 1, x + 1 + (width - 2) * Math.min(xp, MAX_CONTRACT_XP) / MAX_CONTRACT_XP, y + height - 1,
+        g.fillGradient(x + 1, y + 1, x + 1 + (width - 2) * (xp - MilitaryProgression.threshold(MilitaryProgression.level(xp))) / Math.max(1, MilitaryProgression.threshold(MilitaryProgression.level(xp)+1)-MilitaryProgression.threshold(MilitaryProgression.level(xp))), y + height - 1,
             0xffa0cd63, OLIVE);
         g.renderOutline(x, y, width, height, FRAME);
     }
 
     private static String rank(int xp) {
-        return xp >= 160 ? "Sergent" : xp >= 80 ? "Caporal II" : xp >= 35 ? "Caporal I" : xp >= 12 ? "Éclaireur" : "Recrue";
+        return MilitaryProgression.label(xp) + " · " + MilitaryProgression.grade(xp);
     }
 
     private static String upper(String text) { return text.toUpperCase(java.util.Locale.ROOT); }

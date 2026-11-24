@@ -227,6 +227,7 @@ public enum SupplyContract {
         CompoundTag data = account(player);
         data.putInt("raid_activity_xp", (int) Math.max(0,
             Math.min(Integer.MAX_VALUE, (long) data.getInt("raid_activity_xp") + delta)));
+        rewardLevels(player);
         return delta;
     }
 
@@ -421,6 +422,19 @@ public enum SupplyContract {
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
             "Contrat terminé · " + title + " · +" + credits + " crédits / +" + experience + " XP"));
         renewCycle(player);
+        rewardLevels(player);
+    }
+
+    static void rewardLevels(ServerPlayer player) {
+        CompoundTag data = account(player);
+        int reached = MilitaryProgression.level(experienceEarned(player));
+        int previous = Math.max(1, data.getInt("military_rewarded_level"));
+        if (reached <= previous) return;
+        long credits = 0;
+        for (int l = previous + 1; l <= reached; l++) credits += MilitaryProgression.reward(l);
+        data.putInt("military_rewarded_level", reached);
+        data.putInt("credits", (int)Math.min(Integer.MAX_VALUE, balance(player) + credits));
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Progression militaire : " + MilitaryProgression.label(experienceEarned(player)) + " · +" + credits + " crédits"));
     }
 
     static int cyclesCompleted(ServerPlayer player) { return account(player).getInt("contract_cycles"); }
