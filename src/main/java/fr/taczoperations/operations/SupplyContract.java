@@ -140,6 +140,17 @@ public enum SupplyContract {
         this(relic.title, amount, relic.price * amount + relic.price / 3, 12 + 8 * relic.tier, Objective.RELIC, relic);
     }
 
+    public OperationsShop merchant() {
+        return switch (objective) {
+            case KILL, ELITE, ASSAULT, BOSS -> OperationsShop.ARMORER;
+            case EXIT, COMBAT_EXIT -> OperationsShop.MEDIC;
+            case CHEST, INDUSTRIAL_EXIT -> OperationsShop.SALVAGER;
+            case RELIC, BOSS_INTEL -> OperationsShop.BROKER;
+        };
+    }
+
+    public int reputationReward() { return difficulty() * 2; }
+
     public int category() {
         return switch (objective) {
             case KILL, ELITE, ASSAULT -> 1;

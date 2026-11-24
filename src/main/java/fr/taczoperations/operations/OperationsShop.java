@@ -28,6 +28,27 @@ public enum OperationsShop {
         this.specialty = specialty;
     }
 
+    public static int reputationLevel(int points) {
+        return points >= 150 ? 4 : points >= 75 ? 3 : points >= 25 ? 2 : 1;
+    }
+
+    public static int nextReputation(int points) {
+        return points >= 150 ? 150 : points >= 75 ? 150 : points >= 25 ? 75 : 25;
+    }
+
+    int reputation(ServerPlayer player) {
+        var account = SupplyContract.account(player);
+        long points = 0;
+        for (SupplyContract contract : SupplyContract.values()) {
+            if (contract.merchant() != this) continue;
+            String key = "completed_" + contract.name();
+            int count = account.contains(key) ? account.getInt(key)
+                : contract.status(player) == SupplyContract.COMPLETED ? 1 : 0;
+            points += (long)Math.max(0, count) * contract.reputationReward();
+        }
+        return (int)Math.min(Integer.MAX_VALUE, points);
+    }
+
     public enum Action {
         BUY("Acheter"), SELL("Vendre"), UNLOCK("Débloquer");
         public final String label;
@@ -36,9 +57,14 @@ public enum OperationsShop {
 
     public record Offer(String title, int price, Action action, Supplier<ItemStack> stack,
                         RaidRelic key, int rankXp) {
+        public int loyaltyLevel() {
+            if (action != Action.BUY) return 1;
+            int level = rankXp >= 180 ? 4 : rankXp >= 65 ? 3 : rankXp > 0 ? 2 : 1;
+            return key == null ? level : Math.max(level, key == RaidRelic.OMEGA ? 4 : key == RaidRelic.CHIP ? 3 : 2);
+        }
         public String requirement() {
-            return key != null && action == Action.BUY ? key.title
-                : rankXp > 0 ? rankXp + " XP de contrat" : "";
+            return (loyaltyLevel() > 1 ? "Fidélité " + loyaltyLevel() : "")
+                + (key != null && action == Action.BUY ? (loyaltyLevel() > 1 ? " · " : "") + key.title : "");
         }
     }
 
@@ -207,7 +233,7 @@ public enum OperationsShop {
             return "Vente effectuée · +" + offer.price + " crédits.";
         }
         if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id)
-            || SupplyContract.experienceEarned(player) < offer.rankXp) return "Accès ou rang requis.";
+            || reputationLevel(reputation(player)) < offer.loyaltyLevel()) return "Accès ou fidélité marchand requis.";
         if (balance < offer.price) return "Crédits insuffisants.";
         var inventory = player.getInventory();
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
