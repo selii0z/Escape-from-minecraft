@@ -245,15 +245,18 @@ public final class ForestCombat {
         if (!(base.getItem() instanceof IGun gun)) return base;
         ItemStack modified = base.copy();
         try {
-            int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");
-            int chance = 25 + 15 * Math.max(0, Math.min(4, tier));
+            // Cumulative quality thresholds: 3% full, 10% >=4, 20% >=3,
+            // 30% >=2, 50% >=1. Incompatible slots are never forced.
+            int roll = guard.getRandom().nextInt(100);
+            int limit = roll < 3 ? Integer.MAX_VALUE : roll < 10 ? 4 :
+                roll < 20 ? 3 : roll < 30 ? 2 : roll < 50 ? 1 : 0;
+            if (limit == 0) return base;
             var candidates = new java.util.ArrayList<>(TimelessAPI.getAllCommonAttachmentIndex());
             // Shuffle with the entity RNG so installed gun packs participate too.
             for (int i = candidates.size() - 1; i > 0; i--) {
                 java.util.Collections.swap(candidates, i, guard.getRandom().nextInt(i + 1));
             }
             var installed = java.util.EnumSet.noneOf(com.tacz.guns.api.item.attachment.AttachmentType.class);
-            int limit = 1 + Math.max(0, Math.min(4, tier));
             for (var candidate : candidates) {
                 if (installed.size() >= limit) break;
                 var type = candidate.getValue().getType();
@@ -263,9 +266,9 @@ public final class ForestCombat {
                 ItemStack attachment = com.tacz.guns.api.item.builder.AttachmentItemBuilder.create()
                     .setId(candidate.getKey()).build();
                 if (attachment.isEmpty() || !gun.allowAttachment(modified, attachment)) continue;
-                installed.add(type);
-                if (guard.getRandom().nextInt(100) < chance) {
-                    gun.installAttachment(guard.registryAccess(), modified, attachment);
+                gun.installAttachment(guard.registryAccess(), modified, attachment);
+                if (!gun.getAttachment(guard.registryAccess(), modified, type).isEmpty()) {
+                    installed.add(type);
                 }
             }
             return modified;

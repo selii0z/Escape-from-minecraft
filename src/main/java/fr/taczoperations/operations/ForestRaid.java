@@ -701,9 +701,10 @@ public final class ForestRaid extends SavedData {
                 guard.setItemSlot(slot, BallisticVest.roll(slot,new Random(guard.getRandom().nextLong()),false));
         }
         if (role == GuardRole.PMC) {
-            int tier = guard.getPersistentData().getInt("taczoperations_pmc_rarity");
-            if (tier >= 3 && guard.getRandom().nextInt(100) < (tier == 4 ? 30 : 10)) {
-                String id = tier == 4 && guard.getRandom().nextBoolean() ? "thermal_goggles" : "night_vision_goggles";
+            // Mutually exclusive headgear rolls, independent of armor rarity.
+            int optics = guard.getRandom().nextInt(100);
+            if (optics < 6) {
+                String id = optics < 3 ? "night_vision_goggles" : "thermal_goggles";
                 guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations", id))));
             }
         }
