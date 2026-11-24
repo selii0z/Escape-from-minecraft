@@ -45,8 +45,8 @@ public final class IndustrialZone {
         var points = new ArrayList<ForestRaidAnchors.Mark>();
         for (Building b : BUILDINGS) {
             // Keep loot in accessible corners and away from racks, machines and doorways.
-            points.add(new ForestRaidAnchors.Mark(b.x + 7, FLOOR + 1, b.z + 5));
-            points.add(new ForestRaidAnchors.Mark(b.x + b.width - 7, FLOOR + 1, b.z + b.depth - 5));
+            points.add(new ForestRaidAnchors.Mark(b.x + 7, FLOOR + 1, b.z + 5, b.factory ? 1 : 0));
+            points.add(new ForestRaidAnchors.Mark(b.x + b.width - 7, FLOOR + 1, b.z + b.depth - 5, b.factory ? 1 : 3));
             points.add(new ForestRaidAnchors.Mark(b.x + 7, FLOOR + 1, b.z + b.depth - 5));
         }
         java.util.Collections.shuffle(points, new java.util.Random(seed));
