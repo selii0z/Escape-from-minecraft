@@ -152,8 +152,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 pager(page, (offers.size() + OperationsMenu.LIST_ROWS - 1) / OperationsMenu.LIST_ROWS);
             }
             case OperationsMenu.GROUP -> groupWidgets();
-            case OperationsMenu.SETTINGS -> simple(420, 145, 120, 29,
-                view.showExtraction() ? "Masquer" : "Afficher", () -> send(OperationsMenu.TOGGLE_EXTRACTION));
+            case OperationsMenu.SETTINGS -> {
+                simple(420,145,120,29,view.showExtraction()?"Masquer":"Afficher",()->send(OperationsMenu.TOGGLE_EXTRACTION));
+                simple(420,207,120,29,"Ouvrir",()->send(OperationsMenu.SECURE_POUCH));
+                simple(420,269,120,29,"Assurer",()->send(OperationsMenu.INSURE_GEAR));
+                simple(420,331,120,29,"Récupérer",()->send(OperationsMenu.CLAIM_INSURANCE));
+            }
             default -> { }
         }
         if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS) {
@@ -505,6 +509,15 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 text(g, "Indication d’extraction", 185, 144, 1.13F, WHITE, true);
                 text(g, view.showExtraction() ? "Coordonnées affichées en raid" : "Coordonnées masquées en raid",
                     185, 163, .95F, SOFT, false);
+                panel(g,169,194,379,54,DARK);
+                text(g,"Coffre sécurisé",185,206,1.13F,WHITE,true);
+                text(g,"5 places · /efm coffre",185,225,.95F,SOFT,false);
+                panel(g,169,256,379,54,DARK);
+                text(g,"Assurance du matériel",185,268,1.13F,WHITE,true);
+                text(g,"250 crédits / équipement",185,287,.95F,SOFT,false);
+                panel(g,169,318,379,54,DARK);
+                text(g,"Retrait assurance",185,330,1.13F,WHITE,true);
+                text(g,"Après 30 min · chance 65 %",185,349,.95F,SOFT,false);
             }
             case OperationsMenu.GROUP -> {
                 pageTitle(g, "♟", "GROUPE", "Préparez un déploiement à deux");

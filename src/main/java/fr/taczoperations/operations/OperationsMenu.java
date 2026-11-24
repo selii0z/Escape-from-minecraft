@@ -34,6 +34,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int FILES = 22;
     public static final int SETTINGS = 23;
     public static final int TOGGLE_EXTRACTION = 24;
+    public static final int SECURE_POUCH = 140, INSURE_GEAR = 141, CLAIM_INSURANCE = 142;
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
     private static final int PAGE_SIZE = 4;
@@ -245,6 +246,13 @@ public final class OperationsMenu extends AbstractContainerMenu {
             if (notice.isEmpty()) {
                 return true;
             }
+        } else if (tab == SETTINGS && button == SECURE_POUCH) {
+            RaidSecurity.open(serverPlayer);
+            return true;
+        } else if (tab == SETTINGS && button == INSURE_GEAR) {
+            notice = RaidSecurity.insure(serverPlayer);
+        } else if (tab == SETTINGS && button == CLAIM_INSURANCE) {
+            notice = RaidSecurity.claim(serverPlayer);
         } else if (tab == SETTINGS && button == TOGGLE_EXTRACTION) {
             SupplyContract.toggleExtraction(serverPlayer);
             notice = "Préférence enregistrée.";
