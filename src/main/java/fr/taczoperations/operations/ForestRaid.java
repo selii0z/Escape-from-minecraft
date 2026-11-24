@@ -101,8 +101,8 @@ public final class ForestRaid extends SavedData {
 
     // Offline players retain their raid slot for a limited reconnection window.
     static void finishParticipant(ServerPlayer player) {
-        ServerLevel level = player.serverLevel();
-        if (!level.dimension().equals(ForestExpedition.FOREST)) return;
+        ServerLevel level = player.server.getLevel(ForestExpedition.FOREST);
+        if (level == null) return;
         ForestRaid raid = get(level);
         raid.participants.remove(player.getUUID());
         raid.setDirty();
@@ -252,7 +252,14 @@ public final class ForestRaid extends SavedData {
     }
 
     static boolean hasActiveSession(ServerLevel level) {
-        return get(level).id != null;
+        ForestRaid raid = get(level);
+        if (raid.id == null) return false;
+        if (raid.participants.removeIf(uuid -> {
+            ServerPlayer online = level.getServer().getPlayerList().getPlayer(uuid);
+            return online != null && !isParticipant(online);
+        })) raid.setDirty();
+        if (raid.participants.isEmpty()) raid.closeSession(level);
+        return raid.id != null;
     }
 
     static boolean isParticipant(ServerPlayer player) {
