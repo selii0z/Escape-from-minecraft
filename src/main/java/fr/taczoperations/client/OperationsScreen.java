@@ -74,6 +74,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private boolean night;
     private boolean duo;
     private ItemStack[] rewards;
+    private int historyScroll;
+    private static final int HISTORY_ROWS = 4;
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -119,11 +121,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     };
                     final int action = OperationsMenu.CONTRACT_FIRST + i;
                     simple(446, 136 + i * 41, 94, 24, label, () -> send(action),
-                        () -> false, () -> status != SupplyContract.COMPLETED);
+                        () -> false, () -> status == SupplyContract.ACTIVE || (status != SupplyContract.COMPLETED && view.contracts().stream().filter(s -> s == SupplyContract.ACTIVE).count() < 3));
                 }
                 filterButtons(OperationsMenu.FILTER_CATEGORY, view.category(), 134, new String[]{"Tous", "Combat", "Exploration", "Extraction", "Récupération", "Boss"});
                 filterButtons(OperationsMenu.FILTER_DIFFICULTY, view.difficulty(), 194, new String[]{"Toutes", "Facile", "Moyen", "Difficile", "Épique", "Mythique"});
-                filterButtons(OperationsMenu.FILTER_STATUS, view.statusFilter(), 254, new String[]{"Tous", "Disponibles", "Actifs", "Terminés"});
+                filterButtons(OperationsMenu.FILTER_STATUS, view.statusFilter(), 254, new String[]{"À faire", "Disponibles", "Actifs", "Terminés"});
                 pager(view.page(), view.pages());
             }
             case OperationsMenu.SHOP -> {
@@ -151,6 +153,20 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (menu.view().tab() == OperationsMenu.PROGRESSION && scale > 0) {
+            double x = (mouseX - offsetX) / scale;
+            double y = (mouseY - offsetY) / scale;
+            if (x >= 169 && x <= 548 && y >= 301 && y <= 404 && scrollY != 0) {
+                int max = Math.max(0, menu.view().raidHistory().size() - HISTORY_ROWS);
+                historyScroll = Math.clamp(historyScroll - (scrollY > 0 ? 1 : -1), 0, max);
+                return true;
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void filterButtons(int base, int selected, int y, String[] labels) {
@@ -348,9 +364,15 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 pageTitle(g, "▤", "CONTRATS", "Cycle " + ((long) view.cycles() + 1) + " · " + active + "/3 actifs · " + view.contracts().stream().filter(v -> v == SupplyContract.COMPLETED).count() + "/" + view.contracts().size());
                 g.fill(169, 119, 548, 123, DARK);
                 g.fill(169, 119, 169 + (int)(379L * view.contracts().stream().filter(v -> v == SupplyContract.COMPLETED).count() / view.contracts().size()), 123, GOLD);
+                text(g, "FILTRES DES CONTRATS", 581, 87, 1.25F, WHITE, true);
+                text(g, "Affinez la liste par catégorie, difficulté et statut.", 581, 104, .8F, SOFT, false);
                 text(g, "CATÉGORIE", 581, 121, .9F, GOLD, true);
                 text(g, "DIFFICULTÉ", 581, 181, .9F, GOLD, true);
                 text(g, "STATUT", 581, 241, .9F, GOLD, true);
+                panel(g, 579, 310, 241, 65, DARK);
+                text(g, view.filtered().size() + " contrats correspondants", 589, 320, 1.0F, WHITE, true);
+                text(g, active + " / 3 contrats actifs", 589, 336, .9F, GOLD, false);
+                text(g, "À faire : disponibles et actifs.", 589, 351, .8F, SOFT, false);
                 if (view.filtered().isEmpty()) text(g, "Aucun contrat correspondant", 180, 145, 1, SOFT, false);
                 int start = view.page() * OperationsMenu.LIST_ROWS;
                 for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < view.filtered().size(); i++) {
@@ -386,37 +408,51 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
-                panel(g, 169, 130, 379, 115, DARK);
-                text(g, rank(view.experience()), 188, 145, 1.44F, WHITE, true);
-                progress(g, 188, 174, 310, 11, view.experience());
-                text(g, view.experience() + " XP · Prochain niveau : " + MilitaryProgression.threshold(MilitaryProgression.level(view.experience())+1), 188, 193, 1.0F, SOFT, false);
+                panel(g, 169, 130, 379, 91, DARK);
+                text(g, rank(view.experience()), 188, 139, 1.30F, WHITE, true);
+                progress(g, 188, 160, 310, 10, view.experience());
+                text(g, view.experience() + " XP · Prochain niveau : " + MilitaryProgression.threshold(MilitaryProgression.level(view.experience())+1), 188, 175, .95F, SOFT, false);
                 long completed = view.contracts().stream().filter(status -> status == SupplyContract.COMPLETED).count();
-                text(g, completed + "/" + view.contracts().size() + " contrats · " + view.cycles() + " cycles accomplis", 188, 214, 1, GOLD, false);
-                text(g, "Prochain palier : +" + MilitaryProgression.reward(MilitaryProgression.level(view.experience())+1) + " crédits", 188, 232, .85F, GOLD, false);
-                panel(g, 169, 262, 379, 91, DARK);
-                text(g, "DERNIER RAID", 187, 278, 1.17F, GOLD, true);
+                text(g, completed + "/" + view.contracts().size() + " contrats · " + view.cycles() + " cycles accomplis", 188, 190, .9F, GOLD, false);
+                text(g, "Prochain palier : +" + MilitaryProgression.reward(MilitaryProgression.level(view.experience())+1) + " crédits", 188, 204, .82F, GOLD, false);
+                panel(g, 169, 228, 379, 66, DARK);
+                text(g, "DERNIER RAID", 187, 236, 1.10F, GOLD, true);
                 if (view.raidReport().isEmpty()) {
-                    text(g, "Aucun raid terminé pour le moment", 187, 309, .94F, SOFT, false);
+                    text(g, "Aucun raid terminé pour le moment", 187, 257, .94F, SOFT, false);
                 } else {
                     String[] fields = view.raidReport().split(" \\| ");
-                    text(g, fields[0], 187, 300, 1.02F, WHITE, true);
+                    text(g, fields[0], 187, 254, 1.02F, WHITE, true);
                     String details = fields.length > 1
                         ? String.join(" · ", java.util.Arrays.copyOfRange(fields, 1, fields.length))
                         : "";
-                    text(g, fit(details, 345), 187, 325, .93F, SOFT, false);
+                    text(g, fit(details, 345), 187, 274, .93F, SOFT, false);
                 }
-                panel(g, 169, 362, 379, 96, DARK);
-                text(g, "HISTORIQUE DES RAIDS  ·  K = éliminations  ·  C = coffres", 181, 368, .91F, GOLD, true);
-                if (view.raidHistory().isEmpty()) {
-                    text(g, "Les dix derniers raids apparaîtront ici.", 181, 396, .85F, SOFT, false);
+                panel(g, 169, 301, 379, 103, DARK);
+                text(g, "HISTORIQUE DES RAIDS", 181, 308, 1.0F, GOLD, true);
+                text(g, "K = éliminations · C = coffres", 181, 321, .76F, SOFT, false);
+                int count = view.raidHistory().size();
+                historyScroll = Math.clamp(historyScroll, 0, Math.max(0, count - HISTORY_ROWS));
+                if (count == 0) {
+                    text(g, "Les dix derniers raids apparaîtront ici.", 181, 346, .85F, SOFT, false);
                 } else {
-                    for (int i = 0; i < view.raidHistory().size() && i < 10; i++) {
-                        int column = i / 5;
-                        int row = i % 5;
-                        String line = (i + 1) + ". " + view.raidHistory().get(i);
-                        text(g, fit(line, 172), 181 + column * 181, 385 + row * 14,
-                            .72F, line.contains("KO") ? 0xffdf9c94 : 0xffb9dcb6, false);
+                    for (int row = 0; row < HISTORY_ROWS && historyScroll + row < count; row++) {
+                        int index = historyScroll + row;
+                        String line = (index + 1) + ". " + view.raidHistory().get(index);
+                        int y = 335 + row * 14;
+                        if (row % 2 == 0) g.fill(179, y - 1, 528, y + 12, 0x30373e31);
+                        text(g, fit(line, 335), 183, y, .85F,
+                            view.raidHistory().get(index).startsWith("KO") ? 0xffdf9c94 : 0xffb9dcb6, false);
                     }
+                    if (count > HISTORY_ROWS) {
+                        int track = 56;
+                        int thumb = Math.max(10, track * HISTORY_ROWS / count);
+                        int top = 334 + (track - thumb) * historyScroll / (count - HISTORY_ROWS);
+                        g.fill(534, 334, 540, 390, 0xff262c23);
+                        g.fill(534, top, 540, top + thumb, GOLD);
+                    }
+                    text(g, (historyScroll + 1) + "–" + Math.min(count, historyScroll + HISTORY_ROWS)
+                        + " / " + count + (count > HISTORY_ROWS ? " · Molette pour défiler" : ""),
+                        181, 393, .70F, SOFT, false);
                 }
             }
             case OperationsMenu.FILES -> {
@@ -450,6 +486,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
+        if (view.tab() == OperationsMenu.CONTRACTS) return;
         if (view.tab() == OperationsMenu.SHOP) {
             var vendor = vendor();
             panel(g, 578, 88, 239, 115, DARK);
