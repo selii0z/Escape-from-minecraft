@@ -18,7 +18,19 @@ public final class GoggleOverlay {
         boolean thermal = GoggleControls.thermal();
         g.fill(0, 0, w, h, thermal ? 0x660A0A0A : 0x4530C040);
         int color = thermal ? 0xFFDDDDDD : 0xFF80DD80;
-        g.drawString(mc.font, thermal ? "THERMAL" : "NVG", 8, 8, color, true);
+        int edge = Math.max(8, Math.min(w, h) / 12);
+        for (int i = 0; i < edge; i++) {
+            int alpha = (edge - i) * 100 / edge;
+            int shade = alpha << 24;
+            g.fill(i, 0, i + 1, h, shade);
+            g.fill(w - i - 1, 0, w - i, h, shade);
+            g.fill(0, i, w, i + 1, shade);
+            g.fill(0, h - i - 1, w, h - i, shade);
+        }
+        String mode = thermal ? "THERMAL" : "NVG";
+        g.fill(7, 7, 23 + mc.font.width(mode), 23, 0x99000000);
+        g.fill(11, 12, 15, 16, color);
+        g.drawString(mc.font, mode, 19, 11, color, false);
         for (int y = 0; y < h; y += 4) {
             g.fill(0, y, w, y + 1, 0x10000000);
         }
