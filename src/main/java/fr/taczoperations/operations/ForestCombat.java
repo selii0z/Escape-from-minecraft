@@ -18,10 +18,50 @@ import java.util.WeakHashMap;
 
 public final class ForestCombat {
     private static final Map<Pillager, Aim> AIM = new WeakHashMap<>();
+    private static final Map<ServerPlayer, DamageBudget> DAMAGE_BUDGET = new WeakHashMap<>();
+
+    private static final class DamageBudget {
+        long tick = Long.MIN_VALUE;
+        float used;
+    }
+
+    // Balance NPC damage only; player-fired TaCZ weapons keep their original stats.
+    public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
+        if (event.getLogicalSide().isClient()
+            || !(event.getAttacker() instanceof Pillager guard)
+            || !(event.getHurtEntity() instanceof ServerPlayer player)
+            || !(guard.level() instanceof ServerLevel level)
+            || player.level() != level || !level.dimension().equals(ForestExpedition.FOREST)
+            || !ForestRaid.currentGuard(level, guard) || !ForestRaid.isParticipant(player)) return;
+
+        GuardRole role = GuardRole.get(guard);
+        float multiplier = role == GuardRole.TRACKER ? .65F : role == GuardRole.PMC ? .55F : .45F;
+        float hitCap = role == GuardRole.TRACKER ? 10F : role == GuardRole.PMC ? 7F : 5F;
+        float headshot = event.isHeadShot() ? Math.clamp(event.getHeadshotMultiplier(), 1F, 1.25F) : 1F;
+        event.setHeadshotMultiplier(headshot);
+        float raw = event.getBaseAmount();
+        if (!Float.isFinite(raw) || raw <= 0) return;
+        float damage = Math.min(hitCap, raw * multiplier * headshot);
+        // A shotgun or multiple simultaneous projectiles must not bypass the cap.
+        DamageBudget budget = DAMAGE_BUDGET.computeIfAbsent(player, ignored -> new DamageBudget());
+        long tick = level.getGameTime();
+        if (budget.tick != tick) {
+            budget.tick = tick;
+            budget.used = 0;
+        }
+        damage = Math.min(damage, Math.max(0F, 10F - budget.used));
+        if (damage <= 0) {
+            event.setCanceled(true);
+            return;
+        }
+        budget.used += damage;
+        event.setBaseAmount(damage / headshot);
+    }
 
     private static final class Aim {
         int nextShot;
         int failures;
+        java.util.UUID visibleTarget;
     }
 
     static void arm(Pillager enemy) {
@@ -114,6 +154,7 @@ public final class ForestCombat {
             }
             if (target == null) {
                 guard.setTarget(null);
+                aim.visibleTarget = null;
                 operator.aim(false);
                 if (guard.tickCount % 80 == 0 && guard.getNavigation().isDone()) {
                     var home = guard.getPersistentData();
@@ -127,6 +168,7 @@ public final class ForestCombat {
             guard.setTarget(target);
             guard.getLookControl().setLookAt(target, 60, 60);
             if (range > role.range * role.range || !guard.hasLineOfSight(target)) {
+                aim.visibleTarget = null;
                 operator.aim(false);
                 if (guard.tickCount % 12 == 0) {
                     guard.getNavigation().moveTo(target, 1.05);
@@ -136,6 +178,11 @@ public final class ForestCombat {
 
             guard.getNavigation().stop();
             operator.aim(true);
+            if (!target.getUUID().equals(aim.visibleTarget)) {
+                aim.visibleTarget = target.getUUID();
+                // Give players a reaction window when first spotted or spotted again.
+                aim.nextShot = Math.max(aim.nextShot, guard.tickCount + 16 + guard.getRandom().nextInt(13));
+            }
             if (guard.tickCount < aim.nextShot) {
                 return;
             }
