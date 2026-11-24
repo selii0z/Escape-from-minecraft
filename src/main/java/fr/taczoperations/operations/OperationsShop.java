@@ -118,6 +118,10 @@ public enum OperationsShop {
                 offers.add(buy("Viseur 552", 900, () -> attachment("sight_552"), RaidRelic.OPTIC, 0));
             }
             case MEDIC -> {
+                offers.add(buy("Bandage",45,()->medical("bandage"),null,0));
+                offers.add(buy("Attelle",95,()->medical("splint"),null,0));
+                offers.add(buy("Kit hémostatique",120,()->medical("hemostat"),null,0));
+                offers.add(buy("Kit de premiers secours",180,()->medical("medkit"),null,0));
                 offers.add(buy("Rations de terrain", 80, () -> new ItemStack(Items.COOKED_BEEF, 4), null, 0));
                 offers.add(buy("Soupe de survie", 55, () -> new ItemStack(Items.RABBIT_STEW), null, 0));
                 offers.add(buy("Pomme dorée", 190, () -> new ItemStack(Items.GOLDEN_APPLE), RaidRelic.WATCH, 0));
@@ -202,6 +206,10 @@ public enum OperationsShop {
         if (s.matches(".*(mp5|mp7|mp9|ump|uzi|vector|p90|pp19|bizon|smg|m870|shotgun|spas|aa12|ksg).*")) return Math.max(2,base);
         if (s.matches(".*(m4a1|hk416|scar_l|ak12|aug|famas|g36|ar15|m16|mk18|sopmod|as_val|vss).*")) return Math.max(3,base);
         return base==1 && rounds>18 ? 2 : base;
+    }
+
+    private static ItemStack medical(String id) {
+        return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("taczoperations",id)));
     }
 
     private static Offer sale(RaidRelic relic) {

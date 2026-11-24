@@ -294,7 +294,10 @@ public final class ForestExpedition {
         if (player.level() != origin) {
             return false;
         }
-        if (leavingRaid) ForestRaid.finishParticipant(player);
+        if (leavingRaid) {
+            RaidInjuries.clear(player);
+            ForestRaid.finishParticipant(player);
+        }
         if (!extracted) {
             restoreInventory(player);
         }

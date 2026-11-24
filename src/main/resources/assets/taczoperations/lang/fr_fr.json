@@ -18,5 +18,9 @@
   "message.taczoperations.goggles.off": "Lunettes désactivées",
   "message.taczoperations.goggles.nvg": "Vision nocturne activée",
   "message.taczoperations.goggles.thermal": "Vision thermique activée",
-  "item.taczoperations.secure_case": "Coffre sécurisé"
+  "item.taczoperations.secure_case": "Coffre sécurisé",
+  "item.taczoperations.bandage": "Bandage",
+  "item.taczoperations.hemostat": "Kit hémostatique",
+  "item.taczoperations.splint": "Attelle",
+  "item.taczoperations.medkit": "Kit de premiers secours"
 }

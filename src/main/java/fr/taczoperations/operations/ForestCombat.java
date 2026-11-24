@@ -64,6 +64,7 @@ public final class ForestCombat {
         budget.used += damage;
         float protection = BallisticVest.protection(player, event.getBullet(), event.isHeadShot(), damage);
         event.setBaseAmount(damage * protection / headshot);
+        RaidInjuries.hit(player,event.getBullet(),event.isHeadShot(),damage*protection);
     }
 
     private static final class Aim {

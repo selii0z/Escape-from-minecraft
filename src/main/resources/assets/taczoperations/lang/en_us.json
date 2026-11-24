@@ -18,5 +18,9 @@
   "message.taczoperations.goggles.off": "Goggles disabled",
   "message.taczoperations.goggles.nvg": "Night vision enabled",
   "message.taczoperations.goggles.thermal": "Thermal vision enabled",
-  "item.taczoperations.secure_case": "Secure case"
+  "item.taczoperations.secure_case": "Secure case",
+  "item.taczoperations.bandage": "Bandage",
+  "item.taczoperations.hemostat": "Hemostatic kit",
+  "item.taczoperations.splint": "Splint",
+  "item.taczoperations.medkit": "First aid kit"
 }
