@@ -46,6 +46,8 @@ public final class ForestRaidAnchors {
         new ForestPlan.Point(799,663), new ForestPlan.Point(770,744), new ForestPlan.Point(751,719),
         new ForestPlan.Point(685,663), new ForestPlan.Point(647,637), new ForestPlan.Point(610,616));
 
+    public static List<ForestPlan.Point> dropPoints() { return OUTDOOR; }
+
     public static List<Mark> pickLoot(long seed) {
         var shuffled = new ArrayList<>(loot());
         Collections.shuffle(shuffled, new Random(seed));

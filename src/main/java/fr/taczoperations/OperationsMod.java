@@ -71,12 +71,18 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("2").playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
+        var registrar = event.registrar("3");
+        registrar.playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
             (report, context) -> {
                 // Never resolve client-only screen classes on a dedicated server.
                 if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
                     fr.taczoperations.client.RaidResultHandler.handle(report, context);
                 }
+            });
+        registrar.playToClient(fr.taczoperations.operations.RaidDropPayload.TYPE,
+            fr.taczoperations.operations.RaidDropPayload.STREAM_CODEC, (drop, context) -> {
+                if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.RaidDropHud.handle(drop, context);
             });
     }
 

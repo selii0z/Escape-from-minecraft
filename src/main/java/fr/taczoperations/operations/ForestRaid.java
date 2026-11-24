@@ -48,6 +48,7 @@ public final class ForestRaid extends SavedData {
     private static final String DROP = "taczoperations_raid_drop";
     private static final String CRATE = "taczoperations_raid_crate";
     private static final String CRATE_INDEX = "taczoperations_raid_crate_index";
+    private static final String AIRDROP_VISUAL = "taczoperations_airdrop_visual";
     private static final Factory<ForestRaid> FACTORY = new Factory<>(ForestRaid::new, ForestRaid::read);
 
     private static final long RECONNECT_GRACE_MS = 10 * 60 * 1000L;
@@ -56,6 +57,11 @@ public final class ForestRaid extends SavedData {
     private UUID id;
     private long seed;
     private boolean industrial;
+    private long dropDue, dropLanding;
+    private int dropAttempts;
+    private BlockPos dropPos;
+    private UUID dropVisual;
+    private boolean dropLanded;
     private BitSet crates = new BitSet();
     private BitSet enemies = new BitSet();
     private List<ForestRaidAnchors.Mark> locations = List.of();
@@ -70,6 +76,7 @@ public final class ForestRaid extends SavedData {
         // before assigning a new session ID, so their inventories cannot be looted.
         for (var entity : level.getAllEntities()) {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
+                || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
                 entity.discard();
             }
@@ -83,6 +90,12 @@ public final class ForestRaid extends SavedData {
         raid.industrial = industrial;
         raid.crates.clear();
         raid.enemies.clear();
+        raid.dropDue = level.getGameTime() + 20L * (45 + new Random(raid.seed).nextInt(46));
+        raid.dropLanding = 0;
+        raid.dropAttempts = 0;
+        raid.dropPos = null;
+        raid.dropVisual = null;
+        raid.dropLanded = false;
         raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
         player.getPersistentData().putUUID(PLAYER, raid.id);
         SupplyContract.departure(player);
@@ -117,6 +130,7 @@ public final class ForestRaid extends SavedData {
     private void closeSession(ServerLevel level) {
         for (var entity : level.getAllEntities()) {
             if (entity instanceof GuardCorpse || entity instanceof ItemEntity
+                || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
                 || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
                 entity.discard();
             }
@@ -164,6 +178,7 @@ public final class ForestRaid extends SavedData {
         boolean online = level.players().stream().anyMatch(p ->
             raid.participants.contains(p.getUUID()) && isParticipant(p));
         if (online) {
+            raid.tickAirdrop(level);
             if (raid.offlineSince != 0) {
                 raid.offlineSince = 0;
                 raid.setDirty();
@@ -174,6 +189,111 @@ public final class ForestRaid extends SavedData {
         } else if (System.currentTimeMillis() - raid.offlineSince >= RECONNECT_GRACE_MS) {
             raid.closeSession(level);
         }
+    }
+
+    private void tickAirdrop(ServerLevel level) {
+        long now = level.getGameTime();
+        if (dropPos == null && now >= dropDue) {
+            var points = industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.dropPoints();
+            Random rng = new Random(seed ^ 0x5f9238acL ^ dropAttempts++);
+            var point = points.get(rng.nextInt(points.size()));
+            int origin = industrial ? IndustrialZone.ORIGIN : ForestPlan.ORIGIN;
+            int cx = origin + point.x(), cz = origin + point.z();
+            // Generate at most one destination chunk per maintenance pass.
+            level.getChunk(cx >> 4, cz >> 4);
+            for (int attempt = 0; attempt < 24 && dropPos == null; attempt++) {
+                int x = cx + rng.nextInt(17)-8, z = cz + rng.nextInt(17)-8;
+                if (!level.hasChunk(x >> 4, z >> 4) ||
+                    !(industrial ? IndustrialZone.inside(x,z) : ForestPlan.inside(x,z))) continue;
+                int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x,z);
+                BlockPos p = new BlockPos(x,y,z);
+                if (y <= ForestPlan.WATER || !level.getBlockState(p).isAir()
+                    || !level.getBlockState(p.above()).isAir() || !level.canSeeSky(p)
+                    || !level.getBlockState(p.below()).isFaceSturdy(level,p.below(),Direction.UP)
+                    || level.getBlockState(p.below()).is(Blocks.GOLD_BLOCK)
+                    || level.getBlockState(p.below()).is(Blocks.MOSSY_STONE_BRICKS)) continue;
+                dropPos = p;
+            }
+            if (dropPos != null) {
+                dropLanding = now + 240;
+                var visual = EntityType.BLOCK_DISPLAY.create(level);
+                if (visual != null) {
+                    CompoundTag nbt = new CompoundTag();
+                    nbt.put("block_state", net.minecraft.nbt.NbtUtils.writeBlockState(Blocks.BARREL.defaultBlockState()));
+                    nbt.putInt("teleport_duration", 20);
+                    visual.load(nbt);
+                    visual.setPos(dropPos.getX(), dropPos.getY()+24, dropPos.getZ());
+                    visual.getPersistentData().putUUID(AIRDROP_VISUAL,id);
+                    if (level.addFreshEntity(visual)) dropVisual = visual.getUUID();
+                }
+                for (ServerPlayer p : level.players()) if (isParticipant(p))
+                    p.sendSystemMessage(Component.literal("ALERTE · Largage de ravitaillement détecté ! X "
+                        + dropPos.getX()+" Y "+dropPos.getY()+" Z "+dropPos.getZ()));
+            }
+        }
+        if (dropPos != null && !dropLanded) {
+            if (now >= dropLanding) {
+                if (level.hasChunkAt(dropPos) && createAirdrop(level)) {
+                    dropLanded = true;
+                    if (dropVisual != null && level.getEntity(dropVisual) != null) level.getEntity(dropVisual).discard();
+                }
+            } else {
+                double y = dropPos.getY()+Math.max(0, (dropLanding-now)/10.0);
+                if (dropVisual != null && level.getEntity(dropVisual) != null)
+                    level.getEntity(dropVisual).setPos(dropPos.getX(),y,dropPos.getZ());
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.CAMPFIRE_SIGNAL_SMOKE,
+                    dropPos.getX()+.5,y+1,dropPos.getZ()+.5,4,.3,.3,.3,.01);
+            }
+        }
+        if (dropLanded && dropPos != null && level.hasChunkAt(dropPos))
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CAMPFIRE_SIGNAL_SMOKE,
+                dropPos.getX()+.5,dropPos.getY()+1,dropPos.getZ()+.5,2,.25,.2,.25,.01);
+        RaidDropPayload packet = dropPos == null ? new RaidDropPayload(false,false,0,0,0)
+            : new RaidDropPayload(true,dropLanded,dropPos.getX(),dropPos.getY(),dropPos.getZ());
+        for (ServerPlayer p : level.players()) if (isParticipant(p))
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,packet);
+    }
+
+    private boolean createAirdrop(ServerLevel level) {
+        if (level.getBlockEntity(dropPos) instanceof RandomizableContainerBlockEntity existing
+            && matches(existing.getPersistentData(),CRATE) && existing.getPersistentData().getInt(CRATE_INDEX) == -1)
+            return true;
+        if (!level.getBlockState(dropPos).isAir()
+            || !ForestProtection.setRaidContainer(level,dropPos,Blocks.BARREL.defaultBlockState())
+            || !(level.getBlockEntity(dropPos) instanceof RandomizableContainerBlockEntity barrel)) return false;
+        Random rng = new Random(seed ^ 0x62B64A31L);
+        barrel.getPersistentData().putUUID(CRATE,id);
+        barrel.getPersistentData().putInt(CRATE_INDEX,-1);
+        ItemStack label = new ItemStack(Items.BARREL);
+        label.set(DataComponents.CUSTOM_NAME,Component.literal("Largage militaire · Butin rare"));
+        barrel.applyComponentsFromItemStack(label);
+        var guns = new ArrayList<>(com.tacz.guns.api.TimelessAPI.getAllCommonGunIndex());
+        guns.sort(java.util.Comparator.comparing(e -> e.getKey().toString()));
+        guns.removeIf(e -> e.getValue().getGunData() == null || e.getValue().getGunData().getFireModeSet().isEmpty());
+        for (int i=0;i<2 && !guns.isEmpty();i++) {
+            var gun = guns.remove(rng.nextInt(guns.size()));
+            var data = gun.getValue().getGunData();
+            barrel.setItem(i,OperationsShop.weapon(gun.getKey(),Math.max(1,data.getAmmoAmount())));
+            if (data.getAmmoId()!=null) barrel.setItem(3+i,com.tacz.guns.api.item.builder.AmmoItemBuilder.create()
+                .setId(data.getAmmoId()).setCount(48).build());
+        }
+        var attachments = new ArrayList<>(com.tacz.guns.api.TimelessAPI.getAllCommonAttachmentIndex());
+        attachments.sort(java.util.Comparator.comparing(e -> e.getKey().toString()));
+        for (int i=0;i<3 && !attachments.isEmpty();i++) {
+            var a = attachments.remove(rng.nextInt(attachments.size()));
+            barrel.setItem(6+i,com.tacz.guns.api.item.builder.AttachmentItemBuilder.create().setId(a.getKey()).build());
+        }
+        barrel.setItem(9,BallisticVest.roll(rng,true));
+        barrel.setItem(10,new ItemStack(Items.IRON_HELMET));
+        barrel.setItem(11,new ItemStack(Items.GOLDEN_APPLE,2));
+        barrel.setItem(12,RaidRelic.CIRCUIT.stack());
+        barrel.setItem(13,RaidRelic.values()[5+rng.nextInt(4)].stack());
+        barrel.setItem(14,RaidRelic.roll(rng).stack());
+        if (rng.nextInt(100)<5) barrel.setItem(15,RaidRelic.OMEGA.stack());
+        if (rng.nextInt(100)<8) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+            net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))));
+        barrel.setChanged();
+        return true;
     }
 
     public static void onPlayerClone(PlayerEvent.Clone event) {
@@ -605,6 +725,11 @@ public final class ForestRaid extends SavedData {
 
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !level.dimension().equals(ForestExpedition.FOREST)) {
+            return;
+        }
+        if (event.getEntity().getPersistentData().hasUUID(AIRDROP_VISUAL)) {
+            ForestRaid raid = get(level);
+            if (!raid.matches(event.getEntity().getPersistentData(), AIRDROP_VISUAL) || raid.dropLanded) event.setCanceled(true);
             return;
         }
         if (event.getEntity() instanceof GuardCorpse corpse && !canKeepCorpse(level, corpse)) {
