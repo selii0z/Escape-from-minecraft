@@ -109,8 +109,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             case OperationsMenu.FOREST -> operationWidgets();
             case OperationsMenu.CONTRACTS -> {
                 int start = view.page() * OperationsMenu.LIST_ROWS;
-                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < view.contracts().size(); i++) {
-                    int status = view.contracts().get(start + i);
+                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < view.filtered().size(); i++) {
+                    int status = view.contracts().get(view.filtered().get(start + i));
                     String label = switch (status) {
                         case SupplyContract.ACTIVE -> "Abandonner";
                         case SupplyContract.COMPLETED -> "Rejouer";
@@ -120,6 +120,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     simple(446, 136 + i * 41, 94, 24, label, () -> send(action),
                         () -> false, () -> true);
                 }
+                filterButtons(OperationsMenu.FILTER_CATEGORY, view.category(), 134, new String[]{"Tous", "Combat", "Exploration", "Extraction", "Récupération", "Boss"});
+                filterButtons(OperationsMenu.FILTER_DIFFICULTY, view.difficulty(), 194, new String[]{"Toutes", "Facile", "Moyen", "Difficile", "Épique", "Mythique"});
+                filterButtons(OperationsMenu.FILTER_STATUS, view.statusFilter(), 254, new String[]{"Tous", "Disponibles", "Actifs", "Terminés"});
                 pager(view.page(), view.pages());
             }
             case OperationsMenu.SHOP -> {
@@ -144,8 +147,16 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 view.showExtraction() ? "Masquer" : "Afficher", () -> send(OperationsMenu.TOGGLE_EXTRACTION));
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
+        }
+    }
+
+    private void filterButtons(int base, int selected, int y, String[] labels) {
+        for (int i = 0; i < labels.length; i++) {
+            final int index = i;
+            simple(581 + i % 3 * 78, y + i / 3 * 23, 75, 21, labels[i],
+                () -> send(base + index), () -> selected == index, () -> true);
         }
     }
 
@@ -333,17 +344,22 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         switch (view.tab()) {
             case OperationsMenu.CONTRACTS -> {
                 long active = view.contracts().stream().filter(status -> status == SupplyContract.ACTIVE).count();
-                pageTitle(g, "▤", "CONTRATS", active + " / 3 actifs · objectifs de raid");
+                pageTitle(g, "▤", "CONTRATS", active + " / 3 actifs · " + view.filtered().size() + " résultats");
+                text(g, "CATÉGORIE", 581, 121, .9F, GOLD, true);
+                text(g, "DIFFICULTÉ", 581, 181, .9F, GOLD, true);
+                text(g, "STATUT", 581, 241, .9F, GOLD, true);
+                if (view.filtered().isEmpty()) text(g, "Aucun contrat correspondant", 180, 145, 1, SOFT, false);
                 int start = view.page() * OperationsMenu.LIST_ROWS;
-                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < view.contracts().size(); i++) {
-                    var contract = SupplyContract.values()[start + i];
+                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < view.filtered().size(); i++) {
+                    var contract = SupplyContract.values()[view.filtered().get(start + i)];
                     int y = 128 + 41 * i;
                     panel(g, 169, y, 379, 37, DARK);
                     item(g, new ItemStack(contract.icon()), 178, y + 9, 1.15F);
-                    text(g, fit(contract.title, 219), 205, y + 4, 1.04F, WHITE, true);
+                    text(g, fit(contract.title + " · " + new String[]{"", "Facile", "Moyen", "Difficile", "Épique", "Mythique"}[contract.difficulty()], 235), 205, y + 4, 1.04F,
+                        new int[]{WHITE, 0xff9bce88, 0xff89bce5, GOLD, 0xffc39ae8, 0xffee7777}[contract.difficulty()], true);
                     text(g, fit(contract.description(), 239), 205, y + 15, .93F, SOFT, false);
                     text(g, "+" + contract.credits + " cr. · +" + contract.experience + " XP · "
-                        + view.progress().get(start + i) + "/" + contract.amount, 205, y + 26, .86F, GOLD, false);
+                        + view.progress().get(view.filtered().get(start + i)) + "/" + contract.amount, 205, y + 26, .86F, GOLD, false);
                 }
             }
             case OperationsMenu.SHOP -> {
