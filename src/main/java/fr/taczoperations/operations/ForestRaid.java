@@ -439,7 +439,7 @@ public final class ForestRaid extends SavedData {
         }
         barrel.getPersistentData().putUUID(CRATE, id);
         barrel.getPersistentData().putInt(CRATE_INDEX, index);
-        int kind = index % 4;
+        int kind = locations.get(index).kind();
         ItemStack labeled = new ItemStack(Items.BARREL);
         labeled.set(DataComponents.CUSTOM_NAME, Component.literal(switch (kind) {
             case 0 -> "Caisse médicale";
