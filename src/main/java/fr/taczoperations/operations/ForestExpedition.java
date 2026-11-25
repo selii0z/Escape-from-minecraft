@@ -48,7 +48,25 @@ public final class ForestExpedition {
             entry.put("item", player.getInventory().getItem(slot).saveOptional(player.registryAccess()));
             items.add(entry);
         }
+        // Nested pack contents and the dedicated Curios are counted for
+        // interrupted recovery, but never restored into a native slot.
+        for(int i=0;i<player.getInventory().getContainerSize();i++)
+            appendPackContents(items,player,player.getInventory().getItem(i));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG}){
+            var stack=FieldInventoryMenu.current(FieldInventoryMenu.handler(player,id));
+            appendRecoveryItem(items,player,stack);
+            appendPackContents(items,player,stack);
+        }
         player.getPersistentData().put(RAID_INVENTORY, items);
+    }
+
+    private static void appendRecoveryItem(ListTag items,ServerPlayer p,ItemStack stack){
+        if(stack.isEmpty())return;
+        CompoundTag entry=new CompoundTag();entry.putInt("slot",-1);
+        entry.put("item",stack.saveOptional(p.registryAccess()));items.add(entry);
+    }
+    private static void appendPackContents(ListTag items,ServerPlayer p,ItemStack stack){
+        for(var content:FieldPack.contents(stack))appendRecoveryItem(items,p,content);
     }
 
     // A full snapshot is safe only before the session starts (failed duo
@@ -79,7 +97,34 @@ public final class ForestExpedition {
             if(keep==0)inventory.setItem(i,ItemStack.EMPTY);
             else if(keep<item.getCount())item.setCount(keep);
         }
+        // Curios gear and pack contents share the same quantity allowance.
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG}){
+            var handler=FieldInventoryMenu.handler(player,id);
+            var item=FieldInventoryMenu.current(handler);
+            if(item.isEmpty())continue;
+            String key=recoveryKey(item);
+            int keep=Math.min(item.getCount(),allowance.getOrDefault(key,0));
+            allowance.put(key,allowance.getOrDefault(key,0)-keep);
+            if(keep==0)handler.setStackInSlot(0,ItemStack.EMPTY);
+        }
+        for(int i=0;i<inventory.getContainerSize();i++)trimPack(inventory.getItem(i),allowance);
+        for(String id:new String[]{FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})
+            trimPack(FieldInventoryMenu.current(FieldInventoryMenu.handler(player,id)),allowance);
         inventory.setChanged();
+    }
+    private static void trimPack(ItemStack carrier,java.util.Map<String,Integer> allowance){
+        if(!(carrier.getItem() instanceof FieldPack))return;
+        var contents=FieldPack.contents(carrier);
+        for(int i=0;i<contents.size();i++){
+            var stack=contents.get(i);
+            if(stack.isEmpty())continue;
+            String key=recoveryKey(stack);
+            int keep=Math.min(stack.getCount(),allowance.getOrDefault(key,0));
+            allowance.put(key,allowance.getOrDefault(key,0)-keep);
+            if(keep==0)contents.set(i,ItemStack.EMPTY);
+            else if(keep<stack.getCount())stack.setCount(keep);
+        }
+        FieldPack.replaceContents(carrier,contents);
     }
     private static String recoveryKey(ItemStack item){
         if(item.getItem() instanceof com.tacz.guns.api.item.IGun gun)return "gun/"+gun.getGunId(item);
