@@ -297,7 +297,7 @@ public enum OperationsShop {
     static int saleCount(ServerPlayer player,Offer offer){
         if(offer.action()!=Action.SELL)return 0;
         ItemStack sample=offer.stack().get();
-        return player.getInventory().items.stream().filter(s->matchesSale(sample,s)).mapToInt(ItemStack::getCount).sum();
+        return CarriedStorage.of(player).count(s->matchesSale(sample,s));
     }
     String trade(ServerPlayer player,int index,long quotedDay){
         return trade(player,index,quotedDay,1,false);
@@ -339,20 +339,14 @@ public enum OperationsShop {
             long today=ResaleMarket.day();
             if(quotedDay!=today)return "Les tarifs ont changé. Vérifie le nouveau prix avant de vendre.";
             int price=ResaleMarket.price(offer,today);
-            var matching=player.getInventory().items.stream().filter(s->matchesSale(stack,s)).toList();
-            int available=matching.stream().mapToInt(ItemStack::getCount).sum();
+            var storage=CarriedStorage.of(player);
+            int available=storage.count(s->matchesSale(stack,s));
             if(quantity<=0||available<quantity)return "Quantité indisponible. Vérifie ton inventaire.";
             if(bulk&&available!=quantity)return "Quantité modifiée. Vérifie le nouveau montant.";
             long total=(long)price*quantity;
             if(total>Integer.MAX_VALUE-(long)balance)return "Solde maximal atteint.";
             // Validate the entire quote before touching any stack.
-            int remaining=quantity;
-            for(ItemStack candidate:matching){
-                int take=Math.min(remaining,candidate.getCount());
-                candidate.shrink(take);remaining-=take;
-                if(remaining==0)break;
-            }
-            player.getInventory().setChanged();
+            if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
