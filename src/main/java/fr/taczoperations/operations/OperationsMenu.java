@@ -126,7 +126,9 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 + " " + (seconds / 60) + ":" + String.format("%02d", seconds % 60)
                 + " | " + report.getInt("kills") + "K"
                 + " | " + report.getInt("crates") + "C"
-                + " | " + report.getInt("final_xp") + "XP");
+                + " | " + report.getInt("final_xp") + "XP"
+                + (report.getBoolean("success")&&report.contains("loot_value")&&report.getLong("loot_value")>=0
+                    ?" | "+report.getLong("loot_value")+" cr.":""));
         }
         return history;
     }
@@ -171,7 +173,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice,
             lastRaidSummary(player), raidHistory(player), category, difficulty, statusFilter, merchantFilter, filtered, SupplyContract.cyclesCompleted(player),
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
-            java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills")
+            java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
+                "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
                 .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player));
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current

@@ -294,10 +294,20 @@ public enum SupplyContract {
     // Migrate the available ten-raid history once. Earlier records are not reconstructible.
     static CompoundTag raidTotals(ServerPlayer player) {
         var data=account(player);
-        if(data.contains("raid_totals_v1"))return data.getCompound("raid_totals_v1");
-        var totals=new CompoundTag();
         var history=data.getList("raid_history",10);
-        for(int i=0;i<history.size();i++)addRaidTotals(totals,history.getCompound(i));
+        if(data.contains("raid_totals_v1")){
+            var totals=data.getCompound("raid_totals_v1");
+            if(!totals.getBoolean("records_v2")){
+                // Preserve lifetime totals. Only the new records are backfilled,
+                // oldest to newest so the current streak has the right order.
+                for(int i=history.size()-1;i>=0;i--)addRaidRecords(totals,history.getCompound(i));
+                totals.putBoolean("records_v2",true);
+            }
+            return totals;
+        }
+        var totals=new CompoundTag();
+        for(int i=history.size()-1;i>=0;i--)addRaidTotals(totals,history.getCompound(i));
+        totals.putBoolean("records_v2",true);
         data.put("raid_totals_v1",totals);
         return totals;
     }
@@ -310,6 +320,23 @@ public enum SupplyContract {
         incrementTotal(totals,"seconds",report.getLong("duration_seconds"));
         incrementTotal(totals,"xp",report.getInt("final_xp"));
         totals.putLong("best_kills",Math.max(totals.getLong("best_kills"),report.getInt("kills")));
+        addRaidRecords(totals,report);
+    }
+    private static void addRaidRecords(CompoundTag totals,CompoundTag report){
+        boolean success=report.getBoolean("success");
+        if(success){
+            incrementTotal(totals,"current_streak",1);
+            totals.putLong("best_streak",Math.max(totals.getLong("best_streak"),totals.getLong("current_streak")));
+        }else totals.putLong("current_streak",0);
+        if(success&&report.contains("loot_value")&&report.getLong("loot_value")>=0){
+            long value=report.getLong("loot_value");
+            incrementTotal(totals,"loot_total",value);
+            incrementTotal(totals,"loot_count_total",report.getInt("loot_count"));
+            incrementTotal(totals,"valued_raids",1);
+            totals.putLong("best_loot",Math.max(totals.getLong("best_loot"),value));
+        }
+        totals.putLong("best_xp",Math.max(totals.getLong("best_xp"),report.getInt("final_xp")));
+        totals.putLong("best_crates",Math.max(totals.getLong("best_crates"),report.getInt("crates")));
     }
     private static void incrementTotal(CompoundTag totals,String key,long value) {
         long current=Math.max(0L,totals.getLong(key));

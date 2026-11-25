@@ -625,9 +625,17 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             text(g,"Coffres : "+totals.get(4)+" · Contrats : "+totals.get(5),585,192,.89F,SOFT,false);
             long seconds=totals.get(6);
             text(g,"Temps : "+seconds/3600+" h "+seconds%3600/60+" min",585,207,.89F,SOFT,false);
-            panel(g,575,283,249,55,DARK);
-            text(g,"XP GAGNÉE EN RAID",585,293,.94F,SOFT,true);
-            text(g,Long.toString(totals.get(7)),585,312,1.32F,LIME,true);
+            panel(g,575,240,249,164,DARK);
+            text(g,"RECORDS PERSONNELS",585,249,1.09F,GOLD,true);
+            String bestLoot=totals.get(15)==0?"—":numberLong(totals.get(9))+" cr.";
+            text(g,"Meilleur butin : "+bestLoot,585,269,.94F,LIME,true);
+            text(g,"Butin cumulé : "+(totals.get(15)==0?"—":numberLong(totals.get(10))+" cr."),585,285,.92F,SOFT,false);
+            text(g,"Série actuelle : "+totals.get(11)+" extraction(s)",585,301,.93F,WHITE,false);
+            text(g,"Meilleure série : "+totals.get(12),585,317,.93F,LIME,false);
+            text(g,"Record XP : "+numberLong(totals.get(13))+" · Fouilles : "+totals.get(14),585,333,.87F,SOFT,false);
+            text(g,"XP totale : "+numberLong(totals.get(7)),585,349,.93F,WHITE,false);
+            text(g,"Butin évalué : "+totals.get(15)+" raid(s)",585,365,.81F,SOFT,false);
+            text(g,"Objets revendables : "+numberLong(totals.get(16)),585,381,.81F,SOFT,false);
             return;
         }
         image(g, AREAS[FOREST].texture(), 578, 88, 239, 108);
@@ -635,6 +643,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g, "FORÊT NOIRE", 585, 205, 1.24F, WHITE, true);
         text(g, view.partner().isEmpty() ? "Solo · invitations disponibles" : "Équipier : " + view.partner(),
             585, 224, .92F, SOFT, false);
+    }
+
+    private static String numberLong(long value){
+        return java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE).format(value);
     }
 
     private OperationsShop vendor() {
