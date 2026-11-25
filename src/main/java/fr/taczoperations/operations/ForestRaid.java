@@ -1129,6 +1129,7 @@ public final class ForestRaid extends SavedData {
             String medical=roll<30?"bandage":roll<50?"salewa":roll<65?"splint":roll<75?"hemostat":roll<80?"medkit":null;
             if(medical!=null)barrel.setItem(22,medicalLoot(medical,medical.equals("bandage")?1+random.nextInt(3):1));
             if(random.nextInt(100)<20)barrel.setItem(21,medicalLoot("bandage",1));
+            if(random.nextInt(100)<45)barrel.setItem(24,net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,net.minecraft.world.item.alchemy.Potions.WATER));
         }
         RaidOrigin.markContainer(barrel);
         return true;
