@@ -47,6 +47,8 @@ public final class FieldPack extends Item {
     }
     @Override public void appendHoverText(ItemStack stack,TooltipContext context,List<Component> tooltip,TooltipFlag flag){
         tooltip.add(Component.literal("Capacité : "+capacity+" emplacements").withStyle(ChatFormatting.GRAY));
+        int used=(int)contents(stack).stream().filter(item->!item.isEmpty()).count();
+        tooltip.add(Component.literal("Occupé : "+used+" / "+capacity).withStyle(ChatFormatting.GRAY));
         if(rig)tooltip.add(Component.literal("Munitions et soins uniquement").withStyle(ChatFormatting.GRAY));
     }
 }
