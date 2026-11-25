@@ -204,7 +204,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
                 int count=OperationsShop.saleCount(player,offer);
-                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL&&offer.loyaltyLevel()<=loyalty)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
+                if(!offer.stack().get().isEmpty()&&(shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL&&offer.loyaltyLevel()<=loyalty)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
@@ -329,7 +329,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int button) {
-        if (!(player instanceof ServerPlayer serverPlayer) || !stillValid(player)) {
+        if (!(player instanceof ServerPlayer serverPlayer) || player.containerMenu!=this || !stillValid(player)) {
             return false;
         }
         int tab = view.tab();

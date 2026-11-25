@@ -316,6 +316,11 @@ public enum OperationsShop {
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
         if(bulk&&offer.action!=Action.SELL)return "Cette offre ne permet pas la vente en lot.";
+        if(offer.action!=Action.SELL){
+            int experience=SupplyContract.experienceEarned(player),loyalty=offer.loyaltyLevel();
+            if(reputationLevel(reputation(player),experience)<loyalty)
+                return "Fidélité "+loyalty+" requise.";
+        }
         var account = SupplyContract.account(player);
         if (offer.action == Action.UNLOCK) {
             String key = "unlock_" + offer.key.id;
@@ -373,8 +378,8 @@ public enum OperationsShop {
         long total=(long)purchasePrice(offer,PassiveSkills.bonus(player,PassiveSkills.Skill.TRADE))*quantity;
         if(total>balance||total<0)return "Crédits insuffisants.";
         var inventory = player.getInventory();
-        int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
-            : ItemStack.isSameItemSameComponents(slot, stack) ? slot.getMaxStackSize() - slot.getCount() : 0).sum();
+        int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? Math.min(inventory.getMaxStackSize(),stack.getMaxStackSize())
+            : ItemStack.isSameItemSameComponents(slot, stack) ? Math.max(0,Math.min(inventory.getMaxStackSize(),slot.getMaxStackSize()) - slot.getCount()) : 0).sum();
         int purchased=stack.getCount()*quantity;
         if(capacity<purchased)return "Inventaire plein : libère des cases pour le lot complet.";
         for(int i=0;i<quantity;i++)inventory.add(stack.copy());
