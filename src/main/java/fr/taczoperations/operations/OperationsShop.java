@@ -258,10 +258,26 @@ public enum OperationsShop {
         return bits;
     }
 
-    String trade(ServerPlayer player, int index,long quotedDay) {
+    public static boolean matchesSale(ItemStack sample,ItemStack candidate){
+        if(sample.isEmpty()||candidate.isEmpty())return false;
+        if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
+            return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
+                &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
+        return candidate.is(sample.getItem());
+    }
+    static int saleCount(ServerPlayer player,Offer offer){
+        if(offer.action()!=Action.SELL)return 0;
+        ItemStack sample=offer.stack().get();
+        return player.getInventory().items.stream().filter(s->matchesSale(sample,s)).mapToInt(ItemStack::getCount).sum();
+    }
+    String trade(ServerPlayer player,int index,long quotedDay){
+        return trade(player,index,quotedDay,1,false);
+    }
+    String trade(ServerPlayer player,int index,long quotedDay,int quantity,boolean bulk) {
         var offers = offers();
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
+        if(bulk&&offer.action!=Action.SELL)return "Cette offre ne permet pas la vente en lot.";
         var account = SupplyContract.account(player);
         if (offer.action == Action.UNLOCK) {
             String key = "unlock_" + offer.key.id;
@@ -293,18 +309,22 @@ public enum OperationsShop {
             long today=ResaleMarket.day();
             if(quotedDay!=today)return "Les tarifs ont changé. Vérifie le nouveau prix avant de vendre.";
             int price=ResaleMarket.price(offer,today);
-            if (balance > Integer.MAX_VALUE - price) return "Solde maximal atteint.";
-            if (stack.getItem() instanceof com.tacz.guns.api.item.IGun gun) {
-                var expected = gun.getGunId(stack);
-                var found = player.getInventory().items.stream().filter(candidate ->
-                    candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
-                    && expected.equals(actual.getGunId(candidate))).findFirst();
-                if (found.isEmpty()) return "Tu ne possèdes pas cette arme.";
-                found.get().shrink(1);
-                player.getInventory().setChanged();
-            } else if (!SupplyContract.consume(player, stack.getItem(), 1)) return "Tu ne possèdes pas cet objet.";
-            account.putInt("credits", balance + price);
-            return "Vente effectuée · +" + price + " crédits.";
+            var matching=player.getInventory().items.stream().filter(s->matchesSale(stack,s)).toList();
+            int available=matching.stream().mapToInt(ItemStack::getCount).sum();
+            if(quantity<=0||available<quantity)return "Quantité indisponible. Vérifie ton inventaire.";
+            if(bulk&&available!=quantity)return "Quantité modifiée. Vérifie le nouveau montant.";
+            long total=(long)price*quantity;
+            if(total>Integer.MAX_VALUE-(long)balance)return "Solde maximal atteint.";
+            // Validate the entire quote before touching any stack.
+            int remaining=quantity;
+            for(ItemStack candidate:matching){
+                int take=Math.min(remaining,candidate.getCount());
+                candidate.shrink(take);remaining-=take;
+                if(remaining==0)break;
+            }
+            player.getInventory().setChanged();
+            account.putInt("credits",balance+(int)total);
+            return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
         int experience = SupplyContract.experienceEarned(player);
         int loyalty = offer.loyaltyLevel();

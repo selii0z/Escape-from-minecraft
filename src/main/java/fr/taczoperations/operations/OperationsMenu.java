@@ -43,6 +43,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int VENDOR_FIRST = 35;
     public static final int VENDOR_PAGES = 32;
     public static final int TRADE_FIRST = 45;
+    public static final int SELL_ALL_FIRST=160;
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
 
@@ -50,7 +51,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -74,6 +75,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeCollection(raidTotals, (buf, amount) -> buf.writeVarLong(amount));
             buffer.writeCollection(timedContracts,(buf,amount)->buf.writeVarInt(amount));
             buffer.writeCollection(market,(buf,line)->buf.writeUtf(line));
+            buffer.writeCollection(saleCounts,(buf,count)->buf.writeVarInt(count));
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -81,7 +83,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()));
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()));
         }
     }
 
@@ -165,6 +167,14 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int start = tab == GROUP ? page * PAGE_SIZE : 0;
         List<ServerPlayer> shown = online.subList(start, Math.min(online.size(), start + PAGE_SIZE));
         List<UUID> candidateIds = shown.stream().map(ServerPlayer::getUUID).toList();
+        List<Integer> saleCounts=new java.util.ArrayList<>();
+        if(tab==SHOP){
+            var merchant=OperationsShop.values()[page/VENDOR_PAGES];
+            var offers=merchant.offers();
+            int first=page%VENDOR_PAGES*LIST_ROWS;
+            for(int row=0;row<LIST_ROWS;row++)
+                saleCounts.add(first+row<offers.size()?OperationsShop.saleCount(player,offers.get(first+row)):0);
+        }
         View view = new View(tab, page, pages, SupplyContract.balance(player),
             SupplyContract.experienceEarned(player), SupplyContract.showExtraction(player), OperationsShop.unlocks(player),
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.status(player)).toList(),
@@ -175,7 +185,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
                 "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
-                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player));
+                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts));
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -268,6 +278,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
             notice = "Préférence enregistrée.";
         } else if (tab == SHOP && button >= VENDOR_FIRST && button < VENDOR_FIRST + OperationsShop.values().length) {
             page = (button - VENDOR_FIRST) * VENDOR_PAGES;
+        } else if(tab==SHOP&&button>=SELL_ALL_FIRST&&button<SELL_ALL_FIRST+LIST_ROWS){
+            if(serverPlayer.level().dimension().equals(ForestExpedition.FOREST))return false;
+            int row=button-SELL_ALL_FIRST;
+            var vendor=OperationsShop.values()[page/VENDOR_PAGES];
+            notice=vendor.trade(serverPlayer,page%VENDOR_PAGES*LIST_ROWS+row,
+                Long.parseLong(view.market().getFirst()),view.saleCounts().get(row),true);
         } else if (tab == SHOP && button >= TRADE_FIRST && button < TRADE_FIRST + LIST_ROWS) {
             var vendor = OperationsShop.values()[page / VENDOR_PAGES];
             if (serverPlayer.level().dimension().equals(ForestExpedition.FOREST)) return false;

@@ -146,7 +146,15 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < offers.size(); i++) {
                     var offer = offers.get(start + i);
                     final int action = OperationsMenu.TRADE_FIRST + i;
-                    simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
+                    if(offer.action()==OperationsShop.Action.SELL){
+                        int count=view.saleCounts().get(i);
+                        int all=OperationsMenu.SELL_ALL_FIRST+i;
+                        int price=fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
+                        simple(446,136+i*41,42,24,"x1",()->send(action),()->false,
+                            ()->count>0&&(long)view.credits()+price<=Integer.MAX_VALUE);
+                        simple(491,136+i*41,49,24,"Tout",()->send(all),()->false,
+                            ()->count>1&&(long)view.credits()+(long)price*count<=Integer.MAX_VALUE);
+                    }else simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
                         () -> offer.action() == OperationsShop.Action.UNLOCK ? !unlocked(offer.key())
                             : offer.action() != OperationsShop.Action.BUY || (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) >= offer.loyaltyLevel()
                             && (offer.key() == null || unlocked(offer.key()))));
@@ -177,7 +185,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -478,7 +486,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     boolean locked = offer.action() == OperationsShop.Action.BUY &&
                         (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) < offer.loyaltyLevel()
                          || offer.key() != null && !unlocked(offer.key()));
-                    text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
+                    if(offer.action()!=OperationsShop.Action.SELL)
+                        text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
                     String cost = switch (offer.action()) {
                         case BUY -> offer.price() + " crédits";
                         case REPAIR -> vendor==OperationsShop.ARMORER?"8 cr. / % manquant · min. 50":offer.price()+" crédits";
@@ -486,7 +495,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                             long day=Long.parseLong(view.market().getFirst());
                             int price=fr.taczoperations.operations.ResaleMarket.price(offer,day);
                             int variation=fr.taczoperations.operations.ResaleMarket.variation(offer,day);
-                            yield "+"+price+" cr. · "+(variation>0?"+":"")+variation+" %";
+                            int count=view.saleCounts().get(i);
+                            yield "+"+price+" cr/u ("+(variation>0?"+":"")+variation+"%) · "+count+" en stock";
                         }
                         case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
                     };
@@ -498,7 +508,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         int change=fr.taczoperations.operations.ResaleMarket.variation(offer,Long.parseLong(view.market().getFirst()));
                         priceColor=change>0?LIME:change<0?0xffdf9c94:SOFT;
                     }
-                    text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
+                    if(offer.action()==OperationsShop.Action.SELL){
+                        int count=view.saleCounts().get(i);
+                        long total=(long)count*fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
+                        text(g,fit((locked?"[Verrouillé] ":"")+offer.title(),250),181,y+5,.94F,WHITE,true);
+                        text(g,fit(cost,250),181,y+16,.80F,priceColor,false);
+                        text(g,"Total : "+numberLong(total)+" cr.",181,y+26,.80F,GOLD,false);
+                    }else text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
                         181, y + 23, .95F, priceColor, false);
                 }
             }
