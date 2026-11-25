@@ -1314,7 +1314,7 @@ public final class ForestRaid extends SavedData {
             && raid.owns(killer)&& !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
-            StoryMissions.kill(killer);
+            StoryMissions.kill(killer,role);
             PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
