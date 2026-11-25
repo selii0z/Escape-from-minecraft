@@ -45,7 +45,7 @@ public final class ItemDiscovery {
     }
     public static void login(PlayerEvent.PlayerLoggedInEvent e){if(e.getEntity() instanceof ServerPlayer p)sync(p);}
     public static void respawn(PlayerEvent.PlayerRespawnEvent e){if(e.getEntity() instanceof ServerPlayer p)sync(p);}
-    static void request(ServerPlayer p,InspectItem msg){
+    public static void request(ServerPlayer p,InspectItem msg){
         if(!p.isAlive()||p.isSpectator()||p.containerMenu.containerId!=msg.menuId()||!p.containerMenu.stillValid(p))return;
         var menu=p.containerMenu;int row=msg.index();
         if(menu instanceof OperationsMenu operations){operations.inspectOffer(p,msg.kind(),row);return;}
