@@ -26,8 +26,14 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Les packs affichent leur occupation ; vente d'un pack contenant des objets interdite côté serveur pour éviter une perte de contenu.
 - Compilation du lot précédent (commit 2b58a9ab, build 412) réussie. Nouveau lot à compiler et tester en jeu : consommation du dernier objet d'une pile, faim pleine, accélération sprint, effets à zéro, reconnexion, raid duo et sortie.
  
+## Patrouilles itinérantes — quatrième lot ajouté
+- Chaque escouade normale a un tirage déterministe par session : 75 % des PMC et 45 % des groupes de gardes sont candidats à une route inter-secteurs. Si aucun secteur voisin compatible n'existe, la ronde locale reste utilisée.
+- Circuits de 2 à 5 secteurs (objectif 3–5 selon les points disponibles), sélectionnés parmi les points de rencontre de la carte ; rayon maximal autour du secteur initial : 135 blocs en forêt, 95 en usine. Un circuit est commun à l'escouade, avec de légers décalages par membre. Pas de nouveau spawn, téléportation ni chargement forcé intentionnel de chunks.
+- Déplacement par tronçons de 26 blocs, deux tentatives par décision ; après trois échecs, le secteur est ignoré. Navigation limitée à 96 nœuds validés dans le périmètre du raid ; évite les entrées/extractions selon les protections existantes. Combat et investigation interrompent la ronde, puis reprise du circuit.
+- Les boss, escortes et renforts hors escouades normales conservent les rondes locales. Ciblage et alertes entre gardes exigent désormais le même identifiant de raid ; les manœuvres de flanc/couverture utilisent également les vérifications de périmètre.
+- Tests nécessaires : suivre les escouades durant plusieurs minutes, vérifier obstacles, secteurs déchargés, reprise après combat, absence de respawn ou de duplication, deux raids simultanés, escorte des boss et charge serveur. Les pourcentages sont des valeurs d'équilibrage proposées, pas une garantie de déplacement sur terrain impraticable.
+
 ## Lots à réaliser (pas encore codés)
-- Patrouilles itinérantes inter-secteurs ; les rondes et combats gardes/PMC existent déjà, à approfondir et vérifier isolation des sessions.
 - Marché entre joueurs : séquestre des objets, crédits et récupération hors ligne, taxe proposée 5 %, validation serveur et tests de concurrence.
 - Inspection persistante par joueur, objets inconnus puis connus ; distinguer de la fouille progressive existante.
 - Test en jeu et revue graphique des boutiques, aperçu au survol, achat par quantité, amélioration fidélité/rareté distincte si nécessaire.
