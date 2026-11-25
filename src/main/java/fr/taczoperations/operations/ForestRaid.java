@@ -66,6 +66,7 @@ public final class ForestRaid extends SavedData {
     private boolean dropLanded;
     private final BitSet vaultPrepared = new BitSet(), vaultOpened = new BitSet();
     private BitSet crates = new BitSet();
+    private final Set<BlockPos> spawnedContainers=new HashSet<>();
     private BitSet enemies = new BitSet();
     private BitSet pmcGroups = new BitSet();
     private List<ForestPlan.Point> encounterPoints = List.of();
@@ -121,6 +122,7 @@ public final class ForestRaid extends SavedData {
         raid.seed = level.getRandom().nextLong();
         raid.industrial = industrial;
         raid.crates.clear();
+        raid.spawnedContainers.clear();
         raid.vaultPrepared.clear();
         raid.vaultOpened.clear();
         raid.enemies.clear();
@@ -173,6 +175,17 @@ public final class ForestRaid extends SavedData {
             if(raidEntity(entity)&&(inArea(entity.blockPosition())||ownsEntity(entity)))expired.add(entity);
         }
         expired.forEach(net.minecraft.world.entity.Entity::discard);
+        // Never force-load chunks just to clean a finished session. Unloaded
+        // tagged containers remain inaccessible and are removed on later visits.
+        for(BlockPos pos:spawnedContainers)if(level.hasChunkAt(pos))removeTaggedContainer(level,pos,true);
+        spawnedContainers.clear();
+        if(industrial)for(var vault:IndustrialZone.VAULTS){
+            BlockPos door=vault.door();
+            if(level.hasChunkAt(door)){
+                ForestProtection.setVaultDoor(level,door,true);
+                ForestProtection.setVaultDoor(level,door.above(),true);
+            }
+        }
         id = null;
         participants.clear();
         offlineSince = 0;
@@ -216,7 +229,12 @@ public final class ForestRaid extends SavedData {
 
     private void maintain(ServerLevel level){
         ForestRaid raid=this;
-        if(raid.id==null||raid.participants.isEmpty())return;
+        if(raid.id==null)return;
+        if(raid.participants.removeIf(uuid->{
+            ServerPlayer p=level.getServer().getPlayerList().getPlayer(uuid);
+            return p!=null&&p.isAlive()&&!raid.owns(p);
+        }))raid.setDirty();
+        if(raid.participants.isEmpty()){raid.closeSession(level);return;}
         boolean online=level.players().stream().anyMatch(raid::owns);
         if (online) {
             raid.tickAirdrop(level);
@@ -287,7 +305,8 @@ public final class ForestRaid extends SavedData {
 
     private void tickAirdrop(ServerLevel level) {
         long now = level.getGameTime();
-        if (dropPos == null && now >= dropDue) {
+        if (dropPos == null && now >= dropDue && dropAttempts<8) {
+            dropDue=now+100;
             var points = industrial ? IndustrialZone.GUARDS : ForestRaidAnchors.dropPoints();
             Random rng = new Random(seed ^ 0x5f9238acL ^ dropAttempts++);
             var point = points.get(rng.nextInt(points.size()));
@@ -328,6 +347,7 @@ public final class ForestRaid extends SavedData {
         if (dropPos != null && !dropLanded) {
             if (now >= dropLanding) {
                 if (!level.hasChunkAt(dropPos)) level.getChunk(dropPos.getX() >> 4, dropPos.getZ() >> 4);
+                removeTaggedContainer(level,dropPos,false);
                 if (createAirdrop(level)) {
                     dropLanded = true;
                     if (dropVisual != null && level.getEntity(dropVisual) != null) level.getEntity(dropVisual).discard();
@@ -359,6 +379,7 @@ public final class ForestRaid extends SavedData {
         Random rng = new Random(seed ^ 0x62B64A31L);
         barrel.getPersistentData().putUUID(CRATE,id);
         barrel.getPersistentData().putInt(CRATE_INDEX,-1);
+        spawnedContainers.add(dropPos.immutable());
         ItemStack label = new ItemStack(Items.BARREL);
         label.set(DataComponents.CUSTOM_NAME,Component.literal("Largage militaire · Butin rare"));
         barrel.applyComponentsFromItemStack(label);
@@ -563,6 +584,7 @@ public final class ForestRaid extends SavedData {
             if (!near(player, center) || !level.hasChunkAt(center)) {
                 continue;
             }
+            raid.removeStaleNearMark(level,center);
             if (raid.existingCrate(level, center, i)) {
                 raid.crates.set(i);
                 raid.setDirty();
@@ -841,6 +863,7 @@ public final class ForestRaid extends SavedData {
         }
         barrel.getPersistentData().putUUID(CRATE, id);
         barrel.getPersistentData().putInt(CRATE_INDEX, index);
+        spawnedContainers.add(pos.immutable());
         if(kind>=4){
             var vault=IndustrialZone.VAULTS.get(kind-4);
             ItemStack label=new ItemStack(Items.BARREL);
@@ -975,6 +998,19 @@ public final class ForestRaid extends SavedData {
         return false;
     }
 
+    private void removeTaggedContainer(ServerLevel level,BlockPos pos,boolean current){
+        if(!inArea(pos)||!level.hasChunkAt(pos))return;
+        if(!(level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel))return;
+        var data=barrel.getPersistentData();
+        if(!data.hasUUID(CRATE)||matches(data,CRATE)!=current)return;
+        barrel.clearContent();
+        ForestProtection.setRaidContainer(level,pos,Blocks.AIR.defaultBlockState());
+    }
+    private void removeStaleNearMark(ServerLevel level,BlockPos center){
+        for(BlockPos pos:BlockPos.withinManhattan(center,2,0,2))
+            removeTaggedContainer(level,pos,false);
+    }
+
     private void removeOldCrates(ServerLevel level, ServerPlayer player) {
         var origin = player.chunkPosition();
         for (int dx = -3; dx <= 3; dx++) {
@@ -989,10 +1025,7 @@ public final class ForestRaid extends SavedData {
                     }
                 }
                 for (BlockPos pos : expired) {
-                    if (level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel) {
-                        barrel.clearContent();
-                        ForestProtection.setRaidContainer(level, pos, Blocks.AIR.defaultBlockState());
-                    }
+                    removeTaggedContainer(level,pos,false);
                 }
             }
         }

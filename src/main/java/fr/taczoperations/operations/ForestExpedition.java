@@ -328,6 +328,8 @@ public final class ForestExpedition {
             origin = player.server.overworld();
             destination = safeSpawn(player, origin, origin.getSharedSpawnPos());
         }
+        // Return carried cursor items before changing dimension / restoring snapshot.
+        player.closeContainer();
         player.teleportTo(origin, destination.x, destination.y, destination.z, Set.of(),
             point.getFloat("yaw"), point.getFloat("pitch"));
         if (player.level() != origin) {
