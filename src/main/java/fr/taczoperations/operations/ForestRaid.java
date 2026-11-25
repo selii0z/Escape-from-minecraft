@@ -1461,6 +1461,7 @@ public final class ForestRaid extends SavedData {
             corpse.put(20,BossLoot.spare(guard));
             corpse.put(21,BossLoot.bonus(guard));
         }
+        if(role==GuardRole.PMC)corpse.put(25,MilitaryTag.create(guard,event.getSource().getEntity() instanceof ServerPlayer p&&raid.owns(p)?p:null));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<7)corpse.put(24,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","tactical_headset"))));
         if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
