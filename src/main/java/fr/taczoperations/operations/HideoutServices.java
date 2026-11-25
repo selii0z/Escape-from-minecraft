@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -37,18 +38,36 @@ final class HideoutServices {
         }
     }
     static void reserve(ServerPlayer p){
-        if(!Hideout.ownsPlot(p)||p.containerMenu!=p.inventoryMenu)return;
+        if(!Hideout.ownsPlot(p)||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty())return;
         int tier=Hideout.tier(p,Hideout.Station.RESERVE);
         if(tier==0){Hideout.say(p,"Améliore la réserve au niveau 1.");return;}
         int rows=tier*2;var container=new Stash(p,rows*9);
         MenuType<?> type=rows==2?MenuType.GENERIC_9x2:rows==4?MenuType.GENERIC_9x4:MenuType.GENERIC_9x6;
         p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new ChestMenu(type,id,inv,container,rows){
+            {
+                for(int i=0;i<rows*9;i++){
+                    Slot old=slots.get(i);
+                    Slot filtered=new Slot(old.container,old.getContainerSlot(),old.x,old.y){
+                        @Override public boolean mayPlace(ItemStack s){return !(s.getItem() instanceof SecureCaseItem);}
+                    };
+                    filtered.index=i;slots.set(i,filtered);
+                }
+            }
+            @Override public boolean stillValid(Player player){return container.stillValid(player);}
             @Override public void clicked(int slot,int button,ClickType click,Player player){
-                if(!container.stillValid(player)||click==ClickType.CLONE)return;
+                if(player!=p||p.containerMenu!=this||!container.stillValid(player)||click==ClickType.CLONE)return;
                 super.clicked(slot,button,click,player);
+                container.setChanged();
             }
             @Override public ItemStack quickMoveStack(Player player,int slot){
-                return container.stillValid(player)?super.quickMoveStack(player,slot):ItemStack.EMPTY;
+                if(player!=p||p.containerMenu!=this||!container.stillValid(player)||slot<0||slot>=slots.size())return ItemStack.EMPTY;
+                ItemStack moved=super.quickMoveStack(player,slot);
+                if(!moved.isEmpty())container.setChanged();
+                return moved;
+            }
+            @Override public void removed(Player player){
+                super.removed(player);
+                if(player==p)container.setChanged();
             }
         },Component.literal("Réserve personnelle · "+(rows*9)+" cases")));
     }
