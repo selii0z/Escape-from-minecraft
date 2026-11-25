@@ -1427,12 +1427,12 @@ public final class ForestRaid extends SavedData {
         if (corpse == null) {
             return;
         }
-        corpse.setAppearance(switch(role){
+        corpse.setAppearance(EnemyAppearance.choose(switch(role){
             case FOREMAN->"tagilla";
             case TRACKER->"shturman";
             case PMC->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
             default->role.name().toLowerCase(java.util.Locale.ROOT);
-        });
+        },guard.getUUID()));
         if(role.boss())corpse.setCustomName(Component.literal(role.title));
         if(role==GuardRole.PMC)corpse.setCustomName(Component.literal("PMC · "+PmcSpecialty.get(guard).title));
         corpse.moveTo(guard.getX(), guard.getY(), guard.getZ(), guard.getYRot(), 0);
