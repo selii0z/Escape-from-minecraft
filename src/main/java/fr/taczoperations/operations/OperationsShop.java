@@ -292,6 +292,10 @@ public enum OperationsShop {
         if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
             return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
                 &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
+        if(sample.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)
+            return candidate.getItem() instanceof com.tacz.guns.api.item.IAmmo actual&&java.util.Objects.equals(ammo.getAmmoId(sample),actual.getAmmoId(candidate));
+        if(sample.getItem() instanceof com.tacz.guns.api.item.IAttachment attachment)
+            return candidate.getItem() instanceof com.tacz.guns.api.item.IAttachment actual&&java.util.Objects.equals(attachment.getAttachmentId(sample),actual.getAttachmentId(candidate));
         return candidate.is(sample.getItem());
     }
     static int saleCount(ServerPlayer player,Offer offer){
@@ -303,6 +307,7 @@ public enum OperationsShop {
         return trade(player,index,quotedDay,1,false);
     }
     String trade(ServerPlayer player,int index,long quotedDay,int quantity,boolean bulk) {
+        if(!PlayerMarket.available(player))return "Transactions disponibles uniquement hors raid, en survie.";
         var offers = offers();
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
