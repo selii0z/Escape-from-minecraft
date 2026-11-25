@@ -74,7 +74,7 @@ public final class RaidInjuries {
             case "splint" -> {if(!d.getBoolean(FRACTURE))return false;d.remove(FRACTURE);}
             case "salewa" -> {
                 if(p.getHealth()>=p.getMaxHealth())return false;
-                p.heal(8F);
+                p.heal(8F*(1F+PassiveSkills.bonus(p,PassiveSkills.Skill.MEDICINE)/100F));
             }
             case "medkit" -> {
                 if(!d.getBoolean(ARM))return false;
@@ -83,6 +83,7 @@ public final class RaidInjuries {
             default -> {return false;}
         }
         sync(p,true);
+        PassiveSkills.medicine(p);
         p.sendSystemMessage(Component.literal("Soin appliqué."));
         return true;
     }
