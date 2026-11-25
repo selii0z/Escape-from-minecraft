@@ -78,6 +78,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private int historyScroll;
     private int shopSelection=0;
     private int shopLots=1;
+    private static ShopBookmark pendingShop;
+    private record ShopBookmark(Object connection,int containerId,int page,int category,boolean owned,boolean accessories,int offer,long time){}
+    private void rememberShop(){
+        var v=menu.view();
+        if(v.tab()==OperationsMenu.SHOP&&shopSelection>=0&&shopSelection<v.shopRows().size())pendingShop=new ShopBookmark(minecraft.getConnection(),menu.containerId,v.page(),v.category(),v.shopOwned(),v.shopAccessories(),v.shopRows().get(shopSelection),System.nanoTime());
+    }
     private int marketSelection=0;
     private net.minecraft.client.gui.components.EditBox marketPrice;
     private java.util.List<OperationsShop.Offer> shopCatalogue=java.util.List.of();
@@ -92,6 +98,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         duo = !menu.view().partner().isEmpty();
+        var v=menu.view();var bookmark=pendingShop;pendingShop=null;
+        if(bookmark!=null&&bookmark.connection()==net.minecraft.client.Minecraft.getInstance().getConnection()&&System.nanoTime()-bookmark.time()<15_000_000_000L&&v.tab()==OperationsMenu.SHOP&&v.page()/OperationsMenu.VENDOR_PAGES==bookmark.page()/OperationsMenu.VENDOR_PAGES&&v.category()==bookmark.category()&&v.shopOwned()==bookmark.owned()&&v.shopAccessories()==bookmark.accessories()){
+            int row=v.shopRows().indexOf(bookmark.offer());if(row>=0)shopSelection=row;
+        }
     }
 
     @SubscribeEvent
@@ -174,6 +184,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 simple(420,207,120,29,"Utilisation",()->send(OperationsMenu.SECURE_POUCH));
                 simple(420,269,120,29,"Assurer",()->send(OperationsMenu.INSURE_GEAR));
                 simple(420,331,120,29,"Ouvrir",()->send(OperationsMenu.CLAIM_INSURANCE));
+                simple(581,185,232,29,"Configuration des HUD",()->minecraft.setScreen(new RaidHudSettings.Screen(this)));
             }
             default -> { }
         }
@@ -885,12 +896,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
         simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
         simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
-        widget(581,215,147,26,"Confirmer",()->{if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
+        widget(581,215,147,26,"Confirmer",()->{rememberShop();if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
             var o=shopOffer(shopSelection);boolean unknown=o!=null&&DiscoveryClient.unknown(o.stack().get());boolean ok=unknown||shopCanTrade(false);
             key(g,581,215,147,26,ok,hover,ok);
             centered(g,o==null?"Indisponible":unknown?"Examiner":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":o.action()==OperationsShop.Action.BUY?" x"+shopLots:""),654,223,1,ok?WHITE:SOFT,true);
         });
-        widget(733,215,83,26,"Tout vendre",()->send(OperationsMenu.SELL_ALL_FIRST+shopSelection),()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true),(g,hover)->{
+        widget(733,215,83,26,"Tout vendre",()->{rememberShop();send(OperationsMenu.SELL_ALL_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true),(g,hover)->{
             if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL){
                 boolean enabled=shopCanTrade(true)&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get());
                 key(g,733,215,83,26,false,hover,enabled);centered(g,"Tout vendre",774,223,.9F,enabled?WHITE:SOFT,true);
