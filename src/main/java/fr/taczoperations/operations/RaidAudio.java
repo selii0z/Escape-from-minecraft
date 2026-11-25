@@ -32,7 +32,7 @@ public final class RaidAudio {
         SoundEvent sound=switch(kind){
             case "bandage","medkit"->SoundEvents.ARMOR_EQUIP_LEATHER.value();
             case "splint"->SoundEvents.WOODEN_BUTTON_CLICK_ON;
-            case "salewa"->SoundEvents.HONEY_BOTTLE_DRINK;
+            case "salewa"->SoundEvents.GENERIC_DRINK;
             default->SoundEvents.BUNDLE_INSERT;
         };
         privateSound(p,sound,.35F,.9F,SoundSource.PLAYERS);

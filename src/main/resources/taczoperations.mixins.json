@@ -14,7 +14,9 @@
     "client.ThermalEntityLightMixin",
     "client.GoggleLightTextureMixin",
     "client.ThermalEntityTintMixin",
-    "client.GuardRenderDistanceMixin"
+    "client.GuardRenderDistanceMixin",
+    "client.RaidEnemyTextureMixin",
+    "client.RaidEnemyModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1
