@@ -59,6 +59,9 @@ public final class RaidHudSettings {
     public static class Keys{
         @SubscribeEvent public static void register(RegisterKeyMappingsEvent e){e.register(SHOW);e.register(SETTINGS);}
     }
+    @SubscribeEvent public static void hideCobblemon(net.neoforged.neoforge.client.event.RenderGuiLayerEvent.Pre e){
+        if(inRaid()&&e.getName().getNamespace().equals("cobblemon"))e.setCanceled(true);
+    }
     @SubscribeEvent public static void tick(ClientTickEvent.Post e){
         var mc=Minecraft.getInstance();
         if(mc.level!=previousLevel||!inRaid()){visibleUntil=0;previousLevel=mc.level;}
