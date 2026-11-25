@@ -74,7 +74,8 @@ public final class StoryMissions {
         return m!=null&&r.getBoolean("active")&&r.getInt("mission")==next(p)?r:null;
     }
     public static void tick(PlayerTickEvent.Post event){
-        if(!(event.getEntity() instanceof ServerPlayer p)||p.tickCount%20!=0||!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.isParticipant(p))return;
+        if(!(event.getEntity() instanceof ServerPlayer p)||p.tickCount%20!=0)return;
+        if(!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.isParticipant(p)){clear(p);return;}
         Mission m=current(p);var r=run(p,m);if(r==null)return;
         if(r.getInt("stage")==0&&m.pos().distToCenterSqr(p.position())<=24*24){
             r.putInt("stage",1);say(p,"Secteur atteint · récupère "+m.quantity+" × "+m.relic.title+" et élimine "+m.kills+" "+m.target.label+".");
