@@ -78,7 +78,8 @@ public final class PassiveSkills {
         }
     }
     public static void commands(RegisterCommandsEvent event){
-        event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("competences").executes(ctx->{status(ctx.getSource().getPlayerOrException());return 1;})));
+        event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("competences").executes(ctx->{status(ctx.getSource().getPlayerOrException());return 1;})
+            .then(Commands.literal("menu").executes(ctx->{ProgressionMenus.skills(ctx.getSource().getPlayerOrException());return 1;}))));
     }
     private PassiveSkills(){}
 }
