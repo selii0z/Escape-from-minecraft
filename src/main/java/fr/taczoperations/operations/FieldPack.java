@@ -35,7 +35,10 @@ public final class FieldPack extends Item {
     public static net.minecraft.core.NonNullList<ItemStack> contents(ItemStack carrier){
         int n=carrier.getItem() instanceof FieldPack p?p.capacity:0;
         var result=net.minecraft.core.NonNullList.withSize(n,ItemStack.EMPTY);
-        if(n>0)carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(result);
+        if(n>0){
+            carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(result);
+            for(int i=0;i<n;i++)result.set(i,result.get(i).copy());
+        }
         return result;
     }
     public static void replaceContents(ItemStack carrier,List<ItemStack> items){
