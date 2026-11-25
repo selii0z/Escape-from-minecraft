@@ -179,8 +179,9 @@ public final class RaidSecurity {
         var items=new java.util.ArrayList<ItemStack>();
         for(int i=0;i<p.getInventory().getContainerSize();i++)items.add(p.getInventory().getItem(i));
         for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
-        for(var s:items){var d=tag(s);if(d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&!insuredBy(p,s))removeInsurance(s);}
-        p.getInventory().setChanged();
+        boolean changed=false;
+        for(var s:items){if(s.isEmpty())continue;var d=tag(s);if(d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&!insuredBy(p,s)){removeInsurance(s);changed=true;}}
+        if(changed)p.getInventory().setChanged();
     }
     static boolean insuredBy(ServerPlayer p,ItemStack s){
         CompoundTag d=tag(s);return d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&d.getLong(EPOCH)==SupplyContract.account(p).getLong("insurance_epoch");
