@@ -57,6 +57,10 @@ tasks.register('generateEnemyArt'){
             g.dispose()
             File out=new File(root,'textures/entity/raid/'+id+'.png')
             out.parentFile.mkdirs();ImageIO.write(image,'png',out)
+            if(id=='raider'){
+                new File(model.parentFile,'scav_extra.json').bytes=model.bytes
+                new File(out.parentFile,'scav_extra.png').bytes=out.bytes
+            }
         }
     }
 }
