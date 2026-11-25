@@ -74,7 +74,7 @@ public final class RaidResultScreen extends Screen {
             success ? 0xff72ba87 : 0xffc76862);
         graphics.drawCenteredString(font, title, x, y - 111,
             success ? 0xff91dca1 : 0xffed9288);
-        graphics.drawCenteredString(font, "Durée : " + duration / 60 + " min " + duration % 60 + " s",
+        graphics.drawCenteredString(font, (industrial?"Zone industrielle":"Forêt Noire")+" · "+duration / 60 + " min " + duration % 60 + " s",
             x, y - 91, 0xffdadada);
         graphics.drawCenteredString(font, "Éliminations : " + kills + "   |   Coffres : " + crates,
             x, y - 75, 0xffdadada);

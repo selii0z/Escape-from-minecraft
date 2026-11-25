@@ -124,6 +124,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         if (!report.contains("final_xp")) return "";
         long seconds = report.getLong("duration_seconds");
         return (report.getBoolean("success") ? "EXTRACTION RÉUSSIE" : "RAID ÉCHOUÉ")
+            + (report.contains("industrial")?(report.getBoolean("industrial")?" | Industrie":" | Forêt"):"")
             + " | " + (seconds / 60) + "m " + (seconds % 60) + "s"
             + " | " + report.getInt("kills") + " kills"
             + " | " + report.getInt("crates") + " coffres"
@@ -137,6 +138,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             var report = reports.getCompound(i);
             long seconds = report.getLong("duration_seconds");
             history.add((report.getBoolean("success") ? "OK" : "KO")
+                + (report.contains("industrial")?(report.getBoolean("industrial")?" IND":" FOR"):" ---")
                 + " " + (seconds / 60) + ":" + String.format("%02d", seconds % 60)
                 + " | " + report.getInt("kills") + "K"
                 + " | " + report.getInt("crates") + "C"

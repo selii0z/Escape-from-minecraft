@@ -562,8 +562,8 @@ public final class ForestRaid extends SavedData {
         }
         // Raid deaths must not affect the vanilla Minecraft death statistic.
         // The vanilla death has already been counted when the clone event fires.
-        boolean raidDeath=forPlayer(original)!=null;
-        if (raidDeath) {
+        ForestRaid deathRaid=forPlayer(original);
+        if (deathRaid!=null) {
             // Explicitly transfer Escape progression before applying the penalty:
             // a respawned player may not yet have the original persistent account.
             CompoundTag oldRoot = original.getPersistentData();
@@ -592,7 +592,7 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_search_xp"),
                 oldRoot.getInt("taczoperations_run_contract_xp"), adjustment,
                 oldRoot.contains("taczoperations_run_xp_before") ? oldRoot.getInt("taczoperations_run_xp_before") : -1,
-                new RaidLootValue.Estimate(-1,0),oldRoot.getCompound("taczoperations_forest_return").getBoolean("industrial"));
+                new RaidLootValue.Estimate(-1,0),deathRaid.industrial);
             // Deliver the UI only after the new player has fully respawned.
             respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(

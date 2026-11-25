@@ -571,7 +571,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 }
                 panel(g, 169, 301, 379, 103, DARK);
                 text(g, "HISTORIQUE DES RAIDS", 181, 308, 1.0F, GOLD, true);
-                text(g, "K = éliminations · C = coffres", 181, 321, .76F, SOFT, false);
+                text(g, "FOR = forêt · IND = industrie · K/C = kills/coffres", 181, 321, .76F, SOFT, false);
                 int count = view.raidHistory().size();
                 historyScroll = Math.clamp(historyScroll, 0, Math.max(0, count - HISTORY_ROWS));
                 if (count == 0) {
