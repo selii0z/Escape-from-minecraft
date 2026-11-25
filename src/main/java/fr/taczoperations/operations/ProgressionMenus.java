@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
 
-/** Inventory-style prototype panels: presentation items are never transferable. */
+/** Read-only snapshots for the campaign and skills dashboard. */
 final class ProgressionMenus {
     private static final Item[] SKILL_ICONS={Items.LEATHER_BOOTS,Items.IRON_INGOT,Items.GOLDEN_APPLE,Items.SPYGLASS,Items.BLACK_DYE,Items.COMPASS,Items.CROSSBOW,Items.EMERALD};
     static boolean available(ServerPlayer p){
@@ -28,10 +28,11 @@ final class ProgressionMenus {
     static void missions(ServerPlayer p){
         if(!canOpen(p))return;
         var c=new SimpleContainer(54);int next=StoryMissions.next(p);
+        int rank=MilitaryProgression.level(SupplyContract.experienceEarned(p));
         var all=StoryMissions.Mission.values();
         for(int i=0;i<all.length;i++){
             var m=all[i];boolean done=i<next,active=i==next;
-            String status=done?"Terminée":active?StoryMissions.current(p)!=null?"Acceptée":"Disponible":"Verrouillée";
+            String status=done?"Terminée":active?StoryMissions.current(p)!=null?"Acceptée":rank>=m.level?"Disponible":"Niveau insuffisant":"Verrouillée";
             c.setItem(10+(i/7)*9+i%7,tile(done?Items.LIME_DYE:active?Items.WRITABLE_BOOK:Items.GRAY_DYE,m.title,
                 done?ChatFormatting.GREEN:active?ChatFormatting.GOLD:ChatFormatting.GRAY,List.of(
                 status+" · Niv. "+m.level,
@@ -39,8 +40,8 @@ final class ProgressionMenus {
                 "1. "+m.site,"2. "+m.quantity+" × "+m.relic.title,"3. "+m.kills+" "+m.target.label,
                 "4. Extraction réussie",m.credits+" crédits · "+m.xp+" XP")));
         }
-        if(next<all.length&&StoryMissions.current(p)==null)c.setItem(40,tile(Items.LIME_CONCRETE,"Accepter : "+all[next].title,ChatFormatting.GREEN,List.of("Niveau "+all[next].level+" requis")));
-        else c.setItem(40,tile(Items.PAPER,next==all.length?"Campagne terminée":"Opération acceptée",ChatFormatting.GRAY,List.of()));
+        if(next<all.length&&StoryMissions.current(p)==null&&rank>=all[next].level)c.setItem(40,tile(Items.LIME_CONCRETE,"Accepter : "+all[next].title,ChatFormatting.GREEN,List.of("Niveau "+all[next].level+" requis")));
+        else c.setItem(40,tile(Items.PAPER,next==all.length?"Campagne terminée":StoryMissions.current(p)!=null?"Opération acceptée":"Niveau militaire insuffisant",ChatFormatting.GRAY,List.of()));
         c.setItem(49,tile(Items.BARRIER,"Retour",ChatFormatting.RED,List.of()));
         open(p,c,"EFM · Campagne "+next+"/"+all.length,true);
     }
