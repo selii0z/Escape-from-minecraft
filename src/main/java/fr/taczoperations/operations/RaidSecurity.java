@@ -154,6 +154,19 @@ public final class RaidSecurity {
         CompoundTag d=tag(s);d.remove(INSURED);
         if(d.isEmpty())s.remove(DataComponents.CUSTOM_DATA);else s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));
     }
+    public static void tooltip(net.neoforged.neoforge.event.entity.player.ItemTooltipEvent event){
+        ItemStack stack=event.getItemStack();
+        if(!eligible(stack))return;
+        CompoundTag data=tag(stack);
+        if(data.hasUUID(INSURED)){
+            Player player=event.getEntity();
+            boolean own=player!=null&&player.getUUID().equals(data.getUUID(INSURED));
+            event.getToolTip().add(Component.literal(own?"Assuré · récupération 95 %":"Assurance d'un autre joueur")
+                .withStyle(own?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.YELLOW));
+        }else{
+            event.getToolTip().add(Component.literal("Non assuré · 100 crédits").withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+    }
     static boolean insuredBy(ServerPlayer p,ItemStack s){
         CompoundTag d=tag(s);return d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED));
     }
@@ -236,25 +249,35 @@ public final class RaidSecurity {
                 super.clicked(index,button,type,player);
             }
         },Component.literal("Assurance · matériel récupérable")));
-        return container.waiting+" en attente (30 min) · retire les objets disponibles.";
+        return container.summary();
     }
     private static final class Claims extends SimpleContainer {
         private final ServerPlayer owner;
         private final ListTag other=new ListTag();
         private boolean ready;
-        private int waiting;
+        private int waiting,overflow,availableCount;
+        private long nextReady=Long.MAX_VALUE;
         Claims(ServerPlayer p){
             super(54);owner=p;
             ListTag claims=SupplyContract.account(p).getList(CLAIMS,10);
             long now=System.currentTimeMillis();int slot=0;
             for(int i=0;i<claims.size();i++){
                 CompoundTag e=claims.getCompound(i);
-                if(e.getLong("ready")>now){other.add(e.copy());waiting++;continue;}
-                if(slot>=54){other.add(e.copy());continue;}
+                if(e.getLong("ready")>now){other.add(e.copy());waiting++;nextReady=Math.min(nextReady,e.getLong("ready"));continue;}
+                if(slot>=54){other.add(e.copy());overflow++;continue;}
                 ItemStack s=ItemStack.parseOptional(p.registryAccess(),e.getCompound("item"));
-                if(!s.isEmpty())super.setItem(slot++,s);
+                if(!s.isEmpty()){super.setItem(slot++,s);availableCount++;}
             }
             ready=true;
+        }
+        String summary(){
+            String message=availableCount+" équipement(s) disponible(s)";
+            if(overflow>0)message+=" · "+overflow+" autres : libère des cases puis rouvre";
+            if(waiting>0){
+                long seconds=Math.max(0,(nextReady-System.currentTimeMillis()+999)/1000);
+                message+=" · "+waiting+" en attente · prochain retour : "+(seconds/60)+" min "+(seconds%60)+" s";
+            }
+            return message;
         }
         @Override public boolean stillValid(Player p){return p==owner&&available(owner)&&!owner.level().dimension().equals(ForestExpedition.FOREST);}
         @Override public void setChanged(){

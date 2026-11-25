@@ -213,6 +213,7 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::fire);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::reload);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.WeaponCondition::tooltip);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::tooltip);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidOrigin::tooltip);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onExplosion);
     }
