@@ -54,6 +54,9 @@ public final class PlayerMarket extends SavedData {
         if(s.getItem() instanceof FieldPack)return FieldPack.contents(s).stream().allMatch(ItemStack::isEmpty);
         return !s.has(DataComponents.CONTAINER)&&!s.has(DataComponents.BUNDLE_CONTENTS)&&s.getItem().canFitInsideContainerItems();
     }
+    private static boolean bounded(ServerPlayer p,ItemStack s){
+        return eligible(s)&&s.saveOptional(p.registryAccess()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length<=1536;
+    }
     private static int category(ItemStack s){
         var item=s.getItem();
         if(item instanceof com.tacz.guns.api.item.IGun)return 1;
@@ -76,18 +79,16 @@ public final class PlayerMarket extends SavedData {
         int from=Math.min(all.size(),Math.max(0,page)*PAGE_SIZE);
         var rows=all.subList(from,Math.min(all.size(),from+PAGE_SIZE)).stream()
             .map(l->new Offer(l.id,l.seller,l.price,l.owner.equals(p.getUUID()),l.item.copy())).toList();
-        return new Page(rows,Math.max(0,proceeds.getOrDefault(p.getUUID(),0L)),ownCount(p.getUUID()),own,p.getMainHandItem().copy(),category);
+        return new Page(rows,Math.max(0,proceeds.getOrDefault(p.getUUID(),0L)),ownCount(p.getUUID()),own,bounded(p,p.getMainHandItem())?p.getMainHandItem().copy():ItemStack.EMPTY,category);
     }
     String list(ServerPlayer p,ItemStack quote,int price){
         if(!available(p))return "Marché disponible hors raid, en survie.";
         if(price<1||price>MAX_PRICE)return "Prix invalide (1 à "+MAX_PRICE+" crédits).";
         if(listings.size()>=MAX_LISTINGS||ownCount(p.getUUID())>=PER_PLAYER)return "Limite d'annonces atteinte.";
         var held=p.getMainHandItem();
-        if(!eligible(held)||!ItemStack.matches(held,quote))return "Objet modifié ou non vendable. Actualise la page.";
+        if(!bounded(p,held)||!ItemStack.matches(held,quote))return "Objet modifié ou non vendable. Actualise la page.";
         // Keep all item components (TaCZ IDs, durability, origin) in escrow.
         var item=held.copy();
-        // An insurance contract cannot follow an item sold to another player.
-        RaidSecurity.removeInsuranceForTrade(item);
         UUID id=UUID.randomUUID();
         p.getInventory().setItem(p.getInventory().selected,ItemStack.EMPTY);
         listings.put(id,new Listing(id,p.getUUID(),p.getGameProfile().getName(),price,item));
@@ -104,7 +105,10 @@ public final class PlayerMarket extends SavedData {
         var l=listings.get(quote.id);
         if(l==null||l.price!=quote.price)return "Annonce indisponible. Catalogue actualisé.";
         boolean own=l.owner.equals(p.getUUID());
-        if(!hasSpace(p,l.item))return "Inventaire Minecraft plein.";
+        var delivered=l.item.copy();
+        // Cancelling preserves the original insurance; a change of owner does not.
+        if(!own)RaidSecurity.removeInsuranceForTrade(delivered);
+        if(!hasSpace(p,delivered))return "Inventaire Minecraft plein.";
         var account=SupplyContract.account(p);
         int balance=SupplyContract.balance(p);
         if(!own&&balance<l.price)return "Crédits insuffisants.";
@@ -117,7 +121,7 @@ public final class PlayerMarket extends SavedData {
             account.putInt("credits",balance-l.price);
             proceeds.put(l.owner,pending+net);
         }
-        p.getInventory().add(l.item.copy());p.getInventory().setChanged();setDirty();
+        p.getInventory().add(delivered);p.getInventory().setChanged();setDirty();
         if(own)return "Annonce annulée · objet récupéré.";
         TradeJournal.record(p,"Achat","Marché joueurs",l.item.getHoverName().getString(),l.item.getCount(),-l.price);
         var seller=p.server.getPlayerList().getPlayer(l.owner);
