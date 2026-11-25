@@ -162,11 +162,11 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     private static void plantTrees(Painter out) {
         // Each candidate is deterministic across chunk boundaries. The margin
         // covers all crowns and branches even when the trunk is in another chunk.
-        for (int gx = Math.floorDiv(out.minX - 7, 8); gx <= Math.floorDiv(out.minX + 22, 8); gx++) {
-            for (int gz = Math.floorDiv(out.minZ - 7, 8); gz <= Math.floorDiv(out.minZ + 22, 8); gz++) {
+        for (int gx = Math.floorDiv(out.minX - 7, 10); gx <= Math.floorDiv(out.minX + 22, 10); gx++) {
+            for (int gz = Math.floorDiv(out.minZ - 7, 10); gz <= Math.floorDiv(out.minZ + 22, 10); gz++) {
                 long random = ForestPlan.hash(gx, gz, 31);
-                int x = gx * 8 + 1 + Math.floorMod(random, 6);
-                int z = gz * 8 + 1 + Math.floorMod(random >>> 10, 6);
+                int x = gx * 10 + 1 + Math.floorMod(random, 8);
+                int z = gz * 10 + 1 + Math.floorMod(random >>> 10, 8);
                 if (ForestPlan.edge(x, z) < 8 || ForestPlan.clear(x, z)
                     || ForestPlan.nearTrack(x, z, 4) || ForestPlan.ground(x, z) <= ForestPlan.WATER + 1) continue;
                 double density = ForestPlan.noise(x, z, 76, 39);
@@ -213,11 +213,11 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 } else {
                     // Conifer branches start high enough to let players move and
                     // see between trunks. Tapered, alternating whorls break symmetry.
-                    int crownStart = 4 + (int) ((random >>> 39) & 1);
+                    int crownStart = Math.max(4,height/2) + (int) ((random >>> 39) & 1);
                     for (int dy = crownStart; dy <= height + 1; dy++) {
                         int remaining = height + 1 - dy;
-                        int radius = remaining <= 1 ? remaining : Math.min(3, 1 + remaining / 3);
-                        if (remaining > 2 && (dy + (int) random) % 3 == 0) radius = Math.max(1, radius - 1);
+                        int radius = remaining <= 1 ? remaining : Math.min(3, 1 + remaining / 4);
+                        if (remaining > 2 && Math.floorMod(dy + (int) random, 3) != 0) radius = Math.max(1, radius - 1);
                         int sx = radius > 1 ? (int) ((ForestPlan.hash(x, z, dy) >>> 20) % 3) - 1 : 0;
                         int sz = radius > 1 ? (int) ((ForestPlan.hash(x, z, dy + 71) >>> 20) % 3) - 1 : 0;
                         foliage(out, x + sx, y + dy, z + sz, radius, 0, leaves, random + dy);
