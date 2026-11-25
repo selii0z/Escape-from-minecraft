@@ -54,5 +54,17 @@
   "block.taczoperations.raid_weaponbox": "Military supply box",
   "block.taczoperations.raid_safe": "Safe",
   "block.taczoperations.raid_pc": "Computer",
-  "block.taczoperations.raid_cabinet": "File cabinet"
+  "block.taczoperations.raid_cabinet": "File cabinet",
+  "item.taczoperations.backpack_small": "Small backpack",
+  "item.taczoperations.backpack_patrol": "Patrol backpack",
+  "item.taczoperations.backpack_tactical": "Tactical backpack",
+  "item.taczoperations.backpack_military": "Military backpack",
+  "item.taczoperations.backpack_expedition": "Expedition backpack",
+  "item.taczoperations.backpack_elite": "Elite backpack",
+  "item.taczoperations.rig_patrol": "Patrol rig",
+  "item.taczoperations.rig_tactical": "Tactical rig",
+  "item.taczoperations.rig_elite": "Elite rig",
+  "curios.identifier.efm_goggles": "Tactical goggles",
+  "curios.identifier.efm_backpack": "Backpack",
+  "curios.identifier.efm_rig": "Tactical rig"
 }
