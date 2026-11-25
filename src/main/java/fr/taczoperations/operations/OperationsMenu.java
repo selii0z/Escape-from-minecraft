@@ -194,6 +194,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             int vendorIndex=page/VENDOR_PAGES;
             var merchant=OperationsShop.values()[vendorIndex];
             var offers=merchant.offers();
+            int loyalty=OperationsShop.reputationLevel(merchant.reputation(player),SupplyContract.experienceEarned(player));
             var indices=new java.util.ArrayList<Integer>();
             var counts=new java.util.ArrayList<Integer>();
             long day=ResaleMarket.day();
@@ -201,7 +202,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
                 int count=OperationsShop.saleCount(player,offer);
-                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
+                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL&&offer.loyaltyLevel()<=loyalty)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
