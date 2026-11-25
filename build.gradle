@@ -93,3 +93,5 @@ sourceSets.main.resources.srcDir(fieldTextures)
 tasks.named('processResources') { dependsOn tasks.named('generateFieldTextures') }
 
 apply from: 'gradle/raid-art.gradle'
+
+apply from: 'gradle/verify-assets.gradle'
