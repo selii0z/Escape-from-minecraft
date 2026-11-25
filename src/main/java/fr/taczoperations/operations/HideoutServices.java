@@ -19,7 +19,8 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.item.alchemy.PotionContents;
 
-final class HideoutServices {
+@net.neoforged.fml.common.EventBusSubscriber(modid="taczoperations")
+public final class HideoutServices {
     private static final String STASH="hideout_stash";
     enum Recipe {
         BANDAGE("bandage",Hideout.Station.INFIRMERIE,1,TradeLoot.RIPSTOP_FABRIC,1,"bandage",2,25),
@@ -126,6 +127,26 @@ final class HideoutServices {
             else stack.grow(n);
         }
         HideoutPower.use(p);p.getInventory().setChanged();Hideout.say(p,r.count+" × "+output.getHoverName().getString()+" fabriqué(s).");
+    }
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void recipeCommands(net.neoforged.neoforge.event.RegisterCommandsEvent event){
+        event.getDispatcher().register(net.minecraft.commands.Commands.literal("efm")
+            .then(net.minecraft.commands.Commands.literal("recettes")
+                .executes(ctx->{
+                    ServerPlayer p=ctx.getSource().getPlayerOrException();
+                    if(!Hideout.ownsPlot(p)){Hideout.say(p,"Consulte les recettes dans ta planque.");return 0;}
+                    var storage=CarriedStorage.of(p);
+                    for(var r:Recipe.values()){
+                        var material=r.material.stack().getItem();
+                        int owned=storage.count(s->s.is(material));
+                        boolean ready=Hideout.tier(p,r.station)>=r.tier&&HideoutPower.available(p)
+                            &&SupplyContract.balance(p)>=r.price&&owned>=r.amount;
+                        var line=Component.literal(r.id+" ×"+r.count+" · "+r.price+" Cr. · "+r.material.title+" "+owned+"/"+r.amount
+                            +" · "+r.station.label+" "+Hideout.tier(p,r.station)+"/"+r.tier+" · énergie "+HideoutPower.energy(p)+"/1");
+                        p.sendSystemMessage(line.withStyle(ready?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.RED));
+                    }
+                    return 1;
+                })));
     }
     private HideoutServices(){}
 }
