@@ -39,3 +39,40 @@ processResources {
         expand(mod_version: project.version)
     }
 }
+
+// Generate small original pixel-art fabric swatches reproducibly at build time.
+// Keep the generated PNGs out of the source tree.
+def fieldTextures = layout.buildDirectory.dir('generated/fieldTextures')
+tasks.register('generateFieldTextures') {
+    outputs.dir(fieldTextures)
+    doLast {
+        def root = fieldTextures.get().asFile
+        def palette = [small:0x777f58, patrol:0x997d54, tactical:0x53664c,
+            military:0x555e54, expedition:0x776d42, elite:0x344343,
+            rig_patrol:0x8a795a, rig_tactical:0x57654c, rig_elite:0x3b4646]
+        palette.each { name, rgb ->
+            def image = new java.awt.image.BufferedImage(16,16,java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            for(int y=0;y<16;y++) for(int x=0;x<16;x++){
+                int shade = ((x*17+y*31+x*y*3)%11)-5
+                if(x==0||y==0||x==15||y==15) shade-=19
+                if(x==7||x==8) shade-=10
+                int r=Math.max(0,Math.min(255,((rgb>>16)&255)+shade))
+                int g=Math.max(0,Math.min(255,((rgb>>8)&255)+shade))
+                int b=Math.max(0,Math.min(255,(rgb&255)+shade))
+                image.setRGB(x,y, (int)(0xff000000L | (r<<16) | (g<<8) | b))
+            }
+            def file = new File(root,"assets/taczoperations/textures/item/field_"+name+".png")
+            file.parentFile.mkdirs()
+            javax.imageio.ImageIO.write(image,'png',file)
+        }
+        [strap:0x34382f, buckle:0x9b9e88, seam:0x252b25].each { name, rgb ->
+            def image = new java.awt.image.BufferedImage(16,16,java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            for(int y=0;y<16;y++) for(int x=0;x<16;x++) image.setRGB(x,y,(int)(0xff000000L|rgb))
+            def file = new File(root,"assets/taczoperations/textures/item/field_"+name+".png")
+            file.parentFile.mkdirs()
+            javax.imageio.ImageIO.write(image,'png',file)
+        }
+    }
+}
+sourceSets.main.resources.srcDir(fieldTextures)
+tasks.named('processResources') { dependsOn tasks.named('generateFieldTextures') }
