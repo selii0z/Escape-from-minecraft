@@ -214,8 +214,8 @@ public final class ForestExpedition {
             return false;
         }
         atmosphere(player, point);
-        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · 3 sorties : or (gratuite), fer (clé), émeraude (600 crédits)."
-            : "Forêt Noire · sortie principale sur le bloc d’or. Active le relais pour la sortie secondaire."));
+        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
+            : "Forêt Noire · sortie principale sur le bloc d’or. Relais secondaire selon la session."));
         if(industrial){
             BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
             player.sendSystemMessage(Component.literal("Sortie à clé · X "+key.getX()+" Z "+key.getZ()+" | Sortie payante · X "+paid.getX()+" Z "+paid.getZ()));
@@ -246,7 +246,8 @@ public final class ForestExpedition {
         ForestRaid.populateNear(player);
         BlockPos primary = industrial ? industrialPosition(IndustrialZone.EXIT) : ForestLandmarks.position(ForestPlan.EXTRACTION);
         BlockPos secondary = industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
-        boolean relay = !industrial && point.getBoolean("relay");
+        boolean relayAvailable=!industrial&&ForestRaid.secondaryOpen(player,0);
+        boolean relay = relayAvailable && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
         if(industrial && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
@@ -254,6 +255,10 @@ public final class ForestExpedition {
             boolean key=feet.equals(keyExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.IRON_BLOCK);
             boolean paid=feet.equals(paidExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.EMERALD_BLOCK);
             if(key||paid){
+                if(!ForestRaid.secondaryOpen(player,key?1:2)){
+                    if(player.tickCount%20==0)player.displayClientMessage(Component.literal("Sortie fermée pour ce raid."),true);
+                    return;
+                }
                 var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
                 boolean eligible=key?player.getInventory().items.stream().anyMatch(s->s.is(keyItem))
                     :SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST;
@@ -285,7 +290,7 @@ public final class ForestExpedition {
         }
         if (player.tickCount % 20 == 0) {
             if (!industrial && feet.equals(secondary) && !relay) {
-                player.displayClientMessage(Component.literal("Sortie verrouillée · active le relais de la station."), true);
+                player.displayClientMessage(Component.literal(relayAvailable?"Sortie verrouillée · active le relais de la station.":"Sortie fermée pour ce raid."), true);
                 return;
             }
             if (!SupplyContract.showExtraction(player)) {
@@ -296,10 +301,10 @@ public final class ForestExpedition {
             if(industrial){
                 BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT),paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
                 var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
-                if(player.getInventory().items.stream().anyMatch(s->s.is(keyItem)) && keyExit.distSqr(feet)<extraction.distSqr(feet)){
+                if(ForestRaid.secondaryOpen(player,1)&&player.getInventory().items.stream().anyMatch(s->s.is(keyItem)) && keyExit.distSqr(feet)<extraction.distSqr(feet)){
                     extraction=keyExit;exitLabel="Extraction (clé)";
                 }
-                if(SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
+                if(ForestRaid.secondaryOpen(player,2)&&SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
                     extraction=paidExit;exitLabel="Extraction (600 cr.)";
                 }
             }
@@ -321,6 +326,10 @@ public final class ForestExpedition {
         }
         event.setCancellationResult(InteractionResult.SUCCESS);
         event.setCanceled(true);
+        if(!ForestRaid.secondaryOpen(player,0)){
+            player.sendSystemMessage(Component.literal("Relais indisponible pour ce raid."));
+            return;
+        }
         player.getPersistentData().getCompound(RETURN_POINT).putBoolean("relay", true);
         BlockPos exit = ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         player.sendSystemMessage(Component.literal("Relais activé. Sortie secondaire ouverte pour toi · X "
