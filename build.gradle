@@ -96,4 +96,5 @@ apply from: 'gradle/raid-art.gradle'
 
 apply from: 'gradle/skill-art.gradle'
 apply from: 'gradle/campaign-art.gradle'
+apply from: 'gradle/enemy-art.gradle'
 apply from: 'gradle/verify-assets.gradle'
