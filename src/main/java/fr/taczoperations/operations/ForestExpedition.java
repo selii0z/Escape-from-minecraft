@@ -330,6 +330,7 @@ public final class ForestExpedition {
         }
         // Return carried cursor items before changing dimension / restoring snapshot.
         player.closeContainer();
+        if(player.isUsingItem()&&player.getUseItem().getItem() instanceof FieldMedicine)player.stopUsingItem();
         player.teleportTo(origin, destination.x, destination.y, destination.z, Set.of(),
             point.getFloat("yaw"), point.getFloat("pitch"));
         if (player.level() != origin) {

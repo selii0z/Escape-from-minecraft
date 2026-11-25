@@ -44,8 +44,19 @@ public final class RaidInjuries {
         if((bleed>0||d.getBoolean(FRACTURE)||d.getBoolean(ARM))&&p.tickCount%60==0)
             p.displayClientMessage(Component.literal((bleed==2?"Hémorragie  ":bleed==1?"Saignement  ":"")+(d.getBoolean(FRACTURE)?"Fracture  ":"")+(d.getBoolean(ARM)?"Bras blessé":"")),true);
     }
-    static boolean treat(ServerPlayer p,String kind) {
+    static boolean canTreat(ServerPlayer p,String kind){
         if(!active(p))return false;
+        var d=p.getPersistentData();
+        return switch(kind){
+            case "bandage","hemostat"->d.getInt(BLEED)>0;
+            case "splint"->d.getBoolean(FRACTURE);
+            case "salewa"->p.getHealth()<p.getMaxHealth();
+            case "medkit"->d.getBoolean(ARM);
+            default->false;
+        };
+    }
+    static boolean treat(ServerPlayer p,String kind) {
+        if(!canTreat(p,kind))return false;
         var d=p.getPersistentData();
         switch(kind) {
             case "bandage" -> {
