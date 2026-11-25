@@ -21,7 +21,8 @@ public final class BallisticVest {
             case 2 -> 0x9A8058; // desert sand
             case 3 -> 0x4F633A; // olive green
             case 4 -> 0x465661; // slate blue-grey
-            case 5 -> 0x101114; // tactical black
+            case 5 -> 0x101114;
+            case 6 -> 0x632A24; // exclusive boss armor // tactical black
             default -> 0x4F633A;
         };
     }
@@ -50,7 +51,7 @@ public final class BallisticVest {
     }
 
     public static ItemStack create(EquipmentSlot slot, int protectionClass, int color) {
-        int tier = Math.clamp(protectionClass, 2, 5);
+        int tier = Math.clamp(protectionClass, 2, 6);
         ItemStack piece = new ItemStack(item(slot));
         CompoundTag tag = new CompoundTag();
         tag.putInt(KEY, tier);
@@ -74,7 +75,7 @@ public final class BallisticVest {
     }
 
     private static float multiplier(int tier) {
-        return switch (tier) { case 2 -> .85F; case 3 -> .70F; case 4 -> .55F; case 5 -> .35F; default -> 1F; };
+        return switch (tier) { case 2 -> .85F; case 3 -> .70F; case 4 -> .55F; case 5 -> .35F; case 6 -> .20F; default -> 1F; };
     }
 
     public static int tier(ItemStack stack, EquipmentSlot slot) {
@@ -82,7 +83,7 @@ public final class BallisticVest {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
         int value = data.copyTag().getInt(KEY);
-        return value >= 2 && value <= 5 ? value : 0;
+        return value >= 2 && value <= 6 ? value : 0;
     }
 
     public static int condition(ItemStack stack) {

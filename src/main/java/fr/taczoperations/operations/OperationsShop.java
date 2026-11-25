@@ -202,7 +202,7 @@ public enum OperationsShop {
         return 4; // high-power and unclassified addon ammunition unlock last
     }
 
-    private static int weaponTier(ResourceLocation id, ResourceLocation ammo, int rounds) {
+    static int weaponTier(ResourceLocation id, ResourceLocation ammo, int rounds) {
         String s=id.getPath().toLowerCase(java.util.Locale.ROOT);
         int base=calibreTier(ammo);
         if (s.matches(".*(sniper|awp|barrett|m82|m107|m249|m240|pkm|minigun|launcher|rpg|scar_h|sr25|m110|svd|m200|intervention|mg42|mg3).*")) return 4;
