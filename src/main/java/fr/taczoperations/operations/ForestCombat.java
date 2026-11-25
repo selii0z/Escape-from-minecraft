@@ -160,6 +160,7 @@ public final class ForestCombat {
             }
             boolean hit=aim.previousHealth>=0&&guard.getHealth()<aim.previousHealth;
             aim.previousHealth=guard.getHealth();
+            if(hit)RaidAudio.voice(guard,"hurt");
             net.minecraft.world.entity.LivingEntity target = null;
             double range = (role.range + 12) * (role.range + 12);
             for (ServerPlayer candidate : level.players()) {
@@ -243,6 +244,7 @@ public final class ForestCombat {
             guard.getNavigation().stop();
             operator.aim(true);
             if (!target.getUUID().equals(aim.visibleTarget)) {
+                RaidAudio.voice(guard,"attack");
                 aim.visibleTarget = target.getUUID();
                 // Give players a reaction window when first spotted or spotted again.
                 aim.nextShot = Math.max(aim.nextShot, guard.tickCount + 16 + guard.getRandom().nextInt(13));
