@@ -122,6 +122,8 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
         if(!(event.getEntity() instanceof ServerPlayer p))return;
         var old=REFRESH.remove(p);
         if(old==null||!allowed(p)||!p.level().dimension().equals(old.dimension))return;
+        // Never reopen over another container or after the player leaves the old view.
+        if(p.containerMenu!=old&&p.containerMenu!=p.inventoryMenu)return;
         if(p.containerMenu==old)p.closeContainer();
         if(p.containerMenu==p.inventoryMenu)open(p);
     }
@@ -134,10 +136,10 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
             if(!moveItemStackTo(source,8,44,false))return ItemStack.EMPTY;
         }else{
             boolean moved=false;
-            if(index>=8&&index<44&&FieldPack.accepts(source,false)&&bagSize>0)
-                moved=moveItemStackTo(source,44,44+bagSize,false);
-            if(!moved&&FieldPack.accepts(source,true)&&rigSize>0)
+            if(FieldPack.accepts(source,true)&&rigSize>0)
                 moved=moveItemStackTo(source,44+bagSize,slots.size(),false);
+            if(!source.isEmpty()&&FieldPack.accepts(source,false)&&bagSize>0)
+                moved=moveItemStackTo(source,44,44+bagSize,false)||moved;
             if(!moved){
                 if(index<35)moved=moveItemStackTo(source,35,44,false);
                 else moved=moveItemStackTo(source,8,35,false);
@@ -157,7 +159,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
             super(size);this.carrier=carrier;
             var contents=NonNullList.withSize(size,ItemStack.EMPTY);
             carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(contents);
-            for(int i=0;i<size;i++)super.setItem(i,contents.get(i));
+            for(int i=0;i<size;i++)super.setItem(i,contents.get(i).copy());
             expected=carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY);ready=true;
         }
         @Override public void setChanged(){
