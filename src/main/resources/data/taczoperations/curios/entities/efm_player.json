@@ -1,0 +1,10 @@
+{
+  "entities": [
+    "minecraft:player"
+  ],
+  "slots": [
+    "efm_goggles",
+    "efm_backpack",
+    "efm_rig"
+  ]
+}
