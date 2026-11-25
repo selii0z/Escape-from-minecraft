@@ -84,6 +84,7 @@ public enum OperationsShop {
         var offers = new ArrayList<Offer>();
         switch (this) {
             case ARMORER -> {
+                offers.add(new Offer("Entretien · arme tenue en main",0,Action.REPAIR,()->new ItemStack(Items.IRON_INGOT),null,0));
                 // Build a single authoritative catalogue from the installed TaCZ packs.
                 // Each calibre inherits the lowest tier of a weapon using it, with
                 // a minimum tier for the calibre itself. No duplicate cheap ammo offers.
@@ -271,6 +272,7 @@ public enum OperationsShop {
         if (stack.isEmpty()) return "Article indisponible dans cette installation TaCZ.";
         int balance = account.getInt("credits");
         if (offer.action == Action.REPAIR) {
+            if (this == ARMORER) return WeaponCondition.repair(player);
             if (this != SALVAGER) return "Service indisponible.";
             for (var slot : BallisticVest.SLOTS) {
                 if (!stack.is(BallisticVest.item(slot))) continue;

@@ -472,7 +472,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                          || offer.key() != null && !unlocked(offer.key()));
                     text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
                     String cost = switch (offer.action()) {
-                        case BUY, REPAIR -> offer.price() + " crédits";
+                        case BUY -> offer.price() + " crédits";
+                        case REPAIR -> vendor==OperationsShop.ARMORER?"8 cr. / % manquant · min. 50":offer.price()+" crédits";
                         case SELL -> "+" + offer.price() + " crédits";
                         case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
                     };

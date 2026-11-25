@@ -787,6 +787,7 @@ public final class ForestRaid extends SavedData {
         guard.setDropChance(EquipmentSlot.MAINHAND, 0);
         guard.setDropChance(EquipmentSlot.CHEST, 0);
         ForestCombat.arm(guard);
+        WeaponCondition.usedLoot(guard.getMainHandItem(),55+guard.getRandom().nextInt(41));
         GuardPouch.load(guard);
         return level.addFreshEntity(guard);
     }
