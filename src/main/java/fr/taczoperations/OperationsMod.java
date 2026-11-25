@@ -117,7 +117,12 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("28");
+        var registrar = event.registrar("29");
+        registrar.playToServer(fr.taczoperations.operations.WipeAccount.TYPE,fr.taczoperations.operations.WipeAccount.CODEC,
+            (message,context)->context.enqueueWork(()->{
+                if(context.player() instanceof net.minecraft.server.level.ServerPlayer p)
+                    fr.taczoperations.operations.WipeAccount.handle(p,message);
+            }));
         registrar.playToServer(fr.taczoperations.operations.ShopBuy.TYPE,fr.taczoperations.operations.ShopBuy.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p
