@@ -1,0 +1,163 @@
+import java.awt.*
+import java.awt.geom.*
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Original illustrated raid backgrounds, generated at native Full HD.
+// No external image downloads or runtime generation.
+def raidArt = layout.buildDirectory.dir('generated/raidArt')
+tasks.register('generateRaidArt') {
+    inputs.file('gradle/raid-art.gradle')
+    outputs.dir(raidArt)
+    doLast {
+        final int W=1920,H=1080
+        def color = { int hex -> new Color(hex) }
+        def mix = { Color a, Color b, double t ->
+            new Color((int)(a.red+(b.red-a.red)*t),(int)(a.green+(b.green-a.green)*t),(int)(a.blue+(b.blue-a.blue)*t))
+        }
+        ['forest','industrial'].each { area ->
+            [true,false].each { victory ->
+                boolean industrial=area=='industrial'
+                Random random=new Random((industrial?1543L:7229L)+(victory?0L:907L))
+                BufferedImage image=new BufferedImage(W,H,BufferedImage.TYPE_INT_RGB)
+                Graphics2D g=image.createGraphics()
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON)
+                g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY)
+                def polygon={ Color c, List pts ->
+                    Path2D.Double p=new Path2D.Double()
+                    p.moveTo(pts[0][0] as double,pts[0][1] as double)
+                    pts.drop(1).each { q -> p.lineTo(q[0] as double,q[1] as double) }
+                    p.closePath();g.setColor(c);g.fill(p)
+                }
+                def rect={ Color c,int x,int y,int w,int h -> g.setColor(c);g.fillRect(x,y,w,h) }
+                def stroke={ Color c,float width,int x,int y,int x2,int y2 ->
+                    g.setColor(c);g.setStroke(new BasicStroke(width));g.drawLine(x,y,x2,y2)
+                }
+                Color skyTop=color(victory?0x293e43:0x22282f)
+                Color skyBottom=color(victory?0xbda879:0x875e53)
+                g.setPaint(new GradientPaint(0f,0f,skyTop,0f,690f,skyBottom));g.fillRect(0,0,W,H)
+                float sx=victory?1510f:350f,sy=300f
+                g.setPaint(new RadialGradientPaint(sx,sy,420f,[0f,.18f,1f] as float[],
+                    [new Color(246,212,151,victory?155:70),new Color(221,177,113,55),new Color(190,136,90,0)] as Color[]))
+                g.fillRect(0,0,W,730)
+                // Layered haze and irregular mountain silhouettes.
+                for(int layer=0;layer<5;layer++){
+                    int base=400+layer*72
+                    List points=[[0,H],[0,base]]
+                    double phase=random.nextDouble()*6
+                    for(int x=0;x<=W;x+=24){
+                        double y=base+Math.sin(x/175.0+phase)*55+Math.sin(x/51.0+phase)*17+random.nextInt(12)
+                        points.add([x,y])
+                    }
+                    points.add([W,H])
+                    polygon(mix(color(0x777e72),color(0x283b32),layer/4.0),points)
+                }
+                g.setPaint(new GradientPaint(0f,590f,color(industrial?0x5b5d51:0x505845),0f,H as float,color(0x171e1b)))
+                g.fillRect(0,630,W,H-630)
+                if(!industrial){
+                    // Pine forest in depth, then detailed near trunks and branch clusters.
+                    for(int layer=0;layer<4;layer++){
+                        int count=layer==0?95:layer==1?68:layer==2?36:18
+                        for(int i=0;i<count;i++){
+                            int x=random.nextInt(W+160)-80
+                            int foot=570+layer*113+random.nextInt(55)
+                            int tall=85+layer*104+random.nextInt(85+layer*40)
+                            int wide=(int)(tall*(.18+random.nextDouble()*.10))
+                            Color bark=mix(color(0x56645a),color(0x222923),layer/3.0)
+                            Color needles=mix(color(0x64736a),color(0x182a23),layer/3.0)
+                            stroke(bark,Math.max(2f,tall/34f),x,foot,x,foot-tall)
+                            for(int b=0;b<8;b++){
+                                int y=foot-tall+14+(int)(b*tall*.105)
+                                int w=(int)(wide*(.25+b*.10))
+                                polygon(needles,[[x,y-24],[x-w,y+42],[x-5,y+31],[x+w,y+46]])
+                            }
+                        }
+                    }
+                    // Trail to the clearing; only the foreground is drawn over the forest.
+                    polygon(color(0x545347),[[770,1080],[1400,1080],[1055,750],[984,650],[960,650],[971,755]])
+                    polygon(color(0x74705c),[[830,1080],[1050,1080],[1010,760],[975,655],[968,655],[973,760]])
+                    for(int i=0;i<480;i++){
+                        int y=720+random.nextInt(360),x=random.nextInt(W)
+                        if(x>960-(y-650)*.42&&x<990+(y-650)*.92)continue
+                        int h=3+(int)((y-680)*random.nextDouble()/19)
+                        stroke(new Color(93,106,72,85),1.5f,x,y,x-3,y-h)
+                    }
+                    // Foreground framing on the sides.
+                    [120,1770].each { xx ->
+                        int x=xx as int
+                        polygon(color(0x1b211d),[[x-35,H],[x+45,H],[x+17,90],[x-7,-30]])
+                        for(int i=0;i<13;i++){
+                            int y=80+i*53
+                            stroke(color(0x263027),6f,x,y,x+(i%2==0?1:-1)*(70+random.nextInt(100)),y-40)
+                        }
+                    }
+                }else{
+                    // Warehouses, tanks, stacks and exposed steel structures.
+                    for(int i=0;i<7;i++){
+                        int x=i*310-85,y=390+random.nextInt(130),w=260+random.nextInt(100),h=680-y
+                        Color wall=color(i%2==0?0x56605b:0x62635a)
+                        rect(color(0x343d38),x+18,y-12,w,h+12)
+                        rect(wall,x,y,w,h)
+                        polygon(color(0x323e3a),[[x-12,y],[x+w/2,y-65],[x+w+12,y],[x+w,y+12],[x,y+12]])
+                        for(int j=0;j<w;j+=15)stroke(new Color(35,44,42,80),1f,x+j,y+14,x+j,680)
+                        for(int j=0;j<Math.max(1,w/58);j++){
+                            int wx=x+15+j*58
+                            rect(color(0x25332f),wx,y+42,37,46)
+                            rect(color(victory&&j%3==0?0x9b895d:0x4d625e),wx+3,y+45,31,40)
+                            stroke(color(0x283c38),2f,wx+18,y+44,wx+18,y+86)
+                        }
+                        rect(color(0x2a3430),x+w/2-35,590,70,90)
+                        if(i%2==0){
+                            rect(color(0x434b47),x+95,y-160,32,165)
+                            rect(color(0x252d2b),x+89,y-166,44,12)
+                        }
+                    }
+                    // Road, loading yard, rails and steel columns with receding perspective.
+                    polygon(color(0x50544c),[[465,H],[1500,H],[1080,680],[854,680]])
+                    polygon(color(0x69685a),[[720,H],[1240,H],[1010,680],[925,680]])
+                    for(int i=0;i<12;i++){
+                        int y=690+i*i*3
+                        stroke(color(0x333d38),2f,0,y,W,y)
+                    }
+                    for(int i=0;i<6;i++){
+                        int x=50+i*375
+                        stroke(color(0x293431),13f,x,740,x,200)
+                        stroke(color(0x293431),5f,x,215,x+270,340)
+                        stroke(color(0x293431),5f,x,340,x+270,215)
+                    }
+                    stroke(color(0x303d38),12f,0,213,W,213)
+                    stroke(color(0x52605a),4f,0,208,W,208)
+                }
+                // Extraction or failed-raid atmosphere; color and weather differ by outcome.
+                if(victory){
+                    int x=industrial?1560:1450,y=industrial?635:690
+                    g.setPaint(new RadialGradientPaint(x as float,y as float,220f,[0f,.25f,1f] as float[],
+                        [new Color(158,209,132,155),new Color(113,170,96,62),new Color(82,150,78,0)] as Color[]))
+                    g.fillRect(x-220,y-220,440,440)
+                    rect(color(0x9cc98b),x-16,y-8,32,16)
+                }else{
+                    for(int i=0;i<230;i++){
+                        int x=random.nextInt(W),y=random.nextInt(H)
+                        stroke(new Color(180,181,170,25),1f,x,y,x-8,y+27)
+                    }
+                }
+                // Subtle grain, edge falloff and outcome tint.
+                g.setPaint(new RadialGradientPaint(960f,510f,1110f,[0f,.55f,1f] as float[],
+                    [new Color(0,0,0,0),new Color(0,0,0,0),new Color(0,0,0,170)] as Color[]))
+                g.fillRect(0,0,W,H)
+                g.dispose()
+                for(int y=0;y<H;y++)for(int x=0;x<W;x++){
+                    int rgb=image.getRGB(x,y),n=random.nextInt(9)-4
+                    int r=Math.max(0,Math.min(255,((rgb>>16)&255)+n+(victory?0:5)))
+                    int gr=Math.max(0,Math.min(255,((rgb>>8)&255)+n-(victory?0:4)))
+                    int b=Math.max(0,Math.min(255,(rgb&255)+n))
+                    image.setRGB(x,y,(int)(0xff000000L|(r<<16)|(gr<<8)|b))
+                }
+                File file=new File(raidArt.get().asFile,"assets/taczoperations/textures/gui/raid_"+area+"_"+(victory?'success':'failure')+".png")
+                file.parentFile.mkdirs();ImageIO.write(image,'png',file)
+            }
+        }
+    }
+}
+sourceSets.main.resources.srcDir(raidArt)
+tasks.named('processResources') { dependsOn tasks.named('generateRaidArt') }
