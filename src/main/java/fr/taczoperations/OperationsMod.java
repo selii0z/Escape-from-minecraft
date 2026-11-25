@@ -59,6 +59,8 @@ public final class OperationsMod {
     public static final Supplier<EntityType<GuardCorpse>> GUARD_CORPSE = ENTITIES.register("guard_corpse", () ->
         EntityType.Builder.<GuardCorpse>of(GuardCorpse::new, MobCategory.MISC)
             .sized(1.55F, .36F).clientTrackingRange(8).updateInterval(10).build(ID + ":guard_corpse"));
+    public static final Supplier<MenuType<fr.taczoperations.operations.HideoutControlMenu>> HIDEOUT_MENU=MENUS.register(
+        "hideout_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.HideoutControlMenu::new));
     public static final Supplier<MenuType<OperationsMenu>> MENU = MENUS.register(
         "operations_board", () -> IMenuTypeExtension.create(OperationsMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(
