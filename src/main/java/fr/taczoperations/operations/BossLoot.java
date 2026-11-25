@@ -17,12 +17,12 @@ final class BossLoot {
     private static final String BONUS="efm_boss_bonus";
     static void equip(Pillager boss){
         var rng=boss.getRandom();
-        int tier=rng.nextInt(100)<50?6:5;
+        int tier=rng.nextInt(100)<10?6:5;
         boss.setItemSlot(EquipmentSlot.CHEST,BallisticVest.create(EquipmentSlot.CHEST,tier,BallisticVest.classColor(tier)));
         boss.setItemSlot(EquipmentSlot.HEAD,BallisticVest.create(EquipmentSlot.HEAD,5,BallisticVest.classColor(5)));
-        // Independent fifty-percent premium pair roll. Never repeat a gun ID
+        // Independent thirty-percent premium pair roll. Never repeat a gun ID
         // when two compatible catalogue entries exist.
-        if(rng.nextInt(100)<50){
+        if(rng.nextInt(100)<30){
             var candidates=new ArrayList<>(TimelessAPI.getAllCommonGunIndex().stream()
                 .filter(e->e.getValue().getGunData()!=null&&e.getValue().getGunData().getAmmoId()!=null
                     &&!e.getValue().getGunData().getFireModeSet().isEmpty()).toList());
