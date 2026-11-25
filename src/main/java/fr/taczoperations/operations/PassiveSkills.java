@@ -74,7 +74,7 @@ public final class PassiveSkills {
         p.sendSystemMessage(Component.literal("Compétences passives · niveaux 1 à 50"));
         for(var s:Skill.values()){
             int n=level(p,s),x=xp(p,s);
-            p.sendSystemMessage(Component.literal(s.title+" · "+n+"/50 · "+(n==50?"MAX":(x-threshold(n))+"/"+(threshold(n+1)-threshold(n))+" XP")+(s==Skill.TRADE?" · réduction commerciale prévue (non active)":" · bonus "+bonus(p,s)+" %")));
+            p.sendSystemMessage(Component.literal(s.title+" · "+n+"/50 · "+(n==50?"MAX":(x-threshold(n))+"/"+(threshold(n+1)-threshold(n))+" XP")+(s==Skill.TRADE?" · réduction achats "+bonus(p,s)+" %":" · bonus "+bonus(p,s)+" %")));
         }
     }
     public static void commands(RegisterCommandsEvent event){
