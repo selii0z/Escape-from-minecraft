@@ -42,8 +42,9 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int CONTRACT_ROWS = 5;
     public static final int VENDOR_FIRST = 35;
     public static final int VENDOR_PAGES = 128;
-    public static final int TRADE_FIRST = 45;
-    public static final int SELL_ALL_FIRST=160, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
+    public static final int SHOP_ROWS = 24;
+    public static final int TRADE_FIRST = 180, SHOP_CATEGORY_FIRST=228;
+    public static final int SELL_ALL_FIRST=204, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
 
@@ -179,6 +180,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         List<Integer> saleCounts=new java.util.ArrayList<>();
         List<Integer> shopRows=new java.util.ArrayList<>();
         boolean shopOwned=account.getBoolean("shop_owned_only");
+        if(tab==SHOP)category=Math.clamp(account.getInt("shop_category"),0,6);
         boolean shopAccessories=tab==SHOP&&page/VENDOR_PAGES==OperationsShop.ARMORER.ordinal()&&!shopOwned&&account.getBoolean("shop_accessories_only");
         int shopPages=1;
         long shopValue=0;
@@ -193,7 +195,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
                 int count=OperationsShop.saleCount(player,offer);
-                if((!shopOwned||count>0)&&(!shopAccessories||offer.accessory())){
+                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||category==0||offer.shopCategory()==category)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
@@ -204,11 +206,11 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 }
             }
             for(long value:valued.values())shopValue+=value;
-            shopPages=Math.max(1,Math.min(VENDOR_PAGES,(indices.size()+LIST_ROWS-1)/LIST_ROWS));
+            shopPages=Math.max(1,Math.min(VENDOR_PAGES,(indices.size()+SHOP_ROWS-1)/SHOP_ROWS));
             int local=Math.clamp(page%VENDOR_PAGES,0,shopPages-1);
             page=vendorIndex*VENDOR_PAGES+local;
-            int first=local*LIST_ROWS;
-            for(int i=first;i<Math.min(first+LIST_ROWS,indices.size());i++){
+            int first=local*SHOP_ROWS;
+            for(int i=first;i<Math.min(first+SHOP_ROWS,indices.size());i++){
                 shopRows.add(indices.get(i));saleCounts.add(counts.get(i));
             }
         }
@@ -317,6 +319,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
             notice = "Préférence enregistrée.";
         } else if (tab == SHOP && button >= VENDOR_FIRST && button < VENDOR_FIRST + OperationsShop.values().length) {
             page = (button - VENDOR_FIRST) * VENDOR_PAGES;
+        } else if(tab==SHOP&&button>=SHOP_CATEGORY_FIRST&&button<SHOP_CATEGORY_FIRST+7){
+            var account=SupplyContract.account(serverPlayer);
+            account.putInt("shop_category",button-SHOP_CATEGORY_FIRST);
+            account.putBoolean("shop_owned_only",false);
+            account.putBoolean("shop_accessories_only",false);
+            page=page/VENDOR_PAGES*VENDOR_PAGES;
         } else if(tab==SHOP&&button==SHOP_OWNED_FILTER){
             SupplyContract.account(serverPlayer).putBoolean("shop_owned_only",!view.shopOwned());
             SupplyContract.account(serverPlayer).putBoolean("shop_accessories_only",false);
@@ -326,14 +334,14 @@ public final class OperationsMenu extends AbstractContainerMenu {
             account.putBoolean("shop_accessories_only",!view.shopAccessories());
             account.putBoolean("shop_owned_only",false);
             page=page/VENDOR_PAGES*VENDOR_PAGES;
-        } else if(tab==SHOP&&button>=SELL_ALL_FIRST&&button<SELL_ALL_FIRST+LIST_ROWS){
+        } else if(tab==SHOP&&button>=SELL_ALL_FIRST&&button<SELL_ALL_FIRST+SHOP_ROWS){
             if(serverPlayer.level().dimension().equals(ForestExpedition.FOREST))return false;
             int row=button-SELL_ALL_FIRST;
             if(row>=view.shopRows().size())return false;
             var vendor=OperationsShop.values()[page/VENDOR_PAGES];
             notice=vendor.trade(serverPlayer,view.shopRows().get(row),
                 Long.parseLong(view.market().getFirst()),view.saleCounts().get(row),true);
-        } else if (tab == SHOP && button >= TRADE_FIRST && button < TRADE_FIRST + LIST_ROWS) {
+        } else if (tab == SHOP && button >= TRADE_FIRST && button < TRADE_FIRST + SHOP_ROWS) {
             var vendor = OperationsShop.values()[page / VENDOR_PAGES];
             if (serverPlayer.level().dimension().equals(ForestExpedition.FOREST)) return false;
             int row=button-TRADE_FIRST;
