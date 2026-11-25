@@ -143,6 +143,7 @@ public final class OperationsMod {
         GENERATORS.register(bus);
         bus.addListener(OperationsMod::registerPayloads);
         NeoForge.EVENT_BUS.addListener(ForestPreparation::tick);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.FieldInventoryMenu::refresh);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidInjuries::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::interact);
