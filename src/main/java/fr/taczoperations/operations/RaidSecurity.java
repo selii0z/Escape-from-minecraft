@@ -31,7 +31,7 @@ public final class RaidSecurity {
             .then(Commands.literal("assurer").executes(ctx->{var p=ctx.getSource().getPlayerOrException();p.sendSystemMessage(Component.literal(insure(p)));return 1;}))
             .then(Commands.literal("recuperer").executes(ctx->{var p=ctx.getSource().getPlayerOrException();p.sendSystemMessage(Component.literal(claim(p)));return 1;})));
     }
-    private static boolean available(ServerPlayer p) {
+    static boolean available(ServerPlayer p) {
         return p.isAlive()&&!p.isSpectator()&&(!p.level().dimension().equals(ForestExpedition.FOREST)||ForestRaid.isParticipant(p));
     }
     public static void open(ServerPlayer p) {
