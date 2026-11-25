@@ -729,6 +729,16 @@ public final class ForestRaid extends SavedData {
         return raid.id != null;
     }
 
+    // Check the exact deadline on the player tick, not only the once-per-second
+    // maintenance pass. An extraction on or after the deadline is a failure.
+    static boolean canContinue(ServerPlayer player){
+        if(!player.level().dimension().equals(ForestExpedition.FOREST))return false;
+        var raid=forPlayer(player);
+        if(raid==null||!raid.owns(player)||raid.timeExpired(player.serverLevel()))return false;
+        Long reconnect=raid.reconnectDeadlines.get(player.getUUID());
+        return reconnect==null||System.currentTimeMillis()<reconnect;
+    }
+
     static boolean isParticipant(ServerPlayer player) {
         if(!player.level().dimension().equals(ForestExpedition.FOREST))return false;
         var raid=forPlayer(player);

@@ -300,7 +300,7 @@ public final class ForestExpedition {
         }
         // A player without the current raid token must not remain in the
         // protected dimension (including after a server restart or stale login).
-        if (!ForestRaid.isParticipant(player)) {
+        if (!ForestRaid.canContinue(player)) {
             returnToOrigin(player, false);
             return;
         }
@@ -337,6 +337,7 @@ public final class ForestExpedition {
                     return;
                 }
                 // The server thread is synchronous. Charge only after a confirmed dimension change.
+                if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
                 if(returnToOrigin(player,true)){
                     if(key)SupplyContract.consume(player,keyItem,1);
                     else SupplyContract.account(player).putInt("credits",SupplyContract.balance(player)-IndustrialZone.PAID_EXIT_COST);
@@ -348,13 +349,9 @@ public final class ForestExpedition {
         }
         if (!player.isSpectator() && player.onGround()
             && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
-            boolean qualifies = ForestRaid.isParticipant(player);
+            if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
             if (returnToOrigin(player, true)) {
-                if (qualifies) {
-                    SupplyContract.extracted(player, industrial);
-                } else {
-                    player.sendSystemMessage(Component.literal("Retour au point de départ effectué."));
-                }
+                SupplyContract.extracted(player, industrial);
             }
             return;
         }

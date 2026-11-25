@@ -100,3 +100,6 @@ Le protocole client/serveur actuel est 22. Ne pas distribuer avant compilation e
 
 ## HUD chronomètre
 - Paquet serveur toutes les secondes de jeu, temps commun aux participants ; aucune extrapolation locale, expiration autoritaire. Affichage haut, vert >5 min, ambre ≤5 min, rouge ≤1 min. Masqué hors raid, mort, spectateur, F1 ou paquet périmé (3,5 s). Vérifier petite résolution, reconnexion, départ successif sur une autre carte et cohabitation avec TaCZ et les indicateurs de blessure. Protocole 22 ; compilation non confirmée.
+
+## Limite exacte d'extraction
+- Vérification au tick joueur et juste avant toute extraction gratuite, payante ou à clé. À zéro, retour en échec, aucun débit d'extraction et aucune consommation de clé. Tester à une seconde de la limite puis à zéro sur les trois types de sortie. La maintenance de session reste périodique ; elle ne peut plus prolonger le droit d'extraction.
