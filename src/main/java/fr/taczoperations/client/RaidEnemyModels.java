@@ -22,7 +22,7 @@ public final class RaidEnemyModels {
     public static Preview select(Pillager guard){
         if(!guard.level().dimension().equals(ForestExpedition.FOREST)||!guard.hasCustomName())return null;
         String role=switch(guard.getCustomName().getString()){
-            case "Le Contremaître"->"foreman";
+            case "Le Contremaître"->"tagilla";
             case "Tagilla"->"tagilla";
             case "Shturman"->"shturman";
             case "Killa"->"killa";
@@ -43,7 +43,13 @@ public final class RaidEnemyModels {
             case "Vengeful Killa"->"vengeful_killa";
             case "Infected Tagilla"->"infected_tagilla";
             case "Black Div."->"black_division";
-            case "Le Traqueur"->"tracker";
+            case "Le Traqueur"->"shturman";
+            case "Pillard"->"raider";
+            case "Éclaireur"->"scout";
+            case "Soldat"->"soldier";
+            case "Tireur d’élite"->"marksman";
+            case "Soldat lourd"->"heavy";
+            case "Chef d’escouade"->"leader";
             case "Opérateur PMC"->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
             default->null;
         };
