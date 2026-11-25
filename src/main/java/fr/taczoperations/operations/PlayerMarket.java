@@ -75,6 +75,7 @@ public final class PlayerMarket extends SavedData {
     int pages(ServerPlayer p,boolean own,int category){
         return Math.max(1,(filtered(p,own,category).size()+PAGE_SIZE-1)/PAGE_SIZE);
     }
+    boolean hasPending(ServerPlayer p){return ownCount(p.getUUID())>0||proceeds.getOrDefault(p.getUUID(),0L)>0;}
     private int ownCount(UUID owner){return (int)listings.values().stream().filter(l->l.owner.equals(owner)).count();}
     Page view(ServerPlayer p,int page,boolean own,int category){
         var all=filtered(p,own,category);
