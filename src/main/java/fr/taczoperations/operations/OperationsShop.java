@@ -287,6 +287,8 @@ public enum OperationsShop {
 
     public static boolean matchesSale(ItemStack sample,ItemStack candidate){
         if(sample.isEmpty()||candidate.isEmpty())return false;
+        // Never destroy contents by reselling an equipped storage item as an empty bag.
+        if(candidate.getItem() instanceof FieldPack&&FieldPack.contents(candidate).stream().anyMatch(item->!item.isEmpty()))return false;
         if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
             return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
                 &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
