@@ -22,6 +22,14 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
     private static final ResourceLocation DESK=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"textures/gui/dashboard.png");
     private static final ResourceLocation BODY=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"interface");
     private static final ResourceLocation HEADING=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"heading");
+    private static final String[] ART={"endurance","strength","medicine","search","stealth","survival","weapons","trade"};
+    private void skillArt(GuiGraphics g,int skill,int x,int y,int size){
+        var texture=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"textures/gui/skills/"+ART[skill]+".png");
+        minecraft.getTextureManager().bindForSetup(texture);
+        minecraft.getTextureManager().getTexture(texture).setFilter(true,false);
+        g.blit(texture,x,y,0,0,size,size,size,size);
+        g.renderOutline(x,y,size,size,0xff69765f);
+    }
     private static final String[] SKILLS={"Endurance","Force","Médecine","Fouille","Discrétion","Survie","Maîtrise des armes","Commerce"};
     private static final String[] TRAIN={"Courir pendant les raids.","Se déplacer avec un inventaire chargé.","Utiliser des soins en raid.","Fouiller les conteneurs de butin.","Se déplacer accroupi en raid.","Réussir des extractions.","Éliminer des ennemis en raid.","Acheter et vendre chez les marchands."};
     private static final String[] BENEFITS={"Réduit la consommation liée à l'effort.","Réduit la fatigue liée à la charge.","Améliore les soins du Salewa.","Accélère la fouille.","Améliore la discrétion.","Améliore la gestion des ressources.","Réduit l'usure des armes.","Réduit les prix d'achat."};
@@ -88,16 +96,16 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         text(g,"TES COMPÉTENCES",23,78,1.35F,GOLD,true);
         for(int i=0;i<8;i++){
             int x=20+(i%2)*196,y=103+(i/2)*62,slot=skillSlot(i);
-            tile(g,x,y,190,57,selected==i,hit(mx,my,x,y,190,57));icon(g,stack(slot),x+7,y+12,1.6F);
+            tile(g,x,y,190,57,selected==i,hit(mx,my,x,y,190,57));skillArt(g,i,x+5,y+5,47);
             String level=name(slot);int split=level.lastIndexOf(" · ");
-            text(g,SKILLS[i],x+40,y+6,1.05F,WHITE,true);
-            text(g,split<0?"Chargement…":"Niv. "+level.substring(split+3),x+40,y+21,1,GOLD,false);
-            bar(g,x+40,y+37,141,5,progress(line(slot,0)));
-            text(g,line(slot,0),x+40,y+44,.8F,SOFT,false);
+            text(g,fit(SKILLS[i],123),x+58,y+6,1.0F,WHITE,true);
+            text(g,split<0?"Chargement…":"Niv. "+level.substring(split+3),x+58,y+21,1,GOLD,false);
+            bar(g,x+58,y+37,123,5,progress(line(slot,0)));
+            text(g,line(slot,0),x+58,y+44,.8F,SOFT,false);
         }
-        int slot=skillSlot(selected);icon(g,stack(slot),444,81,2);
-        text(g,SKILLS[selected].toUpperCase(java.util.Locale.ROOT),484,85,1.35F,GOLD,true);
-        text(g,fit(name(slot),286),444,122,1.1F,WHITE,true);
+        int slot=skillSlot(selected);skillArt(g,selected,444,78,56);
+        text(g,SKILLS[selected].toUpperCase(java.util.Locale.ROOT),510,85,1.25F,GOLD,true);
+        text(g,fit(name(slot),220),510,112,1.1F,WHITE,true);
         bar(g,444,142,292,8,progress(line(slot,0)));
         text(g,line(slot,0),444,157,1,SOFT,false);
         text(g,line(slot,1),444,179,1.15F,LIME,true);text(g,line(slot,2),444,197,1,SOFT,false);
