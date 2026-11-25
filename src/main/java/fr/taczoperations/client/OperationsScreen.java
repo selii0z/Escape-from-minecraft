@@ -77,6 +77,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private int lastLoadoutTick=Integer.MIN_VALUE;
     private int historyScroll;
     private int shopSelection=0;
+    private java.util.List<OperationsShop.Offer> shopCatalogue=java.util.List.of();
     private static final int HISTORY_ROWS = 4;
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
@@ -660,7 +661,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private OperationsShop.Offer shopOffer(int row){
         var rows=menu.view().shopRows();
         if(row<0||row>=rows.size())return null;
-        var offers=vendor().offers();
+        var offers=shopCatalogue;
         int index=rows.get(row);
         return index>=0&&index<offers.size()?offers.get(index):null;
     }
@@ -694,6 +695,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         // Selection is local; only explicit confirmation submits the server-validated offer.
         var offers=merchant.offers();
+        shopCatalogue=offers;
         for(int i=0;i<v.shopRows().size();i++){
             final int row=i,index=v.shopRows().get(i);
             if(index<0||index>=offers.size())continue;
