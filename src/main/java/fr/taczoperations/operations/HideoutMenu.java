@@ -35,9 +35,9 @@ final class HideoutMenu {
         icons.setItem(30,recipe(p,Items.GOLDEN_APPLE,HideoutServices.Recipe.SALEWA,"Salewa ×1"));
         icons.setItem(31,recipe(p,Items.COOKED_BEEF,HideoutServices.Recipe.RATION,"Rations ×3"));
         icons.setItem(32,recipe(p,Items.GLASS_BOTTLE,HideoutServices.Recipe.WATER,"Eau ×4"));
-        icons.setItem(33,tile(Items.COAL,"Ajouter un bidon de carburant",ChatFormatting.GOLD));
+        icons.setItem(33,fuelTile(p));
         icons.setItem(34,tile(Items.ANVIL,"Réparer l'arme en main",ChatFormatting.GOLD));
-        icons.setItem(35,tile(Items.GREEN_BED,"Préparer le bonus de repos",ChatFormatting.GREEN));
+        icons.setItem(35,restTile(p));
         icons.setItem(37,tile(Items.TARGET,"Entrer dans le stand de tir",ChatFormatting.AQUA));
         icons.setItem(39,tile(Items.WRITABLE_BOOK,"Campagne militaire",ChatFormatting.GOLD));
         icons.setItem(41,tile(Items.EXPERIENCE_BOTTLE,"Compétences passives",ChatFormatting.GREEN));
@@ -72,6 +72,30 @@ final class HideoutMenu {
             }
             @Override public ItemStack quickMoveStack(Player player,int slot){return ItemStack.EMPTY;}
         },Component.literal("EFM · Gestion de la planque")));
+    }
+    private static ItemStack fuelTile(ServerPlayer p){
+        int tier=Hideout.tier(p,Hideout.Station.GENERATEUR),energy=HideoutPower.energy(p);
+        int amount=tier*12,capacity=tier*24;
+        var fuel=TradeLoot.FUEL_CAN.stack().getItem();
+        int owned=CarriedStorage.of(p).count(s->s.is(fuel));
+        boolean ready=tier>0&&owned>0&&capacity-energy>=amount;
+        var stack=tile(Items.COAL,"Ravitailler le générateur",ready?ChatFormatting.GREEN:ChatFormatting.GRAY);
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(java.util.List.<Component>of(
+            requirement("Générateur niveau 1",tier>0),
+            requirement("Bidons : "+owned+"/1",owned>0),
+            requirement("Place disponible : "+(capacity-energy)+"/"+amount,tier>0&&capacity-energy>=amount),
+            Component.literal("Énergie : "+energy+"/"+capacity+" · +"+amount+" unités").withStyle(ChatFormatting.AQUA))));
+        return stack;
+    }
+    private static ItemStack restTile(ServerPlayer p){
+        int tier=Hideout.tier(p,Hideout.Station.REPOS);
+        int seconds=SupplyContract.account(p).getInt("hideout_rest");
+        var stack=tile(Items.GREEN_BED,seconds>0?"Repos déjà préparé":"Préparer le bonus de repos",tier>0?ChatFormatting.GREEN:ChatFormatting.GRAY);
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(java.util.List.<Component>of(
+            requirement("Salle de repos niveau 1",tier>0),
+            Component.literal(seconds>0?"Bonus prêt : "+seconds+" secondes":tier>0?"Prochain raid : "+(60+tier*60)+" secondes":"Installation verrouillée").withStyle(ChatFormatting.AQUA),
+            Component.literal("Bonus consommé au départ du prochain raid.").withStyle(ChatFormatting.GRAY))));
+        return stack;
     }
     private static ItemStack upgradeTile(ServerPlayer p,Hideout.Station station,int tier){
         int amount=tier+1,cost=station.price*amount,required=station.unlock+tier*10;
