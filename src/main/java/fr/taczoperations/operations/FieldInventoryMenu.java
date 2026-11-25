@@ -35,11 +35,11 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     private static boolean allowed(Player p){
         return p.isAlive()&&!p.isSpectator()&&(!p.level().dimension().equals(ForestExpedition.FOREST)||p instanceof ServerPlayer s&&ForestRaid.isParticipant(s));
     }
-    private static IItemHandlerModifiable handler(Player p,String id){
+    static IItemHandlerModifiable handler(Player p,String id){
         if(!ModList.get().isLoaded("curios"))return null;
         return fr.taczoperations.compat.FieldCurios.handler(p,id);
     }
-    private static ItemStack current(IItemHandlerModifiable handler){
+    static ItemStack current(IItemHandlerModifiable handler){
         return handler==null||handler.getSlots()==0?ItemStack.EMPTY:handler.getStackInSlot(0);
     }
     public static void open(ServerPlayer p){
@@ -68,8 +68,8 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
             final EquipmentSlot type=armor[i];
             addSlot(new Slot(inv,39-i,10,18+i*19){
                 @Override public int getMaxStackSize(){return 1;}
-                @Override public boolean mayPlace(ItemStack s){return s.getItem() instanceof ArmorItem a&&a.getEquipmentSlot()==type;}
-                @Override public boolean mayPickup(Player p){return super.mayPickup(p)&&!net.minecraft.world.item.enchantment.EnchantmentHelper.has(getItem(),net.minecraft.world.item.enchantment.EnchantmentEffectComponents.PREVENT_ARMOR_CHANGE)||p.isCreative();}
+                @Override public boolean mayPlace(ItemStack s){return !s.isEmpty()&&owner.getEquipmentSlotForItem(s)==type;}
+                @Override public boolean mayPickup(Player p){return super.mayPickup(p)&&(p.isCreative()||!net.minecraft.world.item.enchantment.EnchantmentHelper.has(getItem(),net.minecraft.world.item.enchantment.EnchantmentEffectComponents.PREVENT_ARMOR_CHANGE));}
             });
         }
         addSlot(new Slot(inv,40,10,96));
