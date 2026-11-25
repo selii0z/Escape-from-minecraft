@@ -110,9 +110,10 @@ public final class ForestExpedition {
             clearStaleDeparture(partner);
         }
 
-        if (ForestRaid.hasActiveSession(forest)
-            || forest.players().stream().anyMatch(other -> !other.isSpectator())) {
-            return "Une équipe occupe déjà la dimension de raid (joueurs déconnectés inclus).";
+        if(ForestRaid.hasActiveSession(forest,industrial)
+            ||forest.players().stream().anyMatch(other->!other.isSpectator()&&
+                (industrial?IndustrialZone.inside(other.getBlockX(),other.getBlockZ()):ForestPlan.inside(other.getBlockX(),other.getBlockZ())))){
+            return "Une équipe occupe déjà cette carte (joueurs déconnectés inclus).";
         }
         var random = forest.getRandom();
         var entry = industrial ? industrialPosition(IndustrialZone.ENTRY)

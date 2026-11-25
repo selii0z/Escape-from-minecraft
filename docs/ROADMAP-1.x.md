@@ -40,7 +40,8 @@ Décisions validées après la 1.0.3 : toutes les fonctionnalités proposées so
 - Maintenir les règles de progression approuvées en 1.0.3 : niveaux 1–200, Oméga, fidélité marchands indépendante avec seuils de niveau 20/50/100.
 - Préserver les données des joueurs et la compatibilité Curios facultative.
 - Tester pertes et récupération, déconnexion, mort, extraction, réinitialisation des cartes, raids solo/duo ; éviter duplications et exploits.
-- Étudier les sessions indépendantes simultanées.
+- Sessions indépendantes par carte : premier lot Forêt Noire + Zone industrielle. Instances multiples d'une même carte à étudier séparément.
+- Les packs externes sont uniquement des sources d'éléments compatibles, jamais des remplacements du mod, de son économie, de ses interfaces ou de TaCZ. Aucune reprise des scripts Bedrock ; vérifier droits et compatibilité des ressources et cartes.
 - Ne pas confondre compilation réussie et validation en jeu.
 - Pas de collection de trophées.
 

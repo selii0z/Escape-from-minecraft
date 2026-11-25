@@ -71,21 +71,46 @@ public final class ForestRaid extends SavedData {
     private List<ForestPlan.Point> encounterPoints = List.of();
     private List<ForestRaidAnchors.Mark> locations = List.of();
 
-    private static ForestRaid get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(FACTORY, "taczoperations_raid");
+    private static ForestRaid get(ServerLevel level,boolean industrial) {
+        var raid=level.getDataStorage().computeIfAbsent(FACTORY,industrial?"taczoperations_raid_industrial":"taczoperations_raid");
+        raid.industrial=industrial;
+        return raid;
+    }
+    private static ForestRaid at(ServerLevel level,BlockPos pos){
+        return get(level,IndustrialZone.inside(pos.getX(),pos.getZ()));
+    }
+    private static ForestRaid forPlayer(ServerPlayer p){
+        var level=p.server.getLevel(ForestExpedition.FOREST);
+        if(level==null)return null;
+        for(boolean industrial:new boolean[]{false,true}){
+            var raid=get(level,industrial);
+            if(raid.participants.contains(p.getUUID())&&raid.matches(p.getPersistentData(),PLAYER))return raid;
+        }
+        return null;
+    }
+    private boolean owns(ServerPlayer p){
+        return participants.contains(p.getUUID())&&matches(p.getPersistentData(),PLAYER)
+            &&p.level().dimension().equals(ForestExpedition.FOREST)&&ForestExpedition.hasReturnPoint(p);
+    }
+    private boolean inArea(BlockPos pos){
+        return industrial?IndustrialZone.inside(pos.getX(),pos.getZ()):ForestPlan.inside(pos.getX(),pos.getZ());
+    }
+    private boolean ownsEntity(net.minecraft.world.entity.Entity e){
+        var data=e.getPersistentData();
+        return matches(data,ENEMY)||matches(data,CORPSE)||matches(data,DROP)||matches(data,AIRDROP_VISUAL);
+    }
+    private static boolean raidEntity(net.minecraft.world.entity.Entity e){
+        return e instanceof GuardCorpse||e instanceof ItemEntity||e.getPersistentData().hasUUID(AIRDROP_VISUAL)
+            ||e instanceof Pillager guard&&guard.getPersistentData().hasUUID(ENEMY);
     }
 
     static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner, boolean industrial) {
-        ForestRaid raid = get(level);
+        ForestRaid raid = get(level,industrial);
         // A previous raid may have left corpses in loaded chunks. Remove them
         // before assigning a new session ID, so their inventories cannot be looted.
         java.util.List<net.minecraft.world.entity.Entity> expired = new java.util.ArrayList<>();
         for (var entity : level.getAllEntities()) {
-            if (entity instanceof GuardCorpse || entity instanceof ItemEntity
-                || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
-                || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
-                expired.add(entity);
-            }
+            if(raidEntity(entity)&&(raid.inArea(entity.blockPosition())||raid.ownsEntity(entity)))expired.add(entity);
         }
         expired.forEach(net.minecraft.world.entity.Entity::discard);
         raid.id = UUID.randomUUID();
@@ -129,27 +154,23 @@ public final class ForestRaid extends SavedData {
 
     // Offline players retain their raid slot for a limited reconnection window.
     static void finishParticipant(ServerPlayer player) {
-        ServerLevel level = player.server.getLevel(ForestExpedition.FOREST);
-        if (level == null) return;
-        ForestRaid raid = get(level);
+        ForestRaid raid=forPlayer(player);
+        if(raid==null)return;
         raid.participants.remove(player.getUUID());
         raid.setDirty();
     }
 
     static void cleanupWhenEmpty(ServerLevel level) {
-        ForestRaid raid = get(level);
-        if (raid.id == null || !raid.participants.isEmpty()) return;
-        raid.closeSession(level);
+        for(boolean industrial:new boolean[]{false,true}){
+            ForestRaid raid=get(level,industrial);
+            if(raid.id!=null&&raid.participants.isEmpty())raid.closeSession(level);
+        }
     }
 
     private void closeSession(ServerLevel level) {
         java.util.List<net.minecraft.world.entity.Entity> expired = new java.util.ArrayList<>();
         for (var entity : level.getAllEntities()) {
-            if (entity instanceof GuardCorpse || entity instanceof ItemEntity
-                || entity.getPersistentData().hasUUID(AIRDROP_VISUAL)
-                || entity instanceof Pillager guard && guard.getPersistentData().hasUUID(ENEMY)) {
-                expired.add(entity);
-            }
+            if(raidEntity(entity)&&(inArea(entity.blockPosition())||ownsEntity(entity)))expired.add(entity);
         }
         expired.forEach(net.minecraft.world.entity.Entity::discard);
         id = null;
@@ -173,11 +194,11 @@ public final class ForestRaid extends SavedData {
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
-        ForestRaid raid = get(player.serverLevel());
-        if (raid.id == null || !raid.participants.contains(player.getUUID())) return;
+        ForestRaid raid=forPlayer(player);
+        if(raid==null)return;
         // Exclude the disconnecting player, which can still appear in level.players().
         boolean othersOnline = player.serverLevel().players().stream().anyMatch(other ->
-            other != player && raid.participants.contains(other.getUUID()));
+            other != player && raid.owns(other));
         if (!othersOnline) {
             raid.offlineSince = System.currentTimeMillis();
             raid.setDirty();
@@ -190,10 +211,13 @@ public final class ForestRaid extends SavedData {
         if (event.getServer().getTickCount() % 20 != 0) return;
         ServerLevel level = event.getServer().getLevel(ForestExpedition.FOREST);
         if (level == null) return;
-        ForestRaid raid = get(level);
-        if (raid.id == null || raid.participants.isEmpty()) return;
-        boolean online = level.players().stream().anyMatch(p ->
-            raid.participants.contains(p.getUUID()) && isParticipant(p));
+        for(boolean industrial:new boolean[]{false,true})get(level,industrial).maintain(level);
+    }
+
+    private void maintain(ServerLevel level){
+        ForestRaid raid=this;
+        if(raid.id==null||raid.participants.isEmpty())return;
+        boolean online=level.players().stream().anyMatch(raid::owns);
         if (online) {
             raid.tickAirdrop(level);
             raid.tickReinforcements(level);
@@ -211,7 +235,7 @@ public final class ForestRaid extends SavedData {
 
     private void tickReinforcements(ServerLevel level) {
         long now=level.getGameTime();
-        var players=level.players().stream().filter(p->p.isAlive()&&!p.isSpectator()&&!p.isCreative()&&isParticipant(p)).toList();
+        var players=level.players().stream().filter(p->p.isAlive()&&!p.isSpectator()&&!p.isCreative()&&owns(p)).toList();
         if(players.isEmpty())return;
         if(reinforcementPending==0){
             if(reinforcementWaves>=reinforcementLimit||now<reinforcementCooldown
@@ -296,7 +320,7 @@ public final class ForestRaid extends SavedData {
                     visual.getPersistentData().putUUID(AIRDROP_VISUAL,id);
                     if (level.addFreshEntity(visual)) dropVisual = visual.getUUID();
                 }
-                for (ServerPlayer p : level.players()) if (isParticipant(p))
+                for (ServerPlayer p : level.players()) if (owns(p))
                     p.sendSystemMessage(Component.literal("ALERTE · Largage de ravitaillement détecté ! X "
                         + dropPos.getX()+" Y "+dropPos.getY()+" Z "+dropPos.getZ()));
             }
@@ -321,7 +345,7 @@ public final class ForestRaid extends SavedData {
                 dropPos.getX()+.5,dropPos.getY()+1,dropPos.getZ()+.5,2,.25,.2,.25,.01);
         RaidDropPayload packet = dropPos == null ? new RaidDropPayload(false,false,0,0,0)
             : new RaidDropPayload(true,dropLanded,dropPos.getX(),dropPos.getY(),dropPos.getZ());
-        for (ServerPlayer p : level.players()) if (isParticipant(p))
+        for (ServerPlayer p : level.players()) if (owns(p))
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,packet);
     }
 
@@ -376,8 +400,7 @@ public final class ForestRaid extends SavedData {
         }
         // Raid deaths must not affect the vanilla Minecraft death statistic.
         // The vanilla death has already been counted when the clone event fires.
-        boolean raidDeath = original.getPersistentData().hasUUID(PLAYER)
-            && get(original.serverLevel()).matches(original.getPersistentData(), PLAYER);
+        boolean raidDeath=forPlayer(original)!=null;
         if (raidDeath) {
             // Explicitly transfer Escape progression before applying the penalty:
             // a respawned player may not yet have the original persistent account.
@@ -417,9 +440,9 @@ public final class ForestRaid extends SavedData {
         // equipment into a custom corpse or copy the raid token on respawn.
         clearPlayer(respawned);
         ForestExpedition.clearReturnPoint(respawned);
-        clearPlayer(original);
         // A surviving duo member can still collect vanilla death drops.
         finishParticipant(original);
+        clearPlayer(original);
         cleanupWhenEmpty(original.serverLevel());
     }
 
@@ -473,35 +496,35 @@ public final class ForestRaid extends SavedData {
         }
     }
 
-    static boolean hasActiveSession(ServerLevel level) {
-        ForestRaid raid = get(level);
+    static boolean hasActiveSession(ServerLevel level,boolean industrial) {
+        ForestRaid raid=get(level,industrial);
         if (raid.id == null) return false;
         if (raid.participants.removeIf(uuid -> {
             ServerPlayer online = level.getServer().getPlayerList().getPlayer(uuid);
-            return online != null && !isParticipant(online);
+            return online != null && !raid.owns(online);
         })) raid.setDirty();
         if (raid.participants.isEmpty()) raid.closeSession(level);
         return raid.id != null;
     }
 
     static boolean isParticipant(ServerPlayer player) {
-        return player.level().dimension().equals(ForestExpedition.FOREST)
-            && ForestExpedition.hasReturnPoint(player)
-            && get(player.serverLevel()).participants.contains(player.getUUID())
-            && get(player.serverLevel()).matches(player.getPersistentData(), PLAYER);
+        if(!player.level().dimension().equals(ForestExpedition.FOREST))return false;
+        var raid=forPlayer(player);
+        return raid!=null&&raid.owns(player);
     }
 
     static boolean currentGuard(ServerLevel level, Pillager guard) {
-        return get(level).matches(guard.getPersistentData(), ENEMY);
+        return at(level,guard.blockPosition()).matches(guard.getPersistentData(),ENEMY);
     }
 
     public static boolean canKeepCorpse(ServerLevel level, GuardCorpse corpse) {
         return level.dimension().equals(ForestExpedition.FOREST)
-            && get(level).matches(corpse.getPersistentData(), CORPSE);
+            && at(level,corpse.blockPosition()).matches(corpse.getPersistentData(),CORPSE);
     }
 
     public static boolean canSearchCorpse(ServerPlayer player, GuardCorpse corpse) {
-        return isParticipant(player) && canKeepCorpse(player.serverLevel(), corpse);
+        var raid=forPlayer(player);
+        return raid!=null&&raid.owns(player)&&raid.matches(corpse.getPersistentData(),CORPSE)&&canKeepCorpse(player.serverLevel(),corpse);
     }
 
     static boolean hasRaidToken(ServerPlayer player) {
@@ -521,8 +544,9 @@ public final class ForestRaid extends SavedData {
             return;
         }
         ServerLevel level = player.serverLevel();
-        ForestRaid raid = get(level);
-        raid.removeOldCrates(level, player);
+        ForestRaid raid=forPlayer(player);
+        if(raid==null)return;
+        raid.removeOldCrates(level,player);
         if(raid.industrial)for(int i=0;i<IndustrialZone.VAULTS.size();i++){
             var door=IndustrialZone.VAULTS.get(i).door();
             if(door.distToCenterSqr(player.position())<=80*80&&level.hasChunkAt(door))raid.prepareVault(level,i);
@@ -920,7 +944,7 @@ public final class ForestRaid extends SavedData {
 
     private static boolean handleVault(PlayerInteractEvent.RightClickBlock event,ServerPlayer p){
         if(!isParticipant(p))return false;
-        ForestRaid raid=get(p.serverLevel());
+        ForestRaid raid=forPlayer(p);
         if(!raid.industrial)return false;
         for(int i=0;i<IndustrialZone.VAULTS.size();i++){
             var v=IndustrialZone.VAULTS.get(i);
@@ -960,7 +984,7 @@ public final class ForestRaid extends SavedData {
                 List<BlockPos> expired = new ArrayList<>();
                 for (BlockEntity block : chunk.getBlockEntities().values()) {
                     CompoundTag data = block.getPersistentData();
-                    if (block instanceof RandomizableContainerBlockEntity && data.hasUUID(CRATE) && !matches(data, CRATE)) {
+                    if (inArea(block.getBlockPos())&&block instanceof RandomizableContainerBlockEntity && data.hasUUID(CRATE) && !matches(data, CRATE)) {
                         expired.add(block.getBlockPos());
                     }
                 }
@@ -978,8 +1002,8 @@ public final class ForestRaid extends SavedData {
         if (!(event.getLevel() instanceof ServerLevel level) || !level.dimension().equals(ForestExpedition.FOREST)) {
             return;
         }
+        ForestRaid raid=at(level,event.getEntity().blockPosition());
         if (event.getEntity().getPersistentData().hasUUID(AIRDROP_VISUAL)) {
-            ForestRaid raid = get(level);
             if (!raid.matches(event.getEntity().getPersistentData(), AIRDROP_VISUAL) || raid.dropLanded) event.setCanceled(true);
             return;
         }
@@ -989,18 +1013,17 @@ public final class ForestRaid extends SavedData {
         } else if (event.getEntity() instanceof ItemEntity item) {
             // Items are temporary raid loot, including player death drops.
             // Persist their raid identity so stale drops cannot enter a later raid.
-            ForestRaid raid = get(level);
             if (event.loadedFromDisk()) {
                 if (!raid.matches(item.getPersistentData(), DROP)) {
                     event.setCanceled(true);
                 }
-            } else if (raid.id != null) {
+            } else if (raid.id != null&&raid.inArea(item.blockPosition())) {
                 item.getPersistentData().putUUID(DROP, raid.id);
             } else {
                 event.setCanceled(true);
             }
         } else if (event.getEntity() instanceof Mob mob) {
-            if (!(mob instanceof Pillager) || !get(level).matches(mob.getPersistentData(), ENEMY)) {
+            if (!(mob instanceof Pillager) || !raid.matches(mob.getPersistentData(),ENEMY)) {
                 event.setCanceled(true);
             }
         } else if (!event.loadedFromDisk() && event.getEntity() instanceof AbstractArrow arrow
@@ -1017,13 +1040,13 @@ public final class ForestRaid extends SavedData {
             return;
         }
         event.getDrops().clear();
-        ForestRaid raid = get(level);
+        ForestRaid raid=at(level,guard.blockPosition());
         if (!raid.matches(guard.getPersistentData(), ENEMY)) {
             return;
         }
         GuardRole role = GuardRole.get(guard);
         if (event.getSource().getEntity() instanceof ServerPlayer killer
-            && !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
+            && raid.owns(killer)&& !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
             if(isParticipant(killer))raid.reinforcementKills++;
@@ -1063,7 +1086,7 @@ public final class ForestRaid extends SavedData {
     public static boolean canSearchFurniture(ServerPlayer player,RaidFurnitureEntity furniture){
         return player.isAlive()&&!player.isSpectator()&&player.level()==furniture.getLevel()
             &&!furniture.isRemoved()&&furniture.getBlockPos().distToCenterSqr(player.position())<=64
-            &&isParticipant(player)&&get(player.serverLevel()).matches(furniture.getPersistentData(),CRATE);
+            &&isParticipant(player)&&forPlayer(player).matches(furniture.getPersistentData(),CRATE);
     }
 
     public static void onInspect(PlayerInteractEvent.RightClickBlock event) {
@@ -1073,7 +1096,7 @@ public final class ForestRaid extends SavedData {
             || !barrel.getPersistentData().hasUUID(CRATE)) {
             return;
         }
-        if (!isParticipant(player) || !get(player.serverLevel()).matches(barrel.getPersistentData(), CRATE)) {
+        if (!isParticipant(player) || !forPlayer(player).matches(barrel.getPersistentData(), CRATE)) {
             event.setCancellationResult(InteractionResult.FAIL);
             event.setCanceled(true);
             player.displayClientMessage(Component.literal("Cette caisse ne fait pas partie de ton raid."), true);
@@ -1082,7 +1105,7 @@ public final class ForestRaid extends SavedData {
         // One point per distinct raid container and player, not per click.
         // Scope the record to the current raid UUID to prevent farming by reopening.
         CompoundTag tracking = player.getPersistentData();
-        String raidKey = get(player.serverLevel()).id.toString();
+        String raidKey=forPlayer(player).id.toString();
         if (!raidKey.equals(tracking.getString("taczoperations_xp_raid"))) {
             tracking.putString("taczoperations_xp_raid", raidKey);
             tracking.put("taczoperations_xp_crates", new CompoundTag());
