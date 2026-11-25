@@ -19,7 +19,8 @@
     "client.GuardRenderDistanceMixin",
     "client.RaidEnemyTextureMixin",
     "client.RaidEnemyModelMixin",
-    "client.CobblemonPartyHudMixin"
+    "client.CobblemonPartyHudMixin",
+    "client.MenuCursorMixin"
   ],
   "injectors": {
     "defaultRequire": 1
