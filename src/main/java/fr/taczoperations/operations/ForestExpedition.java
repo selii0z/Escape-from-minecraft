@@ -31,11 +31,39 @@ public final class ForestExpedition {
         ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, "black_forest"));
     private static final String RETURN_POINT = "taczoperations_forest_return";
     private static final String RAID_INVENTORY = "taczoperations_raid_inventory";
+    private static final int EXTRACTION_TICKS=100;
+    private record ExtractionHold(BlockPos exit,int start,int last){}
+    private static final java.util.Map<ServerPlayer,ExtractionHold> EXTRACTION_HOLDS=new java.util.WeakHashMap<>();
+
+    private static void cancelExtraction(ServerPlayer p,boolean notify){
+        if(EXTRACTION_HOLDS.remove(p)!=null&&notify)
+            p.displayClientMessage(Component.literal("Extraction annulée"),true);
+    }
+    private static boolean extractionReady(ServerPlayer p,BlockPos exit){
+        int now=p.tickCount;
+        var hold=EXTRACTION_HOLDS.get(p);
+        if(hold==null||!exit.equals(hold.exit())||now!=hold.last()+1){
+            hold=new ExtractionHold(exit.immutable(),now,now);
+        }else{
+            hold=new ExtractionHold(hold.exit(),hold.start(),now);
+        }
+        EXTRACTION_HOLDS.put(p,hold);
+        int elapsed=Math.max(0,now-hold.start());
+        if(elapsed>=EXTRACTION_TICKS)return true;
+        int remaining=(EXTRACTION_TICKS-elapsed+19)/20;
+        int bars=Math.clamp(elapsed*10/EXTRACTION_TICKS,0,10);
+        if(elapsed%5==0)p.displayClientMessage(Component.literal("EXTRACTION · "+remaining+" s  ")
+            .withStyle(net.minecraft.ChatFormatting.GREEN)
+            .append(Component.literal("■".repeat(bars)).withStyle(net.minecraft.ChatFormatting.GREEN))
+            .append(Component.literal("■".repeat(10-bars)).withStyle(net.minecraft.ChatFormatting.DARK_GRAY)),true);
+        return false;
+    }
 
     private ForestExpedition() {
     }
 
     static void clearReturnPoint(ServerPlayer player) {
+        cancelExtraction(player,false);
         player.getPersistentData().remove(RETURN_POINT);
         player.getPersistentData().remove(RAID_INVENTORY);
     }
@@ -326,6 +354,7 @@ public final class ForestExpedition {
             boolean paid=feet.equals(paidExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.EMERALD_BLOCK);
             if(key||paid){
                 if(!ForestRaid.secondaryOpen(player,key?1:2)){
+                    cancelExtraction(player,true);
                     if(player.tickCount%20==0)player.displayClientMessage(Component.literal("Sortie fermée pour ce raid."),true);
                     return;
                 }
@@ -333,9 +362,11 @@ public final class ForestExpedition {
                 boolean eligible=key?CarriedStorage.of(player).count(s->s.is(keyItem))>0
                     :SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST;
                 if(!eligible){
+                    cancelExtraction(player,true);
                     if(player.tickCount%20==0)player.displayClientMessage(Component.literal(key?"Extraction verrouillée · clé industrielle requise.":"Extraction payante · "+IndustrialZone.PAID_EXIT_COST+" crédits requis."),true);
                     return;
                 }
+                if(!extractionReady(player,feet))return;
                 // The server thread is synchronous. Charge only after a confirmed dimension change.
                 if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
                 if(returnToOrigin(player,true)){
@@ -349,12 +380,14 @@ public final class ForestExpedition {
         }
         if (!player.isSpectator() && player.onGround()
             && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
+            if(!extractionReady(player,feet))return;
             if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
             if (returnToOrigin(player, true)) {
                 SupplyContract.extracted(player, industrial);
             }
             return;
         }
+        cancelExtraction(player,true);
         if (player.tickCount % 20 == 0) {
             if (!industrial && feet.equals(secondary) && !relay) {
                 player.displayClientMessage(Component.literal(relayAvailable?"Sortie verrouillée · active le relais de la station.":"Sortie fermée pour ce raid."), true);

@@ -103,3 +103,6 @@ Le protocole client/serveur actuel est 22. Ne pas distribuer avant compilation e
 
 ## Limite exacte d'extraction
 - Vérification au tick joueur et juste avant toute extraction gratuite, payante ou à clé. À zéro, retour en échec, aucun débit d'extraction et aucune consommation de clé. Tester à une seconde de la limite puis à zéro sur les trois types de sortie. La maintenance de session reste périodique ; elle ne peut plus prolonger le droit d'extraction.
+
+## Compte à rebours d'extraction
+- Toutes les sorties : rester au sol sur le bloc d'extraction pendant 100 ticks (5 secondes nominales), barre et secondes dans l'actionbar. Quitter le bloc, sauter, perdre l'accès ou les ressources requises interrompt la progression. Nouvelle connexion ou interruption des ticks : reprise à zéro. Le délai global prévaut ; aucun paiement avant téléportation confirmée. Tester sortie principale, relais, clé, crédits, abandon et retour sur le bloc, déconnexion pendant le décompte et expiration du raid durant les cinq secondes. Compilation non confirmée.
