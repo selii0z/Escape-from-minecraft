@@ -6,11 +6,13 @@ import java.util.Random;
 /** Adaptation of EFT boss identities to the two existing EFM maps. */
 final class BossRoster {
     static List<GuardRole> all(){return java.util.Arrays.stream(GuardRole.values()).filter(GuardRole::boss).toList();}
-    static List<GuardRole> normal(boolean industrial,boolean night,long seed){
-        var choices=new java.util.ArrayList<>(industrial
-            ?List.of(GuardRole.FOREMAN,GuardRole.KILLA,GuardRole.RESHALA,GuardRole.GLUKHAR,GuardRole.KABAN,GuardRole.KOLLONTAY,GuardRole.WEDGE,GuardRole.WEDGE_LABS,GuardRole.BLACK_DIVISION,GuardRole.KNIGHT)
-            :List.of(GuardRole.TRACKER,GuardRole.SANITAR,GuardRole.PARTISAN,GuardRole.ZRYACHIY,GuardRole.KNIGHT,GuardRole.RESHALA));
-        if(night)choices.add(GuardRole.CULTIST_PRIEST);
+    static List<GuardRole> normal(boolean industrial,boolean night,long seed,boolean rare){
+        var choices=new java.util.ArrayList<>(rare
+            ?(industrial?List.of(GuardRole.GLUKHAR,GuardRole.KABAN,GuardRole.WEDGE,GuardRole.WEDGE_LABS,GuardRole.BLACK_DIVISION,GuardRole.KNIGHT)
+                        :List.of(GuardRole.ZRYACHIY,GuardRole.KNIGHT,GuardRole.PARTISAN))
+            :(industrial?List.of(GuardRole.FOREMAN,GuardRole.KILLA,GuardRole.RESHALA,GuardRole.KOLLONTAY)
+                        :List.of(GuardRole.TRACKER,GuardRole.SANITAR,GuardRole.RESHALA)));
+        if(rare&&night)choices.add(GuardRole.CULTIST_PRIEST);
         var selected=choices.get(new Random(seed^0x4c3af6aL).nextInt(choices.size()));
         return selected==GuardRole.KNIGHT?List.of(GuardRole.KNIGHT,GuardRole.BIG_PIPE,GuardRole.BIRDEYE):List.of(selected);
     }
