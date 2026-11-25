@@ -166,6 +166,11 @@ public final class OperationsMod {
         ENTITIES.register(bus);
         GENERATORS.register(bus);
         bus.addListener(OperationsMod::registerPayloads);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::commands);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::tick);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectBreak);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectPlace);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectExplosion);
         NeoForge.EVENT_BUS.addListener(ForestPreparation::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.FieldInventoryMenu::refresh);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
