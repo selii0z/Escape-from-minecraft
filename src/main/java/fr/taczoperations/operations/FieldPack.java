@@ -18,8 +18,9 @@ public final class FieldPack extends Item {
     private final int capacity;
     private final boolean rig;
     public FieldPack(Properties properties,int capacity,boolean rig){
-        super(properties.stacksTo(1));this.capacity=capacity;this.rig=rig;
+        super(properties.stacksTo(1).component(DataComponents.CONTAINER,ItemContainerContents.EMPTY));this.capacity=capacity;this.rig=rig;
     }
+    @Override public boolean canFitInsideContainerItems(){return false;}
     public int capacity(){return capacity;}
     public boolean rig(){return rig;}
     public static int capacity(ItemStack stack,boolean rig){
