@@ -10,9 +10,9 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 public final class PassiveSkills {
     private static final String ACCOUNT="efm_skills_v1",LIMITS="efm_skills_run_v1",MOVE="efm_skills_motion_v1",DAY="efm_skills_trade_day";
     enum Skill {
-        ENDURANCE("Endurance",150,20), STRENGTH("Force",120,15), MEDICINE("Médecine",100,20),
-        SEARCH("Fouille",120,20), STEALTH("Discrétion",120,15), SURVIVAL("Survie",100,15),
-        WEAPONS("Maîtrise des armes",120,15), TRADE("Commerce",120,10);
+        ENDURANCE("Endurance",35,20), STRENGTH("Force",30,15), MEDICINE("Médecine",40,20),
+        SEARCH("Fouille",40,20), STEALTH("Discrétion",35,15), SURVIVAL("Survie",30,15),
+        WEAPONS("Maîtrise des armes",45,15), TRADE("Commerce",60,10);
         final String title;final int cap,maxBonus;
         Skill(String title,int cap,int maxBonus){this.title=title;this.cap=cap;this.maxBonus=maxBonus;}
     }
@@ -47,19 +47,19 @@ public final class PassiveSkills {
         boolean moved=m.contains("x")&&dist>=.25&&dist<=144&&p.onGround()&&!p.isPassenger();
         m.putDouble("x",p.getX());m.putDouble("z",p.getZ());d.put(MOVE,m);
         if(!moved)return;
-        if(p.isSprinting())gain(p,Skill.ENDURANCE,1,false);
-        if(p.isCrouching())gain(p,Skill.STEALTH,1,false);
+        if(p.isSprinting()&&p.tickCount%100==0)gain(p,Skill.ENDURANCE,1,false);
+        if(p.isCrouching()&&p.tickCount%100==0)gain(p,Skill.STEALTH,1,false);
         if(p.tickCount%100==0&&loaded(p))
-            gain(p,Skill.STRENGTH,2,false);
+            gain(p,Skill.STRENGTH,1,false);
     }
-    static void medicine(ServerPlayer p){gain(p,Skill.MEDICINE,8,false);}
-    static void search(ServerPlayer p){gain(p,Skill.SEARCH,2,false);}
-    static void kill(ServerPlayer p){gain(p,Skill.WEAPONS,6,false);}
+    static void medicine(ServerPlayer p){gain(p,Skill.MEDICINE,3,false);}
+    static void search(ServerPlayer p){gain(p,Skill.SEARCH,1,false);}
+    static void kill(ServerPlayer p){gain(p,Skill.WEAPONS,3,false);}
     static void extracted(ServerPlayer p){
         var run=p.getPersistentData();
         if(!p.isAlive()||!run.contains("taczoperations_run_started")||run.getBoolean("taczoperations_run_xp_finalized")||run.getBoolean("efm_skill_extraction_awarded"))return;
         run.putBoolean("efm_skill_extraction_awarded",true);
-        gain(p,Skill.SURVIVAL,25,true);
+        gain(p,Skill.SURVIVAL,10,true);
     }
     static void trade(ServerPlayer p,long delta){
         if(delta==0||!PlayerMarket.available(p))return;
