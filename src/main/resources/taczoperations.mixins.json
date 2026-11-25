@@ -5,7 +5,9 @@
   "mixins": [
     "ForestTerrainMixin",
     "ForestTimeMixin",
-    "GuardTrackingMixin"
+    "GuardTrackingMixin",
+    "TaczAmmoLookupMixin",
+    "TaczAmmoConsumptionMixin"
   ],
   "client": [
     "client.BoardTextureMixin",
