@@ -36,19 +36,19 @@ public final class RaidExitHud {
         var graphics=event.getGuiGraphics();
         graphics.pose().pushPose();
         try{
-            graphics.pose().scale(RaidHudSettings.scale(),RaidHudSettings.scale(),1);
-            if(RaidHudSettings.visible())draw(event);
+            graphics.pose().scale(RaidHudSettings.scale(RaidHudSettings.Panel.EXITS),RaidHudSettings.scale(RaidHudSettings.Panel.EXITS),1);
+            if(RaidHudSettings.visible(RaidHudSettings.Panel.EXITS))draw(event);
         }finally{graphics.pose().popPose();}
     }
     private static void draw(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();
         if(!valid(mc)||state==null||mc.options.hideGui||System.nanoTime()-updated>3_500_000_000L)return;
-        int w=RaidHudSettings.width();
+        int w=RaidHudSettings.width(RaidHudSettings.Panel.EXITS);
         // The original nearest-exit actionbar remains the compact fallback.
-        if(w<320)return;
+        
         var g=event.getGuiGraphics();
-        int width=146,x=RaidHudSettings.right()?8:w-width-8,y=8;
-        g.fill(x,y,x+width,y+17,RaidHudSettings.bg(0xca171d18));
+        int width=146,x=RaidHudSettings.x(RaidHudSettings.Panel.EXITS),y=RaidHudSettings.y(RaidHudSettings.Panel.EXITS);
+        g.fill(x,y,x+width,y+17,RaidHudSettings.bg(RaidHudSettings.Panel.EXITS,0xca171d18));
         g.drawString(mc.font,"EXTRACTIONS",x+7,y+5,0xffd3dbcc,false);
         y+=19;
         row(g,mc,x,y,width,"Principale",RaidExitPayload.OPEN,state.primaryDistance());y+=25;
@@ -66,7 +66,7 @@ public final class RaidExitHud {
             default -> "Indisponible";
         };
         String meters=Math.max(0,distance)+" m";
-        g.fill(x,y,x+w,y+23,0xca171d18);g.fill(x,y,x+2,y+23,color);
+        g.fill(x,y,x+w,y+23,RaidHudSettings.bg(RaidHudSettings.Panel.EXITS,0xca171d18));g.fill(x,y,x+2,y+23,color);
         g.drawString(mc.font,mc.font.plainSubstrByWidth(title,w-12),x+7,y+3,0xffd3dbcc,false);
         g.drawString(mc.font,mc.font.plainSubstrByWidth(label,Math.max(0,w-15-mc.font.width(meters))),x+7,y+13,color,false);
         g.drawString(mc.font,meters,x+w-5-mc.font.width(meters),y+13,0xffb8c0af,false);
