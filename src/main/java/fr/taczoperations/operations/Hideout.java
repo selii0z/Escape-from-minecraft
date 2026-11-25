@@ -68,6 +68,9 @@ public final class Hideout {
     private static void go(ServerPlayer p){
         if(ownsPlot(p)){HideoutMenu.open(p);return;}
         if(!survival(p)||!p.level().dimension().equals(Level.OVERWORLD)||ForestRaid.isParticipant(p)){say(p,"Accès à la planque depuis le monde principal, hors raid.");return;}
+        if(!p.onGround()||p.isPassenger()||!p.level().getFluidState(p.blockPosition()).isEmpty()||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty()){
+            say(p,"Place-toi au sol, hors de l’eau, et ferme tes menus avant de rejoindre la planque.");return;
+        }
         var level=p.server.getLevel(DIMENSION);if(level==null){say(p,"Dimension planque indisponible.");return;}
         int id=HideoutPlots.of(level).allocate(p.getUUID());
         if(id<0){say(p,"Aucune parcelle disponible.");return;}
@@ -88,8 +91,9 @@ public final class Hideout {
         BlockPos target=BlockPos.containing(x,y,z);
         boolean safe=account.contains(RETURN)&&Double.isFinite(x)&&Double.isFinite(y)&&Double.isFinite(z)&&level.getWorldBorder().isWithinBounds(target)
             &&y>=level.getMinBuildHeight()&&y<level.getMaxBuildHeight()-2
-            &&level.getBlockState(target).getCollisionShape(level,target).isEmpty()
-            &&level.getBlockState(target.above()).getCollisionShape(level,target.above()).isEmpty()
+            &&level.noCollision(p,p.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(new net.minecraft.world.phys.Vec3(x,y,z)))
+            &&level.getFluidState(target).isEmpty()
+            &&level.getFluidState(target.above()).isEmpty()
             &&level.getBlockState(target.below()).isFaceSturdy(level,target.below(),net.minecraft.core.Direction.UP);
         if(!safe){var spawn=p.adjustSpawnLocation(level,level.getSharedSpawnPos());x=spawn.getX()+.5;y=spawn.getY();z=spawn.getZ()+.5;}
         p.closeContainer();p.teleportTo(level,x,y,z,Set.of(),safe?back.getFloat("yaw"):0,safe?back.getFloat("pitch"):0);
@@ -153,7 +157,10 @@ public final class Hideout {
         if(!(event.getEntity() instanceof ServerPlayer p)||!here(p))return;
         int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
         if(id<0){leave(p);return;}
-        if(!inside(p,center(id))&&!HideoutRange.inside(p,center(id))){var c=center(id);p.teleportTo(p.serverLevel(),c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);}
+        if(!inside(p,center(id))&&!HideoutRange.inside(p,center(id))){
+            HideoutRange.finishIfStarted(p);
+            p.closeContainer();var c=center(id);p.teleportTo(p.serverLevel(),c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);
+        }
     }
     public static void interact(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e){
         if(!(e.getEntity() instanceof ServerPlayer p)||!here(p))return;
