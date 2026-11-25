@@ -1,0 +1,26 @@
+name: Runner diagnostic
+on: [pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify runner
+        run: |
+          echo "Runner started"
+          uname -a
+          java -version
+      - name: Verify checkout
+        uses: actions/checkout@v4
+      - name: Verify project files
+        run: |
+          test -f build.gradle
+          test -f gradlew
+          git rev-parse HEAD
+          echo "Runner and checkout OK" > runner-diagnostic.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runner-diagnostic
+          path: runner-diagnostic.txt
