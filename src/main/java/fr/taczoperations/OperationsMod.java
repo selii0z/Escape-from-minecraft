@@ -111,7 +111,13 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("14");
+        var registrar = event.registrar("15");
+        registrar.playToServer(fr.taczoperations.operations.ListPlayerItem.TYPE,fr.taczoperations.operations.ListPlayerItem.CODEC,
+            (message,context)->context.enqueueWork(()->{
+                if(context.player() instanceof net.minecraft.server.level.ServerPlayer p
+                    &&p.containerMenu instanceof OperationsMenu menu&&menu.containerId==message.menuId())
+                    menu.listPlayerItem(p,message.price());
+            }));
         registrar.playToServer(fr.taczoperations.operations.OpenFieldInventory.TYPE,fr.taczoperations.operations.OpenFieldInventory.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p)
