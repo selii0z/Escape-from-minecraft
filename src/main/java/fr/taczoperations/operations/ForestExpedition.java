@@ -443,6 +443,7 @@ public final class ForestExpedition {
             ForestRaid.finishParticipant(player);
         }
         if (!extracted) {
+            StoryMissions.clear(player);
             recoverInterruptedInventory(player);
             SupplyContract.abortRun(player);
         }
