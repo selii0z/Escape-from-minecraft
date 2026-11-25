@@ -30,18 +30,26 @@ public final class RaidTimerHud {
         if(!valid(Minecraft.getInstance())){state=null;level=null;}
     }
     @SubscribeEvent public static void render(RenderGuiEvent.Post event){
+        var graphics=event.getGuiGraphics();
+        graphics.pose().pushPose();
+        try{
+            graphics.pose().scale(RaidHudSettings.scale(),RaidHudSettings.scale(),1);
+            if(RaidHudSettings.visible())draw(event);
+        }finally{graphics.pose().popPose();}
+    }
+    private static void draw(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();
         if(!valid(mc)||state==null||mc.options.hideGui)return;
         if(System.nanoTime()-updated>3_500_000_000L)return;
         int seconds=Math.clamp(state.seconds(),0,state.industrial()?1800:2700);
-        int w=mc.getWindow().getGuiScaledWidth();
+        int w=RaidHudSettings.width();
         // Prefer the upper center; at small GUI sizes keep clear of the injury column.
         int width=w>=420?150:90;
-        int x=w>=420?(w-width)/2:Math.max(154,w-width-8),y=8;
+        int x=w>=420?(w-width)/2:Math.max(2,(w-width)/2),y=8;
         if(x+width>w-2)return;
         int color=seconds<=60?0xffe07b72:seconds<=300?0xffe5ce88:0xffb5c9a4;
         var g=event.getGuiGraphics();
-        g.fill(x,y,x+width,y+28,0xca171d18);
+        g.fill(x,y,x+width,y+28,RaidHudSettings.bg(0xca171d18));
         g.fill(x,y,x+2,y+28,color);
         String label=w>=420?(state.industrial()?"ZONE INDUSTRIELLE":"FORÊT NOIRE"):"RAID";
         g.drawCenteredString(mc.font,label,x+width/2,y+3,0xffd3dbcc);
