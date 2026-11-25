@@ -69,8 +69,8 @@ public final class BallisticVest {
 
     public static ItemStack roll(EquipmentSlot slot, java.util.Random random, boolean premium) {
         int n = random.nextInt(100);
-        int tier = premium ? (n < 15 ? 2 : n < 60 ? 3 : n < 98 ? 4 : 5)
-            : (n < 50 ? 2 : n < 80 ? 3 : n < 95 ? 4 : 5);
+        int tier = premium ? (n < 20 ? 2 : n < 65 ? 3 : n < 99 ? 4 : 5)
+            : (n < 65 ? 2 : n < 91 ? 3 : n < 99 ? 4 : 5);
         return create(slot, tier, classColor(tier));
     }
 
