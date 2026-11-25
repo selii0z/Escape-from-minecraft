@@ -21,7 +21,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 
 public final class RaidSecurity {
     private static final String POUCH="secure_pouch_v1",
-        INSURED="operations_insured_owner", CLAIMS="insurance_claims_v1";
+        INSURED="operations_insured_owner", EPOCH="operations_insured_epoch", CLAIMS="insurance_claims_v1";
     static final int FEE=100;
     private static final long DELAY=30L*60*1000;
 
@@ -119,6 +119,7 @@ public final class RaidSecurity {
     }
     public static void returnCases(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!p.isAlive()||p.tickCount%20!=0)return;
+        clearStaleInsurance(p);
         var account=SupplyContract.account(p);ListTag queue=account.getList(PROTECTED,10);
         boolean changed=false;
         while(!queue.isEmpty()) {
@@ -158,7 +159,7 @@ public final class RaidSecurity {
     }
     static void removeInsuranceForTrade(ItemStack s){if(tag(s).contains(INSURED))removeInsurance(s);}
     private static void removeInsurance(ItemStack s) {
-        CompoundTag d=tag(s);d.remove(INSURED);
+        CompoundTag d=tag(s);d.remove(INSURED);d.remove(EPOCH);
         if(d.isEmpty())s.remove(DataComponents.CUSTOM_DATA);else s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));
     }
     public static void tooltip(net.neoforged.neoforge.event.entity.player.ItemTooltipEvent event){
@@ -174,8 +175,15 @@ public final class RaidSecurity {
             event.getToolTip().add(Component.literal("Non assuré · 100 crédits").withStyle(net.minecraft.ChatFormatting.GRAY));
         }
     }
+    static void clearStaleInsurance(ServerPlayer p){
+        var items=new java.util.ArrayList<ItemStack>();
+        for(int i=0;i<p.getInventory().getContainerSize();i++)items.add(p.getInventory().getItem(i));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
+        for(var s:items){var d=tag(s);if(d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&!insuredBy(p,s))removeInsurance(s);}
+        p.getInventory().setChanged();
+    }
     static boolean insuredBy(ServerPlayer p,ItemStack s){
-        CompoundTag d=tag(s);return d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED));
+        CompoundTag d=tag(s);return d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&d.getLong(EPOCH)==SupplyContract.account(p).getLong("insurance_epoch");
     }
     // All stacks must have been resolved from the player's actual equipment by the server.
     static boolean insureSelection(ServerPlayer p,java.util.List<ItemStack> items){
@@ -184,7 +192,7 @@ public final class RaidSecurity {
         for(ItemStack s:items)if(!unique.add(s)||!eligible(s)||insuredBy(p,s))return false;
         var account=SupplyContract.account(p);int cost=items.size()*FEE,balance=account.getInt("credits");
         if(balance<cost)return false;
-        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
+        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());d.putLong(EPOCH,SupplyContract.account(p).getLong("insurance_epoch"));s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
         account.putInt("credits",balance-cost);p.getInventory().setChanged();return true;
     }
     static String insure(ServerPlayer p) {
@@ -194,11 +202,11 @@ public final class RaidSecurity {
         for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET})items.add(p.getItemBySlot(slot));
         for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
         var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
-        items.removeIf(s->!unique.add(s)||!eligible(s)||tag(s).hasUUID(INSURED)&&p.getUUID().equals(tag(s).getUUID(INSURED)));
+        items.removeIf(s->!unique.add(s)||!eligible(s)||insuredBy(p,s));
         if(items.isEmpty())return "Aucun équipement porté ou tenu à assurer.";
         var account=SupplyContract.account(p);int cost=items.size()*FEE,balance=account.getInt("credits");
         if(balance<cost)return "Crédits insuffisants : "+cost+" requis.";
-        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
+        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());d.putLong(EPOCH,SupplyContract.account(p).getLong("insurance_epoch"));s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
         account.putInt("credits",balance-cost);p.getInventory().setChanged();
         return items.size()+" équipement(s) assuré(s) · -"+cost+" crédits.";
     }
@@ -219,7 +227,7 @@ public final class RaidSecurity {
         var iterator=event.getDrops().iterator();
         while(iterator.hasNext()) {
             ItemEntity drop=iterator.next();ItemStack s=drop.getItem();CompoundTag d=tag(s);
-            if(!d.hasUUID(INSURED)||!p.getUUID().equals(d.getUUID(INSURED)))continue;
+            if(!insuredBy(p,s))continue;
             removeInsurance(s);
             if(claims.size()>=128||p.getRandom().nextInt(100)>=95)continue;
             // The insured carrier returns empty. Its real contents remain in the raid.
