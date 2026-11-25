@@ -14,6 +14,9 @@ public final class IndustrialZone {
     public static final int FLOOR = 69;
     public static final ForestPlan.Point ENTRY = new ForestPlan.Point(64, 554);
     public static final ForestPlan.Point EXIT = new ForestPlan.Point(586, 94);
+    public static final ForestPlan.Point KEY_EXIT = new ForestPlan.Point(75, 235);
+    public static final ForestPlan.Point PAID_EXIT = new ForestPlan.Point(600, 460);
+    public static final int PAID_EXIT_COST = 600;
     public static final List<ForestPlan.Point> GUARDS = List.of(
         new ForestPlan.Point(125, 540), new ForestPlan.Point(160, 480), new ForestPlan.Point(245, 460),
         new ForestPlan.Point(250, 380), new ForestPlan.Point(355, 385), new ForestPlan.Point(455, 335),
@@ -218,9 +221,25 @@ public final class IndustrialZone {
         serviceTunnel(out);
         for(Vault vault:VAULTS) secureRoom(out,vault);
 
+        extractionPad(out,KEY_EXIT,Blocks.IRON_BLOCK);
+        extractionPad(out,PAID_EXIT,Blocks.EMERALD_BLOCK);
         out.put(EXIT.x(), FLOOR, EXIT.z(), Blocks.GOLD_BLOCK);
         out.put(EXIT.x() + 1, FLOOR + 1, EXIT.z(), Blocks.TORCH);
         out.put(ENTRY.x(), FLOOR, ENTRY.z(), Blocks.POLISHED_ANDESITE);
+    }
+
+    private static void extractionPad(ForestChunkGenerator.Painter out,ForestPlan.Point point,Block marker) {
+        int x=point.x(),z=point.z();
+        if(!out.intersects(x-4,z-4,x+4,z+4))return;
+        for(int dx=-4;dx<=4;dx++)for(int dz=-4;dz<=4;dz++){
+            out.put(x+dx,FLOOR,z+dz,Math.abs(dx)==4||Math.abs(dz)==4?Blocks.YELLOW_CONCRETE:Blocks.POLISHED_ANDESITE);
+            for(int dy=1;dy<=3;dy++)out.put(x+dx,FLOOR+dy,z+dz,Blocks.AIR);
+        }
+        out.put(x,FLOOR,z,marker);
+        for(int dx:new int[]{-4,4})for(int dz:new int[]{-4,4}){
+            for(int dy=1;dy<=3;dy++)out.put(x+dx,FLOOR+dy,z+dz,Blocks.IRON_BARS);
+            out.put(x+dx,FLOOR+4,z+dz,Blocks.SEA_LANTERN);
+        }
     }
 
     private static void secureRoom(ForestChunkGenerator.Painter out,Vault v) {

@@ -23,3 +23,5 @@ Les fonctionnalités restantes du roadmap ne sont pas terminées.
 - Marché noir : six offres quotidiennes, stock par joueur, conservation des prérequis des marchands, prix réduits, refus inventaire plein, renouvellement UTC, aucun équipement de classe 5 en vente. Pas de planque personnelle.
 
 - Réserves industrielles : trois salles générées dans les nouveaux chunks, porte blindée à deux blocs, clé industrielle consommée (8 % caisses ordinaires, 3 % gardes, garantie Contremaître), accès partagé par équipe, caisse spéciale créée uniquement après ouverture. Vérifier reset de porte et caisse à chaque raid, essais sans clé, en duo, après reconnexion, et absence de contournement. Les chunks industriels déjà générés avec une version dev antérieure ne recevront pas les bâtiments automatiquement.
+
+- Extractions industrielles : principale gratuite (or), alternative clé industrielle (fer, 1 clé), alternative payante (émeraude, 600 crédits). Vérifier sortie sans prérequis refusée, paiement uniquement après téléportation, bilan unique, duo (coût individuel), et coordonnées HUD selon sorties accessibles. Nouveaux chunks nécessaires pour les marqueurs.

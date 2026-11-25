@@ -173,8 +173,12 @@ public final class ForestExpedition {
             return false;
         }
         atmosphere(player, point);
-        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · sortie sur le bloc d’or."
+        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · 3 sorties : or (gratuite), fer (clé), émeraude (600 crédits)."
             : "Forêt Noire · sortie principale sur le bloc d’or. Active le relais pour la sortie secondaire."));
+        if(industrial){
+            BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
+            player.sendSystemMessage(Component.literal("Sortie à clé · X "+key.getX()+" Z "+key.getZ()+" | Sortie payante · X "+paid.getX()+" Z "+paid.getZ()));
+        }
         return true;
     }
 
@@ -203,6 +207,29 @@ public final class ForestExpedition {
         BlockPos secondary = industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         boolean relay = !industrial && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
+        if(industrial && !player.isSpectator() && player.onGround()){
+            BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
+            BlockPos paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
+            boolean key=feet.equals(keyExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.IRON_BLOCK);
+            boolean paid=feet.equals(paidExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.EMERALD_BLOCK);
+            if(key||paid){
+                var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
+                boolean eligible=key?player.getInventory().items.stream().anyMatch(s->s.is(keyItem))
+                    :SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST;
+                if(!eligible){
+                    if(player.tickCount%20==0)player.displayClientMessage(Component.literal(key?"Extraction verrouillée · clé industrielle requise.":"Extraction payante · "+IndustrialZone.PAID_EXIT_COST+" crédits requis."),true);
+                    return;
+                }
+                // The server thread is synchronous. Charge only after a confirmed dimension change.
+                if(returnToOrigin(player,true)){
+                    if(key)SupplyContract.consume(player,keyItem,1);
+                    else SupplyContract.account(player).putInt("credits",SupplyContract.balance(player)-IndustrialZone.PAID_EXIT_COST);
+                    player.sendSystemMessage(Component.literal(key?"Extraction sécurisée · clé consommée.":"Extraction payante · -"+IndustrialZone.PAID_EXIT_COST+" crédits."));
+                    SupplyContract.extracted(player,true);
+                }
+                return;
+            }
+        }
         if (!player.isSpectator() && player.onGround()
             && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
             boolean qualifies = ForestRaid.isParticipant(player);
@@ -224,8 +251,19 @@ public final class ForestExpedition {
                 return;
             }
             BlockPos extraction = relay && secondary.distSqr(feet) < primary.distSqr(feet) ? secondary : primary;
+            String exitLabel="Extraction";
+            if(industrial){
+                BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT),paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
+                var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
+                if(player.getInventory().items.stream().anyMatch(s->s.is(keyItem)) && keyExit.distSqr(feet)<extraction.distSqr(feet)){
+                    extraction=keyExit;exitLabel="Extraction (clé)";
+                }
+                if(SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
+                    extraction=paidExit;exitLabel="Extraction (600 cr.)";
+                }
+            }
             double distance = Math.hypot(player.getX() - extraction.getX() - .5, player.getZ() - extraction.getZ() - .5);
-            player.displayClientMessage(Component.literal("Extraction · X " + extraction.getX()
+            player.displayClientMessage(Component.literal(exitLabel+" · X " + extraction.getX()
                 + "  Y " + extraction.getY() + "  Z " + extraction.getZ() + " · "
                 + Math.round(distance) + " m"), true);
         }

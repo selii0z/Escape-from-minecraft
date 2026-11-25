@@ -368,7 +368,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g, upper(area.title), 685, 102, area.title.length() > 19 ? 1.00F : 1.25F, WHITE, true);
         String[] lines = selectedArea == FOREST
             ? new String[]{"Zone forestière dense, scierie", "abandonnée et camp militaire.", "Deux voies d’extraction."}
-            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Première version jouable.", "Une sortie sur le bloc d’or."}
+            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Trois voies d’extraction.", "Or, clé industrielle ou crédits."}
             : new String[]{area.environment, "Zone de déploiement à venir."};
         for (int i = 0; i < lines.length; i++) text(g, lines[i], 673, 124 + i * 11, .94F, SOFT, false);
 
