@@ -305,6 +305,7 @@ public final class ForestRaid extends SavedData {
         if(raid.participants.isEmpty()){raid.closeSession(level);return;}
         boolean online=level.players().stream().anyMatch(raid::owns);
         if (online) {
+            raid.syncTimer(level);
             raid.warnRemaining(level);
             raid.tickAirdrop(level);
             raid.tickReinforcements(level);
@@ -322,6 +323,12 @@ public final class ForestRaid extends SavedData {
 
     private boolean timeExpired(ServerLevel level){return endsAt>0&&level.getGameTime()>=endsAt;}
     private long remainingSeconds(ServerLevel level){return Math.max(0,(endsAt-level.getGameTime()+19)/20);}
+    private void syncTimer(ServerLevel level){
+        int seconds=(int)Math.min(2700,remainingSeconds(level));
+        RaidTimerPayload payload=new RaidTimerPayload(seconds,industrial);
+        for(ServerPlayer p:level.players())if(p.isAlive()&&owns(p))
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,payload);
+    }
     private void announceRemaining(ServerPlayer p){
         long seconds=remainingSeconds(p.serverLevel());
         p.sendSystemMessage(Component.literal("Temps restant : "+seconds/60+" min "+seconds%60+" s."));
