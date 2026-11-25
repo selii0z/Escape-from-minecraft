@@ -34,7 +34,7 @@ final class HideoutServices {
         ItemStack result(){
             if(output.equals("water"))return PotionContents.createItemStack(Items.POTION,Potions.WATER);
             var item=BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("taczoperations",output));
-            return item==Items.AIR?ItemStack.EMPTY:new ItemStack(item,count);
+            return item==Items.AIR?ItemStack.EMPTY:new ItemStack(item);
         }
     }
     static void reserve(ServerPlayer p){
@@ -99,16 +99,32 @@ final class HideoutServices {
         if(Hideout.tier(p,r.station)<r.tier){Hideout.say(p,r.station.label+" niveau "+r.tier+" requis.");return;}
         if(!HideoutPower.available(p)){Hideout.say(p,"Alimente le générateur avant de fabriquer.");return;}
         var output=r.result();if(output.isEmpty()){Hideout.say(p,"Objet de recette indisponible.");return;}
-        int count=r.count,perStack=output.getMaxStackSize(),needed=(count+perStack-1)/perStack;
-        var slots=new java.util.ArrayList<Integer>();
-        for(int i=0;i<36&&slots.size()<needed;i++)if(p.getInventory().getItem(i).isEmpty())slots.add(i);
-        if(slots.size()<needed){Hideout.say(p,"Libère "+needed+" cases dans ton inventaire.");return;}
+        // Plan the complete output before charging anything. Fill compatible
+        // existing stacks first, then use empty native inventory slots.
+        int remaining=r.count;
+        var allocation=new java.util.LinkedHashMap<Integer,Integer>();
+        for(int i=0;i<36&&remaining>0;i++){
+            var stack=p.getInventory().getItem(i);
+            if(stack.isEmpty()||!ItemStack.isSameItemSameComponents(stack,output))continue;
+            int n=Math.min(remaining,Math.max(0,stack.getMaxStackSize()-stack.getCount()));
+            if(n>0){allocation.put(i,n);remaining-=n;}
+        }
+        for(int i=0;i<36&&remaining>0;i++){
+            if(!p.getInventory().getItem(i).isEmpty())continue;
+            int n=Math.min(remaining,output.getMaxStackSize());
+            allocation.put(i,n);remaining-=n;
+        }
+        if(remaining>0){Hideout.say(p,"Inventaire plein : libère de la place pour "+r.count+" objets.");return;}
         int balance=SupplyContract.balance(p);
         if(balance<r.price){Hideout.say(p,"Crédits insuffisants.");return;}
         var item=r.material.stack().getItem();
         if(!CarriedStorage.of(p).consume(s->s.is(item),r.amount)){Hideout.say(p,"Matériau requis : "+r.amount+" × "+r.material.title);return;}
         SupplyContract.account(p).putInt("credits",balance-r.price);
-        for(int slot:slots){int n=Math.min(count,perStack);p.getInventory().setItem(slot,output.copyWithCount(n));count-=n;}
+        for(var entry:allocation.entrySet()){
+            int slot=entry.getKey(),n=entry.getValue();var stack=p.getInventory().getItem(slot);
+            if(stack.isEmpty())p.getInventory().setItem(slot,output.copyWithCount(n));
+            else stack.grow(n);
+        }
         HideoutPower.use(p);p.getInventory().setChanged();Hideout.say(p,r.count+" × "+output.getHoverName().getString()+" fabriqué(s).");
     }
     private HideoutServices(){}
