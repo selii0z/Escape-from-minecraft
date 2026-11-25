@@ -138,6 +138,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         });
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();
+            case OperationsMenu.PROGRESSION -> simple(690,45,125,23,"Statistiques",()->send(OperationsMenu.DETAILED_STATS));
+            case OperationsMenu.DETAILED_STATS -> simple(690,45,125,23,"Progression",()->send(OperationsMenu.PROGRESSION));
             case OperationsMenu.TIMED_CONTRACTS -> {
                 simple(690,79,125,29,"Classiques",()->send(OperationsMenu.CONTRACTS));
                 simple(710,376,105,24,"Actualiser",()->send(OperationsMenu.REFRESH));
@@ -195,7 +197,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET && view.tab()!=OperationsMenu.DETAILED_STATS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -566,6 +568,21 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 centered(g,(view.page()+1)+" / "+view.pages(),495,382,1,SOFT,false);
             }
             case OperationsMenu.BLACK_MARKET -> drawBlackMarket(g);
+            case OperationsMenu.DETAILED_STATS -> {
+                pageTitle(g,"»","STATISTIQUES DÉTAILLÉES","Nouvelles données enregistrées depuis cette version");
+                var t=view.raidTotals();
+                String[] labels={"Tirs enregistrés","Impacts sur ennemis","Impacts à la tête","PMC éliminés","Scavs éliminés","Boss éliminés","Distance parcourue"};
+                for(int i=0;i<labels.length;i++){
+                    int y=126+i*37;panel(g,169,y,379,31,DARK);
+                    text(g,labels[i],185,y+10,.96F,WHITE,false);
+                    text(g,i==6?String.format(java.util.Locale.FRANCE,"%.2f km",t.get(17+i)/100000.0):numberLong(t.get(17+i)),413,y+10,.95F,LIME,true);
+                }
+                panel(g,575,126,249,95,DARK);
+                text(g,"PRÉCISION",585,137,1.10F,GOLD,true);
+                text(g,"Les impacts peuvent être multiples",585,157,.85F,SOFT,false);
+                text(g,"pour un même tir de fusil à pompe.",585,173,.85F,SOFT,false);
+                text(g,"Têtes / impacts : "+(t.get(18)==0?"—":String.format(java.util.Locale.FRANCE,"%.1f %%",100.0*t.get(19)/t.get(18))),585,194,.9F,LIME,true);
+            }
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
                 panel(g, 169, 130, 379, 91, DARK);
@@ -659,7 +676,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             default -> { }
         }
         if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL || view.tab()==OperationsMenu.MERCHANT_ORDERS) return;
-        if (view.tab() == OperationsMenu.SHOP || view.tab()==OperationsMenu.PLAYER_MARKET) return;
+        if (view.tab() == OperationsMenu.SHOP || view.tab()==OperationsMenu.PLAYER_MARKET || view.tab()==OperationsMenu.DETAILED_STATS) return;
         if(view.tab()==OperationsMenu.PROGRESSION) {
             var totals=view.raidTotals();
             panel(g,575,88,249,145,DARK);
