@@ -167,7 +167,31 @@ public final class ForestExpedition {
             && Double.isFinite(point.getDouble("z"));
     }
 
+    // Read-only eligibility check before opening or charging an insurance selection.
+    static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial){
+        ServerLevel forest=player.server.getLevel(FOREST);
+        if(forest==null||!(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator))
+            return "La dimension Forêt Noire est indisponible.";
+        if(player.level()==forest||!canDepart(player))return "Tu dois être à pied, vivant et hors raid.";
+        if(!player.level().isLoaded(board)||!player.level().getBlockState(board).is(OperationsMod.BOARD.get())
+            ||board.distToCenterSqr(player.position())>64)return "Le tableau des opérations est indisponible.";
+        if(duo){
+            UUID id=OperationsGroups.of(player).partner(player);
+            ServerPlayer partner=id==null?null:player.server.getPlayerList().getPlayer(id);
+            if(partner==null||partner.level()!=player.level()||!canDepart(partner)
+                ||board.distToCenterSqr(partner.position())>64
+                ||!player.getUUID().equals(OperationsGroups.of(partner).partner(partner)))
+                return "Ton équipier doit être à pied près du tableau.";
+        }
+        if(ForestRaid.hasActiveSession(forest,industrial)||forest.players().stream().anyMatch(other->!other.isSpectator()
+            &&(industrial?IndustrialZone.inside(other.getBlockX(),other.getBlockZ()):ForestPlan.inside(other.getBlockX(),other.getBlockZ()))))
+            return "Une équipe occupe déjà cette carte.";
+        return "";
+    }
+
     static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo, boolean industrial) {
+        String problem=departureProblem(player,board,duo,industrial);
+        if(!problem.isEmpty())return problem;
         ServerLevel forest = player.server.getLevel(FOREST);
         if (forest == null || !(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator)) {
             return "La dimension Forêt Noire est indisponible.";

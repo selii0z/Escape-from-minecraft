@@ -29,6 +29,8 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
     private final BlockPos board;
     private final boolean night,duo,industrial;
     private final int balance;
+    private final long expiresAt;
+    private static final long MAX_WAIT_TICKS=20L*180;
     private final List<Entry> entries;
     private final DataSlot[] states;
     private boolean submitted;
@@ -44,7 +46,10 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
             this.leader=leader;this.partner=partner;this.board=board;this.night=night;this.industrial=industrial;
         }
         boolean valid(){
-            return !closed&&first!=null&&second!=null&&leader.containerMenu==first&&partner.containerMenu==second
+            return !closed&&first!=null&&second!=null
+                &&leader.server.getPlayerList().getPlayer(leader.getUUID())==leader
+                &&partner.server.getPlayerList().getPlayer(partner.getUUID())==partner
+                &&leader.containerMenu==first&&partner.containerMenu==second
                 &&first.stillValid(leader)&&second.stillValid(partner)
                 &&leader.getUUID().equals(OperationsGroups.of(partner).partner(partner))
                 &&partner.getUUID().equals(OperationsGroups.of(leader).partner(leader));
@@ -73,6 +78,8 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
 
     public static void open(ServerPlayer p,BlockPos board,boolean night,boolean duo,boolean industrial){
         if(!p.isAlive()||p.isSpectator()||p.level().dimension().equals(ForestExpedition.FOREST))return;
+        String problem=ForestExpedition.departureProblem(p,board,duo,industrial);
+        if(!problem.isEmpty()){OperationsMenu.open(p,board,OperationsMenu.FOREST,0,problem);return;}
         if(duo){
             var partnerId=OperationsGroups.of(p).partner(p);
             var partner=partnerId==null?null:p.server.getPlayerList().getPlayer(partnerId);
@@ -121,7 +128,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
     }
     private DepartureInsuranceMenu(int id,Inventory inv,BlockPos board,boolean night,boolean duo,boolean industrial,int balance,List<Entry> entries,int count){
         super(OperationsMod.DEPARTURE_INSURANCE.get(),id);
-        owner=inv.player;level=owner.level();this.board=board.immutable();this.night=night;this.duo=duo;this.industrial=industrial;this.balance=balance;this.entries=List.copyOf(entries);
+        owner=inv.player;level=owner.level();expiresAt=level.getGameTime()+MAX_WAIT_TICKS;this.board=board.immutable();this.night=night;this.duo=duo;this.industrial=industrial;this.balance=balance;this.entries=List.copyOf(entries);
         addDataSlot(readiness);
         states=new DataSlot[count];
         var preview=new SimpleContainer(count);
@@ -148,7 +155,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
     public int selected(){int n=0;for(var s:states)if(s.get()==SELECTED)n++;return n;}
     @Override public boolean stillValid(Player p){
         if(p!=owner||!p.isAlive()||p.isSpectator())return false;
-        return !(p instanceof ServerPlayer)||(p.level()==level&&!level.dimension().equals(ForestExpedition.FOREST)
+        return !(p instanceof ServerPlayer)||(p.level()==level&&level.getGameTime()<expiresAt&&!p.isPassenger()&&!p.isSleeping()&&!level.dimension().equals(ForestExpedition.FOREST)
             &&level.isLoaded(board)&&level.getBlockState(board).is(OperationsMod.BOARD.get())&&board.distToCenterSqr(p.position())<=64);
     }
     @Override public ItemStack quickMoveStack(Player p,int index){return ItemStack.EMPTY;}
@@ -170,6 +177,12 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
         }
         if(button==BACK){if(session!=null)session.cancel("Départ duo annulé. Assurance conservée.");else OperationsMenu.open(p,board,OperationsMenu.FOREST,0,"");return true;}
         if(button!=CONFIRM&&button!=SKIP)return false;
+        String problem=ForestExpedition.departureProblem(p,board,duo,industrial);
+        if(!problem.isEmpty()){
+            if(session!=null)session.cancel(problem+" Assurance conservée.");
+            else OperationsMenu.open(p,board,OperationsMenu.FOREST,0,problem);
+            return true;
+        }
         var selected=new ArrayList<ItemStack>();
         if(button==CONFIRM){
             for(int i=0;i<states.length;i++)if(state(i)==SELECTED){
@@ -184,6 +197,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
             }
         }
         submitted=true;
+        for(var state:states)if(state.get()==SELECTED)state.set(button==CONFIRM?INSURED:AVAILABLE);
         if(!selected.isEmpty())p.sendSystemMessage(Component.literal("Assurance : "+selected.size()+" objet(s) · -"+(selected.size()*FEE)+" crédits."));
         if(session!=null){
             readiness.set(1);broadcastChanges();
