@@ -55,6 +55,8 @@ public final class ForestRaid extends SavedData {
     private final Set<UUID> participants = new HashSet<>();
     private final java.util.Map<UUID,Long> reconnectDeadlines=new java.util.HashMap<>();
     private UUID id;
+    private long endsAt;
+    private int warningMask;
     private long seed;
     private boolean industrial;
     private long dropDue, dropLanding;
@@ -128,6 +130,8 @@ public final class ForestRaid extends SavedData {
         raid.participants.add(player.getUUID());
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.reconnectDeadlines.clear();
+        raid.endsAt=level.getGameTime()+20L*60*(industrial?30:45);
+        raid.warningMask=0;
         raid.seed = level.getRandom().nextLong();
         int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
         raid.bossConvergence=bossRoll<5;
@@ -206,6 +210,7 @@ public final class ForestRaid extends SavedData {
         String exits=industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
             :"Sortie principale ouverte · relais : "+(exitOpen(0)?"activable":"indisponible pour ce raid");
         p.sendSystemMessage(Component.literal(exits));
+        if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
     static void finishParticipant(ServerPlayer player) {
@@ -241,6 +246,7 @@ public final class ForestRaid extends SavedData {
             }
         }
         id = null;
+        endsAt=0;warningMask=0;
         atmosphere=null;
         participants.clear();
         reconnectDeadlines.clear();
@@ -253,6 +259,7 @@ public final class ForestRaid extends SavedData {
         var prior=forPlayer(player);
         if(prior!=null){
             prior.expireDisconnected(player.serverLevel(),System.currentTimeMillis());
+            if(prior.id!=null&&prior.timeExpired(player.serverLevel()))prior.expireRaid(player.serverLevel());
             if(prior.participants.isEmpty()&&prior.id!=null)prior.closeSession(player.serverLevel());
         }
         if (isParticipant(player)) {
@@ -289,6 +296,7 @@ public final class ForestRaid extends SavedData {
     private void maintain(ServerLevel level){
         ForestRaid raid=this;
         if(raid.id==null)return;
+        if(raid.timeExpired(level)){raid.expireRaid(level);return;}
         raid.expireDisconnected(level,System.currentTimeMillis());
         if(raid.participants.removeIf(uuid->{
             ServerPlayer p=level.getServer().getPlayerList().getPlayer(uuid);
@@ -297,6 +305,7 @@ public final class ForestRaid extends SavedData {
         if(raid.participants.isEmpty()){raid.closeSession(level);return;}
         boolean online=level.players().stream().anyMatch(raid::owns);
         if (online) {
+            raid.warnRemaining(level);
             raid.tickAirdrop(level);
             raid.tickReinforcements(level);
             raid.tickFieldEvent(level);
@@ -309,6 +318,32 @@ public final class ForestRaid extends SavedData {
                     raid.industrial,raid.atmosphere,audioRandom);
             }
         }
+    }
+
+    private boolean timeExpired(ServerLevel level){return endsAt>0&&level.getGameTime()>=endsAt;}
+    private long remainingSeconds(ServerLevel level){return Math.max(0,(endsAt-level.getGameTime()+19)/20);}
+    private void announceRemaining(ServerPlayer p){
+        long seconds=remainingSeconds(p.serverLevel());
+        p.sendSystemMessage(Component.literal("Temps restant : "+seconds/60+" min "+seconds%60+" s."));
+    }
+    private void warnRemaining(ServerLevel level){
+        long seconds=remainingSeconds(level);
+        int[] thresholds={600,300,60};
+        for(int i=0;i<thresholds.length;i++){
+            int bit=1<<i;
+            if(seconds<=thresholds[i]&&(warningMask&bit)==0){
+                warningMask|=bit;
+                for(ServerPlayer p:level.players())if(owns(p))p.sendSystemMessage(
+                    Component.literal("Extraction avant expiration : "+thresholds[i]/60+" min restantes."));
+            }
+        }
+    }
+    private void expireRaid(ServerLevel level){
+        for(ServerPlayer p:level.players())if(owns(p))p.sendSystemMessage(
+            Component.literal("Temps écoulé · raid échoué. Retour au départ."));
+        // Closing invalidates the raid token. ForestExpedition returns each
+        // surviving player and records the interrupted result once on next tick.
+        closeSession(level);
     }
 
     private void expireDisconnected(ServerLevel level,long now){
@@ -677,6 +712,7 @@ public final class ForestRaid extends SavedData {
     static boolean hasActiveSession(ServerLevel level,boolean industrial) {
         ForestRaid raid=get(level,industrial);
         if (raid.id == null) return false;
+        if(raid.timeExpired(level)){raid.expireRaid(level);return false;}
         raid.expireDisconnected(level,System.currentTimeMillis());
         if (raid.participants.removeIf(uuid -> {
             ServerPlayer online = level.getServer().getPlayerList().getPlayer(uuid);
