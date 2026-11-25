@@ -129,7 +129,7 @@ public final class ForestRaid extends SavedData {
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
-        raid.bossConvergence=new Random(raid.seed^0x72c6aee3L).nextInt(10)==0;
+        raid.bossConvergence=new Random(raid.seed^0x72c6aee3L).nextInt(20)==0;
         raid.selectedBosses=raid.bossConvergence?BossRoster.all():BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed);
         if(raid.bossConvergence){
             var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
