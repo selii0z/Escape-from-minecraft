@@ -32,6 +32,19 @@ public final class FieldPack extends Item {
             ||stack.has(DataComponents.CONTAINER)||stack.has(DataComponents.BUNDLE_CONTENTS))return false;
         return !rig||stack.getItem() instanceof FieldMedicine||stack.getItem() instanceof com.tacz.guns.api.item.IAmmo;
     }
+    public static net.minecraft.core.NonNullList<ItemStack> contents(ItemStack carrier){
+        int n=carrier.getItem() instanceof FieldPack p?p.capacity:0;
+        var result=net.minecraft.core.NonNullList.withSize(n,ItemStack.EMPTY);
+        if(n>0)carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(result);
+        return result;
+    }
+    public static void replaceContents(ItemStack carrier,List<ItemStack> items){
+        if(carrier.getItem() instanceof FieldPack)carrier.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(items));
+    }
+    public static ItemStack create(boolean rig,int tier){
+        String name=rig?"rig_"+RIGS[tier]:"backpack_"+BAGS[tier];
+        return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",name)));
+    }
     @Override public void appendHoverText(ItemStack stack,TooltipContext context,List<Component> tooltip,TooltipFlag flag){
         tooltip.add(Component.literal("Capacité : "+capacity+" emplacements").withStyle(ChatFormatting.GRAY));
         if(rig)tooltip.add(Component.literal("Munitions et soins uniquement").withStyle(ChatFormatting.GRAY));
