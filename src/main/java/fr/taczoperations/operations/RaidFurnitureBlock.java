@@ -18,6 +18,19 @@ public final class RaidFurnitureBlock extends BaseEntityBlock {
     @Override protected MapCodec<RaidFurnitureBlock> codec(){return CODEC;}
     @Override public BlockEntity newBlockEntity(BlockPos pos,BlockState state){return new RaidFurnitureEntity(pos,state);}
     @Override protected RenderShape getRenderShape(BlockState state){return RenderShape.MODEL;}
+    @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){
+        int kind=-1;
+        for(int i=0;i<fr.taczoperations.OperationsMod.FURNITURE.size();i++)if(state.is(fr.taczoperations.OperationsMod.FURNITURE.get(i).get())){kind=i;break;}
+        return switch(kind){
+            case 0 -> box(2,0,1,14,10,13);
+            case 1 -> box(0,0,2,16,12,14);
+            case 2 -> box(0,0,1,16,10,15);
+            case 3 -> box(1,0,0,15,15,15);
+            case 4 -> box(3,0,0,13,16,15);
+            case 5 -> box(0,0,0,16,16,16);
+            default -> box(0,0,0,16,16,16);
+        };
+    }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,Player player,BlockHitResult hit){
         if(player instanceof ServerPlayer p&&level.getBlockEntity(pos) instanceof RaidFurnitureEntity furniture){
             if(ForestRaid.canSearchFurniture(p,furniture))p.openMenu(furniture);
