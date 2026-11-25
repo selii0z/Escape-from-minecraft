@@ -143,7 +143,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
             if(FieldPack.accepts(source,true)&&rigSize>0)
                 moved=moveItemStackTo(source,STORAGE_START+bagSize,slots.size(),false);
             if(!source.isEmpty()&&FieldPack.accepts(source,false)&&bagSize>0)
-                moved=moveItemStackTo(source,STORAGE_START,44+bagSize,false)||moved;
+                moved=moveItemStackTo(source,STORAGE_START,STORAGE_START+bagSize,false)||moved;
             if(!moved){
                 if(index<HOTBAR_START)moved=moveItemStackTo(source,HOTBAR_START,STORAGE_START,false);
                 else moved=moveItemStackTo(source,INVENTORY_START,HOTBAR_START,false);
