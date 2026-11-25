@@ -173,7 +173,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 double clusters = ForestPlan.noise(x, z, 27, 315);
                 if (((random >>> 25) & 31) > 17 + density * 10 + clusters * 5) continue;
                 int y = ForestPlan.ground(x, z) + 1;
-                int kind = Math.floorMod(random >>> 33, 12);
+                int kind = Math.floorMod(random >>> 33, 16);
                 if (kind == 0) {
                     // Broken snags: leave open views and irregular silhouettes.
                     int height = 3 + (int) ((random >>> 18) & 3);
@@ -195,8 +195,9 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                     }
                     continue;
                 }
-                boolean broadleaf = kind >= 10;
-                int height = broadleaf ? 7 + (int) ((random >>> 18) & 3) : 9 + (int) ((random >>> 18) & 7);
+                boolean broadleaf = kind >= 13;
+                boolean young = kind >= 9 && kind <= 12;
+                int height = broadleaf ? 8 + (int) ((random >>> 18) & 3) : young ? 5 + (int)((random >>> 18)&3) : 11 + (int) ((random >>> 18) & 7);
                 Block log = broadleaf ? Blocks.DARK_OAK_LOG : Blocks.SPRUCE_LOG;
                 BlockState leaves = (broadleaf ? Blocks.DARK_OAK_LEAVES : Blocks.SPRUCE_LEAVES)
                     .defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
@@ -213,10 +214,10 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 } else {
                     // Conifer branches start high enough to let players move and
                     // see between trunks. Tapered, alternating whorls break symmetry.
-                    int crownStart = Math.max(4,height/2) + (int) ((random >>> 39) & 1);
+                    int crownStart = Math.max(young?2:5,height/2) + (int) ((random >>> 39) & 1);
                     for (int dy = crownStart; dy <= height + 1; dy++) {
                         int remaining = height + 1 - dy;
-                        int radius = remaining <= 1 ? remaining : Math.min(3, 1 + remaining / 4);
+                        int radius = remaining <= 1 ? remaining : Math.min(young?2:3, 1 + remaining / 4);
                         if (remaining > 2 && Math.floorMod(dy + (int) random, 3) != 0) radius = Math.max(1, radius - 1);
                         int sx = radius > 1 ? (int) ((ForestPlan.hash(x, z, dy) >>> 20) % 3) - 1 : 0;
                         int sz = radius > 1 ? (int) ((ForestPlan.hash(x, z, dy + 71) >>> 20) % 3) - 1 : 0;
@@ -239,7 +240,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 for (int dz = -radius; dz <= radius; dz++) {
                     double distance = (dx * dx + dz * dz) / (double) Math.max(1, radius * radius)
                         + dy * dy / (double) Math.max(1, vertical * vertical);
-                    double roughness = (ForestPlan.hash(x + dx, z + dz, salt + dy) & 7) / 20.0;
+                    double roughness = (ForestPlan.hash(x + dx, z + dz, salt + dy) & 7) / 14.0;
                     if (distance <= 1.15 - roughness || dx == 0 && dz == 0) {
                         out.putIfAir(x + dx, y + dy, z + dz, leaves);
                     }
@@ -260,8 +261,10 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                     out.putIfAir(x, y, z, (roll % 3 == 0 ? Blocks.SHORT_GRASS : Blocks.FERN).defaultBlockState());
                 } else if (roll == 12 && ForestPlan.noise(x, z, 19, 733) > .1) {
                     out.putIfAir(x, y, z, Blocks.MOSSY_COBBLESTONE.defaultBlockState());
-                } else if (roll == 17 && !roadside) {
+                } else if (roll == 17 && !roadside && ForestPlan.noise(x,z,11,912)>.25) {
                     out.putIfAir(x, y, z, Blocks.SPRUCE_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true));
+                } else if(roll==23 && !roadside && ForestPlan.noise(x,z,18,921)>.3){
+                    out.putIfAir(x,y,z,Blocks.BROWN_MUSHROOM.defaultBlockState());
                 }
             }
         }
