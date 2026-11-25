@@ -28,6 +28,7 @@ public final class ForestCombat {
     // Balance NPC damage only; player-fired TaCZ weapons keep their original stats.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
         if (event.getLogicalSide().isClient()) return;
+        DetailedStats.hit(event);
         // Apply localized ballistic protection to both players and guards.
         if (!(event.getAttacker() instanceof Pillager guard)
             || !(event.getHurtEntity() instanceof ServerPlayer player)
