@@ -46,7 +46,7 @@ tasks.register('verifyEfmAssets') {
         }
         ['endurance','strength','medicine','search','stealth','survival','weapons','trade'].each { id -> checkImage('textures/gui/skills/'+id+'.png',512,512) }
         (1..12).each { id -> checkImage('textures/gui/campaign/mission_'+id+'.png',768,432) }
-        ['pmc_usec','pmc_bird_eye'].each { id ->
+        ['pmc_usec','pmc_bird_eye','raider','scout','soldier','marksman','heavy','leader','tagilla','shturman','killa','reshala','glukhar','sanitar','kaban','kollontay','partisan','zryachiy','knight','big_pipe','birdeye','cultist_priest','wedge','wedge_labs','shadow_tagilla','vengeful_killa','infected_tagilla','black_division'].each { id ->
             checkImage('textures/entity/raid/'+id+'.png',128,128)
             File model=new File(root,'enemy_models/'+id+'.json')
             try {
