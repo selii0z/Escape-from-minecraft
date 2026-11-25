@@ -38,10 +38,11 @@ public final class RaidInjuries {
     private static void sync(ServerPlayer p,boolean active){
         var d=p.getPersistentData();
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,new RaidInjuryPayload(
-            active,active?Math.clamp(d.getInt(BLEED),0,2):0,active&&d.getBoolean(FRACTURE),active&&d.getBoolean(ARM)));
+            active,active?Math.clamp(d.getInt(BLEED),0,2):0,active&&d.getBoolean(FRACTURE),active&&d.getBoolean(ARM),active?RaidSurvival.water(p):100,active?RaidSurvival.energy(p):100));
     }
     public static void tick(PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!active(p)||p.tickCount%20!=0)return;
+        RaidSurvival.second(p);
         var d=p.getPersistentData();
         if(d.getBoolean(FRACTURE))p.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,40,0,false,false,true));
         if(d.getBoolean(ARM))p.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN,40,0,false,false,true));
@@ -88,6 +89,7 @@ public final class RaidInjuries {
     static void clear(ServerPlayer p) {
         var d=p.getPersistentData();
         d.remove(BLEED);d.remove(FRACTURE);d.remove(ARM);d.remove(LAST);
+        RaidSurvival.clear(p);
         sync(p,false);
     }
     private RaidInjuries(){}
