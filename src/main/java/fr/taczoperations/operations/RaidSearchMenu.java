@@ -45,7 +45,7 @@ public final class RaidSearchMenu extends ChestMenu {
         addDataSlot(progressSync);
         if(viewer instanceof ServerPlayer p){
             view.skipEmpty();
-            if(view.revealed()<27)view.resume(p.level().getGameTime());
+            if(view.revealed()<27)view.resume(p.level().getGameTime(),searchTicks(p));
             syncProgress(p.level().getGameTime());
         }
     }
@@ -54,11 +54,12 @@ public final class RaidSearchMenu extends ChestMenu {
             view.skipEmpty();
             long now=p.level().getGameTime();
             if(view.revealed()<27){
-                view.resume(now);
+                view.resume(now,searchTicks(p));
                 if(now>=view.state.getLong(NEXT)){
                     view.state.putInt(REVEALED,view.revealed()+1);
                     view.skipEmpty();
-                    view.state.putLong(NEXT,now+ITEM_TICKS);
+                    view.state.putLong(NEXT,now+searchTicks(p));
+                    PassiveSkills.search(p);
                     view.backing.setChanged();
                 }
             }
@@ -66,6 +67,7 @@ public final class RaidSearchMenu extends ChestMenu {
         }
         super.broadcastChanges();
     }
+    private static int searchTicks(ServerPlayer p){return Math.max(8,ITEM_TICKS-PassiveSkills.bonus(p,PassiveSkills.Skill.SEARCH)/10);}
     private void syncProgress(long now){
         int count=view.revealed();
         revealedSync.set(count);
@@ -119,12 +121,12 @@ public final class RaidSearchMenu extends ChestMenu {
             while(to<27&&backing.getItem(to).isEmpty())to++;
             if(to!=from){state.putInt(REVEALED,to);backing.setChanged();}
         }
-        void resume(long now){
+        void resume(long now,int ticks){
             long last=state.getLong(LAST_ACTIVE);
             // Closing all viewers pauses the search. Reopening preserves
             // discovered items, but cannot fast-forward the next item.
             if(!state.contains(NEXT)||!state.contains(LAST_ACTIVE)||now<last||now-last>1){
-                state.putLong(NEXT,now+ITEM_TICKS);
+                state.putLong(NEXT,now+ticks);
                 backing.setChanged();
             }
             state.putLong(LAST_ACTIVE,now);
