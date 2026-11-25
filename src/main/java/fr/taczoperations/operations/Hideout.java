@@ -102,6 +102,7 @@ public final class Hideout {
     }
     private static void list(ServerPlayer p){
         say(p,"Installations de la planque · niveaux 0 à 3");
+        HideoutPower.status(p);
         for(var s:Station.values()){
             int t=tier(p,s);
             say(p,s.label+" : "+t+"/3"+(t==3?" · maximum":" · prochain niveau : "+s.price*(t+1)+" Cr., "+(t+1)+" × "+s.material.title+", niv. militaire "+(s.unlock+t*10)));
@@ -126,6 +127,9 @@ public final class Hideout {
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
             .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
             .then(Commands.literal("sortir").executes(ctx->{leave(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("carburant").executes(ctx->{HideoutPower.refuel(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("reparer").executes(ctx->{HideoutPower.repair(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("repos").executes(ctx->{HideoutPower.rest(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("reserve").executes(ctx->{HideoutServices.reserve(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("produire").then(Commands.argument("recette",StringArgumentType.word())
                 .suggests((ctx,b)->{for(var recipe:HideoutServices.Recipe.values())if(recipe.id.startsWith(b.getRemainingLowerCase()))b.suggest(recipe.id);return b.buildFuture();})
