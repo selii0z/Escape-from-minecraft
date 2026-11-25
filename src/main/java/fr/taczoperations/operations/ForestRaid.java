@@ -591,7 +591,8 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_kill_xp"),
                 oldRoot.getInt("taczoperations_run_search_xp"),
                 oldRoot.getInt("taczoperations_run_contract_xp"), adjustment,
-                oldRoot.contains("taczoperations_run_xp_before") ? oldRoot.getInt("taczoperations_run_xp_before") : -1);
+                oldRoot.contains("taczoperations_run_xp_before") ? oldRoot.getInt("taczoperations_run_xp_before") : -1,
+                new RaidLootValue.Estimate(-1,0),oldRoot.getCompound("taczoperations_forest_return").getBoolean("industrial"));
             // Deliver the UI only after the new player has fully respawned.
             respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(
@@ -652,7 +653,7 @@ public final class ForestRaid extends SavedData {
                     report.contains("xp_before") ? report.getInt("xp_before") : -1,
                     report.contains("xp_after") ? report.getInt("xp_after") : -1,
                     report.contains("loot_value")?report.getLong("loot_value"):-1,
-                    report.getInt("loot_count")));
+                    report.getInt("loot_count"),report.getBoolean("industrial")));
             account.remove("pending_raid_report");
             REPORT_READY.remove(player);
         } catch (RuntimeException exception) {

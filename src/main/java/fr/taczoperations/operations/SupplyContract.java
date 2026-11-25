@@ -254,12 +254,17 @@ public enum SupplyContract {
     }
     static void saveRaidReport(ServerPlayer player,boolean success,long seconds,
                                int kills,int crates,int contracts,int killXp,int searchXp,int contractXp,int adjustment,int xpBefore,RaidLootValue.Estimate loot) {
+        saveRaidReport(player,success,seconds,kills,crates,contracts,killXp,searchXp,contractXp,adjustment,xpBefore,loot,false);
+    }
+    static void saveRaidReport(ServerPlayer player,boolean success,long seconds,
+                               int kills,int crates,int contracts,int killXp,int searchXp,int contractXp,int adjustment,int xpBefore,RaidLootValue.Estimate loot,boolean industrial) {
         int[] timed=TimedContracts.record(player,success,kills,crates);
         contracts=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contracts)+timed[0]);
         contractXp=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contractXp)+timed[1]);
         rewardLevels(player);
         CompoundTag report = new CompoundTag();
         report.putBoolean("success", success);
+        report.putBoolean("industrial", industrial);
         report.putLong("duration_seconds", Math.max(0, seconds));
         report.putInt("kills", Math.max(0, kills));
         report.putInt("crates", Math.max(0, crates));
@@ -473,7 +478,7 @@ public enum SupplyContract {
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus,
-            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1,loot);
+            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1,loot,industrial);
         RaidLootValue.clear(player);
         // The persistent report is delivered by the player tick after the dimension transition.
         // The graphical report is authoritative; keep chat concise.
