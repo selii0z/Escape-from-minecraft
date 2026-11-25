@@ -78,6 +78,7 @@ final class HideoutServices {
         Recipe r=null;for(var x:Recipe.values())if(x.id.equals(id))r=x;
         if(r==null){Hideout.say(p,"Recettes : bandage, salewa, ration, eau.");return;}
         if(Hideout.tier(p,r.station)<r.tier){Hideout.say(p,r.station.label+" niveau "+r.tier+" requis.");return;}
+        if(!HideoutPower.available(p)){Hideout.say(p,"Alimente le générateur avant de fabriquer.");return;}
         var output=r.result();if(output.isEmpty()){Hideout.say(p,"Objet de recette indisponible.");return;}
         int count=r.count,perStack=output.getMaxStackSize(),needed=(count+perStack-1)/perStack;
         var slots=new java.util.ArrayList<Integer>();
@@ -89,7 +90,7 @@ final class HideoutServices {
         if(!CarriedStorage.of(p).consume(s->s.is(item),r.amount)){Hideout.say(p,"Matériau requis : "+r.amount+" × "+r.material.title);return;}
         SupplyContract.account(p).putInt("credits",balance-r.price);
         for(int slot:slots){int n=Math.min(count,perStack);p.getInventory().setItem(slot,output.copyWithCount(n));count-=n;}
-        p.getInventory().setChanged();Hideout.say(p,r.count+" × "+output.getHoverName().getString()+" fabriqué(s).");
+        HideoutPower.use(p);p.getInventory().setChanged();Hideout.say(p,r.count+" × "+output.getHoverName().getString()+" fabriqué(s).");
     }
     private HideoutServices(){}
 }
