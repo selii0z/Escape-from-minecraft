@@ -76,6 +76,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private RaidLoadout loadout;
     private int lastLoadoutTick=Integer.MIN_VALUE;
     private int historyScroll;
+    private int shopSelection=0;
     private static final int HISTORY_ROWS = 4;
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
@@ -138,40 +139,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 widget(430, 376, 110, 22, "", () -> {}, () -> false,
                     (g, hover) -> centered(g, (view.page() + 1) + " / " + view.pages(), 485, 382, 1, SOFT, false));
             }
-            case OperationsMenu.SHOP -> {
-                var vendor = vendor();
-                var offers = vendor.offers();
-                int page = view.page() % OperationsMenu.VENDOR_PAGES;
-                for (int i = 0; i < view.shopRows().size(); i++) {
-                    int index=view.shopRows().get(i);
-                    if(index<0||index>=offers.size())continue;
-                    var offer = offers.get(index);
-                    final int action = OperationsMenu.TRADE_FIRST + i;
-                    if(offer.action()==OperationsShop.Action.SELL){
-                        int count=view.saleCounts().get(i);
-                        int all=OperationsMenu.SELL_ALL_FIRST+i;
-                        int price=fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
-                        simple(446,136+i*41,42,24,"x1",()->send(action),()->false,
-                            ()->count>0&&(long)view.credits()+price<=Integer.MAX_VALUE);
-                        simple(491,136+i*41,49,24,"Tout",()->send(all),()->false,
-                            ()->count>1&&(long)view.credits()+(long)price*count<=Integer.MAX_VALUE);
-                    }else simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
-                        () -> offer.action() == OperationsShop.Action.UNLOCK ? !unlocked(offer.key())
-                            : offer.action() != OperationsShop.Action.BUY || (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) >= offer.loyaltyLevel()
-                            && (offer.key() == null || unlocked(offer.key()))));
-                }
-                for (var merchant : OperationsShop.values()) {
-                    simple(584, 218 + merchant.ordinal() * 35, 225, 28, merchant.title,
-                        () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
-                }
-                pager(page,view.shopPages());
-                if(vendor==OperationsShop.ARMORER)simple(241,376,61,22,"Access.",()->send(OperationsMenu.SHOP_ACCESSORIES),()->view.shopAccessories(),()->true);
-                simple(423,83,125,20,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
-                simple(423,105,125,20,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
-                simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
-                    ()->send(OperationsMenu.SHOP_OWNED_FILTER),()->view.shopOwned(),()->true);
-                simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
-            }
+            case OperationsMenu.SHOP -> shopWidgets();
             case OperationsMenu.MERCHANT_ORDERS -> {
                 simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
                 for(int i=0;i<4;i++){
@@ -497,55 +465,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         505,y+16,.80F,SOFT,false);
                 }
             }
-            case OperationsMenu.SHOP -> {
-                var vendor = vendor();
-                pageTitle(g, "▱", upper(vendor.title), view.shopAccessories()?"Accessoires · sélection":fit(vendor.specialty,210));
-                var offers = vendor.offers();
-                if(view.shopRows().isEmpty()){
-                    text(g,view.shopAccessories()?"Aucun accessoire proposé dans ce pack.":"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);
-                    text(g,"Désactive le filtre pour revoir son catalogue.",181,170,.84F,SOFT,false);
-                }
-                for (int i = 0; i < view.shopRows().size(); i++) {
-                    int index=view.shopRows().get(i);
-                    if(index<0||index>=offers.size())continue;
-                    var offer = offers.get(index);
-                    int y = 128 + i * 41;
-                    panel(g, 169, y, 379, 37, DARK);
-                    boolean locked = offer.action() == OperationsShop.Action.BUY &&
-                        (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) < offer.loyaltyLevel()
-                         || offer.key() != null && !unlocked(offer.key()));
-                    if(offer.action()!=OperationsShop.Action.SELL)
-                        text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
-                    String cost = switch (offer.action()) {
-                        case BUY -> offer.price() + " crédits";
-                        case REPAIR -> vendor==OperationsShop.ARMORER?"8 cr. / % manquant · min. 50":offer.price()+" crédits";
-                        case SELL -> {
-                            long day=Long.parseLong(view.market().getFirst());
-                            int price=fr.taczoperations.operations.ResaleMarket.price(offer,day);
-                            int variation=fr.taczoperations.operations.ResaleMarket.variation(offer,day);
-                            int count=view.saleCounts().get(i);
-                            yield "+"+price+" cr/u ("+(variation>0?"+":"")+variation+"%) · "+count+" en stock";
-                        }
-                        case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
-                    };
-                    String requirement = offer.requirement();
-                    if (offer.action() == OperationsShop.Action.BUY && offer.loyaltyLevel() > 1)
-                        requirement += " · Niv. " + OperationsShop.requiredPlayerLevel(offer.loyaltyLevel());
-                    int priceColor=GOLD;
-                    if(offer.action()==OperationsShop.Action.SELL){
-                        int change=fr.taczoperations.operations.ResaleMarket.variation(offer,Long.parseLong(view.market().getFirst()));
-                        priceColor=change>0?LIME:change<0?0xffdf9c94:SOFT;
-                    }
-                    if(offer.action()==OperationsShop.Action.SELL){
-                        int count=view.saleCounts().get(i);
-                        long total=(long)count*fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
-                        text(g,fit((locked?"[Verrouillé] ":"")+offer.title(),250),181,y+5,.94F,WHITE,true);
-                        text(g,fit(cost,250),181,y+16,.80F,priceColor,false);
-                        text(g,"Total : "+numberLong(total)+" cr.",181,y+26,.80F,GOLD,false);
-                    }else text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
-                        181, y + 23, .95F, priceColor, false);
-                }
-            }
+            case OperationsMenu.SHOP -> drawShop(g);
             case OperationsMenu.MERCHANT_ORDERS -> {
                 text(g,"COMMANDES SPÉCIALES",173,82,1.50F,GOLD,true);
                 text(g,"Quatre livraisons quotidiennes · renouvellement à minuit UTC",173,108,.9F,SOFT,false);
@@ -689,23 +609,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             default -> { }
         }
         if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL || view.tab()==OperationsMenu.MERCHANT_ORDERS) return;
-        if (view.tab() == OperationsMenu.SHOP) {
-            var vendor = vendor();
-            panel(g, 578, 88, 239, 115, DARK);
-            image(g, texture("merchant_" + vendor.name().toLowerCase(java.util.Locale.ROOT)), 593, 102, 62, 82);
-            text(g, vendor.title, 669, 109, 1.2F, GOLD, true);
-            text(g,"Revente possible : "+numberLong(view.shopValue())+" cr.",585,191,.85F,LIME,true);
-            int reputation = view.reputation().get(vendor.ordinal());
-            int loyalty = OperationsShop.reputationLevel(reputation,view.experience());
-            text(g, "Fidélité " + loyalty + " / 4", 669, 130, 1.0F, GOLD, true);
-            text(g, loyalty == 4 ? "Fidélité maximale" : reputation + " / " + OperationsShop.nextReputation(reputation,view.experience()) + " rép.", 669, 148, .85F, SOFT, false);
-            if (loyalty < 4) {
-                int required = OperationsShop.requiredPlayerLevel(loyalty+1);
-                boolean reached = MilitaryProgression.level(view.experience()) >= required;
-                text(g, "Niv. " + required + " requis", 669, 164, .85F, reached ? LIME : 0xffee9990, true);
-            }
-            return;
-        }
+        if (view.tab() == OperationsMenu.SHOP) return;
         if(view.tab()==OperationsMenu.PROGRESSION) {
             var totals=view.raidTotals();
             panel(g,575,88,249,145,DARK);
@@ -749,6 +653,122 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     private boolean unlocked(fr.taczoperations.operations.RaidRelic relic) {
         return (menu.view().unlocks() & (1 << relic.ordinal())) != 0;
+    }
+
+
+    private static final String[] SHOP_FILTERS={"Tout","Armes","Munitions","Access.","Protections","Soins","Divers"};
+    private OperationsShop.Offer shopOffer(int row){
+        var rows=menu.view().shopRows();
+        if(row<0||row>=rows.size())return null;
+        var offers=vendor().offers();
+        int index=rows.get(row);
+        return index>=0&&index<offers.size()?offers.get(index):null;
+    }
+    private int shopPrice(OperationsShop.Offer o){
+        return o.action()==OperationsShop.Action.SELL?fr.taczoperations.operations.ResaleMarket.price(o,Long.parseLong(menu.view().market().getFirst())):o.price();
+    }
+    private boolean shopLocked(OperationsShop.Offer o){
+        return o.action()==OperationsShop.Action.BUY&&(OperationsShop.reputationLevel(menu.view().reputation().get(vendor().ordinal()),menu.view().experience())<o.loyaltyLevel()||o.key()!=null&&!unlocked(o.key()));
+    }
+    private boolean shopCanTrade(boolean all){
+        var o=shopOffer(shopSelection);var v=menu.view();
+        if(o==null)return false;
+        if(o.action()==OperationsShop.Action.SELL){
+            int n=v.saleCounts().get(shopSelection);
+            return n>=(all?2:1)&&(long)v.credits()+(long)shopPrice(o)*(all?n:1)<=Integer.MAX_VALUE;
+        }
+        if(all)return false;
+        if(o.action()==OperationsShop.Action.UNLOCK)return !unlocked(o.key());
+        return !shopLocked(o)&&v.credits()>=o.price();
+    }
+    private void shopWidgets(){
+        var v=menu.view();var merchant=vendor();
+        for(var m:OperationsShop.values()){
+            int x=169+m.ordinal()*95;
+            simple(x,126,92,18,m.title,()->send(OperationsMenu.VENDOR_FIRST+m.ordinal()),()->m==merchant,()->true);
+        }
+        for(int i=0;i<SHOP_FILTERS.length;i++){
+            final int cat=i;
+            simple(169+i*54,146,52,17,SHOP_FILTERS[i],()->send(OperationsMenu.SHOP_CATEGORY_FIRST+cat),
+                ()->!v.shopOwned()&&(v.shopAccessories()?cat==3:v.category()==cat),()->true);
+        }
+        // Selection is local; only explicit confirmation submits the server-validated offer.
+        var offers=merchant.offers();
+        for(int i=0;i<v.shopRows().size();i++){
+            final int row=i,index=v.shopRows().get(i);
+            if(index<0||index>=offers.size())continue;
+            var o=offers.get(index);var stack=o.stack().get();
+            int x=169+(i%8)*47,y=169+(i/8)*48;
+            widget(x,y,45,45,o.title(),()->shopSelection=row,()->true,(g,hover)->{
+                int tier=o.loyaltyLevel();
+                int top=tier>=4?0xff42374b:tier==3?0xff32434a:0xff354030;
+                g.fillGradient(x,y,x+45,y+45,top,0xff1c211d);
+                frame(g,x,y,45,45,shopSelection==row,hover);
+                item(g,stack,x+7,y+9,1.9F);
+                String cost=o.action()==OperationsShop.Action.UNLOCK?"Accès":o.action()==OperationsShop.Action.REPAIR?"Répar.":numberLong(shopPrice(o));
+                text(g,fit(cost,54),x+3,y+2,.79F,GOLD,true);
+                if(shopLocked(o))text(g,"F"+tier,x+28,y+34,.82F,0xffe5a9a0,true);
+                else if(o.action()==OperationsShop.Action.SELL)text(g,"x"+v.saleCounts().get(row),x+2,y+35,.79F,LIME,true);
+                else if(stack.getCount()>1)text(g,"x"+stack.getCount(),x+2,y+35,.79F,SOFT,true);
+            });
+        }
+        simple(169,317,60,20,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES>0);
+        simple(485,317,60,20,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES+1<v.shopPages());
+        simple(169,344,184,25,v.shopOwned()?"Retour aux achats":"Mes reventes",()->send(OperationsMenu.SHOP_OWNED_FILTER),()->v.shopOwned(),()->true);
+        simple(358,344,187,25,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
+        simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+        simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
+        widget(581,215,147,26,"Confirmer",()->send(OperationsMenu.TRADE_FIRST+shopSelection),()->shopCanTrade(false),(g,hover)->{
+            var o=shopOffer(shopSelection);boolean ok=shopCanTrade(false);
+            key(g,581,215,147,26,ok,hover,ok);
+            centered(g,o==null?"Indisponible":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":""),654,223,1,ok?WHITE:SOFT,true);
+        });
+        simple(733,215,83,26,"Tout vendre",()->send(OperationsMenu.SELL_ALL_FIRST+shopSelection),()->false,()->shopCanTrade(true));
+    }
+    private void drawShop(GuiGraphics g){
+        var v=menu.view();var merchant=vendor();
+        pageTitle(g,"▱",upper(merchant.title),v.shopOwned()?"Revente · objets en inventaire":fit(merchant.specialty,275));
+        for(int i=0;i<OperationsMenu.SHOP_ROWS;i++){
+            int x=169+i%8*47,y=169+i/8*48;
+            g.fill(x,y,x+45,y+45,0xff1b201b);g.renderOutline(x,y,45,45,0xff343d32);
+        }
+        if(v.shopRows().isEmpty())text(g,"Aucune offre pour ce filtre.",180,308,.9F,SOFT,false);
+        centered(g,"Page "+(v.page()%OperationsMenu.VENDOR_PAGES+1)+" / "+v.shopPages(),357,323,1,SOFT,false);
+        int rep=v.reputation().get(merchant.ordinal()),loyalty=OperationsShop.reputationLevel(rep,v.experience());
+        text(g,"FIDÉLITÉ DU MARCHAND",581,88,1.04F,GOLD,true);
+        for(int i=1;i<=4;i++){
+            int x=581+(i-1)*59;
+            key(g,x,104,55,20,i==loyalty,false,i<=loyalty);
+            centered(g,new String[]{"I","II","III","IV"}[i-1],x+27,109,1, i<=loyalty?WHITE:SOFT,true);
+        }
+        text(g,loyalty==4?"Fidélité maximale":rep+" / "+OperationsShop.nextReputation(rep,v.experience())+" rép. · Niv. "+OperationsShop.requiredPlayerLevel(loyalty+1)+" requis",581,129,.88F,SOFT,false);
+        panel(g,578,143,242,68,0xff20251f);
+        var o=shopOffer(shopSelection);
+        if(o!=null){
+            var stack=o.stack().get();
+            item(g,stack,585,151,3F);
+            text(g,fit(o.title(),174),640,149,.91F,WHITE,true);
+            text(g,fit(o.requirement(),174),640,163,.83F,SOFT,false);
+            String cost=o.action()==OperationsShop.Action.SELL?numberLong(shopPrice(o))+" cr/u · x"+v.saleCounts().get(shopSelection):o.action()==OperationsShop.Action.BUY?numberLong(o.price())+" cr. · x"+stack.getCount():o.action()==OperationsShop.Action.UNLOCK?"Remettre un objet":merchant==OperationsShop.ARMORER?"8 cr./% · min. 50":numberLong(o.price())+" cr.";
+            text(g,fit(cost,174),640,177,.9F,GOLD,true);
+            text(g,shopLocked(o)?"Fidélité ou accès requis":o.action()==OperationsShop.Action.SELL?"Revente au tarif du jour":"Fidélité "+o.loyaltyLevel(),640,191,.82F,shopLocked(o)?0xffe5a9a0:SOFT,false);
+        }else text(g,"Sélectionne un objet",589,169,1,SOFT,false);
+        text(g,"INVENTAIRE DU JOUEUR",581,249,1.02F,GOLD,true);
+        if(minecraft.player!=null){
+            var inv=minecraft.player.getInventory();
+            for(int k=0;k<36;k++){
+                int i=k<27?k+9:k-27;
+                int x=581+(k%9)*26,y=265+(k/9)*26;
+                g.fill(x,y,x+24,y+24,0xff252a24);g.renderOutline(x,y,24,24,0xff485044);
+                var stack=inv.getItem(i);
+                if(!stack.isEmpty()){
+                    item(g,stack,x+3,y+3,1.12F);
+                    if(stack.getCount()>1)text(g,""+stack.getCount(),x+12,y+15,.78F,WHITE,true);
+                }
+            }
+        }
+        text(g,"Revente possible : "+numberLong(v.shopValue())+" cr.",581,378,.92F,LIME,true);
+        text(g,"Inventaire en lecture seule · achats et ventes confirmés",581,393,.74F,SOFT,false);
     }
 
     private void pager(int page, int total) {
