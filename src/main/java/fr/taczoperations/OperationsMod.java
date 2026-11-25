@@ -97,7 +97,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("11");
+        var registrar = event.registrar("12");
         registrar.playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
             (report, context) -> {
                 // Never resolve client-only screen classes on a dedicated server.
@@ -152,6 +152,7 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::fire);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::reload);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.WeaponCondition::tooltip);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidOrigin::tooltip);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onExplosion);
     }
 }
