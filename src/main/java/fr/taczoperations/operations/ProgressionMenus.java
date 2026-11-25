@@ -56,8 +56,8 @@ final class ProgressionMenus {
             int earned=PassiveSkills.xp(p,s)-PassiveSkills.threshold(level);
             int goal=level==50?0:PassiveSkills.threshold(level+1)-PassiveSkills.threshold(level);
             String progress=level==50?"Niveau maximum":earned+" / "+goal+" XP";
-            String bonus=s==PassiveSkills.Skill.TRADE?"Réduction prévue (non active)":"Bonus actuel : "+PassiveSkills.bonus(p,s)+" %";
-            c.setItem(10+(i/4)*18+(i%4)*2,tile(SKILL_ICONS[i],s.title+" · "+level+"/50",ChatFormatting.GOLD,List.of(progress,bonus,"Bonus maximal prévu : "+s.maxBonus+" %")));
+            String bonus=s==PassiveSkills.Skill.TRADE?"Réduction achats : "+PassiveSkills.bonus(p,s)+" %":"Bonus actuel : "+PassiveSkills.bonus(p,s)+" %";
+            c.setItem(10+(i/4)*18+(i%4)*2,tile(SKILL_ICONS[i],s.title+" · "+level+"/50",ChatFormatting.GOLD,List.of(progress,bonus,"Bonus maximal : "+s.maxBonus+" %")));
             c.setItem(19+(i/4)*18+(i%4)*2,tile(Items.EXPERIENCE_BOTTLE,progress,ChatFormatting.GREEN,List.of()));
         }
         c.setItem(49,tile(Items.BARRIER,"Retour",ChatFormatting.RED,List.of()));
