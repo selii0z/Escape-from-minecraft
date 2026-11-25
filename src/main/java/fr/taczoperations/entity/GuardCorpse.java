@@ -31,7 +31,7 @@ public final class GuardCorpse extends Entity {
         entityData.set(APPEARANCE,switch(value){
             case "foreman"->"tagilla";
             case "tracker"->"shturman";
-            case "pmc_usec","pmc_bird_eye","raider","scout","soldier","marksman","heavy","leader","tagilla","shturman","killa","reshala","glukhar","sanitar","kaban","kollontay","partisan","zryachiy","knight","big_pipe","birdeye","cultist_priest","wedge","wedge_labs","shadow_tagilla","vengeful_killa","infected_tagilla","black_division"->value;
+            case "scav_extra","pmc_usec","pmc_bird_eye","raider","scout","soldier","marksman","heavy","leader","tagilla","shturman","killa","reshala","glukhar","sanitar","kaban","kollontay","partisan","zryachiy","knight","big_pipe","birdeye","cultist_priest","wedge","wedge_labs","shadow_tagilla","vengeful_killa","infected_tagilla","black_division"->value;
             default->"";
         });
     }
