@@ -286,6 +286,23 @@ public final class OperationsMenu extends AbstractContainerMenu {
         return ItemStack.EMPTY;
     }
 
+    void inspectOffer(ServerPlayer player,int kind,int row){
+        if(player.containerMenu!=this||!stillValid(player)||row<0)return;
+        ItemStack stack=ItemStack.EMPTY;
+        if(kind==1&&view.tab()==SHOP&&row<view.shopRows().size()){
+            var offers=OperationsShop.values()[view.page()/VENDOR_PAGES].offers();
+            int i=view.shopRows().get(row);
+            if(i>=0&&i<offers.size())stack=offers.get(i).stack().get();
+        }else if(kind==1&&view.tab()==BLACK_MARKET&&row<BlackMarket.SIZE){
+            stack=BlackMarket.preview(Long.parseLong(view.market().getFirst()),row);
+        }else if(kind==1&&view.tab()==PLAYER_MARKET&&row<view.playerMarket().offers().size()){
+            stack=view.playerMarket().offers().get(row).item();
+        }else if(kind==2&&view.tab()==PLAYER_MARKET&&row==0){
+            stack=player.getMainHandItem();
+            if(!ItemStack.matches(stack,view.playerMarket().held()))return;
+        }else if(kind==3&&view.tab()==SHOP&&row<36)stack=player.getInventory().getItem(row);
+        ItemDiscovery.inspect(player,stack);
+    }
     public void listPlayerItem(ServerPlayer player,int price){
         if(player.containerMenu!=this||view.tab()!=PLAYER_MARKET||!stillValid(player))return;
         String notice=PlayerMarket.of(player).list(player,view.playerMarket().held(),price);
