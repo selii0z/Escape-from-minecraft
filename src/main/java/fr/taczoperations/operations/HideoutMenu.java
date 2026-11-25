@@ -36,7 +36,7 @@ final class HideoutMenu {
         icons.setItem(31,recipe(p,Items.COOKED_BEEF,HideoutServices.Recipe.RATION,"Rations ×3"));
         icons.setItem(32,recipe(p,Items.GLASS_BOTTLE,HideoutServices.Recipe.WATER,"Eau ×4"));
         icons.setItem(33,fuelTile(p));
-        icons.setItem(34,tile(Items.ANVIL,"Réparer l'arme en main",ChatFormatting.GOLD));
+        icons.setItem(34,repairTile(p));
         icons.setItem(35,restTile(p));
         icons.setItem(37,tile(Items.TARGET,"Entrer dans le stand de tir",ChatFormatting.AQUA));
         icons.setItem(39,tile(Items.WRITABLE_BOOK,"Campagne militaire",ChatFormatting.GOLD));
@@ -72,6 +72,22 @@ final class HideoutMenu {
             }
             @Override public ItemStack quickMoveStack(Player player,int slot){return ItemStack.EMPTY;}
         },Component.literal("EFM · Gestion de la planque")));
+    }
+    private static ItemStack repairTile(ServerPlayer p){
+        int tier=Hideout.tier(p,Hideout.Station.ATELIER),balance=SupplyContract.balance(p);
+        var gun=p.getMainHandItem();
+        boolean equipped=gun.getItem() instanceof com.tacz.guns.api.item.IGun;
+        int cost=WeaponCondition.repairCost(gun,tier*10);
+        boolean power=HideoutPower.available(p);
+        var stack=tile(Items.ANVIL,"Réparer l'arme en main",tier>0&&equipped&&cost>0&&power&&balance>=cost?ChatFormatting.GREEN:ChatFormatting.GRAY);
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(java.util.List.<Component>of(
+            requirement("Atelier niveau 1",tier>0),
+            requirement(equipped?gun.getHoverName().getString():"Tenir une arme TaCZ en main",equipped),
+            Component.literal(equipped?String.format(java.util.Locale.FRANCE,"État : %.1f %%",WeaponCondition.condition(gun)/100.0):"Aucune arme sélectionnée").withStyle(ChatFormatting.GRAY),
+            requirement("Énergie : 1 unité",power),
+            requirement(cost>0?"Crédits : "+balance+"/"+cost:"Aucune réparation nécessaire",equipped&&balance>=cost),
+            Component.literal("Réduction atelier : "+tier*10+" %").withStyle(ChatFormatting.AQUA))));
+        return stack;
     }
     private static ItemStack fuelTile(ServerPlayer p){
         int tier=Hideout.tier(p,Hideout.Station.GENERATEUR),energy=HideoutPower.energy(p);
