@@ -35,7 +35,7 @@ public final class Hideout {
         final String id,label;final TradeLoot material;final int unlock,price;
         Station(String id,String label,TradeLoot material,int unlock,int price){this.id=id;this.label=label;this.material=material;this.unlock=unlock;this.price=price;}
     }
-    private static BlockPos center(int id){return new BlockPos((id%320)*SPACING+128,Y,(id/320)*SPACING+128);}
+    static BlockPos center(int id){return new BlockPos((id%320)*SPACING+128,Y,(id/320)*SPACING+128);}
     private static boolean inside(ServerPlayer p,BlockPos c){
         return Math.abs(p.getX()-c.getX()-.5)<RADIUS-.5&&Math.abs(p.getZ()-c.getZ()-.5)<RADIUS-.5&&p.getY()>=Y&&p.getY()<Y+7;
     }
@@ -80,6 +80,7 @@ public final class Hideout {
     }
     static void leave(ServerPlayer p){
         if(!here(p))return;
+        if(HideoutRange.active(p))HideoutRange.report(p);
         var level=p.server.overworld();var account=SupplyContract.account(p);var back=account.getCompound(RETURN);
         double x=back.getDouble("x"),y=back.getDouble("y"),z=back.getDouble("z");
         BlockPos target=BlockPos.containing(x,y,z);
@@ -127,6 +128,7 @@ public final class Hideout {
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
             .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
+            .then(Commands.literal("tir").executes(ctx->{HideoutRange.toggle(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("menu").executes(ctx->{HideoutMenu.open(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("sortir").executes(ctx->{leave(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("carburant").executes(ctx->{HideoutPower.refuel(ctx.getSource().getPlayerOrException());return 1;}))
@@ -145,7 +147,7 @@ public final class Hideout {
         if(!(event.getEntity() instanceof ServerPlayer p)||!here(p))return;
         int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
         if(id<0){leave(p);return;}
-        if(!inside(p,center(id))){var c=center(id);p.teleportTo(p.serverLevel(),c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);}
+        if(!inside(p,center(id))&&!HideoutRange.inside(p,center(id))){var c=center(id);p.teleportTo(p.serverLevel(),c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);}
     }
     public static void interact(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e){
         if(!(e.getEntity() instanceof ServerPlayer p)||!here(p))return;
