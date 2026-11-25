@@ -63,8 +63,15 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Les munitions TaCZ contenues dans les sacs/gilets ne sont pas encore directement accessibles à son mécanisme de rechargement. Cette intégration nécessite une vérification de l'API de la version installée.
 - Compilation de ce lot et tests en jeu non confirmés.
 
+## Intégration TaCZ et marché — neuvième lot ajouté
+- Build 525 réussi : modèles 3D et assurance compilent.
+- Intégration ciblée TaCZ : extension de son accès ItemHandler dans les méthodes de vérification et consommation de munitions, d'après la branche 1.21.1 de TaCZ. Inventaire natif puis gilet puis sac équipés ; seules les munitions IAmmo en vrac des packs sont exposées. Pas de coffre sécurisé, sac non équipé ou boîte de munitions exposée. Les simulations ne modifient rien, et la consommation effective des packs se fait côté serveur. Les hooks optionnels (require=0) préservent le chargement si la version de TaCZ diffère, mais ne garantissent pas leur activation : tester sur le JAR TaCZ installé.
+- L'inventaire tactique invalide une vue si le composant de stockage a changé extérieurement ; un rechargement qui se termine pendant son ouverture ne doit pas restaurer des munitions consommées.
+- Le marché prépare désormais toutes les modifications de cases d'inventaire avant de débiter ou libérer le séquestre, vérifie l'intégralité des composants du lot coté et refuse une livraison partielle. Cette amélioration ne rend pas atomiques les sauvegardes séparées du marché et des joueurs lors d'un crash.
+- Tests prioritaires : rechargement avec zéro munition native, quantité partielle, inventaire natif plein, changement de calibre, annulation d'animation, retrait du gilet pendant le rechargement, ouverture E pendant un rechargement, client/serveur dédié, absence de duplication. Marché : inventaire plein, fusion de piles, annonce concurrente, annulation et composants TaCZ. Compilation du lot à confirmer.
+
 ## Lots à réaliser (pas encore codés)
 - Test en jeu et revue graphique des boutiques, aperçu au survol, amélioration fidélité/rareté distincte si nécessaire.
-- Vérifier visuellement les modèles 3D et tester les drops Curios assurés ; utilisation directe des munitions par TaCZ et récupération crash du marché restent à traiter.
+- Vérifier visuellement les modèles 3D, les drops Curios assurés et l'activation effective des hooks TaCZ ; récupération crash atomique du marché reste à traiter.
 
 Les nouveaux taux et catégories sont des choix d'équilibrage à tester. Pas de planque, trophées ou intégration Woods.
