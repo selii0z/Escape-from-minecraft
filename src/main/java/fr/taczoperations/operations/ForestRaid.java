@@ -172,10 +172,12 @@ public final class ForestRaid extends SavedData {
         raid.dropLanded = false;
         raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
         player.getPersistentData().putUUID(PLAYER, raid.id);
+        RaidSurvival.begin(player);
         SupplyContract.departure(player);
         raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
+            RaidSurvival.begin(partner);
             SupplyContract.departure(partner);
             raid.announceExits(partner);
         }
