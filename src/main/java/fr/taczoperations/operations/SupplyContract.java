@@ -413,6 +413,20 @@ public enum SupplyContract {
 
     // Restored inventory after an interrupted raid must not leave provisional
     // run XP pending indefinitely or grant periodic completion rewards.
+    // Interrupted raids are failures, but only real started sessions receive a report.
+    // Do not synthesize death drops or insurance claims: the surviving gear is retained.
+    static void interrupted(ServerPlayer player,boolean industrial){
+        var run=player.getPersistentData();
+        if(!run.contains("taczoperations_run_started")||run.getBoolean("taczoperations_run_xp_finalized"))return;
+        long seconds=Math.max(0,(player.server.overworld().getGameTime()-run.getLong("taczoperations_run_started"))/20);
+        int adjustment=finalizeRaidXp(player,run,false);
+        saveRaidReport(player,false,seconds,run.getInt("taczoperations_raid_kills"),
+            run.getInt("taczoperations_run_crates"),run.getInt("taczoperations_run_contracts"),
+            run.getInt("taczoperations_run_kill_xp"),run.getInt("taczoperations_run_search_xp"),
+            run.getInt("taczoperations_run_contract_xp"),adjustment,
+            run.contains("taczoperations_run_xp_before")?run.getInt("taczoperations_run_xp_before"):-1,
+            new RaidLootValue.Estimate(-1,0),industrial);
+    }
     static void abortRun(ServerPlayer player){
         var run=player.getPersistentData();
         if(run.contains("taczoperations_run_started")&&!run.getBoolean("taczoperations_run_xp_finalized"))

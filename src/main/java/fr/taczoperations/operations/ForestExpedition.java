@@ -469,6 +469,7 @@ public final class ForestExpedition {
         if (!extracted) {
             StoryMissions.clear(player);
             recoverInterruptedInventory(player);
+            if(leavingRaid)SupplyContract.interrupted(player,point.getBoolean("industrial"));
             SupplyContract.abortRun(player);
         }
         clearReturnPoint(player);
