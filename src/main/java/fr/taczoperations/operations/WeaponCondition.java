@@ -84,6 +84,7 @@ public final class WeaponCondition {
         if(balance<cost)return "Crédits insuffisants · réparation : "+cost+" crédits.";
         var data=tag(stack);data.putInt(CONDITION,FULL);data.remove(JAM);write(stack,data);
         SupplyContract.account(p).putInt("credits",balance-cost);
+        TradeJournal.record(p,"Réparation",OperationsShop.ARMORER.title,stack.getHoverName().getString(),1,-cost);
         p.getInventory().setChanged();
         return "Arme réparée · 100 % · -"+cost+" crédits.";
     }

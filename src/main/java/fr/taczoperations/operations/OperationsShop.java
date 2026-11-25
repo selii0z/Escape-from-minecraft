@@ -300,6 +300,7 @@ public enum OperationsShop {
                 if (balance < offer.price) return "Crédits insuffisants.";
                 if (!BallisticVest.repair(worn,slot)) return "Réparation impossible.";
                 account.putInt("credits", balance-offer.price);
+                TradeJournal.record(player,"Réparation",title,offer.title(),1,-offer.price());
                 player.getInventory().setChanged();
                 return "Protection réparée · état 100/100.";
             }
@@ -324,6 +325,7 @@ public enum OperationsShop {
             }
             player.getInventory().setChanged();
             account.putInt("credits",balance+(int)total);
+            TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
         int experience = SupplyContract.experienceEarned(player);
@@ -339,8 +341,10 @@ public enum OperationsShop {
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
             : ItemStack.isSameItemSameComponents(slot, stack) ? slot.getMaxStackSize() - slot.getCount() : 0).sum();
         if (capacity < stack.getCount()) return "Inventaire plein.";
+        int purchased=stack.getCount();
         inventory.add(stack);
         account.putInt("credits", balance - offer.price);
+        TradeJournal.record(player,"Achat",title,offer.title(),purchased,-offer.price());
         return "Achat ajouté à ton inventaire.";
     }
 }

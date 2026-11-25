@@ -43,7 +43,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int VENDOR_FIRST = 35;
     public static final int VENDOR_PAGES = 32;
     public static final int TRADE_FIRST = 45;
-    public static final int SELL_ALL_FIRST=160, SHOP_OWNED_FILTER=166;
+    public static final int SELL_ALL_FIRST=160, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167;
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
 
@@ -51,7 +51,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -80,6 +80,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeBoolean(shopOwned);
             buffer.writeVarInt(shopPages);
             buffer.writeVarLong(shopValue);
+            buffer.writeCollection(journal,(buf,line)->buf.writeUtf(line));
+            buffer.writeCollection(journalTotals,(buf,value)->buf.writeVarLong(value));
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -87,7 +89,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong());
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()));
         }
     }
 
@@ -165,6 +167,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int pages = switch (tab) {
             case CONTRACTS -> Math.max(1, (filtered.size() + CONTRACT_ROWS - 1) / CONTRACT_ROWS);
             case SHOP -> OperationsShop.values().length * VENDOR_PAGES;
+            case TRADE_JOURNAL -> Math.max(1,(TradeJournal.size(player)+LIST_ROWS-1)/LIST_ROWS);
             default -> Math.max(1, (online.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         };
         int page = Math.clamp(requestedPage, 0, pages - 1);
@@ -216,7 +219,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
                 "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
-                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue);
+                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player));
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -282,7 +285,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int page = view.page();
         String notice = "";
         if (button == CONTRACTS || button == GROUP || button == FOREST
-            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET) {
+            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL) {
             tab = button;
             page = 0;
         } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
@@ -337,7 +340,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             toggleFilter(serverPlayer, "filter_status_mask", button - FILTER_STATUS); page = 0;
         } else if (tab == CONTRACTS && button >= FILTER_MERCHANT && button <= FILTER_MERCHANT + 4) {
             toggleFilter(serverPlayer, "filter_merchant_mask", button - FILTER_MERCHANT); page = 0;
-        } else if (tab == CONTRACTS && (button == PREVIOUS || button == NEXT)) {
+        } else if ((tab == CONTRACTS||tab==TRADE_JOURNAL) && (button == PREVIOUS || button == NEXT)) {
             page += button == NEXT ? 1 : -1;
         } else if (button != REFRESH) {
             int row = button - FIRST_ROW;

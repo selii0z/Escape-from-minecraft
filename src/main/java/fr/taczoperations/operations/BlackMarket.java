@@ -80,9 +80,11 @@ public final class BlackMarket {
         var inventory=p.getInventory();
         int capacity=inventory.items.stream().mapToInt(slot->slot.isEmpty()?stack.getMaxStackSize():ItemStack.isSameItemSameComponents(slot,stack)?slot.getMaxStackSize()-slot.getCount():0).sum();
         if(capacity<stack.getCount())return "Inventaire plein.";
+        int purchased=stack.getCount();
         inventory.add(stack);
         state.putInt(o.id,state.getInt(o.id)+1);
         SupplyContract.account(p).putInt("credits",balance-o.price);
+        TradeJournal.record(p,"Achat","Marché noir",o.title,purchased,-o.price);
         inventory.setChanged();
         return "Achat au marché noir effectué · -"+o.price+" crédits.";
     }

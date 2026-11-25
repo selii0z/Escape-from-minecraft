@@ -165,11 +165,18 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
                 }
                 pager(page,view.shopPages());
+                simple(423,83,125,28,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
                 simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
                     ()->send(OperationsMenu.SHOP_OWNED_FILTER),()->view.shopOwned(),()->true);
                 simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
             }
+            case OperationsMenu.TRADE_JOURNAL -> {
+                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+                simple(173,376,65,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->view.page()>0);
+                simple(750,376,65,22,"›",()->send(OperationsMenu.NEXT),()->false,()->view.page()+1<view.pages());
+            }
             case OperationsMenu.BLACK_MARKET -> {
+                simple(555,79,125,29,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
                 simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
                 for(int i=0;i<6;i++){
                     String[] offer=view.market().get(i+1).split("\\|",-1);
@@ -188,7 +195,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -314,7 +321,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
         panel(g, 3, 74, 149, 337, 0xc0111713);
-        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET) {
+        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET || menu.view().tab()==OperationsMenu.TRADE_JOURNAL) {
             panel(g, 157, 74, 674, 339, 0xf0111612);
         } else {
             panel(g, 157, 74, 401, 339, 0xd8111612);
@@ -526,6 +533,31 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         181, y + 23, .95F, priceColor, false);
                 }
             }
+            case OperationsMenu.TRADE_JOURNAL -> {
+                text(g,"JOURNAL DES TRANSACTIONS",173,82,1.45F,GOLD,true);
+                text(g,"50 dernières opérations · heure UTC",173,106,.9F,SOFT,false);
+                var sums=view.journalTotals();
+                String[] labels={"VENTES","ACHATS","RÉPARATIONS"};
+                for(int i=0;i<3;i++){
+                    int x=169+i*220;
+                    panel(g,x,123,210,38,DARK);
+                    text(g,labels[i],x+9,128,.84F,SOFT,true);
+                    text(g,(i==0?"+":"-")+numberLong(sums.get(i))+" cr.",x+9,142,1.05F,i==0?LIME:0xffdf9c94,true);
+                }
+                if(view.journal().isEmpty())text(g,"Aucune transaction enregistrée.",181,193,1,SOFT,false);
+                for(int i=0;i<view.journal().size();i++){
+                    var fields=view.journal().get(i).split("\\|",-1);
+                    if(fields.length!=7)continue;
+                    int y=166+i*34;
+                    long delta=Long.parseLong(fields[5]);
+                    panel(g,169,y,650,31,DARK);
+                    text(g,fields[0]+" · "+fields[1]+" · "+fields[2],181,y+4,.82F,SOFT,false);
+                    text(g,fit(fields[3]+" ×"+fields[4],370),181,y+16,.91F,WHITE,true);
+                    text(g,(delta>=0?"+":"")+numberLong(delta)+" cr.",595,y+4,.98F,delta>=0?LIME:0xffdf9c94,true);
+                    text(g,"Solde : "+numberLong(Long.parseLong(fields[6])),595,y+17,.82F,SOFT,false);
+                }
+                centered(g,(view.page()+1)+" / "+view.pages(),495,382,1,SOFT,false);
+            }
             case OperationsMenu.BLACK_MARKET -> {
                 text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
                 text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
@@ -629,7 +661,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET) return;
+        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL) return;
         if (view.tab() == OperationsMenu.SHOP) {
             var vendor = vendor();
             panel(g, 578, 88, 239, 115, DARK);
