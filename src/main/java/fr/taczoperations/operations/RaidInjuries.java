@@ -10,6 +10,7 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 public final class RaidInjuries {
     private static final String BLEED="efm_bleed", FRACTURE="efm_fracture", ARM="efm_arm_injury", LAST="efm_injury_tick";
+    private static final String HIT_ZONE="efm_hit_zone",HIT_TIME="efm_hit_time",BLEED_FIRST="efm_bleed_first",BLEED_SECOND="efm_bleed_second";
     static boolean active(ServerPlayer p) {
         return p.isAlive() && !p.isCreative() && !p.isSpectator()
             && p.level().dimension().equals(ForestExpedition.FOREST) && ForestRaid.isParticipant(p);
@@ -18,13 +19,22 @@ public final class RaidInjuries {
         if(!active(p)||damage<1.5F||!Float.isFinite(damage))return;
         var data=p.getPersistentData();
         long time=p.level().getGameTime();
-        if(data.contains(LAST)&&time-data.getLong(LAST)<12)return;
+        EquipmentSlot zone=BallisticVest.hitSlot(p,bullet,headshot);
+        int region=switch(zone){
+            case HEAD -> RaidInjuryPayload.HEAD;
+            case LEGS -> RaidInjuryPayload.LEGS;
+            case FEET -> RaidInjuryPayload.FEET;
+            default -> RaidInjuryPayload.TORSO;
+        };
+        data.putInt(HIT_ZONE,region);data.putLong(HIT_TIME,time);
+        if(data.contains(LAST)&&time-data.getLong(LAST)<12){sync(p,true);return;}
         data.putLong(LAST,time);
         var random=p.getRandom();
-        EquipmentSlot zone=BallisticVest.hitSlot(p,bullet,headshot);
         if(random.nextFloat()<Math.min(.45F,damage*.045F)) {
             int old=data.getInt(BLEED);
             data.putInt(BLEED,Math.min(2,old+1));
+            if(old==0)data.putInt(BLEED_FIRST,region);
+            if(old==1)data.putInt(BLEED_SECOND,region);
             if(old<2)p.sendSystemMessage(Component.literal(old==0?"Blessure : saignement. Utilise un bandage.":"Saignement important : deux bandages ou un kit hémostatique."));
         }
         if((zone==EquipmentSlot.LEGS||zone==EquipmentSlot.FEET)&&!data.getBoolean(FRACTURE)&&damage>=2.5F&&random.nextFloat()<.22F){
@@ -37,8 +47,10 @@ public final class RaidInjuries {
     }
     private static void sync(ServerPlayer p,boolean active){
         var d=p.getPersistentData();
+        int hit=active&&d.contains(HIT_TIME)&&p.level().getGameTime()-d.getLong(HIT_TIME)<30?d.getInt(HIT_ZONE):0;
+        int mask=active&&d.getInt(BLEED)>0?d.getInt(BLEED_FIRST)|d.getInt(BLEED_SECOND):0;
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,new RaidInjuryPayload(
-            active,active?Math.clamp(d.getInt(BLEED),0,2):0,active&&d.getBoolean(FRACTURE),active&&d.getBoolean(ARM),active?RaidSurvival.water(p):100,active?RaidSurvival.energy(p):100));
+            active,active?Math.clamp(d.getInt(BLEED),0,2):0,active&&d.getBoolean(FRACTURE),active&&d.getBoolean(ARM),active?RaidSurvival.water(p):100,active?RaidSurvival.energy(p):100,hit,mask));
     }
     public static void tick(PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!active(p)||p.tickCount%20!=0)return;
@@ -68,9 +80,10 @@ public final class RaidInjuries {
             case "bandage" -> {
                 int bleed=d.getInt(BLEED);
                 if(bleed<=0)return false;
-                if(bleed==1)d.remove(BLEED);else d.putInt(BLEED,bleed-1);
+                if(bleed==1){d.remove(BLEED);d.remove(BLEED_FIRST);d.remove(BLEED_SECOND);}
+                else {d.putInt(BLEED,bleed-1);d.remove(BLEED_SECOND);}
             }
-            case "hemostat" -> {if(d.getInt(BLEED)<=0)return false;d.remove(BLEED);}
+            case "hemostat" -> {if(d.getInt(BLEED)<=0)return false;d.remove(BLEED);d.remove(BLEED_FIRST);d.remove(BLEED_SECOND);}
             case "splint" -> {if(!d.getBoolean(FRACTURE))return false;d.remove(FRACTURE);}
             case "salewa" -> {
                 if(p.getHealth()>=p.getMaxHealth())return false;
@@ -89,7 +102,7 @@ public final class RaidInjuries {
     }
     static void clear(ServerPlayer p) {
         var d=p.getPersistentData();
-        d.remove(BLEED);d.remove(FRACTURE);d.remove(ARM);d.remove(LAST);
+        d.remove(BLEED);d.remove(FRACTURE);d.remove(ARM);d.remove(LAST);d.remove(HIT_ZONE);d.remove(HIT_TIME);d.remove(BLEED_FIRST);d.remove(BLEED_SECOND);
         RaidSurvival.clear(p);
         sync(p,false);
     }

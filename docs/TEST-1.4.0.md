@@ -93,7 +93,7 @@ Tous les contrôles ci-dessous sont à exécuter, aucun résultat de test en jeu
 
 La règle de reconnexion est désormais un délai individuel de 10 minutes, même si l'équipier reste connecté. Vérifier reconnexion avant/après le délai, expiration des deux membres, fermeture de la carte uniquement quand le dernier participant quitte ou expire. Les objets de départ encore détenus sont conservés après interruption ; aucun objet disparu n'est recréé depuis le snapshot. Tester aussi le cas d'un membre de duo restant connecté.
 Le menu des réclamations indique le prochain retour à son ouverture, pas un compte à rebours en direct.
-Le protocole client/serveur actuel est 24. Ne pas distribuer avant compilation et tests.
+Le protocole client/serveur actuel est 25. Ne pas distribuer avant compilation et tests.
 
 ## Limite de durée des raids
 - Forêt Noire : 45 minutes ; Zone industrielle : 30 minutes. Chronomètre commun au raid, ne repart pas de zéro lors d'une reconnexion. Alertes à 10, 5 et 1 minute. Expiration : fermeture de la session, retour et bilan d'échec via le traitement existant. La limite globale prévaut sur les 10 minutes de reconnexion individuelles. Tester les deux cartes, la reconnexion après expiration, un duo et un départ immédiatement après la fin de la session. Durée exprimée en ticks serveur (ralentissement possible en cas de lag). HUD ajouté au lot suivant.
@@ -112,3 +112,7 @@ Le protocole client/serveur actuel est 24. Ne pas distribuer avant compilation e
 
 ## État des sorties
 - HUD à droite (largeur GUI ≥500), toutes les sorties et distance, états disponible/fermée/relais/clé/crédits, tarif réel. Synchronisation serveur toutes les 20 ticks, respecte le réglage d'affichage de l'extraction ; l'actionbar existante reste disponible pour les petites résolutions. Vérifier activation du relais, acquisition/perte de clé, solde, reconnexion, fermeture de l'interface à la sortie. Protocole 24. Non compilé.
+
+## Silhouette médicale
+- Référence de conception : FirstAid Add-on MCPE (KecKMC), repéré dans l'archive ESCAPE FROM HLEBNIY 0.25 PATCH fournie par le propriétaire du projet. Aucun fichier ou code tiers incorporé ; silhouette originale dessinée dans GuiGraphics.
+- Impacts TaCZ : tête, torse, jambes ou pieds selon la localisation déjà utilisée par BallisticVest ; surbrillance récente ~1,5 s. Saignements : deux localisations mémorisées au maximum, dernier saignement traité en premier par bandage, hémostatique efface les deux. Fracture et blessure au bras signalées par groupes (pas de distinction gauche/droite fiable). Santé globale vanilla inchangée, pas de points de vie par membre. Aucun changement des dégâts, chances de blessure ou soins. Tester armure, tirs, bandage, hémostatique, attelle, kit, mort, retour, résolution et protocole 25. Compilation non confirmée.
