@@ -41,7 +41,7 @@ public final class Hideout {
     }
     private static boolean survival(ServerPlayer p){return p.isAlive()&&!p.isCreative()&&!p.isSpectator();}
     private static boolean here(ServerPlayer p){return p.level().dimension().equals(DIMENSION);}
-    private static void say(ServerPlayer p,String s){p.sendSystemMessage(Component.literal(s));}
+    static void say(ServerPlayer p,String s){p.sendSystemMessage(Component.literal(s));}
     private static void block(ServerLevel l,BlockPos pos,Block b){l.setBlock(pos,b.defaultBlockState(),3);}
     private static void build(ServerLevel l,BlockPos c){
         // A marker is placed last. No generated containers or obtainable loot.
@@ -94,7 +94,12 @@ public final class Hideout {
     private static CompoundTag stations(ServerPlayer p){
         var a=SupplyContract.account(p);if(!a.contains(STATIONS))a.put(STATIONS,new CompoundTag());return a.getCompound(STATIONS);
     }
-    private static int tier(ServerPlayer p,Station s){return Math.clamp(stations(p).getInt(s.id),0,3);}
+    static int tier(ServerPlayer p,Station s){return Math.clamp(stations(p).getInt(s.id),0,3);}
+    static boolean ownsPlot(ServerPlayer p){
+        if(!here(p)||!survival(p))return false;
+        int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
+        return id>=0&&inside(p,center(id));
+    }
     private static void list(ServerPlayer p){
         say(p,"Installations de la planque · niveaux 0 à 3");
         for(var s:Station.values()){
@@ -103,7 +108,7 @@ public final class Hideout {
         }
     }
     private static void upgrade(ServerPlayer p,String id){
-        if(!here(p)||!survival(p)){say(p,"Amélioration uniquement dans ta planque.");return;}
+        if(!ownsPlot(p)||p.containerMenu!=p.inventoryMenu){say(p,"Amélioration uniquement dans ta planque, menu fermé.");return;}
         var level=p.serverLevel();int plot=HideoutPlots.of(level).find(p.getUUID());
         if(plot<0||!inside(p,center(plot)))return;
         Station s=null;for(var candidate:Station.values())if(candidate.id.equals(id))s=candidate;
@@ -115,12 +120,16 @@ public final class Hideout {
         var item=s.material.stack().getItem();var storage=CarriedStorage.of(p);
         if(!storage.consume(stack->stack.is(item)&&RaidOrigin.found(stack),n)){say(p,"Il faut "+n+" × "+s.material.title+" trouvé en raid.");return;}
         SupplyContract.account(p).putInt("credits",balance-cost);stations(p).putInt(s.id,n);
-        say(p,s.label+" améliorée au niveau "+n+" (fonctionnalités propres à chaque station à venir).");
+        say(p,s.label+" améliorée au niveau "+n+".");
     }
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
             .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
             .then(Commands.literal("sortir").executes(ctx->{leave(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("reserve").executes(ctx->{HideoutServices.reserve(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("produire").then(Commands.argument("recette",StringArgumentType.word())
+                .suggests((ctx,b)->{for(var recipe:HideoutServices.Recipe.values())if(recipe.id.startsWith(b.getRemainingLowerCase()))b.suggest(recipe.id);return b.buildFuture();})
+                .executes(ctx->{HideoutServices.craft(ctx.getSource().getPlayerOrException(),StringArgumentType.getString(ctx,"recette"));return 1;})))
             .then(Commands.literal("installations").executes(ctx->{list(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("ameliorer").then(Commands.argument("installation",StringArgumentType.word())
                 .suggests((ctx,b)->{for(var s:Station.values())if(s.id.startsWith(b.getRemainingLowerCase()))b.suggest(s.id);return b.buildFuture();})
@@ -135,6 +144,6 @@ public final class Hideout {
     // First lot is read-only to avoid free construction resources or cross-plot damage.
     public static void protectBreak(BlockEvent.BreakEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
     public static void protectPlace(BlockEvent.EntityPlaceEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
-    public static void protectExplosion(ExplosionEvent.Detonate e){if(e.getLevel().dimension().equals(DIMENSION))e.getAffectedBlocks().clear();}
+    public static void protectExplosion(ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.getAffectedBlocks().clear();}
     private Hideout(){}
 }
