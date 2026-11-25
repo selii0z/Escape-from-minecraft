@@ -56,7 +56,7 @@ Base figée : 1.3.0 RC1 build 547. Branche indépendante, aucun changement au JA
 
 ## Préparation RC1 — critères bloquants (non validés)
 La branche reste en version 1.4.0-dev. Ne pas distribuer de RC1 sans build vert et artefact vérifié. Minecraft 1.21.1 / NeoForge 21.1.249 / TaCZ 1.2.0 ; tester avec Curios puis sans Curios. Sauvegarder le monde et les données joueur avant migration. Conserver la 1.3.0 RC1 séparée.
-- Lancer client et serveur dédié avec le même JAR (protocole 18), rejoindre, vérifier chargement des dimensions.
+- Lancer client et serveur dédié avec le même JAR (protocole 21), rejoindre, vérifier chargement des dimensions.
 - Deux comptes : parcelles distinctes, aucune interaction entre réserves, reconnexion et redémarrage du serveur, décès exceptionnel et conservation du compte.
 - Vérifier protections contre dégâts ordinaires, mobs, explosions, casse/pose ; vérifier retour hors zone, chute dans le vide et /kill administrateur.
 - Réserve 18/36/54 : transfert rapide, clics rapides, échange avec barre d'accès rapide, fermeture et sauvegarde, refus du coffre sécurisé.
@@ -66,3 +66,31 @@ La branche reste en version 1.4.0-dev. Ne pas distribuer de RC1 sans build vert 
 - Stand : accès par niveau, cibles mobiles, bilan, pas d'XP de raid ; munitions réelles seulement. Munitions illimitées et mannequins balistiques non livrés.
 - Régression 1.3 : raids solo/duo, extraction et bilan, coffre sécurisé/assurance, sacs et munitions, marchands, événements boss.
 Dernier build observé avant ce lot : 685 en échec et diagnostic indépendant en échec, sans journal exploitable. Les tests ci-dessus sont une procédure, pas des résultats.
+
+## Lot 12 — finition des interfaces, assurance et bilans
+Tous les contrôles ci-dessous sont à exécuter, aucun résultat de test en jeu n'est revendiqué.
+
+| Cas | Résultat attendu |
+| --- | --- |
+| Départ solo, 2 objets neufs + 1 déjà assuré | Débit 200 crédits ; le troisième reste assuré |
+| Départ sans assurance | Aucun débit |
+| Solde insuffisant / objet déplacé | Refus de l'achat, aucun débit indu |
+| Carte occupée | Refus avant achat, pas de raid supplémentaire |
+| Duo : premier prêt, second hésite | Aucun départ avant la seconde validation |
+| Duo : annulation, éloignement, déconnexion, attente 3 min | Départ annulé ; assurance déjà payée conservée |
+| Curios présent puis absent | Menu charge correctement ; seuls les objets réellement équipés ou détenus sont proposés |
+| Mort en raid avec sac assuré | Un seul exemplaire récupérable après 30 min si le tirage réussit ; contenu laissé dans le raid |
+| Mort hors raid | Pas de traitement spécifique des drops Curios |
+| Raid interrompu après démarrage | Une seule défaite dans l'historique, malus XP appliqué une fois, coffre sécurisé protégé, pas de réclamation fictive |
+| Échec de téléportation avant début | Pas de bilan fictif |
+| Deux bilans reçus pendant un autre menu | Affichage successif lorsque le joueur ferme ses écrans ; file client limitée aux dix derniers |
+| Forêt/industrie, victoire/défaite | Carte exacte et illustration correspondante, pas d'étirement |
+| Marchand fidélité 1 puis 2 | Offres débloquées seulement ; aucune case vide au milieu du catalogue |
+| Molette, clic rapide, achat en lot | Bonne offre et bon prix, aucune transaction sur menu périmé |
+| I hors raid, E en raid | Inventaire tactique accessible si Curios disponible |
+| Annonce shiny en raid | Annonce filtrée ; messages ordinaires conservés |
+| Gradle verifyEfmAssets | 32 icônes 64×64, 4 illustrations 1920×1080, portraits, textiles et modèles présents |
+
+La règle de reconnexion du code actuel est un délai de 10 minutes sans membre du raid connecté. Les objets de départ encore détenus sont conservés après interruption ; aucun objet disparu n'est recréé depuis le snapshot. Tester aussi le cas d'un membre de duo restant connecté.
+Le menu des réclamations indique le prochain retour à son ouverture, pas un compte à rebours en direct.
+Le protocole client/serveur actuel est 21. Ne pas distribuer avant compilation et tests.
