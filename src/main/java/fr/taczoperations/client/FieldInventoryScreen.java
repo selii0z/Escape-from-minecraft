@@ -37,7 +37,8 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
             ||!ModList.get().isLoaded("curios"))return false;
         return fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.BAG)!=null
             &&fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.RIG)!=null
-            &&fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.GOGGLES)!=null;
+            &&fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.GOGGLES)!=null
+            &&fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.HEADSET)!=null;
     }
     @SubscribeEvent public static void tick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event){
         Minecraft mc=Minecraft.getInstance();
@@ -63,7 +64,7 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
             // This opening originates from the tactical screen; suppress the E interception.
             openingClassic=true;
             try{minecraft.setScreen(new InventoryScreen(minecraft.player));}finally{openingClassic=false;}
-        }).bounds(leftPos+115,topPos+92,62,18).build());
+        }).bounds(leftPos+115,topPos+102,62,14).build());
     }
     private static boolean openingClassic;
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
@@ -74,7 +75,7 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         for(var slot:menu.slots){
             int sx=x+slot.x-1,sy=y+slot.y-1;
             g.fill(sx,sy,sx+18,sy+18,0xff141914);
-            g.renderOutline(sx,sy,18,18,slot.index>=44?0xff85976c:0xff596351);
+            g.renderOutline(sx,sy,18,18,slot.index>=FieldInventoryMenu.STORAGE_START?0xff85976c:0xff596351);
         }
         g.fill(x+30,y+18,x+86,y+92,0xff171b17);
         if(minecraft!=null&&minecraft.player!=null)
@@ -85,8 +86,9 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
     @Override protected void renderLabels(GuiGraphics g,int mx,int my){
         g.drawString(font,"INVENTAIRE TACTIQUE",8,4,TEXT,false);
         g.drawString(font,"Lunettes",111,22,TEXT,false);
-        g.drawString(font,"Sac à dos",111,44,TEXT,false);
-        g.drawString(font,"Gilet",111,66,TEXT,false);
+        g.drawString(font,"Gilet",111,44,TEXT,false);
+        g.drawString(font,"Sac à dos",111,66,TEXT,false);
+        g.drawString(font,"Casque audio",111,88,TEXT,false);
         g.drawString(font,"INVENTAIRE",10,118,GOLD,false);
         g.drawString(font,"BARRE RAPIDE",10,182,GOLD,false);
         g.drawString(font,"SAC À DOS · "+menu.bagSize(),194,17,GOLD,false);
