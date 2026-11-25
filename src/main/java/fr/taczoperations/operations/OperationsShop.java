@@ -354,6 +354,7 @@ public enum OperationsShop {
             if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
+            PassiveSkills.trade(player,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
         int experience = SupplyContract.experienceEarned(player);
@@ -375,6 +376,7 @@ public enum OperationsShop {
         for(int i=0;i<quantity;i++)inventory.add(stack.copy());
         account.putInt("credits",balance-(int)total);
         TradeJournal.record(player,"Achat",title,offer.title(),purchased,-total);
+        PassiveSkills.trade(player,-total);
         return "Achat · "+purchased+" objet(s) · -"+total+" crédits.";
     }
 }
