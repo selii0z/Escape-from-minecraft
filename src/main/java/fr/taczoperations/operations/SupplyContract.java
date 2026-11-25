@@ -445,6 +445,7 @@ public enum SupplyContract {
     static void extracted(ServerPlayer player, boolean industrial) {
         RaidLootValue.Estimate loot=RaidLootValue.estimate(player);
         StoryMissions.extracted(player,industrial);
+        if(!player.getPersistentData().getBoolean("taczoperations_run_xp_finalized"))PassiveSkills.extracted(player);
         int kills = player.getPersistentData().getInt("taczoperations_raid_kills");
         CompoundTag baseline = player.getPersistentData().getCompound("taczoperations_relic_baseline");
         for (var contract : values()) {
