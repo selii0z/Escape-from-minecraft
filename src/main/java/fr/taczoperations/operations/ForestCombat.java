@@ -183,7 +183,7 @@ public final class ForestCombat {
             }
             {
                 // Evaluate opposing guards on every combat update to avoid target flicker.
-                for (Pillager candidate : level.getEntitiesOfClass(Pillager.class, guard.getBoundingBox().inflate(role.range), e -> e != guard && e.isAlive() && ForestRaid.currentGuard(level, e) && ((GuardRole.get(e) == GuardRole.PMC) != (role == GuardRole.PMC)) && !GuardRole.get(e).boss())) {
+                for (Pillager candidate : level.getEntitiesOfClass(Pillager.class, guard.getBoundingBox().inflate(role.range), e -> e != guard && e.isAlive() && ForestRaid.sameGuardSession(level, guard,e) && ((GuardRole.get(e) == GuardRole.PMC) != (role == GuardRole.PMC)) && !GuardRole.get(e).boss())) {
                     double distance = guard.distanceToSqr(candidate);
                     if (distance < range && guard.hasLineOfSight(candidate)) { target = candidate; range = distance; }
                 }
@@ -293,7 +293,7 @@ public final class ForestCombat {
         int squad=guard.getPersistentData().getInt("taczoperations_squad");
         if(squad<0)return;
         for(Pillager ally:level.getEntitiesOfClass(Pillager.class,guard.getBoundingBox().inflate(24),
-            e->e!=guard&&e.isAlive()&&ForestRaid.currentGuard(level,e)
+            e->e!=guard&&e.isAlive()&&ForestRaid.sameGuardSession(level,guard,e)
                 &&e.getPersistentData().getInt("taczoperations_squad")==squad
                 &&(GuardRole.get(e)==GuardRole.PMC)==(role==GuardRole.PMC))){
             Aim other=AIM.get(ally);
@@ -320,14 +320,20 @@ public final class ForestCombat {
                 var pos=net.minecraft.core.BlockPos.containing(candidate.x,candidate.y+dy,candidate.z);
                 if(!level.hasChunkAt(pos)||!level.getBlockState(pos).isAir()||!level.getBlockState(pos.above()).isAir()
                     ||!level.getBlockState(pos.below()).isFaceSturdy(level,pos.below(),net.minecraft.core.Direction.UP))continue;
-                if(!fr.taczoperations.worldgen.ForestPlan.inside(pos.getX(),pos.getZ())&&!fr.taczoperations.worldgen.IndustrialZone.inside(pos.getX(),pos.getZ()))continue;
+                if(!ForestRaid.patrolPosition(level,guard,pos))continue;
                 if(cover){
                     var eye=net.minecraft.world.phys.Vec3.atBottomCenterOf(pos).add(0,guard.getEyeHeight(),0);
                     var trace=level.clip(new net.minecraft.world.level.ClipContext(eye,target.getEyePosition(),net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,guard));
                     if(trace.getType()==net.minecraft.world.phys.HitResult.Type.MISS)continue;
                 }
                 var path=guard.getNavigation().createPath(pos,0);
-                if(path!=null&&path.canReach()&&guard.getNavigation().moveTo(path,cover?1.12:1.04))return true;
+                if(path==null||!path.canReach()||path.getNodeCount()>96)continue;
+                boolean safe=true;
+                for(int n=0;n<path.getNodeCount();n++){
+                    var node=path.getNode(n);
+                    if(!ForestRaid.patrolPosition(level,guard,new net.minecraft.core.BlockPos(node.x,node.y,node.z))){safe=false;break;}
+                }
+                if(safe&&guard.getNavigation().moveTo(path,cover?1.12:1.04))return true;
             }
         }
         return false;

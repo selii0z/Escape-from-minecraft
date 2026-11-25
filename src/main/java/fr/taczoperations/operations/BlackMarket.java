@@ -43,6 +43,9 @@ public final class BlackMarket {
         Collections.shuffle(pool,new Random(day ^ 0x7a5b3c129L));
         return List.copyOf(pool.subList(0,SIZE));
     }
+    public static ItemStack preview(long day,int index){
+        return index>=0&&index<SIZE?rotation(day).get(index).item().get():ItemStack.EMPTY;
+    }
     private static CompoundTag state(ServerPlayer player,long day) {
         var account=SupplyContract.account(player);
         var state=account.getCompound(STATE);

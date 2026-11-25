@@ -48,7 +48,25 @@ public final class ForestExpedition {
             entry.put("item", player.getInventory().getItem(slot).saveOptional(player.registryAccess()));
             items.add(entry);
         }
+        // Nested pack contents and the dedicated Curios are counted for
+        // interrupted recovery, but never restored into a native slot.
+        for(int i=0;i<player.getInventory().getContainerSize();i++)
+            appendPackContents(items,player,player.getInventory().getItem(i));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG}){
+            var stack=FieldInventoryMenu.current(FieldInventoryMenu.handler(player,id));
+            appendRecoveryItem(items,player,stack);
+            appendPackContents(items,player,stack);
+        }
         player.getPersistentData().put(RAID_INVENTORY, items);
+    }
+
+    private static void appendRecoveryItem(ListTag items,ServerPlayer p,ItemStack stack){
+        if(stack.isEmpty())return;
+        CompoundTag entry=new CompoundTag();entry.putInt("slot",-1);
+        entry.put("item",stack.saveOptional(p.registryAccess()));items.add(entry);
+    }
+    private static void appendPackContents(ListTag items,ServerPlayer p,ItemStack stack){
+        for(var content:FieldPack.contents(stack))appendRecoveryItem(items,p,content);
     }
 
     // A full snapshot is safe only before the session starts (failed duo
@@ -79,11 +97,39 @@ public final class ForestExpedition {
             if(keep==0)inventory.setItem(i,ItemStack.EMPTY);
             else if(keep<item.getCount())item.setCount(keep);
         }
+        // Curios gear and pack contents share the same quantity allowance.
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG}){
+            var handler=FieldInventoryMenu.handler(player,id);
+            var item=FieldInventoryMenu.current(handler);
+            if(item.isEmpty())continue;
+            String key=recoveryKey(item);
+            int keep=Math.min(item.getCount(),allowance.getOrDefault(key,0));
+            allowance.put(key,allowance.getOrDefault(key,0)-keep);
+            if(keep==0)handler.setStackInSlot(0,ItemStack.EMPTY);
+        }
+        for(int i=0;i<inventory.getContainerSize();i++)trimPack(inventory.getItem(i),allowance);
+        for(String id:new String[]{FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})
+            trimPack(FieldInventoryMenu.current(FieldInventoryMenu.handler(player,id)),allowance);
         inventory.setChanged();
+    }
+    private static void trimPack(ItemStack carrier,java.util.Map<String,Integer> allowance){
+        if(!(carrier.getItem() instanceof FieldPack))return;
+        var contents=FieldPack.contents(carrier);
+        for(int i=0;i<contents.size();i++){
+            var stack=contents.get(i);
+            if(stack.isEmpty())continue;
+            String key=recoveryKey(stack);
+            int keep=Math.min(stack.getCount(),allowance.getOrDefault(key,0));
+            allowance.put(key,allowance.getOrDefault(key,0)-keep);
+            if(keep==0)contents.set(i,ItemStack.EMPTY);
+            else if(keep<stack.getCount())stack.setCount(keep);
+        }
+        FieldPack.replaceContents(carrier,contents);
     }
     private static String recoveryKey(ItemStack item){
         if(item.getItem() instanceof com.tacz.guns.api.item.IGun gun)return "gun/"+gun.getGunId(item);
         if(item.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)return "ammo/"+ammo.getAmmoId(item);
+        if(item.getItem() instanceof com.tacz.guns.api.item.IAttachment attachment)return "attachment/"+attachment.getAttachmentId(item);
         return "item/"+net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem());
     }
 
@@ -214,8 +260,8 @@ public final class ForestExpedition {
             return false;
         }
         atmosphere(player, point);
-        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · 3 sorties : or (gratuite), fer (clé), émeraude (600 crédits)."
-            : "Forêt Noire · sortie principale sur le bloc d’or. Active le relais pour la sortie secondaire."));
+        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
+            : "Forêt Noire · sortie principale sur le bloc d’or. Relais secondaire selon la session."));
         if(industrial){
             BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
             player.sendSystemMessage(Component.literal("Sortie à clé · X "+key.getX()+" Z "+key.getZ()+" | Sortie payante · X "+paid.getX()+" Z "+paid.getZ()));
@@ -246,7 +292,8 @@ public final class ForestExpedition {
         ForestRaid.populateNear(player);
         BlockPos primary = industrial ? industrialPosition(IndustrialZone.EXIT) : ForestLandmarks.position(ForestPlan.EXTRACTION);
         BlockPos secondary = industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
-        boolean relay = !industrial && point.getBoolean("relay");
+        boolean relayAvailable=!industrial&&ForestRaid.secondaryOpen(player,0);
+        boolean relay = relayAvailable && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
         if(industrial && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
@@ -254,8 +301,12 @@ public final class ForestExpedition {
             boolean key=feet.equals(keyExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.IRON_BLOCK);
             boolean paid=feet.equals(paidExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.EMERALD_BLOCK);
             if(key||paid){
+                if(!ForestRaid.secondaryOpen(player,key?1:2)){
+                    if(player.tickCount%20==0)player.displayClientMessage(Component.literal("Sortie fermée pour ce raid."),true);
+                    return;
+                }
                 var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
-                boolean eligible=key?player.getInventory().items.stream().anyMatch(s->s.is(keyItem))
+                boolean eligible=key?CarriedStorage.of(player).count(s->s.is(keyItem))>0
                     :SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST;
                 if(!eligible){
                     if(player.tickCount%20==0)player.displayClientMessage(Component.literal(key?"Extraction verrouillée · clé industrielle requise.":"Extraction payante · "+IndustrialZone.PAID_EXIT_COST+" crédits requis."),true);
@@ -285,7 +336,7 @@ public final class ForestExpedition {
         }
         if (player.tickCount % 20 == 0) {
             if (!industrial && feet.equals(secondary) && !relay) {
-                player.displayClientMessage(Component.literal("Sortie verrouillée · active le relais de la station."), true);
+                player.displayClientMessage(Component.literal(relayAvailable?"Sortie verrouillée · active le relais de la station.":"Sortie fermée pour ce raid."), true);
                 return;
             }
             if (!SupplyContract.showExtraction(player)) {
@@ -296,10 +347,10 @@ public final class ForestExpedition {
             if(industrial){
                 BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT),paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
                 var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
-                if(player.getInventory().items.stream().anyMatch(s->s.is(keyItem)) && keyExit.distSqr(feet)<extraction.distSqr(feet)){
+                if(ForestRaid.secondaryOpen(player,1)&&CarriedStorage.of(player).count(s->s.is(keyItem))>0 && keyExit.distSqr(feet)<extraction.distSqr(feet)){
                     extraction=keyExit;exitLabel="Extraction (clé)";
                 }
-                if(SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
+                if(ForestRaid.secondaryOpen(player,2)&&SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
                     extraction=paidExit;exitLabel="Extraction (600 cr.)";
                 }
             }
@@ -321,6 +372,10 @@ public final class ForestExpedition {
         }
         event.setCancellationResult(InteractionResult.SUCCESS);
         event.setCanceled(true);
+        if(!ForestRaid.secondaryOpen(player,0)){
+            player.sendSystemMessage(Component.literal("Relais indisponible pour ce raid."));
+            return;
+        }
         player.getPersistentData().getCompound(RETURN_POINT).putBoolean("relay", true);
         BlockPos exit = ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         player.sendSystemMessage(Component.literal("Relais activé. Sortie secondaire ouverte pour toi · X "

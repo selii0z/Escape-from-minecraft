@@ -70,6 +70,16 @@ public enum OperationsShop {
     public record Offer(String title, int price, Action action, Supplier<ItemStack> stack,
                         RaidRelic key, int rankXp) {
         public boolean accessory(){return title.startsWith("Accessoire · ");}
+        public int shopCategory(){
+            if(action==Action.REPAIR||action==Action.UNLOCK)return 6;
+            if(accessory())return 3;
+            var item=stack.get().getItem();
+            if(item instanceof com.tacz.guns.api.item.IGun)return 1;
+            if(item instanceof com.tacz.guns.api.item.IAmmo)return 2;
+            if(item instanceof net.minecraft.world.item.ArmorItem||item instanceof FieldPack)return 4;
+            if(item instanceof FieldMedicine||item==Items.GOLDEN_APPLE||item==Items.POTION)return 5;
+            return 6;
+        }
         public int loyaltyLevel() {
             if (action != Action.BUY) return 1;
             int level = rankXp >= 180 ? 4 : rankXp >= 65 ? 3 : rankXp > 0 ? 2 : 1;
@@ -129,7 +139,8 @@ public enum OperationsShop {
                 offers.add(buy("Kit hémostatique",120,()->medical("hemostat"),null,0));
                 offers.add(buy("Kit de premiers secours",180,()->medical("medkit"),null,0));
                 offers.add(buy("Salewa",150,()->medical("salewa"),null,0));
-                offers.add(buy("Rations de terrain", 80, () -> new ItemStack(Items.COOKED_BEEF, 4), null, 0));
+                offers.add(buy("Bouteille d'eau",65,()->net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,net.minecraft.world.item.alchemy.Potions.WATER),null,0));
+                offers.add(buy("Rations de terrain", 80, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","field_ration")),4), null, 0));
                 offers.add(buy("Soupe de survie", 55, () -> new ItemStack(Items.RABBIT_STEW), null, 0));
                 offers.add(buy("Pomme dorée", 190, () -> new ItemStack(Items.GOLDEN_APPLE), RaidRelic.WATCH, 0));
                 offers.add(buy("Potion de soin", 140, () -> net.minecraft.world.item.alchemy.PotionContents.createItemStack(
@@ -137,6 +148,17 @@ public enum OperationsShop {
                 offers.add(new Offer("Reprise · pomme dorée", 45, Action.SELL, () -> new ItemStack(Items.GOLDEN_APPLE), null, 0));
             }
             case SALVAGER -> {
+                int[] bagPrices={500,1200,3000,6000,12000},bagRanks={0,20,20,65,180};
+                String[] bags={"Petit sac","Sac de patrouille","Sac tactique","Sac militaire","Sac d'expédition"};
+                for(int i=0;i<bags.length;i++){
+                    final int tier=i;
+                    offers.add(buy(bags[i]+" · "+FieldPack.CAPACITY[i]+" cases",bagPrices[i],()->FieldPack.create(false,tier),null,bagRanks[i]));
+                }
+                int[] rigPrices={700,1800},rigRanks={0,20};
+                for(int i=0;i<rigPrices.length;i++){
+                    final int tier=i;
+                    offers.add(buy("Gilet tactique · "+FieldPack.RIG_CAPACITY[i]+" cases",rigPrices[i],()->FieldPack.create(true,tier),null,rigRanks[i]));
+                }
                 offers.add(buy("Lot de torches", 45, () -> new ItemStack(Items.TORCH, 24), RaidRelic.PLAQUE, 0));
                 offers.add(buy("Lot de flèches", 65, () -> new ItemStack(Items.ARROW, 24), RaidRelic.RADIO, 0));
                 offers.add(buy("Veste en cuir", 160, () -> new ItemStack(Items.LEATHER_CHESTPLATE), null, 0));
@@ -265,20 +287,27 @@ public enum OperationsShop {
 
     public static boolean matchesSale(ItemStack sample,ItemStack candidate){
         if(sample.isEmpty()||candidate.isEmpty())return false;
+        // Never destroy contents by reselling an equipped storage item as an empty bag.
+        if(candidate.getItem() instanceof FieldPack&&FieldPack.contents(candidate).stream().anyMatch(item->!item.isEmpty()))return false;
         if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
             return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
                 &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
+        if(sample.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)
+            return candidate.getItem() instanceof com.tacz.guns.api.item.IAmmo actual&&java.util.Objects.equals(ammo.getAmmoId(sample),actual.getAmmoId(candidate));
+        if(sample.getItem() instanceof com.tacz.guns.api.item.IAttachment attachment)
+            return candidate.getItem() instanceof com.tacz.guns.api.item.IAttachment actual&&java.util.Objects.equals(attachment.getAttachmentId(sample),actual.getAttachmentId(candidate));
         return candidate.is(sample.getItem());
     }
     static int saleCount(ServerPlayer player,Offer offer){
         if(offer.action()!=Action.SELL)return 0;
         ItemStack sample=offer.stack().get();
-        return player.getInventory().items.stream().filter(s->matchesSale(sample,s)).mapToInt(ItemStack::getCount).sum();
+        return CarriedStorage.of(player).count(s->matchesSale(sample,s));
     }
     String trade(ServerPlayer player,int index,long quotedDay){
         return trade(player,index,quotedDay,1,false);
     }
     String trade(ServerPlayer player,int index,long quotedDay,int quantity,boolean bulk) {
+        if(!PlayerMarket.available(player))return "Transactions disponibles uniquement hors raid, en survie.";
         var offers = offers();
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
@@ -315,20 +344,14 @@ public enum OperationsShop {
             long today=ResaleMarket.day();
             if(quotedDay!=today)return "Les tarifs ont changé. Vérifie le nouveau prix avant de vendre.";
             int price=ResaleMarket.price(offer,today);
-            var matching=player.getInventory().items.stream().filter(s->matchesSale(stack,s)).toList();
-            int available=matching.stream().mapToInt(ItemStack::getCount).sum();
+            var storage=CarriedStorage.of(player);
+            int available=storage.count(s->matchesSale(stack,s));
             if(quantity<=0||available<quantity)return "Quantité indisponible. Vérifie ton inventaire.";
             if(bulk&&available!=quantity)return "Quantité modifiée. Vérifie le nouveau montant.";
             long total=(long)price*quantity;
             if(total>Integer.MAX_VALUE-(long)balance)return "Solde maximal atteint.";
             // Validate the entire quote before touching any stack.
-            int remaining=quantity;
-            for(ItemStack candidate:matching){
-                int take=Math.min(remaining,candidate.getCount());
-                candidate.shrink(take);remaining-=take;
-                if(remaining==0)break;
-            }
-            player.getInventory().setChanged();
+            if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
@@ -341,15 +364,17 @@ public enum OperationsShop {
             return "Fidélité " + loyalty + " requise · " + requiredReputation(loyalty) + " rép.";
         if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id))
             return "Accès permanent requis.";
-        if (balance < offer.price) return "Crédits insuffisants.";
+        if(quantity<1||quantity>64)return "Quantité invalide.";
+        long total=(long)offer.price*quantity;
+        if(total>balance||total<0)return "Crédits insuffisants.";
         var inventory = player.getInventory();
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
             : ItemStack.isSameItemSameComponents(slot, stack) ? slot.getMaxStackSize() - slot.getCount() : 0).sum();
-        if (capacity < stack.getCount()) return "Inventaire plein.";
-        int purchased=stack.getCount();
-        inventory.add(stack);
-        account.putInt("credits", balance - offer.price);
-        TradeJournal.record(player,"Achat",title,offer.title(),purchased,-offer.price());
-        return "Achat ajouté à ton inventaire.";
+        int purchased=stack.getCount()*quantity;
+        if(capacity<purchased)return "Inventaire plein : libère des cases pour le lot complet.";
+        for(int i=0;i<quantity;i++)inventory.add(stack.copy());
+        account.putInt("credits",balance-(int)total);
+        TradeJournal.record(player,"Achat",title,offer.title(),purchased,-total);
+        return "Achat · "+purchased+" objet(s) · -"+total+" crédits.";
     }
 }

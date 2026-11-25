@@ -54,5 +54,18 @@
   "block.taczoperations.raid_weaponbox": "Caisse militaire",
   "block.taczoperations.raid_safe": "Coffre-fort",
   "block.taczoperations.raid_pc": "Ordinateur",
-  "block.taczoperations.raid_cabinet": "Armoire à dossiers"
+  "block.taczoperations.raid_cabinet": "Armoire à dossiers",
+  "item.taczoperations.backpack_small": "Petit sac",
+  "item.taczoperations.backpack_patrol": "Sac de patrouille",
+  "item.taczoperations.backpack_tactical": "Sac tactique",
+  "item.taczoperations.backpack_military": "Sac militaire",
+  "item.taczoperations.backpack_expedition": "Sac d'expédition",
+  "item.taczoperations.backpack_elite": "Sac d'élite",
+  "item.taczoperations.rig_patrol": "Gilet de patrouille",
+  "item.taczoperations.rig_tactical": "Gilet tactique",
+  "item.taczoperations.rig_elite": "Gilet d'élite",
+  "curios.identifier.efm_goggles": "Lunettes tactiques",
+  "curios.identifier.efm_backpack": "Sac à dos",
+  "curios.identifier.efm_rig": "Gilet tactique",
+  "item.taczoperations.field_ration": "Ration de terrain"
 }

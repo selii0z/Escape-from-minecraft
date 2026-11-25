@@ -41,6 +41,12 @@ public final class RaidInjuryHud{
         g.fill(x,y,x+2,y+17,injured?0xffdcaa66:0xff9db77e);
         g.drawString(mc.font,injured?"ÉTAT · BLESSURES":"ÉTAT · STABLE",x+7,y+5,injured?0xffe5ce88:0xffb5c9a4,false);
         y+=19;
+        if(y+39<=mc.getWindow().getGuiScaledHeight()-65){
+            g.fill(x,y,x+142,y+38,0xca171d18);
+            survivalMeter(g,mc,x+5,y+3,"Hydratation",state.water(),0xff83b7ce);
+            survivalMeter(g,mc,x+5,y+20,"Énergie",state.energy(),0xffcbb776);
+            y+=40;
+        }
         if(state.bleed()>0){
             row(g,mc,x,y,state.bleed()==2?"Hémorragie":"Saignement",state.bleed()==2?"Hémostatique / bandage":"Bandage",0xffe07b72);y+=25;
         }
@@ -102,6 +108,13 @@ public final class RaidInjuryHud{
                 }
             }
         }
+    }
+    private static void survivalMeter(GuiGraphics g,Minecraft mc,int x,int y,String label,int value,int normalColor){
+        int color=value<=20?0xffe07b72:normalColor;
+        String percent=value+" %";
+        g.drawString(mc.font,label,x,y,0xffd3dbcc,false);
+        g.drawString(mc.font,percent,x+132-mc.font.width(percent),y,color,false);
+        meter(g,x,y+11,132,value,100,color);
     }
     private static int conditionColor(int value,int max){
         return value*5<=max?0xffe07b72:value*10<max*7?0xffe5ce88:0xffa6bf7d;

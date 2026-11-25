@@ -439,7 +439,7 @@ public enum SupplyContract {
     }
 
     private static int count(ServerPlayer player, Item item) {
-        return player.getInventory().items.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+        return CarriedStorage.of(player).count(stack->stack.is(item));
     }
 
     static void extracted(ServerPlayer player, boolean industrial) {
@@ -456,7 +456,7 @@ public enum SupplyContract {
                 || contract.objective == Objective.BOSS_INTEL && player.getPersistentData().getBoolean("taczoperations_raid_boss"))
                 && baseline.contains(contract.relic.id)
                 && count(player, contract.relic.item()) - baseline.getInt(contract.relic.id) >= contract.amount
-                && consume(player, contract.relic.item(), contract.amount)) {
+                && consumeRaidOrigin(player, contract.relic.item(), contract.amount)) {
                 contract.finish(player);
             }
         }
@@ -488,20 +488,12 @@ public enum SupplyContract {
         player.getPersistentData().remove("taczoperations_relic_baseline");
     }
 
+    private static boolean consumeRaidOrigin(ServerPlayer player, Item item,int amount){
+        return CarriedStorage.of(player).consume(s->s.is(item)&&RaidOrigin.found(s),amount);
+    }
+
     static boolean consume(ServerPlayer player, Item item, int amount) {
-        var inventory = player.getInventory();
-        int count = inventory.items.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
-        if (count < amount) return false;
-        int remaining = amount;
-        for (ItemStack stack : inventory.items) {
-            if (!stack.is(item)) continue;
-            int used = Math.min(remaining, stack.getCount());
-            stack.shrink(used);
-            remaining -= used;
-            if (remaining == 0) break;
-        }
-        inventory.setChanged();
-        return true;
+        return CarriedStorage.of(player).consume(s->s.is(item),amount);
     }
 
     private void advance(ServerPlayer player) {

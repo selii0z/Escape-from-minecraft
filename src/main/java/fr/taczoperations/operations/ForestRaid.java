@@ -129,8 +129,10 @@ public final class ForestRaid extends SavedData {
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
-        raid.bossConvergence=new Random(raid.seed^0x72c6aee3L).nextInt(20)==0;
-        raid.selectedBosses=raid.bossConvergence?BossRoster.all():BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed);
+        int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
+        raid.bossConvergence=bossRoll<5;
+        raid.selectedBosses=raid.bossConvergence?BossRoster.all():bossRoll<15?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,true)
+            :bossRoll<80?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,false):List.of();
         if(raid.bossConvergence){
             var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
             player.sendSystemMessage(warning);
@@ -170,10 +172,14 @@ public final class ForestRaid extends SavedData {
         raid.dropLanded = false;
         raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
         player.getPersistentData().putUUID(PLAYER, raid.id);
+        RaidSurvival.begin(player);
         SupplyContract.departure(player);
+        raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
+            RaidSurvival.begin(partner);
             SupplyContract.departure(partner);
+            raid.announceExits(partner);
         }
         // Clear stale containers in the chunks around the spawn immediately,
         // rather than waiting for the first scheduled player tick.
@@ -184,6 +190,19 @@ public final class ForestRaid extends SavedData {
         raid.setDirty();
     }
 
+    // Shared deterministic availability for every participant in the session.
+    private boolean exitOpen(int index){
+        return new Random(seed^0x3fa1b7c9L^(index*0x9e3779b9L)).nextInt(100)<(index==0?65:index==1?65:50);
+    }
+    static boolean secondaryOpen(ServerPlayer player,int index){
+        var raid=forPlayer(player);
+        return raid!=null&&raid.owns(player)&&raid.exitOpen(index);
+    }
+    private void announceExits(ServerPlayer p){
+        String exits=industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
+            :"Sortie principale ouverte · relais : "+(exitOpen(0)?"activable":"indisponible pour ce raid");
+        p.sendSystemMessage(Component.literal(exits));
+    }
     // Offline players retain their raid slot for a limited reconnection window.
     static void finishParticipant(ServerPlayer player) {
         ForestRaid raid=forPlayer(player);
@@ -228,6 +247,7 @@ public final class ForestRaid extends SavedData {
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
         if (isParticipant(player)) {
             var session=forPlayer(player);
+            if(session!=null)session.announceExits(player);
             if(session!=null&&session.bossConvergence)player.sendSystemMessage(Component.literal("ALERTE · Convergence des boss en cours."));
             player.sendSystemMessage(Component.literal(
                 "Expédition reprise. Ton raid est toujours actif : rejoins l'extraction pour conserver ton butin."));
@@ -364,7 +384,7 @@ public final class ForestRaid extends SavedData {
             cache.setItem(indices.get(cursor++),RaidRelic.roll(rng).stack());
             if(rng.nextInt(100)<25)cache.setItem(indices.get(cursor++),RaidRelic.roll(rng).stack());
         }
-        cache.setChanged();
+        RaidOrigin.markContainer(cache);
         return true;
     }
 
@@ -526,7 +546,7 @@ public final class ForestRaid extends SavedData {
         if (rng.nextInt(100)<5) barrel.setItem(15,RaidRelic.OMEGA.stack());
         if (rng.nextInt(100)<8) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
             net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))));
-        barrel.setChanged();
+        RaidOrigin.markContainer(barrel);
         return true;
     }
 
@@ -675,6 +695,45 @@ public final class ForestRaid extends SavedData {
         }
         var data=guard.getPersistentData();
         return new BlockPos(data.getInt("guard_home_x"),data.getInt("guard_home_y"),data.getInt("guard_home_z"));
+    }
+
+    /** A stable loop of nearby sectors, shared by the members of a squad. */
+    static List<BlockPos> patrolRoute(ServerLevel level,Pillager guard){
+        ForestRaid raid=at(level,guard.blockPosition());
+        if(!raid.matches(guard.getPersistentData(),ENEMY))return List.of();
+        int squad=guard.getPersistentData().getInt("taczoperations_squad");
+        if(squad<0||squad>=raid.encounterPoints.size())return List.of();
+        var rng=new Random(raid.seed^((squad+1L)*0x3a8bd7f19L));
+        boolean pmc=raid.pmcGroups.get(squad);
+        if(rng.nextInt(100)>=(pmc?75:45))return List.of();
+        int maxDistance=raid.industrial?95:135;
+        var points=raid.encounterPoints;
+        var visited=new java.util.ArrayList<Integer>();
+        visited.add(squad);
+        int current=squad;
+        int count=3+rng.nextInt(3);
+        while(visited.size()<count){
+            final int from=current;
+            var candidates=new java.util.ArrayList<Integer>();
+            for(int i=0;i<points.size();i++){
+                if(visited.contains(i))continue;
+                long d=pointDistanceSquared(points.get(from),points.get(i));
+                long home=pointDistanceSquared(points.get(squad),points.get(i));
+                if(d>=24L*24L&&d<=(long)maxDistance*maxDistance&&home<=(long)maxDistance*maxDistance)candidates.add(i);
+            }
+            if(candidates.isEmpty())break;
+            candidates.sort(java.util.Comparator.comparingLong(i->pointDistanceSquared(points.get(from),points.get(i))));
+            current=candidates.get(rng.nextInt(Math.min(3,candidates.size())));
+            visited.add(current);
+        }
+        if(visited.size()<2)return List.of();
+        return visited.stream().map(points::get).map(p->raid.industrial?ForestExpedition.industrialPosition(p):ForestLandmarks.position(p)).toList();
+    }
+
+    static boolean sameGuardSession(ServerLevel level,Pillager first,Pillager second){
+        return currentGuard(level,first)&&currentGuard(level,second)
+            &&first.getPersistentData().hasUUID(ENEMY)&&second.getPersistentData().hasUUID(ENEMY)
+            &&first.getPersistentData().getUUID(ENEMY).equals(second.getPersistentData().getUUID(ENEMY));
     }
 
     static RaidAtmosphere atmosphere(ServerPlayer player){
@@ -1045,7 +1104,7 @@ public final class ForestRaid extends SavedData {
             barrel.setItem(12,BallisticVest.create(slot,tier,BallisticVest.classColor(tier)));
             barrel.setItem(18,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","salewa")),2));
             barrel.setItem(24,new ItemStack(Items.GOLD_INGOT,4+random.nextInt(5)));
-            barrel.setChanged();
+            RaidOrigin.markContainer(barrel);
             return true;
         }
         ItemStack labeled = new ItemStack(Items.BARREL);
@@ -1109,8 +1168,10 @@ public final class ForestRaid extends SavedData {
             String medical=roll<30?"bandage":roll<50?"salewa":roll<65?"splint":roll<75?"hemostat":roll<80?"medkit":null;
             if(medical!=null)barrel.setItem(22,medicalLoot(medical,medical.equals("bandage")?1+random.nextInt(3):1));
             if(random.nextInt(100)<20)barrel.setItem(21,medicalLoot("bandage",1));
+            if(random.nextInt(100)<30)barrel.setItem(25,medicalLoot("field_ration",1+random.nextInt(2)));
+            if(random.nextInt(100)<45)barrel.setItem(24,net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,net.minecraft.world.item.alchemy.Potions.WATER));
         }
-        barrel.setChanged();
+        RaidOrigin.markContainer(barrel);
         return true;
     }
 
@@ -1283,9 +1344,14 @@ public final class ForestRaid extends SavedData {
             corpse.put(19,new ItemStack(industrialKey()));
         }
         if(role.boss()){
+            int packRoll=guard.getRandom().nextInt(100);
+            if(packRoll<8)corpse.put(22,FieldPack.create(false,5));
+            else if(packRoll<38)corpse.put(22,FieldPack.create(false,3+guard.getRandom().nextInt(2)));
+            if(guard.getRandom().nextInt(100)<12)corpse.put(23,FieldPack.create(true,2));
             corpse.put(20,BossLoot.spare(guard));
             corpse.put(21,BossLoot.bonus(guard));
         }
+        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
         if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
         if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,new ItemStack(industrialKey()));
         if (level.addFreshEntity(corpse)) {

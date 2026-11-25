@@ -76,6 +76,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private RaidLoadout loadout;
     private int lastLoadoutTick=Integer.MIN_VALUE;
     private int historyScroll;
+    private int shopSelection=0;
+    private int shopLots=1;
+    private int marketSelection=0;
+    private net.minecraft.client.gui.components.EditBox marketPrice;
+    private java.util.List<OperationsShop.Offer> shopCatalogue=java.util.List.of();
     private static final int HISTORY_ROWS = 4;
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
@@ -138,40 +143,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 widget(430, 376, 110, 22, "", () -> {}, () -> false,
                     (g, hover) -> centered(g, (view.page() + 1) + " / " + view.pages(), 485, 382, 1, SOFT, false));
             }
-            case OperationsMenu.SHOP -> {
-                var vendor = vendor();
-                var offers = vendor.offers();
-                int page = view.page() % OperationsMenu.VENDOR_PAGES;
-                for (int i = 0; i < view.shopRows().size(); i++) {
-                    int index=view.shopRows().get(i);
-                    if(index<0||index>=offers.size())continue;
-                    var offer = offers.get(index);
-                    final int action = OperationsMenu.TRADE_FIRST + i;
-                    if(offer.action()==OperationsShop.Action.SELL){
-                        int count=view.saleCounts().get(i);
-                        int all=OperationsMenu.SELL_ALL_FIRST+i;
-                        int price=fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
-                        simple(446,136+i*41,42,24,"x1",()->send(action),()->false,
-                            ()->count>0&&(long)view.credits()+price<=Integer.MAX_VALUE);
-                        simple(491,136+i*41,49,24,"Tout",()->send(all),()->false,
-                            ()->count>1&&(long)view.credits()+(long)price*count<=Integer.MAX_VALUE);
-                    }else simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
-                        () -> offer.action() == OperationsShop.Action.UNLOCK ? !unlocked(offer.key())
-                            : offer.action() != OperationsShop.Action.BUY || (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) >= offer.loyaltyLevel()
-                            && (offer.key() == null || unlocked(offer.key()))));
-                }
-                for (var merchant : OperationsShop.values()) {
-                    simple(584, 218 + merchant.ordinal() * 35, 225, 28, merchant.title,
-                        () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
-                }
-                pager(page,view.shopPages());
-                if(vendor==OperationsShop.ARMORER)simple(241,376,61,22,"Access.",()->send(OperationsMenu.SHOP_ACCESSORIES),()->view.shopAccessories(),()->true);
-                simple(423,83,125,20,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
-                simple(423,105,125,20,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
-                simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
-                    ()->send(OperationsMenu.SHOP_OWNED_FILTER),()->view.shopOwned(),()->true);
-                simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
-            }
+            case OperationsMenu.SHOP -> shopWidgets();
+            case OperationsMenu.PLAYER_MARKET -> playerMarketWidgets();
             case OperationsMenu.MERCHANT_ORDERS -> {
                 simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
                 for(int i=0;i<4;i++){
@@ -188,17 +161,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 simple(173,376,65,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->view.page()>0);
                 simple(750,376,65,22,"›",()->send(OperationsMenu.NEXT),()->false,()->view.page()+1<view.pages());
             }
-            case OperationsMenu.BLACK_MARKET -> {
-                simple(555,79,125,29,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
-                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
-                for(int i=0;i<6;i++){
-                    String[] offer=view.market().get(i+1).split("\\|",-1);
-                    final int action=OperationsMenu.MARKET_FIRST+i;
-                    simple(700,135+i*41,110,25,offer[2].equals("0")?"Épuisé":"Acheter",()->send(action),()->false,
-                        ()->!offer[2].equals("0")&&offer[3].equals("1")&&view.credits()>=Integer.parseInt(offer[1]));
-                }
-                simple(700,386,110,22,"Actualiser",()->send(OperationsMenu.REFRESH));
-            }
+            case OperationsMenu.BLACK_MARKET -> blackMarketWidgets();
             case OperationsMenu.GROUP -> groupWidgets();
             case OperationsMenu.SETTINGS -> {
                 simple(420,145,120,29,view.showExtraction()?"Masquer":"Afficher",()->send(OperationsMenu.TOGGLE_EXTRACTION));
@@ -208,7 +171,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -326,7 +289,40 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private boolean active(int tab) {
-        return tab == menu.view().tab() || (tab == OperationsMenu.FOREST && menu.view().tab() == OperationsMenu.GROUP);
+        return tab == menu.view().tab() || (tab == OperationsMenu.FOREST && menu.view().tab() == OperationsMenu.GROUP)
+            ||(tab==OperationsMenu.SHOP&&menu.view().tab()==OperationsMenu.PLAYER_MARKET);
+    }
+
+    @Override
+    public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
+        super.render(g,mouseX,mouseY,partial);
+        if(scale<=0||minecraft==null||minecraft.player==null)return;
+        double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
+        ItemStack hovered=ItemStack.EMPTY;
+        int tab=menu.view().tab();
+        if(tab==OperationsMenu.SHOP){
+            if(x>=169&&x<545&&y>=169&&y<313){
+                int col=(int)(x-169)/47,row=(int)(y-169)/48;
+                if((x-169)%47<45&&(y-169)%48<45){
+                    var offer=shopOffer(row*8+col);
+                    if(offer!=null)hovered=offer.stack().get();
+                }
+            }else if(x>=581&&x<815&&y>=265&&y<369){
+                int k=((int)(y-265)/26)*9+(int)(x-581)/26;
+                if(k>=0&&k<36)hovered=minecraft.player.getInventory().getItem(k<27?k+9:k-27);
+            }
+        }else if(tab==OperationsMenu.PLAYER_MARKET&&x>=169&&x<545&&y>=171&&y<330){
+            int index=((int)(y-171)/53)*4+(int)(x-169)/94;
+            var rows=menu.view().playerMarket().offers();
+            if(index>=0&&index<rows.size()&&(x-169)%94<90&&(y-171)%53<50)hovered=rows.get(index).item();
+        }else if(tab==OperationsMenu.BLACK_MARKET&&x>=173&&x<617&&y>=142&&y<212){
+            int index=(int)(x-173)/74;
+            if((x-173)%74<70)hovered=fr.taczoperations.operations.BlackMarket.preview(Long.parseLong(menu.view().market().getFirst()),index);
+        }
+        if(!hovered.isEmpty()){
+            if(DiscoveryClient.unknown(hovered))g.renderTooltip(font,Component.literal("Objet non identifié · examiner"),mouseX,mouseY);
+            else g.renderTooltip(font,hovered,mouseX,mouseY);
+        }
     }
 
     @Override
@@ -497,55 +493,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         505,y+16,.80F,SOFT,false);
                 }
             }
-            case OperationsMenu.SHOP -> {
-                var vendor = vendor();
-                pageTitle(g, "▱", upper(vendor.title), view.shopAccessories()?"Accessoires · sélection":fit(vendor.specialty,210));
-                var offers = vendor.offers();
-                if(view.shopRows().isEmpty()){
-                    text(g,view.shopAccessories()?"Aucun accessoire proposé dans ce pack.":"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);
-                    text(g,"Désactive le filtre pour revoir son catalogue.",181,170,.84F,SOFT,false);
-                }
-                for (int i = 0; i < view.shopRows().size(); i++) {
-                    int index=view.shopRows().get(i);
-                    if(index<0||index>=offers.size())continue;
-                    var offer = offers.get(index);
-                    int y = 128 + i * 41;
-                    panel(g, 169, y, 379, 37, DARK);
-                    boolean locked = offer.action() == OperationsShop.Action.BUY &&
-                        (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) < offer.loyaltyLevel()
-                         || offer.key() != null && !unlocked(offer.key()));
-                    if(offer.action()!=OperationsShop.Action.SELL)
-                        text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
-                    String cost = switch (offer.action()) {
-                        case BUY -> offer.price() + " crédits";
-                        case REPAIR -> vendor==OperationsShop.ARMORER?"8 cr. / % manquant · min. 50":offer.price()+" crédits";
-                        case SELL -> {
-                            long day=Long.parseLong(view.market().getFirst());
-                            int price=fr.taczoperations.operations.ResaleMarket.price(offer,day);
-                            int variation=fr.taczoperations.operations.ResaleMarket.variation(offer,day);
-                            int count=view.saleCounts().get(i);
-                            yield "+"+price+" cr/u ("+(variation>0?"+":"")+variation+"%) · "+count+" en stock";
-                        }
-                        case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
-                    };
-                    String requirement = offer.requirement();
-                    if (offer.action() == OperationsShop.Action.BUY && offer.loyaltyLevel() > 1)
-                        requirement += " · Niv. " + OperationsShop.requiredPlayerLevel(offer.loyaltyLevel());
-                    int priceColor=GOLD;
-                    if(offer.action()==OperationsShop.Action.SELL){
-                        int change=fr.taczoperations.operations.ResaleMarket.variation(offer,Long.parseLong(view.market().getFirst()));
-                        priceColor=change>0?LIME:change<0?0xffdf9c94:SOFT;
-                    }
-                    if(offer.action()==OperationsShop.Action.SELL){
-                        int count=view.saleCounts().get(i);
-                        long total=(long)count*fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
-                        text(g,fit((locked?"[Verrouillé] ":"")+offer.title(),250),181,y+5,.94F,WHITE,true);
-                        text(g,fit(cost,250),181,y+16,.80F,priceColor,false);
-                        text(g,"Total : "+numberLong(total)+" cr.",181,y+26,.80F,GOLD,false);
-                    }else text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
-                        181, y + 23, .95F, priceColor, false);
-                }
-            }
+            case OperationsMenu.SHOP -> drawShop(g);
+            case OperationsMenu.PLAYER_MARKET -> drawPlayerMarket(g);
             case OperationsMenu.MERCHANT_ORDERS -> {
                 text(g,"COMMANDES SPÉCIALES",173,82,1.50F,GOLD,true);
                 text(g,"Quatre livraisons quotidiennes · renouvellement à minuit UTC",173,108,.9F,SOFT,false);
@@ -585,20 +534,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 }
                 centered(g,(view.page()+1)+" / "+view.pages(),495,382,1,SOFT,false);
             }
-            case OperationsMenu.BLACK_MARKET -> {
-                text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
-                text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
-                for(int i=0;i<6;i++){
-                    String[] o=view.market().get(i+1).split("\\|",-1);
-                    int y=128+i*41;
-                    panel(g,169,y,650,37,DARK);
-                    text(g,fit(o[0],280),185,y+5,1.1F,WHITE,true);
-                    text(g,fit(o[4],300),185,y+22,.85F,o[3].equals("1")?SOFT:0xffdf9c94,false);
-                    text(g,o[1]+" crédits",510,y+5,1.05F,GOLD,true);
-                    text(g,"Stock : "+o[2],510,y+22,.88F,SOFT,false);
-                }
-                text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
-            }
+            case OperationsMenu.BLACK_MARKET -> drawBlackMarket(g);
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
                 panel(g, 169, 130, 379, 91, DARK);
@@ -689,23 +625,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             default -> { }
         }
         if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL || view.tab()==OperationsMenu.MERCHANT_ORDERS) return;
-        if (view.tab() == OperationsMenu.SHOP) {
-            var vendor = vendor();
-            panel(g, 578, 88, 239, 115, DARK);
-            image(g, texture("merchant_" + vendor.name().toLowerCase(java.util.Locale.ROOT)), 593, 102, 62, 82);
-            text(g, vendor.title, 669, 109, 1.2F, GOLD, true);
-            text(g,"Revente possible : "+numberLong(view.shopValue())+" cr.",585,191,.85F,LIME,true);
-            int reputation = view.reputation().get(vendor.ordinal());
-            int loyalty = OperationsShop.reputationLevel(reputation,view.experience());
-            text(g, "Fidélité " + loyalty + " / 4", 669, 130, 1.0F, GOLD, true);
-            text(g, loyalty == 4 ? "Fidélité maximale" : reputation + " / " + OperationsShop.nextReputation(reputation,view.experience()) + " rép.", 669, 148, .85F, SOFT, false);
-            if (loyalty < 4) {
-                int required = OperationsShop.requiredPlayerLevel(loyalty+1);
-                boolean reached = MilitaryProgression.level(view.experience()) >= required;
-                text(g, "Niv. " + required + " requis", 669, 164, .85F, reached ? LIME : 0xffee9990, true);
-            }
-            return;
-        }
+        if (view.tab() == OperationsMenu.SHOP || view.tab()==OperationsMenu.PLAYER_MARKET) return;
         if(view.tab()==OperationsMenu.PROGRESSION) {
             var totals=view.raidTotals();
             panel(g,575,88,249,145,DARK);
@@ -749,6 +669,277 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     private boolean unlocked(fr.taczoperations.operations.RaidRelic relic) {
         return (menu.view().unlocks() & (1 << relic.ordinal())) != 0;
+    }
+
+
+
+    private void inspectSelected(int row){DiscoveryClient.request(menu.containerId,1,row);}
+    private void discoveryItem(GuiGraphics g,ItemStack stack,int x,int y,float size){
+        if(DiscoveryClient.unknown(stack)){
+            centered(g,"?",x+Math.round(8*size),y+Math.round(4*size),size,GOLD,true);
+        }else item(g,stack,x,y,size);
+    }
+    private String discoveredName(ItemStack stack,String name){return DiscoveryClient.unknown(stack)?"Objet non identifié":name;}
+    private String[] blackOffer(int index){
+        return menu.view().market().get(index+1).split("\\|",-1);
+    }
+    private boolean blackCanBuy(){
+        var o=blackOffer(shopSelection);
+        return !o[2].equals("0")&&o[3].equals("1")&&menu.view().credits()>=Integer.parseInt(o[1]);
+    }
+    private void blackMarketWidgets(){
+        simple(555,79,125,29,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+        simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+        long day=Long.parseLong(menu.view().market().getFirst());
+        for(int i=0;i<6;i++){
+            int row=i,x=173+i*74,y=142;
+            String[] o=blackOffer(row);
+            var stack=fr.taczoperations.operations.BlackMarket.preview(day,row);
+            widget(x,y,70,70,discoveredName(stack,o[0]),()->shopSelection=row,()->true,(g,hover)->{
+                g.fillGradient(x,y,x+70,y+70,0xff3a4332,0xff1d231c);
+                frame(g,x,y,70,70,shopSelection==row,hover);
+                discoveryItem(g,stack,x+11,y+13,3F);
+                text(g,numberLong(Long.parseLong(o[1])),x+4,y+4,.9F,GOLD,true);
+                text(g,"Stock : "+o[2],x+4,y+58,.82F,o[2].equals("0")?SOFT:LIME,true);
+            });
+        }
+        widget(640,252,172,28,"Acheter",()->send(OperationsMenu.MARKET_FIRST+shopSelection),()->blackCanBuy(),(g,hover)->{
+            boolean ok=blackCanBuy();key(g,640,252,172,28,ok,hover,ok);
+            centered(g,blackOffer(shopSelection)[2].equals("0")?"Épuisé":"Acheter · "+blackOffer(shopSelection)[1]+" cr.",726,261,1,ok?WHITE:SOFT,true);
+        });
+        simple(640,288,172,24,"Examiner",()->inspectSelected(shopSelection),()->false,()->DiscoveryClient.unknown(fr.taczoperations.operations.BlackMarket.preview(day,shopSelection)));
+        simple(640,318,172,24,"Actualiser",()->send(OperationsMenu.REFRESH));
+    }
+    private void drawBlackMarket(GuiGraphics g){
+        text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
+        text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
+        var o=blackOffer(shopSelection);
+        panel(g,173,231,454,92,DARK);
+        var stack=fr.taczoperations.operations.BlackMarket.preview(Long.parseLong(menu.view().market().getFirst()),shopSelection);
+        discoveryItem(g,stack,185,242,4F);
+        text(g,fit(discoveredName(stack,o[0]),350),266,241,1.18F,WHITE,true);
+        text(g,fit(o[4],350),266,264,.9F,o[3].equals("1")?SOFT:0xffdf9c94,false);
+        text(g,numberLong(Long.parseLong(o[1]))+" cr. · stock "+o[2],266,288,1.1F,GOLD,true);
+        text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
+    }
+
+    private fr.taczoperations.operations.PlayerMarket.Offer marketOffer(){
+        var rows=menu.view().playerMarket().offers();
+        return marketSelection>=0&&marketSelection<rows.size()?rows.get(marketSelection):null;
+    }
+    private int listingPrice(){
+        if(marketPrice==null)return 0;
+        try{int price=Integer.parseInt(marketPrice.getValue());return price>=1&&price<=fr.taczoperations.operations.PlayerMarket.MAX_PRICE?price:0;}
+        catch(NumberFormatException ignored){return 0;}
+    }
+    private void playerMarketWidgets(){
+        var v=menu.view();var page=v.playerMarket();
+        simple(169,126,118,20,page.ownOnly()?"Toutes les offres":"Mes annonces",()->send(OperationsMenu.PLAYER_OWN),()->page.ownOnly(),()->true);
+        simple(291,126,118,20,"Actualiser",()->send(OperationsMenu.REFRESH));
+        simple(413,126,132,20,"Marchands",()->send(OperationsMenu.SHOP));
+        for(int i=0;i<SHOP_FILTERS.length;i++){
+            final int cat=i;
+            simple(169+i*54,149,52,17,SHOP_FILTERS[i],()->send(OperationsMenu.PLAYER_FILTER_FIRST+cat),()->page.category()==cat,()->true);
+        }
+        for(int i=0;i<page.offers().size();i++){
+            final int row=i;var o=page.offers().get(i);int x=169+(i%4)*94,y=171+(i/4)*53;
+            widget(x,y,90,50,discoveredName(o.item(),o.item().getHoverName().getString()),()->marketSelection=row,()->true,(g,hover)->{
+                g.fillGradient(x,y,x+90,y+50,o.own()?0xff435037:0xff343e31,0xff1d231d);
+                frame(g,x,y,90,50,marketSelection==row,hover);
+                discoveryItem(g,o.item(),x+30,y+7,2.1F);
+                text(g,numberLong(o.price())+" cr.",x+4,y+3,.82F,GOLD,true);
+                text(g,"x"+o.item().getCount(),x+4,y+38,.82F,WHITE,true);
+                if(o.own())text(g,"MOI",x+66,y+38,.76F,LIME,true);
+                else if(fr.taczoperations.operations.RaidOrigin.found(o.item()))text(g,"RAID",x+63,y+38,.76F,LIME,true);
+            });
+        }
+        simple(169,337,60,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()>0);
+        simple(485,337,60,22,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()+1<v.pages());
+        widget(581,185,234,25,"Confirmer l'offre",()->{if(marketOffer()!=null&&DiscoveryClient.unknown(marketOffer().item()))inspectSelected(marketSelection);else send(OperationsMenu.PLAYER_OFFER_FIRST+marketSelection);},
+            ()->marketOffer()!=null&&(DiscoveryClient.unknown(marketOffer().item())||marketOffer().own()||v.credits()>=marketOffer().price()),(g,hover)->{
+                var o=marketOffer();boolean ok=o!=null&&(DiscoveryClient.unknown(o.item())||o.own()||v.credits()>=o.price());
+                key(g,581,185,234,25,ok,hover,ok);
+                centered(g,o==null?"Sélectionne une offre":DiscoveryClient.unknown(o.item())?"Examiner":o.own()?"Annuler et récupérer":"Acheter le lot",698,193,1,ok?WHITE:SOFT,true);
+            });
+        simple(731,268,84,18,"Examiner",()->DiscoveryClient.request(menu.containerId,2,0),()->false,()->DiscoveryClient.unknown(page.held()));
+        marketPrice=new net.minecraft.client.gui.components.EditBox(font,offsetX+Math.round(581*scale),
+            offsetY+Math.round(296*scale),Math.round(111*scale),Math.max(14,Math.round(23*scale)),Component.literal("Prix total"));
+        marketPrice.setMaxLength(9);marketPrice.setFilter(t->t.matches("[0-9]*"));marketPrice.setValue("100");
+        addRenderableWidget(marketPrice);
+        simple(699,296,116,23,"Publier le lot",()->net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+            new fr.taczoperations.operations.ListPlayerItem(menu.containerId,listingPrice())),()->false,
+            ()->!page.held().isEmpty()&&listingPrice()>0&&page.ownCount()<10);
+        simple(581,369,234,27,"Retirer les crédits",()->send(OperationsMenu.PLAYER_CLAIM),()->false,()->page.pending()>0);
+    }
+    private void drawPlayerMarket(GuiGraphics g){
+        var v=menu.view();var page=v.playerMarket();
+        pageTitle(g,"▱","MARCHÉ JOUEURS","Échange entre aventuriers · prix du lot");
+        for(int i=0;i<fr.taczoperations.operations.PlayerMarket.PAGE_SIZE;i++){
+            int x=169+(i%4)*94,y=171+(i/4)*53;
+            g.fill(x,y,x+90,y+50,0xff1b201b);g.renderOutline(x,y,90,50,0xff343d32);
+        }
+        if(page.offers().isEmpty())centered(g,"Aucune annonce disponible",357,247,1,SOFT,false);
+        centered(g,"Page "+(v.page()+1)+" / "+v.pages(),357,344,1,SOFT,false);
+        text(g,"Tarifs libres · annonces classées par prix",169,375,.91F,SOFT,false);
+        text(g,"Taxe sur les ventes : 5 % (arrondie à l'entier inférieur)",169,390,.83F,SOFT,false);
+        text(g,"OFFRE SÉLECTIONNÉE",581,88,1.04F,GOLD,true);
+        panel(g,578,106,242,73,0xff20251f);
+        var o=marketOffer();
+        if(o!=null){
+            discoveryItem(g,o.item(),585,115,3F);
+            text(g,fit(discoveredName(o.item(),o.item().getHoverName().getString()),174),640,113,.92F,WHITE,true);
+            text(g,"Vendeur : "+fit(o.seller(),118),640,129,.87F,SOFT,false);
+            text(g,numberLong(o.price())+" cr. · x"+o.item().getCount(),640,144,.92F,GOLD,true);
+            text(g,fr.taczoperations.operations.RaidOrigin.found(o.item())?"Trouvé en raid":"Matériel standard",640,159,.82F,SOFT,false);
+        }else text(g,"Sélectionne une offre",589,139,.94F,SOFT,false);
+        text(g,"METTRE EN VENTE · "+page.ownCount()+"/10",581,222,1.02F,GOLD,true);
+        panel(g,578,239,242,50,0xff20251f);
+        if(!page.held().isEmpty()){
+            discoveryItem(g,page.held(),584,244,2.2F);
+            text(g,fit(discoveredName(page.held(),page.held().getHoverName().getString()),178),625,246,.92F,WHITE,true);
+            text(g,"Lot : x"+page.held().getCount()+" · main principale",625,263,.83F,SOFT,false);
+        }else{
+            text(g,"Tiens un objet vendable en main",584,245,.86F,SOFT,false);
+            text(g,"avant d'ouvrir le tableau.",584,261,.86F,SOFT,false);
+        }
+        int price=listingPrice();
+        text(g,price>0?"Recette nette : "+numberLong(price-price/20)+" cr.":"Prix requis : 1 à 100 000 000 cr.",581,324,.83F,price>0?SOFT:0xffdf9c94,false);
+        text(g,"CRÉDITS À RETIRER",581,346,1.01F,GOLD,true);
+        text(g,numberLong(page.pending())+" cr.",701,346,1.02F,LIME,true);
+    }
+
+    private static final String[] SHOP_FILTERS={"Tout","Armes","Munitions","Access.","Protections","Soins","Divers"};
+    private OperationsShop.Offer shopOffer(int row){
+        var rows=menu.view().shopRows();
+        if(row<0||row>=rows.size())return null;
+        var offers=shopCatalogue;
+        int index=rows.get(row);
+        return index>=0&&index<offers.size()?offers.get(index):null;
+    }
+    private int shopPrice(OperationsShop.Offer o){
+        return o.action()==OperationsShop.Action.SELL?fr.taczoperations.operations.ResaleMarket.price(o,Long.parseLong(menu.view().market().getFirst())):o.price();
+    }
+    private boolean shopLocked(OperationsShop.Offer o){
+        return o.action()==OperationsShop.Action.BUY&&(OperationsShop.reputationLevel(menu.view().reputation().get(vendor().ordinal()),menu.view().experience())<o.loyaltyLevel()||o.key()!=null&&!unlocked(o.key()));
+    }
+    private boolean shopCanTrade(boolean all){
+        var o=shopOffer(shopSelection);var v=menu.view();
+        if(o==null)return false;
+        if(o.action()==OperationsShop.Action.SELL){
+            int n=v.saleCounts().get(shopSelection);
+            return n>=(all?2:1)&&(long)v.credits()+(long)shopPrice(o)*(all?n:1)<=Integer.MAX_VALUE;
+        }
+        if(all)return false;
+        if(o.action()==OperationsShop.Action.UNLOCK)return !unlocked(o.key());
+        return !shopLocked(o)&&v.credits()>=(long)o.price()*(o.action()==OperationsShop.Action.BUY?shopLots:1);
+    }
+    private void shopWidgets(){
+        var v=menu.view();var merchant=vendor();
+        for(var m:OperationsShop.values()){
+            int x=169+m.ordinal()*95;
+            simple(x,126,92,18,m.title,()->send(OperationsMenu.VENDOR_FIRST+m.ordinal()),()->m==merchant,()->true);
+        }
+        for(int i=0;i<SHOP_FILTERS.length;i++){
+            final int cat=i;
+            simple(169+i*54,146,52,17,SHOP_FILTERS[i],()->send(OperationsMenu.SHOP_CATEGORY_FIRST+cat),
+                ()->!v.shopOwned()&&(v.shopAccessories()?cat==3:v.category()==cat),()->true);
+        }
+        // Selection is local; only explicit confirmation submits the server-validated offer.
+        var offers=merchant.offers();
+        shopCatalogue=offers;
+        for(int i=0;i<v.shopRows().size();i++){
+            final int row=i,index=v.shopRows().get(i);
+            if(index<0||index>=offers.size())continue;
+            var o=offers.get(index);var stack=o.stack().get();
+            int x=169+(i%8)*47,y=169+(i/8)*48;
+            widget(x,y,45,45,discoveredName(stack,o.title()),()->{shopSelection=row;shopLots=1;},()->true,(g,hover)->{
+                int tier=o.loyaltyLevel();
+                int top=tier>=4?0xff42374b:tier==3?0xff32434a:0xff354030;
+                g.fillGradient(x,y,x+45,y+45,top,0xff1c211d);
+                frame(g,x,y,45,45,shopSelection==row,hover);
+                discoveryItem(g,stack,x+7,y+9,1.9F);
+                String cost=o.action()==OperationsShop.Action.UNLOCK?"Accès":o.action()==OperationsShop.Action.REPAIR?"Répar.":numberLong(shopPrice(o));
+                text(g,fit(cost,54),x+3,y+2,.79F,GOLD,true);
+                if(shopLocked(o))text(g,"F"+tier,x+28,y+34,.82F,0xffe5a9a0,true);
+                else if(o.action()==OperationsShop.Action.SELL)text(g,"x"+v.saleCounts().get(row),x+2,y+35,.79F,LIME,true);
+                else if(stack.getCount()>1)text(g,"x"+stack.getCount(),x+2,y+35,.79F,SOFT,true);
+            });
+        }
+        simple(169,317,60,20,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES>0);
+        simple(485,317,60,20,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES+1<v.shopPages());
+        simple(169,344,122,25,v.shopOwned()?"Achats":"Mes reventes",()->send(OperationsMenu.SHOP_OWNED_FILTER),()->v.shopOwned(),()->true);
+        simple(295,344,122,25,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
+        simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
+        simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+        simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
+        widget(581,215,147,26,"Confirmer",()->{if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
+            var o=shopOffer(shopSelection);boolean unknown=o!=null&&DiscoveryClient.unknown(o.stack().get());boolean ok=unknown||shopCanTrade(false);
+            key(g,581,215,147,26,ok,hover,ok);
+            centered(g,o==null?"Indisponible":unknown?"Examiner":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":o.action()==OperationsShop.Action.BUY?" x"+shopLots:""),654,223,1,ok?WHITE:SOFT,true);
+        });
+        widget(733,215,83,26,"Tout vendre",()->send(OperationsMenu.SELL_ALL_FIRST+shopSelection),()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true),(g,hover)->{
+            if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL){
+                boolean enabled=shopCanTrade(true)&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get());
+                key(g,733,215,83,26,false,hover,enabled);centered(g,"Tout vendre",774,223,.9F,enabled?WHITE:SOFT,true);
+            }
+        });
+        for(int delta:new int[]{-1,1}){
+            int x=delta<0?733:776;
+            widget(x,215,40,26,delta<0?"−":"+",()->shopLots=Math.clamp(shopLots+delta,1,64),
+                ()->canAdjustLots()&&(delta<0?shopLots>1:shopLots<64),(g,hover)->{
+                    if(canAdjustLots()){
+                        boolean enabled=delta<0?shopLots>1:shopLots<64;
+                        key(g,x,215,40,26,false,hover,enabled);
+                        centered(g,delta<0?"−":"+",x+20,223,1.15F,enabled?WHITE:SOFT,true);
+                    }
+                });
+        }
+    }
+    private boolean canAdjustLots(){var o=shopOffer(shopSelection);return o!=null&&o.action()==OperationsShop.Action.BUY&&!DiscoveryClient.unknown(o.stack().get());}
+    private void drawShop(GuiGraphics g){
+        var v=menu.view();var merchant=vendor();
+        pageTitle(g,"▱",upper(merchant.title),v.shopOwned()?"Revente · objets en inventaire":fit(merchant.specialty,275));
+        for(int i=0;i<OperationsMenu.SHOP_ROWS;i++){
+            int x=169+i%8*47,y=169+i/8*48;
+            g.fill(x,y,x+45,y+45,0xff1b201b);g.renderOutline(x,y,45,45,0xff343d32);
+        }
+        if(v.shopRows().isEmpty())text(g,"Aucune offre pour ce filtre.",180,308,.9F,SOFT,false);
+        centered(g,"Page "+(v.page()%OperationsMenu.VENDOR_PAGES+1)+" / "+v.shopPages(),357,323,1,SOFT,false);
+        int rep=v.reputation().get(merchant.ordinal()),loyalty=OperationsShop.reputationLevel(rep,v.experience());
+        text(g,"FIDÉLITÉ DU MARCHAND",581,88,1.04F,GOLD,true);
+        for(int i=1;i<=4;i++){
+            int x=581+(i-1)*59;
+            key(g,x,104,55,20,i==loyalty,false,i<=loyalty);
+            centered(g,new String[]{"I","II","III","IV"}[i-1],x+27,109,1, i<=loyalty?WHITE:SOFT,true);
+        }
+        text(g,loyalty==4?"Fidélité maximale":rep+" / "+OperationsShop.nextReputation(rep,v.experience())+" rép. · Niv. "+OperationsShop.requiredPlayerLevel(loyalty+1)+" requis",581,129,.88F,SOFT,false);
+        panel(g,578,143,242,68,0xff20251f);
+        var o=shopOffer(shopSelection);
+        if(o!=null){
+            var stack=o.stack().get();
+            discoveryItem(g,stack,585,151,3F);
+            text(g,fit(discoveredName(stack,o.title()),174),640,149,.91F,WHITE,true);
+            text(g,fit(o.requirement(),174),640,163,.83F,SOFT,false);
+            String cost=o.action()==OperationsShop.Action.SELL?numberLong(shopPrice(o))+" cr/u · x"+v.saleCounts().get(shopSelection):o.action()==OperationsShop.Action.BUY?numberLong((long)o.price()*shopLots)+" cr. · x"+(stack.getCount()*shopLots):o.action()==OperationsShop.Action.UNLOCK?"Remettre un objet":merchant==OperationsShop.ARMORER?"8 cr./% · min. 50":numberLong(o.price())+" cr.";
+            text(g,fit(cost,174),640,177,.9F,GOLD,true);
+            text(g,shopLocked(o)?"Fidélité ou accès requis":o.action()==OperationsShop.Action.SELL?"Revente au tarif du jour":"Fidélité "+o.loyaltyLevel(),640,191,.82F,shopLocked(o)?0xffe5a9a0:SOFT,false);
+        }else text(g,"Sélectionne un objet",589,169,1,SOFT,false);
+        text(g,"INVENTAIRE DU JOUEUR",581,249,1.02F,GOLD,true);
+        if(minecraft.player!=null){
+            var inv=minecraft.player.getInventory();
+            for(int k=0;k<36;k++){
+                int i=k<27?k+9:k-27;
+                int x=581+(k%9)*26,y=265+(k/9)*26;
+                g.fill(x,y,x+24,y+24,0xff252a24);g.renderOutline(x,y,24,24,0xff485044);
+                var stack=inv.getItem(i);
+                if(!stack.isEmpty()){
+                    discoveryItem(g,stack,x+3,y+3,1.12F);
+                    if(stack.getCount()>1)text(g,""+stack.getCount(),x+12,y+15,.78F,WHITE,true);
+                }
+            }
+        }
+        text(g,"Revente possible : "+numberLong(v.shopValue())+" cr.",581,378,.92F,LIME,true);
+        text(g,"Clic molette sur un objet inconnu pour examiner",581,393,.74F,SOFT,false);
     }
 
     private void pager(int page, int total) {
@@ -913,4 +1104,17 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static String stars(int n) { return "★".repeat(n) + "☆".repeat(5 - n); }
     private static ResourceLocation asset(String name) { return ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, name); }
     private static ResourceLocation texture(String name) { return asset("textures/gui/" + name + ".png"); }
+    @Override public boolean mouseClicked(double mouseX,double mouseY,int button){
+        if(button==2&&menu.view().tab()==OperationsMenu.SHOP&&scale>0&&minecraft.player!=null){
+            double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
+            if(x>=581&&x<815&&y>=265&&y<369){
+                int col=(int)(x-581)/26,row=(int)(y-265)/26,k=row*9+col;
+                int i=k<27?k+9:k-27;
+                if(i>=0&&i<36&&DiscoveryClient.unknown(minecraft.player.getInventory().getItem(i))){
+                    DiscoveryClient.request(menu.containerId,3,i);return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX,mouseY,button);
+    }
 }

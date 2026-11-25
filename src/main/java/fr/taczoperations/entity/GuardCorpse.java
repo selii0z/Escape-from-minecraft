@@ -40,7 +40,7 @@ public final class GuardCorpse extends Entity {
     }
 
     public void put(int slot, ItemStack stack) {
-        items.setItem(slot, stack.copy());
+        items.setItem(slot, fr.taczoperations.operations.RaidOrigin.mark(stack.copy()));
     }
 
     @Override

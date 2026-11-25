@@ -15,10 +15,17 @@ public record RaidLoadout(String weapon,int condition,boolean jammed,int loaded,
     public static RaidLoadout inspect(Player player){
         var carried=new ArrayList<ItemStack>(player.getInventory().items);
         carried.add(player.getOffhandItem());
+        for(var stack:java.util.List.copyOf(carried))carried.addAll(FieldPack.contents(stack));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG}){
+            var stack=FieldInventoryMenu.current(FieldInventoryMenu.handler(player,id));
+            carried.add(stack);carried.addAll(FieldPack.contents(stack));
+        }
         ItemStack selected=player.getMainHandItem();
         int guns=0,medical=0,bleeding=0,food=0,free=0;
         boolean optics=false;
         for(var stack:player.getInventory().items)if(stack.isEmpty())free++;
+        for(String id:new String[]{FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})
+            for(var stack:FieldPack.contents(FieldInventoryMenu.current(FieldInventoryMenu.handler(player,id))))if(stack.isEmpty())free++;
         for(var stack:carried){
             if(stack.isEmpty())continue;
             if(stack.getItem() instanceof IGun){

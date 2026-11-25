@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "taczoperations:rig_patrol",
+    "taczoperations:rig_tactical",
+    "taczoperations:rig_elite"
+  ]
+}

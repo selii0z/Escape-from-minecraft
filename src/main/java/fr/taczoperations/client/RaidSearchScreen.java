@@ -25,6 +25,7 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
     }
     @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
         super.render(g,mouseX,mouseY,partial);
+        DiscoveryClient.maskSlots(g,menu,leftPos,topPos);
         renderTooltip(g,mouseX,mouseY);
     }
     @Override protected void renderBg(GuiGraphics g,float partial,int mouseX,int mouseY){
@@ -58,5 +59,13 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
         g.drawString(font,n==27?"Fouille terminée":"Fouille en cours...",8,164,n==27?LIME:GOLD,false);
         String count=n+"/27";
         g.drawString(font,count,168-font.width(count),164,SOFT,false);
+    }
+    @Override public boolean keyPressed(int key,int scan,int mods){
+        if(key==org.lwjgl.glfw.GLFW.GLFW_KEY_I&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        return super.keyPressed(key,scan,mods);
+    }
+    @Override public boolean mouseClicked(double x,double y,int button){
+        if(button==2&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        return super.mouseClicked(x,y,button);
     }
 }
