@@ -76,7 +76,7 @@ public enum OperationsShop {
             var item=stack.get().getItem();
             if(item instanceof com.tacz.guns.api.item.IGun)return 1;
             if(item instanceof com.tacz.guns.api.item.IAmmo)return 2;
-            if(item instanceof net.minecraft.world.item.ArmorItem)return 4;
+            if(item instanceof net.minecraft.world.item.ArmorItem||item instanceof FieldPack)return 4;
             if(item instanceof FieldMedicine||item==Items.GOLDEN_APPLE||item==Items.POTION)return 5;
             return 6;
         }
@@ -147,6 +147,17 @@ public enum OperationsShop {
                 offers.add(new Offer("Reprise · pomme dorée", 45, Action.SELL, () -> new ItemStack(Items.GOLDEN_APPLE), null, 0));
             }
             case SALVAGER -> {
+                int[] bagPrices={500,1200,3000,6000,12000},bagRanks={0,20,20,65,180};
+                String[] bags={"Petit sac","Sac de patrouille","Sac tactique","Sac militaire","Sac d'expédition"};
+                for(int i=0;i<bags.length;i++){
+                    final int tier=i;
+                    offers.add(buy(bags[i]+" · "+FieldPack.CAPACITY[i]+" cases",bagPrices[i],()->FieldPack.create(false,tier),null,bagRanks[i]));
+                }
+                int[] rigPrices={700,1800},rigRanks={0,20};
+                for(int i=0;i<rigPrices.length;i++){
+                    final int tier=i;
+                    offers.add(buy("Gilet tactique · "+FieldPack.RIG_CAPACITY[i]+" cases",rigPrices[i],()->FieldPack.create(true,tier),null,rigRanks[i]));
+                }
                 offers.add(buy("Lot de torches", 45, () -> new ItemStack(Items.TORCH, 24), RaidRelic.PLAQUE, 0));
                 offers.add(buy("Lot de flèches", 65, () -> new ItemStack(Items.ARROW, 24), RaidRelic.RADIO, 0));
                 offers.add(buy("Veste en cuir", 160, () -> new ItemStack(Items.LEATHER_CHESTPLATE), null, 0));
