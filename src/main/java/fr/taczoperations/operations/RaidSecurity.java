@@ -145,6 +145,7 @@ public final class RaidSecurity {
     private static boolean eligible(ItemStack s) {
         return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun);
     }
+    static void removeInsuranceForTrade(ItemStack s){if(tag(s).contains(INSURED))removeInsurance(s);}
     private static void removeInsurance(ItemStack s) {
         CompoundTag d=tag(s);d.remove(INSURED);
         if(d.isEmpty())s.remove(DataComponents.CUSTOM_DATA);else s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));
