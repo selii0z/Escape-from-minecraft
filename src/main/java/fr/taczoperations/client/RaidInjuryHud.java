@@ -3,6 +3,10 @@ package fr.taczoperations.client;
 import fr.taczoperations.operations.ForestExpedition;
 import fr.taczoperations.operations.RaidInjuryPayload;
 import fr.taczoperations.operations.FieldMedicine;
+import fr.taczoperations.operations.WeaponCondition;
+import fr.taczoperations.operations.BallisticVest;
+import net.minecraft.world.entity.EquipmentSlot;
+import com.tacz.guns.api.item.IGun;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.neoforged.api.distmarker.Dist;
@@ -52,7 +56,59 @@ public final class RaidInjuryHud{
             g.fill(x+5,y+17,x+137,y+21,0xff414b3c);
             g.fill(x+5,y+17,x+5+132*progress/100,y+21,0xffa6bf7d);
             g.drawString(mc.font,progress+" %",x+5,y+22,0xffc7cfbf,false);
+            y+=33;
         }
+        // Keep all raid information in one column, never cover the crosshair
+        // or TaCZ's lower-right ammunition display. On small GUI sizes,
+        // omit the noncritical armor panel rather than overlap the hotbar.
+        int limit=mc.getWindow().getGuiScaledHeight()-65;
+        var weapon=mc.player.getMainHandItem();
+        if(weapon.getItem() instanceof IGun){
+            int value=WeaponCondition.condition(weapon);
+            boolean jammed=WeaponCondition.jammed(weapon);
+            int color=value==0||jammed?0xffe07b72:conditionColor(value,10000);
+            boolean alert=value==0||jammed;
+            int height=alert?36:25;
+            if(y+height<=limit){
+                g.fill(x,y,x+142,y+height,0xca171d18);
+                String name=mc.font.plainSubstrByWidth(weapon.getHoverName().getString(),88);
+                String percent=String.format(java.util.Locale.FRANCE,"%.1f %%",value/100.0);
+                g.drawString(mc.font,name,x+5,y+4,0xffd3dbcc,false);
+                g.drawString(mc.font,percent,x+137-mc.font.width(percent),y+4,color,false);
+                meter(g,x+5,y+16,132,value,10000,color);
+                if(alert)g.drawString(mc.font,value==0?"HORS SERVICE":"ENRAYÉE · RECHARGER",x+5,y+25,color,false);
+                y+=height+2;
+            }
+        }
+        if(y+45<=limit){
+            EquipmentSlot[] slots={EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET};
+            String[] labels={"Tête","Torse","Jambes","Pieds"};
+            boolean equipped=false;
+            for(var slot:slots)if(BallisticVest.tier(mc.player.getItemBySlot(slot),slot)>0){equipped=true;break;}
+            if(equipped){
+                g.fill(x,y,x+142,y+45,0xca171d18);
+                g.drawString(mc.font,"PROTECTIONS BALISTIQUES",x+5,y+3,0xffb8c0af,false);
+                for(int i=0;i<4;i++){
+                    var piece=mc.player.getItemBySlot(slots[i]);
+                    int tier=BallisticVest.tier(piece,slots[i]);
+                    int xx=x+5+(i%2)*67,yy=y+14+(i/2)*15;
+                    int value=tier==0?0:BallisticVest.condition(piece);
+                    int color=tier==0?0xff777f75:conditionColor(value,100);
+                    String label=labels[i]+(tier==0?" —":" C"+tier);
+                    String percent=tier==0?"":value+"%";
+                    g.drawString(mc.font,label,xx,yy,0xffb8c0af,false);
+                    g.drawString(mc.font,percent,xx+62-mc.font.width(percent),yy,color,false);
+                    meter(g,xx,yy+10,62,value,100,color);
+                }
+            }
+        }
+    }
+    private static int conditionColor(int value,int max){
+        return value*5<=max?0xffe07b72:value*10<max*7?0xffe5ce88:0xffa6bf7d;
+    }
+    private static void meter(GuiGraphics g,int x,int y,int width,int value,int max,int color){
+        g.fill(x,y,x+width,y+3,0xff414b3c);
+        if(value>0)g.fill(x,y,x+width*value/max,y+3,color);
     }
     private static void row(GuiGraphics g,Minecraft mc,int x,int y,String name,String treatment,int color){
         g.fill(x,y,x+142,y+23,0xca171d18);

@@ -26,7 +26,7 @@ public final class WeaponCondition {
         var data=tag(stack);
         return data.contains(CONDITION)?Math.clamp(data.getInt(CONDITION),0,FULL):FULL;
     }
-    private static boolean jammed(ItemStack stack){return tag(stack).getBoolean(JAM);}
+    public static boolean jammed(ItemStack stack){return tag(stack).getBoolean(JAM);}
     static void usedLoot(ItemStack stack,int percent){
         if(!(stack.getItem() instanceof IGun))return;
         var data=tag(stack);data.putInt(CONDITION,Math.clamp(percent,0,100)*100);
