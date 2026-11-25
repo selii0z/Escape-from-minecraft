@@ -321,6 +321,27 @@ public final class ForestExpedition {
         return true;
     }
 
+    private static int exitDistance(ServerPlayer p,BlockPos pos){
+        return (int)Math.min(Integer.MAX_VALUE,Math.round(Math.hypot(p.getX()-pos.getX()-.5,p.getZ()-pos.getZ()-.5)));
+    }
+    private static void syncExits(ServerPlayer p,boolean industrial,boolean relayAvailable,boolean relay,BlockPos primary,BlockPos secondary){
+        boolean visible=SupplyContract.showExtraction(p);
+        int second=relay?RaidExitPayload.OPEN:relayAvailable?RaidExitPayload.RELAY: RaidExitPayload.CLOSED;
+        int third=RaidExitPayload.HIDDEN;
+        BlockPos secondPos=secondary,thirdPos=primary;
+        if(industrial){
+            var key=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
+            second= !ForestRaid.secondaryOpen(p,1)?RaidExitPayload.CLOSED:
+                CarriedStorage.of(p).count(stack->stack.is(key))>0?RaidExitPayload.OPEN:RaidExitPayload.KEY;
+            third= !ForestRaid.secondaryOpen(p,2)?RaidExitPayload.CLOSED:
+                SupplyContract.balance(p)>=IndustrialZone.PAID_EXIT_COST?RaidExitPayload.OPEN:RaidExitPayload.CREDITS;
+            secondPos=industrialPosition(IndustrialZone.KEY_EXIT);
+            thirdPos=industrialPosition(IndustrialZone.PAID_EXIT);
+        }
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,new RaidExitPayload(
+            visible,industrial,exitDistance(p,primary),second,exitDistance(p,secondPos),third,
+            exitDistance(p,thirdPos),industrial?IndustrialZone.PAID_EXIT_COST:0));
+    }
     public static void tick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || !player.isAlive()
             || !player.level().dimension().equals(FOREST)) {
@@ -347,6 +368,7 @@ public final class ForestExpedition {
         boolean relayAvailable=!industrial&&ForestRaid.secondaryOpen(player,0);
         boolean relay = relayAvailable && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
+        if(player.tickCount%20==0)syncExits(player,industrial,relayAvailable,relay,primary,secondary);
         if(industrial && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
             BlockPos paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
@@ -405,7 +427,7 @@ public final class ForestExpedition {
                     extraction=keyExit;exitLabel="Extraction (clé)";
                 }
                 if(ForestRaid.secondaryOpen(player,2)&&SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
-                    extraction=paidExit;exitLabel="Extraction (600 cr.)";
+                    extraction=paidExit;exitLabel="Extraction ("+IndustrialZone.PAID_EXIT_COST+" cr.)";
                 }
             }
             double distance = Math.hypot(player.getX() - extraction.getX() - .5, player.getZ() - extraction.getZ() - .5);
