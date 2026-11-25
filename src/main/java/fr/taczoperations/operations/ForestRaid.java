@@ -59,6 +59,8 @@ public final class ForestRaid extends SavedData {
     private boolean industrial;
     private long dropDue, dropLanding;
     private int dropAttempts;
+    private int reinforcementKills,reinforcementWaves,reinforcementLimit,reinforcementPending;
+    private long reinforcementDue,reinforcementExpiry,reinforcementCooldown;
     private BlockPos dropPos;
     private UUID dropVisual;
     private boolean dropLanded;
@@ -102,6 +104,10 @@ public final class ForestRaid extends SavedData {
         raid.dropDue = level.getGameTime() + 20L * (45 + new Random(raid.seed).nextInt(46));
         raid.dropLanding = 0;
         raid.dropAttempts = 0;
+        raid.reinforcementKills=raid.reinforcementWaves=raid.reinforcementPending=0;
+        raid.reinforcementLimit=partner==null?1:2;
+        raid.reinforcementDue=raid.reinforcementExpiry=0;
+        raid.reinforcementCooldown=level.getGameTime()+1200;
         raid.dropPos = null;
         raid.dropVisual = null;
         raid.dropLanded = false;
@@ -190,6 +196,7 @@ public final class ForestRaid extends SavedData {
             raid.participants.contains(p.getUUID()) && isParticipant(p));
         if (online) {
             raid.tickAirdrop(level);
+            raid.tickReinforcements(level);
             if (raid.offlineSince != 0) {
                 raid.offlineSince = 0;
                 raid.setDirty();
@@ -199,6 +206,58 @@ public final class ForestRaid extends SavedData {
             raid.setDirty();
         } else if (System.currentTimeMillis() - raid.offlineSince >= RECONNECT_GRACE_MS) {
             raid.closeSession(level);
+        }
+    }
+
+    private void tickReinforcements(ServerLevel level) {
+        long now=level.getGameTime();
+        var players=level.players().stream().filter(p->p.isAlive()&&!p.isSpectator()&&!p.isCreative()&&isParticipant(p)).toList();
+        if(players.isEmpty())return;
+        if(reinforcementPending==0){
+            if(reinforcementWaves>=reinforcementLimit||now<reinforcementCooldown
+                ||reinforcementKills<(reinforcementWaves+1)*10)return;
+            reinforcementWaves++;
+            reinforcementPending=reinforcementLimit==1?2:3;
+            reinforcementDue=now+600;
+            reinforcementExpiry=reinforcementDue+900;
+            for(var p:players)p.sendSystemMessage(Component.literal("ALERTE · Des renforts ennemis approchent. Reste sur tes gardes."));
+            setDirty();
+            return;
+        }
+        if(now<reinforcementDue)return;
+        if(now>=reinforcementExpiry){
+            reinforcementPending=0;reinforcementCooldown=now+1800;setDirty();return;
+        }
+        // Do not force-load terrain or exceed one reinforcement spawn per pass.
+        var anchors=new ArrayList<>(industrial?IndustrialZone.GUARDS:ForestRaidAnchors.ENEMIES);
+        Random rng=new Random(seed^now^reinforcementWaves);
+        java.util.Collections.shuffle(anchors,rng);
+        int checked=0;
+        for(var anchor:anchors){
+            if(checked++>=12)break;
+            BlockPos center=industrial?ForestExpedition.industrialPosition(anchor):ForestLandmarks.position(anchor);
+            if(!level.hasChunkAt(center))continue;
+            if(players.stream().noneMatch(p->center.distToCenterSqr(p.position())<=110*110))continue;
+            for(int attempt=0;attempt<3;attempt++){
+                var local=new ForestPlan.Point(anchor.x()+rng.nextInt(17)-8,anchor.z()+rng.nextInt(17)-8);
+                BlockPos around=industrial?ForestExpedition.industrialPosition(local):ForestLandmarks.position(local);
+                BlockPos place=findFloor(level,around,3,true);
+                if(place==null||!validEncounterPosition(industrial,place))continue;
+                if(players.stream().anyMatch(p->place.distToCenterSqr(p.position())<45*45))continue;
+                if(players.stream().anyMatch(p->{
+                    var eye=net.minecraft.world.phys.Vec3.atBottomCenterOf(place).add(0,1.6,0);
+                    return level.clip(new net.minecraft.world.level.ClipContext(p.getEyePosition(),eye,
+                        net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,p)).getType()
+                        ==net.minecraft.world.phys.HitResult.Type.MISS;
+                }))continue;
+                if(!level.getEntitiesOfClass(Pillager.class,new net.minecraft.world.phys.AABB(place).inflate(2),
+                    e->e.isAlive()&&currentGuard(level,e)).isEmpty())continue;
+                if(spawnGuard(level,place,GuardRole.PMC,1000+reinforcementWaves)){
+                    reinforcementPending--;
+                    if(reinforcementPending==0)reinforcementCooldown=now+1800;
+                    setDirty();return;
+                }
+            }
         }
     }
 
@@ -595,7 +654,9 @@ public final class ForestRaid extends SavedData {
         int size = industrial ? IndustrialZone.SIZE : ForestPlan.SIZE;
         if (point.x()<12 || point.z()<12 || point.x()>=size-12 || point.z()>=size-12) return false;
         if (industrial) return pointDistanceSquared(point, IndustrialZone.ENTRY) >= 32L*32L
-            && pointDistanceSquared(point, IndustrialZone.EXIT) >= 24L*24L;
+            && pointDistanceSquared(point, IndustrialZone.EXIT) >= 24L*24L
+            && pointDistanceSquared(point, IndustrialZone.KEY_EXIT) >= 24L*24L
+            && pointDistanceSquared(point, IndustrialZone.PAID_EXIT) >= 24L*24L;
         return ForestPlan.surfaceY(point) > ForestPlan.WATER + 1
             && ForestPlan.ENTRIES.stream().noneMatch(p -> pointDistanceSquared(p, point)<32L*32L)
             && pointDistanceSquared(point, ForestPlan.EXTRACTION)>=24L*24L
@@ -950,6 +1011,7 @@ public final class ForestRaid extends SavedData {
             && !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
+            if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
             SupplyContract.activityXp(killer, xp, true, role.title + " éliminé");
         }
