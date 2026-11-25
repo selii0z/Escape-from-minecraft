@@ -166,6 +166,7 @@ public final class OperationsMod {
         ENTITIES.register(bus);
         GENERATORS.register(bus);
         bus.addListener(OperationsMod::registerPayloads);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.PassiveSkills::commands);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.StoryMissions::commands);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.StoryMissions::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::commands);
