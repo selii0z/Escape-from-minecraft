@@ -142,6 +142,13 @@ public final class RaidSecurity {
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }
+    /** Restrict Curios overrides to EFM raid gear, never unrelated accessories. */
+    public static boolean raidCurioLoss(ServerPlayer p){
+        return p.level().dimension().equals(ForestExpedition.FOREST)&&ForestRaid.isParticipant(p);
+    }
+    public static boolean isRaidCurio(ItemStack stack){
+        return stack.getItem() instanceof FieldPack||isOptics(stack);
+    }
     static boolean eligible(ItemStack s) {
         return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s));
     }
@@ -206,7 +213,7 @@ public final class RaidSecurity {
             }
         }
         if(!protectedCases.isEmpty())p.getPersistentData().put(DEATH_CASES,protectedCases);
-        if(!p.level().dimension().equals(ForestExpedition.FOREST)||!ForestRaid.isParticipant(p))return;
+        if(!raidCurioLoss(p))return;
         var account=SupplyContract.account(p);ListTag claims=account.getList(CLAIMS,10);int recovered=0;
         var looseContents=new java.util.ArrayList<ItemEntity>();
         var iterator=event.getDrops().iterator();

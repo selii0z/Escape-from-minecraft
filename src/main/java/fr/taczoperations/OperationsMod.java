@@ -192,6 +192,8 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onDrops);
+        if(net.neoforged.fml.ModList.get().isLoaded("curios"))
+            fr.taczoperations.compat.FieldCurios.registerRaidDropRules();
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::onDeathDrops);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::commands);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogout);
