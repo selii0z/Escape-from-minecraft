@@ -38,16 +38,6 @@ public final class RaidFurnitureEntity extends RandomizableContainerBlockEntity 
         return player instanceof ServerPlayer p&&ForestRaid.canSearchFurniture(p,this)&&super.stillValid(player);
     }
     @Override protected AbstractContainerMenu createMenu(int id,Inventory inventory){
-        return new ChestMenu(MenuType.GENERIC_9x3,id,inventory,this,3){
-            @Override protected Slot addSlot(Slot slot){
-                if(slot.container instanceof RaidFurnitureEntity)return super.addSlot(new Slot(slot.container,slot.getContainerSlot(),slot.x,slot.y){
-                    @Override public boolean mayPlace(ItemStack s){return false;}
-                });
-                return super.addSlot(slot);
-            }
-            @Override public ItemStack quickMoveStack(Player p,int index){
-                return index<27?super.quickMoveStack(p,index):ItemStack.EMPTY;
-            }
-        };
+        return new RaidSearchMenu(id,inventory,this,getPersistentData(),this::stillValid);
     }
 }

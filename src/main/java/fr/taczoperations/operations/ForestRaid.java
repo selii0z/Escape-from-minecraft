@@ -1161,6 +1161,19 @@ public final class ForestRaid extends SavedData {
             SupplyContract.activityXp(player, 3, false, "Coffre fouillé");
             SupplyContract.chestOpened(player);
         }
+        // Furniture opens its own menu. The military airdrop and legacy
+        // tagged vanilla containers use the identical progressive view.
+        if(!(barrel instanceof RaidFurnitureEntity)){
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            if(event.getHand()!=net.minecraft.world.InteractionHand.MAIN_HAND)return;
+            var pos=event.getPos().immutable();
+            player.openMenu(new net.minecraft.world.SimpleMenuProvider(
+                (id,inventory,viewer)->new RaidSearchMenu(id,inventory,barrel,barrel.getPersistentData(),
+                    v->v instanceof ServerPlayer sp&&sp.isAlive()&&!sp.isSpectator()&&isParticipant(sp)
+                        &&sp.level().getBlockEntity(pos)==barrel&&forPlayer(sp).matches(barrel.getPersistentData(),CRATE)),
+                barrel.getDisplayName()));
+        }
     }
 
     private static ForestRaid read(CompoundTag tag, HolderLookup.Provider registries) {

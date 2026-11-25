@@ -1,0 +1,81 @@
+package fr.taczoperations.operations;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import java.util.function.Predicate;
+
+/**
+ * Server-side view of an existing raid inventory. Unsearched items are
+ * never sent to the client and cannot be taken. The inventory and search
+ * cursor belong to the loot source, not to a particular viewer.
+ */
+public final class RaidSearchMenu extends ChestMenu {
+    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next";
+    private final SearchView view;
+    private final Player viewer;
+    public RaidSearchMenu(int id,Inventory inventory,Container backing,CompoundTag state,Predicate<Player> valid){
+        this(id,inventory,new SearchView(backing,state,valid));
+    }
+    private RaidSearchMenu(int id,Inventory inventory,SearchView view){
+        super(MenuType.GENERIC_9x3,id,inventory,view,3);
+        this.view=view;
+        this.viewer=inventory.player;
+        if(viewer instanceof ServerPlayer p&&view.revealed()<27){
+            if(!view.state.contains(NEXT))view.state.putLong(NEXT,p.level().getGameTime()+4);
+            view.backing.setChanged();
+            p.displayClientMessage(Component.literal("Fouille en cours… "+view.revealed()+"/27"),true);
+        }
+    }
+    @Override public void broadcastChanges(){
+        if(view!=null&&viewer instanceof ServerPlayer p&&p.containerMenu==this&&view.stillValid(p)){
+            int before=view.revealed();
+            long now=p.level().getGameTime();
+            if(before<27&&now>=view.state.getLong(NEXT)){
+                view.state.putInt(REVEALED,before+1);
+                view.state.putLong(NEXT,now+4);
+                view.backing.setChanged();
+                if((before+1)%3==0)p.displayClientMessage(Component.literal(before+1==27?"Fouille terminée":"Fouille en cours… "+(before+1)+"/27"),true);
+            }
+        }
+        super.broadcastChanges();
+    }
+    @Override protected Slot addSlot(Slot slot){
+        if(slot.container instanceof SearchView search)return super.addSlot(new Slot(search,slot.getContainerSlot(),slot.x,slot.y){
+            @Override public boolean mayPlace(ItemStack item){return false;}
+            @Override public boolean mayPickup(Player player){return search.visible(getContainerSlot())&&search.stillValid(player);}
+        });
+        return super.addSlot(slot);
+    }
+    @Override public ItemStack quickMoveStack(Player player,int index){
+        if(index<0||index>=27||!view.visible(index)||!view.stillValid(player))return ItemStack.EMPTY;
+        return super.quickMoveStack(player,index);
+    }
+    private static final class SearchView implements Container{
+        final Container backing;
+        final CompoundTag state;
+        final Predicate<Player> valid;
+        SearchView(Container backing,CompoundTag state,Predicate<Player> valid){
+            this.backing=backing;this.state=state;this.valid=valid;
+        }
+        int revealed(){return Math.clamp(state.getInt(REVEALED),0,27);}
+        boolean visible(int i){return i>=0&&i<revealed();}
+        @Override public int getContainerSize(){return 27;}
+        @Override public boolean isEmpty(){for(int i=0;i<revealed();i++)if(!getItem(i).isEmpty())return false;return true;}
+        @Override public ItemStack getItem(int i){return visible(i)?backing.getItem(i):ItemStack.EMPTY;}
+        @Override public ItemStack removeItem(int i,int count){return visible(i)?backing.removeItem(i,count):ItemStack.EMPTY;}
+        @Override public ItemStack removeItemNoUpdate(int i){return visible(i)?backing.removeItemNoUpdate(i):ItemStack.EMPTY;}
+        @Override public void setItem(int i,ItemStack stack){if(visible(i)&&stack.isEmpty())backing.setItem(i,stack);}
+        @Override public void setChanged(){backing.setChanged();}
+        @Override public boolean stillValid(Player player){return valid.test(player)&&backing.stillValid(player);}
+        @Override public boolean canPlaceItem(int i,ItemStack stack){return false;}
+        @Override public void clearContent(){} // a menu view must never erase the backing inventory
+    }
+}
