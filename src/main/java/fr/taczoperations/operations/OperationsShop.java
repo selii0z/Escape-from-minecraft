@@ -140,7 +140,7 @@ public enum OperationsShop {
                 offers.add(buy("Kit de premiers secours",180,()->medical("medkit"),null,0));
                 offers.add(buy("Salewa",150,()->medical("salewa"),null,0));
                 offers.add(buy("Bouteille d'eau",65,()->net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,net.minecraft.world.item.alchemy.Potions.WATER),null,0));
-                offers.add(buy("Rations de terrain", 80, () -> new ItemStack(Items.COOKED_BEEF, 4), null, 0));
+                offers.add(buy("Rations de terrain", 80, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","field_ration")),4), null, 0));
                 offers.add(buy("Soupe de survie", 55, () -> new ItemStack(Items.RABBIT_STEW), null, 0));
                 offers.add(buy("Pomme dorée", 190, () -> new ItemStack(Items.GOLDEN_APPLE), RaidRelic.WATCH, 0));
                 offers.add(buy("Potion de soin", 140, () -> net.minecraft.world.item.alchemy.PotionContents.createItemStack(
