@@ -174,6 +174,7 @@ public final class ForestCombat {
                     if (candidate.isCrouching() && !goggles) detection *= .75;
                     if (candidate.getUUID().equals(aim.visibleTarget)) detection *= 1.25;
                 }
+                if(candidate.isCrouching())detection*=1.0-PassiveSkills.bonus(candidate,PassiveSkills.Skill.STEALTH)/100.0;
                 if (distance < range && distance < detection * detection
                     && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
                     && ForestRaid.sameSession(level,guard,candidate) && guard.hasLineOfSight(candidate)) {
