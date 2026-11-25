@@ -36,41 +36,52 @@ public final class RaidInjuryHud{
         if(mc.options.hideGui||state==null||System.nanoTime()-updated>3_500_000_000L)return;
         var g=event.getGuiGraphics();
         int x=8,y=8;
+        int limit=mc.getWindow().getGuiScaledHeight()-65;
+        if(y+17>limit)return;
         boolean injured=state.bleed()>0||state.fracture()||state.arm();
+        boolean critical=state.bleed()==2||mc.player.getHealth()<=mc.player.getMaxHealth()*.2F;
+        int statusColor=critical?0xffe07b72:injured?0xffe5ce88:0xffb5c9a4;
         g.fill(x,y,x+142,y+17,0xca171d18);
-        g.fill(x,y,x+2,y+17,injured?0xffdcaa66:0xff9db77e);
-        g.drawString(mc.font,injured?"ÉTAT · BLESSURES":"ÉTAT · STABLE",x+7,y+5,injured?0xffe5ce88:0xffb5c9a4,false);
+        g.fill(x,y,x+2,y+17,statusColor);
+        g.drawString(mc.font,critical?"ÉTAT · CRITIQUE":injured?"ÉTAT · BLESSURES":"ÉTAT · STABLE",x+7,y+5,statusColor,false);
         y+=19;
-        if(y+76<=mc.getWindow().getGuiScaledHeight()-65){
+        var stack=mc.player.getUseItem();
+        boolean treating=mc.player.isUsingItem()&&stack.getItem() instanceof FieldMedicine;
+        int alerts=(state.bleed()>0?1:0)+(state.fracture()?1:0)+(state.arm()?1:0);
+        int reserve=alerts*25+(treating?33:0);
+        // On compact displays reserve room for actionable care before cosmetics.
+        if(y+78+reserve<=limit){
             bodyPanel(g,mc,x,y);y+=78;
         }
-        if(y+39<=mc.getWindow().getGuiScaledHeight()-65){
-            g.fill(x,y,x+142,y+38,0xca171d18);
-            survivalMeter(g,mc,x+5,y+3,"Hydratation",state.water(),0xff83b7ce);
-            survivalMeter(g,mc,x+5,y+20,"Énergie",state.energy(),0xffcbb776);
-            y+=40;
+        if(state.bleed()>0&&y+23<=limit){
+            String label=state.bleed()==2?"Hémorragie":"Saignement";
+            row(g,mc,x,y,label+" · "+regionName(state.bleedMask()),
+                state.bleed()==2?"Hémostatique / 2 bandages":"Bandage",0xffe07b72);y+=25;
         }
-        if(state.bleed()>0){
-            row(g,mc,x,y,state.bleed()==2?"Hémorragie":"Saignement",state.bleed()==2?"Hémostatique / bandage":"Bandage",0xffe07b72);y+=25;
+        if(state.fracture()&&y+23<=limit){
+            row(g,mc,x,y,"Fracture · "+regionName(state.fractureZone()),"Attelle",0xffe5ce88);y+=25;
         }
-        if(state.fracture()){row(g,mc,x,y,"Fracture","Attelle",0xffe5ce88);y+=25;}
-        if(state.arm()){row(g,mc,x,y,"Bras blessé","Kit de premiers secours",0xffe5ce88);y+=25;}
-        var stack=mc.player.getUseItem();
-        if(mc.player.isUsingItem()&&stack.getItem() instanceof FieldMedicine medicine){
+        if(state.arm()&&y+23<=limit){
+            row(g,mc,x,y,"Blessure · "+regionName(state.armZone()),"Kit de premiers secours",0xffe5ce88);y+=25;
+        }
+        if(treating&&stack.getItem() instanceof FieldMedicine medicine&&y+31<=limit){
             int duration=Math.max(1,medicine.getUseDuration(stack,mc.player));
-            int progress=Math.clamp(100*(duration-mc.player.getUseItemRemainingTicks())/duration,0,100);
+            int remaining=Math.clamp(mc.player.getUseItemRemainingTicks(),0,duration);
+            int progress=100*(duration-remaining)/duration;
             g.fill(x,y,x+142,y+31,0xda171d18);
             String name=mc.font.plainSubstrByWidth(stack.getHoverName().getString(),132);
             g.drawString(mc.font,name,x+5,y+4,0xffe5ce88,false);
             g.fill(x+5,y+17,x+137,y+21,0xff414b3c);
             g.fill(x+5,y+17,x+5+132*progress/100,y+21,0xffa6bf7d);
-            g.drawString(mc.font,progress+" %",x+5,y+22,0xffc7cfbf,false);
+            g.drawString(mc.font,progress+" % · "+((remaining+19)/20)+" s",x+5,y+22,0xffc7cfbf,false);
             y+=33;
         }
-        // Keep all raid information in one column, never cover the crosshair
-        // or TaCZ's lower-right ammunition display. On small GUI sizes,
-        // omit the noncritical armor panel rather than overlap the hotbar.
-        int limit=mc.getWindow().getGuiScaledHeight()-65;
+        if(y+38<=limit){
+            g.fill(x,y,x+142,y+38,0xca171d18);
+            survivalMeter(g,mc,x+5,y+3,"Hydratation",state.water(),0xff83b7ce);
+            survivalMeter(g,mc,x+5,y+20,"Énergie",state.energy(),0xffcbb776);
+            y+=40;
+        }
         var weapon=mc.player.getMainHandItem();
         if(weapon.getItem() instanceof IGun){
             int value=WeaponCondition.condition(weapon);
@@ -134,8 +145,23 @@ public final class RaidInjuryHud{
         meter(g,right,y+33,81,health,100,conditionColor(health,100));
         if(state.bleed()>0)g.drawString(mc.font,state.bleed()==2?"Hémorragie":"Saignement",right,y+43,0xffe07b72,false);
         else if(state.hitZone()!=0)g.drawString(mc.font,"Impact récent",right,y+43,0xffe5ce88,false);
-        else g.drawString(mc.font,"Pas de fuite",right,y+43,0xffb5c9a4,false);
+        else g.drawString(mc.font,mc.font.plainSubstrByWidth("Pas de saignement",82),right,y+43,0xffb5c9a4,false);
         if(state.fracture()||state.arm())g.drawString(mc.font,mc.font.plainSubstrByWidth(state.fracture()&&state.arm()?"Bras / jambes":state.fracture()?sideLabel("Fracture",state.fractureZone(),RaidInjuryPayload.LEFT_LEG,RaidInjuryPayload.RIGHT_LEG):sideLabel("Bras blessé",state.armZone(),RaidInjuryPayload.LEFT_ARM,RaidInjuryPayload.RIGHT_ARM),82),right,y+57,0xffe5ce88,false);
+    }
+    private static String regionName(int mask){
+        if(mask==0)return "zone inconnue";
+        if(mask==RaidInjuryPayload.HEAD)return "Tête";
+        if(mask==RaidInjuryPayload.TORSO)return "Torse";
+        if(mask==RaidInjuryPayload.LEFT_ARM)return "Bras G";
+        if(mask==RaidInjuryPayload.RIGHT_ARM)return "Bras D";
+        if(mask==RaidInjuryPayload.ARMS)return "Bras";
+        if(mask==RaidInjuryPayload.LEFT_LEG)return "Jambe G";
+        if(mask==RaidInjuryPayload.RIGHT_LEG)return "Jambe D";
+        if(mask==RaidInjuryPayload.LEGS)return "Jambes";
+        if(mask==RaidInjuryPayload.LEFT_FOOT)return "Pied G";
+        if(mask==RaidInjuryPayload.RIGHT_FOOT)return "Pied D";
+        if(mask==RaidInjuryPayload.FEET)return "Pieds";
+        return "Zones multiples";
     }
     private static String sideLabel(String label,int mask,int left,int right){
         return label+(mask==left?" G":mask==right?" D":"");
@@ -168,7 +194,7 @@ public final class RaidInjuryHud{
     private static void row(GuiGraphics g,Minecraft mc,int x,int y,String name,String treatment,int color){
         g.fill(x,y,x+142,y+23,0xca171d18);
         g.fill(x,y,x+2,y+23,color);
-        g.drawString(mc.font,name,x+7,y+3,color,false);
+        g.drawString(mc.font,mc.font.plainSubstrByWidth(name,130),x+7,y+3,color,false);
         g.drawString(mc.font,mc.font.plainSubstrByWidth(treatment,130),x+7,y+13,0xffbdc7b8,false);
     }
     private RaidInjuryHud(){}
