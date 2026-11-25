@@ -722,12 +722,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         simple(169,337,60,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()>0);
         simple(485,337,60,22,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()+1<v.pages());
-        simple(581,164,234,19,"Examiner",()->inspectSelected(marketSelection),()->false,()->marketOffer()!=null&&DiscoveryClient.unknown(marketOffer().item()));
-        widget(581,185,234,25,"Confirmer l'offre",()->send(OperationsMenu.PLAYER_OFFER_FIRST+marketSelection),
-            ()->marketOffer()!=null&&(marketOffer().own()||v.credits()>=marketOffer().price()),(g,hover)->{
-                var o=marketOffer();boolean ok=o!=null&&(o.own()||v.credits()>=o.price());
+        widget(581,185,234,25,"Confirmer l'offre",()->{if(marketOffer()!=null&&DiscoveryClient.unknown(marketOffer().item()))inspectSelected(marketSelection);else send(OperationsMenu.PLAYER_OFFER_FIRST+marketSelection);},
+            ()->marketOffer()!=null&&(DiscoveryClient.unknown(marketOffer().item())||marketOffer().own()||v.credits()>=marketOffer().price()),(g,hover)->{
+                var o=marketOffer();boolean ok=o!=null&&(DiscoveryClient.unknown(o.item())||o.own()||v.credits()>=o.price());
                 key(g,581,185,234,25,ok,hover,ok);
-                centered(g,o==null?"Sélectionne une offre":o.own()?"Annuler et récupérer":"Acheter le lot",698,193,1,ok?WHITE:SOFT,true);
+                centered(g,o==null?"Sélectionne une offre":DiscoveryClient.unknown(o.item())?"Examiner":o.own()?"Annuler et récupérer":"Acheter le lot",698,193,1,ok?WHITE:SOFT,true);
             });
         simple(731,268,84,18,"Examiner",()->DiscoveryClient.request(menu.containerId,2,0),()->false,()->DiscoveryClient.unknown(page.held()));
         marketPrice=new net.minecraft.client.gui.components.EditBox(font,offsetX+Math.round(581*scale),
@@ -840,13 +839,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
         simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
         simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
-        simple(733,193,83,20,"Examiner",()->inspectSelected(shopSelection),()->false,()->shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()));
-        widget(581,215,147,26,"Confirmer",()->send(OperationsMenu.TRADE_FIRST+shopSelection),()->shopCanTrade(false),(g,hover)->{
-            var o=shopOffer(shopSelection);boolean ok=shopCanTrade(false);
+        widget(581,215,147,26,"Confirmer",()->{if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
+            var o=shopOffer(shopSelection);boolean unknown=o!=null&&DiscoveryClient.unknown(o.stack().get());boolean ok=unknown||shopCanTrade(false);
             key(g,581,215,147,26,ok,hover,ok);
-            centered(g,o==null?"Indisponible":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":""),654,223,1,ok?WHITE:SOFT,true);
+            centered(g,o==null?"Indisponible":unknown?"Examiner":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":""),654,223,1,ok?WHITE:SOFT,true);
         });
-        simple(733,215,83,26,"Tout vendre",()->send(OperationsMenu.SELL_ALL_FIRST+shopSelection),()->false,()->shopCanTrade(true));
+        simple(733,215,83,26,"Tout vendre",()->send(OperationsMenu.SELL_ALL_FIRST+shopSelection),()->false,()->shopOffer(shopSelection)!=null&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true));
     }
     private void drawShop(GuiGraphics g){
         var v=menu.view();var merchant=vendor();
