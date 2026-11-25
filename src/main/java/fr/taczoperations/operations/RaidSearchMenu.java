@@ -80,6 +80,13 @@ public final class RaidSearchMenu extends ChestMenu {
         });
         return super.addSlot(slot);
     }
+    @Override public void clicked(int index,int button,net.minecraft.world.inventory.ClickType type,Player player){
+        // Reject stale clicks immediately, before vanilla can alter a cursor
+        // or a slot during the tick that closes an invalid menu.
+        if(view!=null&&(player!=viewer||!view.stillValid(player)))return;
+        if(index>=0&&index<27&&type==net.minecraft.world.inventory.ClickType.CLONE)return;
+        super.clicked(index,button,type,player);
+    }
     @Override public ItemStack quickMoveStack(Player player,int index){
         if(index<0||index>=27)return ItemStack.EMPTY;
         if(view==null){if(index>=discoveredSlots())return ItemStack.EMPTY;}

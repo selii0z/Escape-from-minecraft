@@ -51,6 +51,42 @@ public final class ForestExpedition {
         player.getPersistentData().put(RAID_INVENTORY, items);
     }
 
+    // A full snapshot is safe only before the session starts (failed duo
+    // teleport). After gameplay, another player may already own a dropped
+    // starting item; recreating it from NBT would duplicate that item.
+    private static void recoverInterruptedInventory(ServerPlayer player){
+        var data=player.getPersistentData();
+        if(!data.contains(RAID_INVENTORY,9))return;
+        if(!data.contains("taczoperations_run_started")&&!ForestRaid.hasRaidToken(player)){
+            restoreInventory(player);
+            return;
+        }
+        var allowance=new java.util.HashMap<String,Integer>();
+        var snapshot=data.getList(RAID_INVENTORY,10);
+        for(int i=0;i<snapshot.size();i++){
+            var item=ItemStack.parseOptional(player.registryAccess(),snapshot.getCompound(i).getCompound("item"));
+            if(!item.isEmpty())allowance.merge(recoveryKey(item),item.getCount(),Integer::sum);
+        }
+        // Keep only currently held starting quantities; never create stacks.
+        // The secure case remains protected, including its current contents.
+        var inventory=player.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++){
+            var item=inventory.getItem(i);
+            if(item.isEmpty()||item.getItem() instanceof SecureCaseItem)continue;
+            String key=recoveryKey(item);
+            int keep=Math.min(item.getCount(),allowance.getOrDefault(key,0));
+            allowance.put(key,allowance.getOrDefault(key,0)-keep);
+            if(keep==0)inventory.setItem(i,ItemStack.EMPTY);
+            else if(keep<item.getCount())item.setCount(keep);
+        }
+        inventory.setChanged();
+    }
+    private static String recoveryKey(ItemStack item){
+        if(item.getItem() instanceof com.tacz.guns.api.item.IGun gun)return "gun/"+gun.getGunId(item);
+        if(item.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)return "ammo/"+ammo.getAmmoId(item);
+        return "item/"+net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem());
+    }
+
     private static void restoreInventory(ServerPlayer player) {
         if (!player.getPersistentData().contains(RAID_INVENTORY, 9)) return;
         ListTag items = player.getPersistentData().getList(RAID_INVENTORY, 10);
@@ -144,7 +180,7 @@ public final class ForestExpedition {
         if (player.level().dimension().equals(FOREST)) {
             return;
         }
-        restoreInventory(player);
+        recoverInterruptedInventory(player);
         SupplyContract.abortRun(player);
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
@@ -352,7 +388,7 @@ public final class ForestExpedition {
             ForestRaid.finishParticipant(player);
         }
         if (!extracted) {
-            restoreInventory(player);
+            recoverInterruptedInventory(player);
             SupplyContract.abortRun(player);
         }
         clearReturnPoint(player);

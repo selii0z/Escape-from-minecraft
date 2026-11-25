@@ -217,7 +217,7 @@ public final class ForestRaid extends SavedData {
                 "Expédition reprise. Ton raid est toujours actif : rejoins l'extraction pour conserver ton butin."));
         } else {
             player.sendSystemMessage(Component.literal(
-                "Ton raid a expiré. Retour au point de départ et restauration de ton inventaire initial."));
+                "Ton raid a expiré. Retour au départ : matériel initial encore détenu conservé, surplus perdu, coffre sécurisé protégé."));
         }
     }
 
@@ -676,7 +676,8 @@ public final class ForestRaid extends SavedData {
 
     public static boolean canSearchCorpse(ServerPlayer player, GuardCorpse corpse) {
         var raid=forPlayer(player);
-        return raid!=null&&raid.owns(player)&&raid.matches(corpse.getPersistentData(),CORPSE)&&canKeepCorpse(player.serverLevel(),corpse);
+        return player.isAlive()&&!player.isSpectator()&&corpse.isAlive()&&player.level()==corpse.level()
+            &&player.distanceToSqr(corpse)<=64&&raid!=null&&raid.owns(player)&&raid.matches(corpse.getPersistentData(),CORPSE)&&canKeepCorpse(player.serverLevel(),corpse);
     }
 
     static boolean hasRaidToken(ServerPlayer player) {

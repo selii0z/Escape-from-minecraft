@@ -62,11 +62,13 @@ public final class RaidSecurity {
                 }
             }
             @Override public void clicked(int index,int button,net.minecraft.world.inventory.ClickType type,Player player) {
+                if(!container.stillValid(player))return;
                 if(type==net.minecraft.world.inventory.ClickType.SWAP && button==slot)return;
                 if(index>=0&&index<slots.size()&&slots.get(index).container==inv&&slots.get(index).getContainerSlot()==slot)return;
                 super.clicked(index,button,type,player);
             }
             @Override public ItemStack quickMoveStack(Player player,int index) {
+                if(!container.stillValid(player))return ItemStack.EMPTY;
                 if(index>=0&&index<slots.size()&&slots.get(index).container==inv&&slots.get(index).getContainerSlot()==slot)return ItemStack.EMPTY;
                 return super.quickMoveStack(player,index);
             }
@@ -201,6 +203,7 @@ public final class RaidSecurity {
                 }
             }
             @Override public void clicked(int index,int button,net.minecraft.world.inventory.ClickType type,Player player) {
+                if(!container.stillValid(player))return;
                 if(index>=0&&index<54 && (type==net.minecraft.world.inventory.ClickType.SWAP||type==net.minecraft.world.inventory.ClickType.CLONE))return;
                 super.clicked(index,button,type,player);
             }
