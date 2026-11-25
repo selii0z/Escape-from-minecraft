@@ -43,7 +43,7 @@ tasks.register('generateRaidArt') {
                 Color skyBottom=color(victory?0xbda879:0x875e53)
                 g.setPaint(new GradientPaint(0f,0f,skyTop,0f,690f,skyBottom));g.fillRect(0,0,W,H)
                 float sx=victory?1510f:350f,sy=300f
-                g.setPaint(new RadialGradientPaint(sx,sy,420f,[0f,.18f,1f] as float[],
+                g.setPaint(new RadialGradientPaint(sx,sy,420f,[0f,0.18f,1f] as float[],
                     [new Color(246,212,151,victory?155:70),new Color(221,177,113,55),new Color(190,136,90,0)] as Color[]))
                 g.fillRect(0,0,W,730)
                 // Layered haze and irregular mountain silhouettes.
@@ -68,13 +68,13 @@ tasks.register('generateRaidArt') {
                             int x=random.nextInt(W+160)-80
                             int foot=570+layer*113+random.nextInt(55)
                             int tall=85+layer*104+random.nextInt(85+layer*40)
-                            int wide=(int)(tall*(.18+random.nextDouble()*.10))
+                            int wide=(int)(tall*(0.18+random.nextDouble()*0.10))
                             Color bark=mix(color(0x56645a),color(0x222923),layer/3.0)
                             Color needles=mix(color(0x64736a),color(0x182a23),layer/3.0)
                             stroke(bark,Math.max(2f,tall/34f),x,foot,x,foot-tall)
                             for(int b=0;b<8;b++){
-                                int y=foot-tall+14+(int)(b*tall*.105)
-                                int w=(int)(wide*(.25+b*.10))
+                                int y=foot-tall+14+(int)(b*tall*0.105)
+                                int w=(int)(wide*(0.25+b*0.10))
                                 polygon(needles,[[x,y-24],[x-w,y+42],[x-5,y+31],[x+w,y+46]])
                             }
                         }
@@ -84,7 +84,7 @@ tasks.register('generateRaidArt') {
                     polygon(color(0x74705c),[[830,1080],[1050,1080],[1010,760],[975,655],[968,655],[973,760]])
                     for(int i=0;i<480;i++){
                         int y=720+random.nextInt(360),x=random.nextInt(W)
-                        if(x>960-(y-650)*.42&&x<990+(y-650)*.92)continue
+                        if(x>960-(y-650)*0.42&&x<990+(y-650)*0.92)continue
                         int h=3+(int)((y-680)*random.nextDouble()/19)
                         stroke(new Color(93,106,72,85),1.5f,x,y,x-3,y-h)
                     }
@@ -137,7 +137,7 @@ tasks.register('generateRaidArt') {
                 // Extraction or failed-raid atmosphere; color and weather differ by outcome.
                 if(victory){
                     int x=industrial?1560:1450,y=industrial?635:690
-                    g.setPaint(new RadialGradientPaint(x as float,y as float,220f,[0f,.25f,1f] as float[],
+                    g.setPaint(new RadialGradientPaint(x as float,y as float,220f,[0f,0.25f,1f] as float[],
                         [new Color(158,209,132,155),new Color(113,170,96,62),new Color(82,150,78,0)] as Color[]))
                     g.fillRect(x-220,y-220,440,440)
                     rect(color(0x9cc98b),x-16,y-8,32,16)
@@ -148,7 +148,7 @@ tasks.register('generateRaidArt') {
                     }
                 }
                 // Subtle grain, edge falloff and outcome tint.
-                g.setPaint(new RadialGradientPaint(960f,510f,1110f,[0f,.55f,1f] as float[],
+                g.setPaint(new RadialGradientPaint(960f,510f,1110f,[0f,0.55f,1f] as float[],
                     [new Color(0,0,0,0),new Color(0,0,0,0),new Color(0,0,0,170)] as Color[]))
                 g.fillRect(0,0,W,H)
                 g.dispose()
