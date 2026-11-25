@@ -9,9 +9,17 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Boss : tirage par session 20 % aucun, 65 % classique, 10 % rare, 5 % convergence. Pool selon carte et nuit. Convergence et butins exclusifs 1.2.0 conservés ; aucun changement aux probabilités C6 ou duo premium. Vérifier toutes les catégories, groupe Goons, escortes, quêtes de boss et les deux cartes.
 - Extractions : principale toujours disponible ; relais forêt 65 % activable, clé usine 65 %, payante usine 50 %, tirages indépendants déterministes par session. Annonce au départ et reconnexion, conditions initiales conservées, HUD n'indique que les sorties accessibles. Tester duo, deux sessions, refus sortie fermée, coût clé/crédits, sortie principale garantie.
 
+
+## Inventaire tactique — deuxième lot ajouté
+- Curios facultatif : trois slots EFM dédiés (lunettes, sac, gilet), optiques historiques toujours compatibles. En survie avec les trois slots présents, E ouvre le menu tactique ; Maj+E ou le bouton Classique ouvre l'inventaire vanilla pour le crafting et les autres mods.
+- Les quatre armures restent à gauche du personnage, les trois accessoires à droite ; 36 cases natives conservées. Le sac et le gilet ajoutent leurs propres cases visibles et utilisables dans la même fenêtre. Changement du porteur : fermeture et réouverture serveur du menu pour adapter la forme (curseur traité par Minecraft). Pas de modification de la taille interne de l'inventaire vanilla.
+- Six sacs 9/18/27/36/54/72 ; trois gilets 4/8/12. Les gilets acceptent les objets IAmmo TaCZ et les soins FieldMedicine EFM, pas les armes ni les conteneurs. Les sacs refusent autres sacs, coffres sécurisés, conteneurs et bundles. Le contenu est un composant Minecraft de l'objet physique, pas un stockage global du joueur. Gestes multi-slots bloqués dans ce menu, shift-clic de rangement disponible.
+- Récupérateur : cinq sacs à 500/1200/3000/6000/12000 crédits, deux gilets à 700/1800. Élite exclusivement en raid : boss 8 % sac élite, 30 % sac militaire/expédition, 12 % gilet élite ; PMC 25 % sac tiers 1–3. Sacs générés vides. Prix/taux proposés à vérifier en jeu.
+- Préparation et estimation du butin lisent les sacs/gilets. Récupération interrompue : quantité initiale par type/ID incluant ces équipements et leur contenu ; ne recrée pas d'objets après départ. Pas de garantie contre tous les conteneurs tiers. Vente et remise des contrats restent dans les cases natives pour l'instant ; les munitions du sac doivent être déplacées en inventaire si TaCZ ne les détecte pas. 
+- Visuels d'objet provisoires vanilla, pas encore de modèle dorsal 3D. Assurance spécifique des nouveaux accessoires non intégrée ; mort et règles Curios à tester avant livraison. Protocole 13.
+- Tests requis : deux joueurs, changement de sac vide/plein, curseur plein, shift-clic, sortie et mort, retour forcé, reconnexion, drop Curios et keepInventory, sauvegarde, absence de duplication, résolution/GUI scale, AllTheMons/JEI, touche E et Maj+E, ouverture sans Curios, gilets, lunettes N avec casque, achats, butin élite.
+
 ## Lots à réaliser (pas encore codés)
-- Sacs 9/18/27/36/54/72 emplacements, derniers exclusifs raid ; stockage persistant et sécurisé côté serveur, pas d'imbrication récursive, intégration mort/assurance/coffre/revente. Prix proposés 500/1200/3000/6000/12000.
-- Gilets tactiques distincts des armures, emplacements spécialisés ; contraintes de rangement côté serveur.
 - Patrouilles itinérantes inter-secteurs ; les rondes et combats gardes/PMC existent déjà, à approfondir et vérifier isolation des sessions.
 - Marché entre joueurs : séquestre des objets, crédits et récupération hors ligne, taxe proposée 5 %, validation serveur et tests de concurrence.
 - Hydratation/énergie 0–100 uniquement en raid, restauration par consommables ; HUD et synchro.
