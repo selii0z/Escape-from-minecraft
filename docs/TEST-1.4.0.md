@@ -91,6 +91,6 @@ Tous les contrôles ci-dessous sont à exécuter, aucun résultat de test en jeu
 | Annonce shiny en raid | Annonce filtrée ; messages ordinaires conservés |
 | Gradle verifyEfmAssets | 32 icônes 64×64, 4 illustrations 1920×1080, portraits, textiles et modèles présents |
 
-La règle de reconnexion du code actuel est un délai de 10 minutes sans membre du raid connecté. Les objets de départ encore détenus sont conservés après interruption ; aucun objet disparu n'est recréé depuis le snapshot. Tester aussi le cas d'un membre de duo restant connecté.
+La règle de reconnexion est désormais un délai individuel de 10 minutes, même si l'équipier reste connecté. Vérifier reconnexion avant/après le délai, expiration des deux membres, fermeture de la carte uniquement quand le dernier participant quitte ou expire. Les objets de départ encore détenus sont conservés après interruption ; aucun objet disparu n'est recréé depuis le snapshot. Tester aussi le cas d'un membre de duo restant connecté.
 Le menu des réclamations indique le prochain retour à son ouverture, pas un compte à rebours en direct.
 Le protocole client/serveur actuel est 21. Ne pas distribuer avant compilation et tests.

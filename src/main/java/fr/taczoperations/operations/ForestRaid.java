@@ -53,7 +53,7 @@ public final class ForestRaid extends SavedData {
 
     private static final long RECONNECT_GRACE_MS = 10 * 60 * 1000L;
     private final Set<UUID> participants = new HashSet<>();
-    private long offlineSince;
+    private final java.util.Map<UUID,Long> reconnectDeadlines=new java.util.HashMap<>();
     private UUID id;
     private long seed;
     private boolean industrial;
@@ -127,7 +127,7 @@ public final class ForestRaid extends SavedData {
         raid.participants.clear();
         raid.participants.add(player.getUUID());
         if (partner != null) raid.participants.add(partner.getUUID());
-        raid.offlineSince = 0;
+        raid.reconnectDeadlines.clear();
         raid.seed = level.getRandom().nextLong();
         int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
         raid.bossConvergence=bossRoll<5;
@@ -212,6 +212,7 @@ public final class ForestRaid extends SavedData {
         ForestRaid raid=forPlayer(player);
         if(raid==null)return;
         raid.participants.remove(player.getUUID());
+        raid.reconnectDeadlines.remove(player.getUUID());
         raid.setDirty();
     }
 
@@ -242,15 +243,21 @@ public final class ForestRaid extends SavedData {
         id = null;
         atmosphere=null;
         participants.clear();
-        offlineSince = 0;
+        reconnectDeadlines.clear();
         setDirty();
     }
 
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
+        var prior=forPlayer(player);
+        if(prior!=null){
+            prior.expireDisconnected(player.serverLevel(),System.currentTimeMillis());
+            if(prior.participants.isEmpty()&&prior.id!=null)prior.closeSession(player.serverLevel());
+        }
         if (isParticipant(player)) {
             var session=forPlayer(player);
+            if(session!=null)session.reconnectDeadlines.remove(player.getUUID());
             if(session!=null)session.announceExits(player);
             if(session!=null&&session.bossConvergence)player.sendSystemMessage(Component.literal("ALERTE · Convergence des boss en cours."));
             player.sendSystemMessage(Component.literal(
@@ -266,13 +273,8 @@ public final class ForestRaid extends SavedData {
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
         ForestRaid raid=forPlayer(player);
         if(raid==null)return;
-        // Exclude the disconnecting player, which can still appear in level.players().
-        boolean othersOnline = player.serverLevel().players().stream().anyMatch(other ->
-            other != player && raid.owns(other));
-        if (!othersOnline) {
-            raid.offlineSince = System.currentTimeMillis();
-            raid.setDirty();
-        }
+        raid.reconnectDeadlines.put(player.getUUID(),System.currentTimeMillis()+RECONNECT_GRACE_MS);
+        raid.setDirty();
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
@@ -287,6 +289,7 @@ public final class ForestRaid extends SavedData {
     private void maintain(ServerLevel level){
         ForestRaid raid=this;
         if(raid.id==null)return;
+        raid.expireDisconnected(level,System.currentTimeMillis());
         if(raid.participants.removeIf(uuid->{
             ServerPlayer p=level.getServer().getPlayerList().getPlayer(uuid);
             return p!=null&&p.isAlive()&&!raid.owns(p);
@@ -305,16 +308,25 @@ public final class ForestRaid extends SavedData {
                 RaidAudio.ambient(level,level.players().stream().filter(p->raid.owns(p)&&p.isAlive()&&!p.isSpectator()).toList(),
                     raid.industrial,raid.atmosphere,audioRandom);
             }
-            if (raid.offlineSince != 0) {
-                raid.offlineSince = 0;
-                raid.setDirty();
-            }
-        } else if (raid.offlineSince == 0) {
-            raid.offlineSince = System.currentTimeMillis();
-            raid.setDirty();
-        } else if (System.currentTimeMillis() - raid.offlineSince >= RECONNECT_GRACE_MS) {
-            raid.closeSession(level);
         }
+    }
+
+    private void expireDisconnected(ServerLevel level,long now){
+        boolean changed=false;
+        for(var iterator=participants.iterator();iterator.hasNext();){
+            UUID uuid=iterator.next();
+            Long deadline=reconnectDeadlines.get(uuid);
+            if(deadline==null){
+                if(level.getServer().getPlayerList().getPlayer(uuid)==null){
+                    reconnectDeadlines.put(uuid,now+RECONNECT_GRACE_MS);
+                    changed=true;
+                }
+            }else if(now>=deadline){
+                iterator.remove();reconnectDeadlines.remove(uuid);changed=true;
+            }
+        }
+        reconnectDeadlines.keySet().retainAll(participants);
+        if(changed)setDirty();
     }
 
     private void tickFieldEvent(ServerLevel level){
@@ -665,6 +677,7 @@ public final class ForestRaid extends SavedData {
     static boolean hasActiveSession(ServerLevel level,boolean industrial) {
         ForestRaid raid=get(level,industrial);
         if (raid.id == null) return false;
+        raid.expireDisconnected(level,System.currentTimeMillis());
         if (raid.participants.removeIf(uuid -> {
             ServerPlayer online = level.getServer().getPlayerList().getPlayer(uuid);
             return online != null && !raid.owns(online);
