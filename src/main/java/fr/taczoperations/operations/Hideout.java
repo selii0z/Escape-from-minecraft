@@ -131,6 +131,8 @@ public final class Hideout {
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
             .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
+            .then(Commands.literal("mobile").executes(ctx->{HideoutRange.mobile(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("records").executes(ctx->{HideoutRange.records(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("tir").executes(ctx->{HideoutRange.toggle(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("decoration").executes(ctx->{HideoutDecor.cycle(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("menu").executes(ctx->{HideoutMenu.open(ctx.getSource().getPlayerOrException());return 1;}))
