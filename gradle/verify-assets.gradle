@@ -45,8 +45,9 @@ tasks.register('verifyEfmAssets') {
             } catch(Exception ex) { missing.add(model.name+' : '+ex.message) }
         }
         ['endurance','strength','medicine','search','stealth','survival','weapons','trade'].each { id -> checkImage('textures/gui/skills/'+id+'.png',512,512) }
+        (1..12).each { id -> checkImage('textures/gui/campaign/mission_'+id+'.png',768,432) }
         if(!missing.isEmpty()) throw new GradleException('Ressources EFM invalides :\n'+missing.join('\n'))
-        logger.lifecycle('EFM : 32 icones, 4 illustrations Full HD, 4 portraits, 12 textures textiles et 6 modeles et 8 illustrations de competences verifies.')
+        logger.lifecycle('EFM : 32 icones, 4 illustrations Full HD, 4 portraits, 12 textures textiles et 6 modeles et 8 illustrations de competences et 12 illustrations de campagne verifies.')
     }
 }
 tasks.named('check') { dependsOn tasks.named('verifyEfmAssets') }
