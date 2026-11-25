@@ -806,7 +806,9 @@ public final class ForestRaid extends SavedData {
 
     private boolean putCrate(ServerLevel level, BlockPos pos, String name, Random random, int index) {
         if (pos.equals(dropPos)) return false;
-        var block = index % 3 == 0 ? Blocks.CHEST : Blocks.BARREL;
+        int kind=locations.get(index).kind();
+        int furniture=kind>=4?3:kind==3?3+random.nextInt(3):kind;
+        var block=OperationsMod.FURNITURE.get(furniture).get();
         if (!ForestProtection.setRaidContainer(level, pos, block.defaultBlockState())) {
             return false;
         }
@@ -815,7 +817,6 @@ public final class ForestRaid extends SavedData {
         }
         barrel.getPersistentData().putUUID(CRATE, id);
         barrel.getPersistentData().putInt(CRATE_INDEX, index);
-        int kind = locations.get(index).kind();
         if(kind>=4){
             var vault=IndustrialZone.VAULTS.get(kind-4);
             ItemStack label=new ItemStack(Items.BARREL);
@@ -835,10 +836,10 @@ public final class ForestRaid extends SavedData {
         }
         ItemStack labeled = new ItemStack(Items.BARREL);
         labeled.set(DataComponents.CUSTOM_NAME, Component.literal(switch (kind) {
-            case 0 -> "Caisse médicale";
-            case 1 -> "Caisse industrielle";
+            case 0 -> "Sac médical";
+            case 1 -> "Boîte à outils";
             case 2 -> "Caisse militaire";
-            default -> "Coffre confidentiel";
+            default -> furniture==4?"Ordinateur · données":furniture==5?"Armoire à dossiers":"Coffre-fort confidentiel";
         }));
         barrel.applyComponentsFromItemStack(labeled);
         var supplies = switch (kind) {
@@ -1057,6 +1058,12 @@ public final class ForestRaid extends SavedData {
             }
             GuardPouch.clear(guard);
         }
+    }
+
+    public static boolean canSearchFurniture(ServerPlayer player,RaidFurnitureEntity furniture){
+        return player.isAlive()&&!player.isSpectator()&&player.level()==furniture.getLevel()
+            &&!furniture.isRemoved()&&furniture.getBlockPos().distToCenterSqr(player.position())<=64
+            &&isParticipant(player)&&get(player.serverLevel()).matches(furniture.getPersistentData(),CRATE);
     }
 
     public static void onInspect(PlayerInteractEvent.RightClickBlock event) {

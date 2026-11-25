@@ -48,5 +48,11 @@
   "item.taczoperations.bear_plush": "Teddy bear",
   "item.taczoperations.master_tools": "Professional tool kit",
   "item.taczoperations.metal_scissors": "Precision scissors",
-  "item.taczoperations.filter_cartridge": "FP-100 filter cartridge"
+  "item.taczoperations.filter_cartridge": "FP-100 filter cartridge",
+  "block.taczoperations.raid_medbag": "Medical bag",
+  "block.taczoperations.raid_toolbox": "Toolbox",
+  "block.taczoperations.raid_weaponbox": "Military supply box",
+  "block.taczoperations.raid_safe": "Safe",
+  "block.taczoperations.raid_pc": "Computer",
+  "block.taczoperations.raid_cabinet": "File cabinet"
 }

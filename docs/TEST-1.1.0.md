@@ -36,3 +36,5 @@ Les fonctionnalités restantes du roadmap ne sont pas terminées.
 - Ressources EFT optionnelles : tester les cinq modèles 3D en inventaire, en main et au sol, sans Fabric, puis contrôler l'absence de texture manquante. Voir docs/EFT-ASSETS.md.
 
 - 24 objets de revente distincts des reliques de quête : contrôler poids de tirage, rareté, vente unitaire au marchand désigné, conservation des clés/soins, butin rare des réserves et prix. Modèles vanilla provisoires dans CI ; modèles EFT locaux facultatifs.
+
+- Mobilier de fouille : six blocs (sac médical, boîte à outils, caisse militaire, coffre-fort, ordinateur, armoire à dossiers), 27 emplacements, retrait seulement, contenu commun au raid, ancien mobilier supprimé à proximité avant le nouveau remplissage. Vérifier clic droit, shift-click, fermeture à la fin du raid, deux joueurs, rechargement de chunk, permissions et textures. Largage reste un tonneau standard. Modèles détaillés en overlay local distinct.

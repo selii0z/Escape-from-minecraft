@@ -41,6 +41,18 @@ public final class OperationsMod {
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ID);
     private static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, ID);
     private static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ID);
+    private static final DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITIES=DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE,ID);
+    public static final java.util.List<Supplier<fr.taczoperations.operations.RaidFurnitureBlock>> FURNITURE=java.util.List.of(
+        BLOCKS.registerBlock("raid_medbag",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_toolbox",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_weaponbox",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_safe",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_pc",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_cabinet",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion())
+    );
+    public static final Supplier<net.minecraft.world.level.block.entity.BlockEntityType<fr.taczoperations.operations.RaidFurnitureEntity>> FURNITURE_ENTITY=
+        BLOCK_ENTITIES.register("raid_furniture",()->net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(
+            fr.taczoperations.operations.RaidFurnitureEntity::new,FURNITURE.stream().map(Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
 
     public static final Supplier<OperationsBoardBlock> BOARD = BLOCKS.registerBlock(
         "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F));
@@ -65,6 +77,12 @@ public final class OperationsMod {
         }
         ITEMS.registerItem("industrial_key", props -> new net.minecraft.world.item.Item(props), new net.minecraft.world.item.Item.Properties().stacksTo(16));
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
+        ITEMS.registerSimpleBlockItem("raid_medbag",FURNITURE.get(0));
+        ITEMS.registerSimpleBlockItem("raid_toolbox",FURNITURE.get(1));
+        ITEMS.registerSimpleBlockItem("raid_weaponbox",FURNITURE.get(2));
+        ITEMS.registerSimpleBlockItem("raid_safe",FURNITURE.get(3));
+        ITEMS.registerSimpleBlockItem("raid_pc",FURNITURE.get(4));
+        ITEMS.registerSimpleBlockItem("raid_cabinet",FURNITURE.get(5));
     }
 
     private static net.minecraft.world.item.ArmorMaterial goggleMaterial(String id) {
@@ -94,6 +112,7 @@ public final class OperationsMod {
 
     public OperationsMod(IEventBus bus) {
         BLOCKS.register(bus);
+        BLOCK_ENTITIES.register(bus);
         ARMOR_MATERIALS.register(bus);
         ITEMS.register(bus);
         MENUS.register(bus);

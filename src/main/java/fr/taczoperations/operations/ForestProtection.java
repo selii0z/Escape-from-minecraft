@@ -31,7 +31,7 @@ public final class ForestProtection {
         return fr.taczoperations.worldgen.IndustrialZone.VAULTS.stream().anyMatch(v->pos.equals(v.door())||pos.equals(v.door().above()));
     }
     public static boolean allowsRaidContainer(BlockPos pos, BlockState state) {
-        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.isAir() || state.is(Blocks.IRON_BLOCK)&&vaultDoor(pos));
+        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.getBlock() instanceof RaidFurnitureBlock || state.isAir() || state.is(Blocks.IRON_BLOCK)&&vaultDoor(pos));
     }
 
     public static void onBreak(BlockEvent.BreakEvent event) {

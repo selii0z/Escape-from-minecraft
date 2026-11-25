@@ -48,5 +48,11 @@
   "item.taczoperations.bear_plush": "Ourson en peluche",
   "item.taczoperations.master_tools": "Kit d'outillage professionnel",
   "item.taczoperations.metal_scissors": "Ciseaux de précision",
-  "item.taczoperations.filter_cartridge": "Cartouche filtrante FP-100"
+  "item.taczoperations.filter_cartridge": "Cartouche filtrante FP-100",
+  "block.taczoperations.raid_medbag": "Sac médical",
+  "block.taczoperations.raid_toolbox": "Boîte à outils",
+  "block.taczoperations.raid_weaponbox": "Caisse militaire",
+  "block.taczoperations.raid_safe": "Coffre-fort",
+  "block.taczoperations.raid_pc": "Ordinateur",
+  "block.taczoperations.raid_cabinet": "Armoire à dossiers"
 }
