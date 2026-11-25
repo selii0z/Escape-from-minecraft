@@ -29,16 +29,20 @@ public final class RaidSurvival {
         if(!RaidInjuries.active(p))return;
         var d=p.getPersistentData();
         if(!d.getBoolean(STARTED))begin(p);
+        PassiveSkills.movement(p);
         int beforeWater=water(p),beforeEnergy=energy(p);
         int seconds=d.getInt(SECONDS)+1;
         d.putInt(SECONDS,seconds);
         // Normal activity: roughly 33 min of water and 50 min of food.
         // Sprinting drains both faster; no extra drain outside the raid.
         int w=d.getInt(WATER),e=d.getInt(ENERGY);
-        if(seconds%2==0)w=Math.max(0,w-1);
+        if(seconds%2==0)w=Math.max(0,w-PassiveSkills.reduce(p,PassiveSkills.Skill.SURVIVAL,1));
         boolean rested=seconds<=d.getInt(REST);
-        if(!rested&&seconds%3==0)e=Math.max(0,e-1);
-        if(p.isSprinting()){if(!rested&&seconds%2==0)e=Math.max(0,e-1);if(seconds%3==0)w=Math.max(0,w-1);}
+        if(!rested&&seconds%3==0)e=Math.max(0,e-PassiveSkills.reduce(p,PassiveSkills.Skill.SURVIVAL,1));
+        if(p.isSprinting()){
+            if(!rested&&seconds%2==0)e=Math.max(0,e-PassiveSkills.reduce(p,PassiveSkills.Skill.ENDURANCE,PassiveSkills.reduce(p,PassiveSkills.Skill.STRENGTH,1)));
+            if(seconds%3==0)w=Math.max(0,w-PassiveSkills.reduce(p,PassiveSkills.Skill.ENDURANCE,1));
+        }
         d.putInt(WATER,w);d.putInt(ENERGY,e);
         if(beforeWater>20&&water(p)<=20)p.sendSystemMessage(Component.literal("Hydratation faible : bois de l'eau."));
         if(beforeEnergy>20&&energy(p)<=20)p.sendSystemMessage(Component.literal("Énergie faible : mange une ration."));
