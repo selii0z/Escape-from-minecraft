@@ -364,7 +364,7 @@ public final class ForestRaid extends SavedData {
             cache.setItem(indices.get(cursor++),RaidRelic.roll(rng).stack());
             if(rng.nextInt(100)<25)cache.setItem(indices.get(cursor++),RaidRelic.roll(rng).stack());
         }
-        cache.setChanged();
+        RaidOrigin.markContainer(cache);
         return true;
     }
 
@@ -526,7 +526,7 @@ public final class ForestRaid extends SavedData {
         if (rng.nextInt(100)<5) barrel.setItem(15,RaidRelic.OMEGA.stack());
         if (rng.nextInt(100)<8) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
             net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))));
-        barrel.setChanged();
+        RaidOrigin.markContainer(barrel);
         return true;
     }
 
@@ -1045,7 +1045,7 @@ public final class ForestRaid extends SavedData {
             barrel.setItem(12,BallisticVest.create(slot,tier,BallisticVest.classColor(tier)));
             barrel.setItem(18,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","salewa")),2));
             barrel.setItem(24,new ItemStack(Items.GOLD_INGOT,4+random.nextInt(5)));
-            barrel.setChanged();
+            RaidOrigin.markContainer(barrel);
             return true;
         }
         ItemStack labeled = new ItemStack(Items.BARREL);
@@ -1110,7 +1110,7 @@ public final class ForestRaid extends SavedData {
             if(medical!=null)barrel.setItem(22,medicalLoot(medical,medical.equals("bandage")?1+random.nextInt(3):1));
             if(random.nextInt(100)<20)barrel.setItem(21,medicalLoot("bandage",1));
         }
-        barrel.setChanged();
+        RaidOrigin.markContainer(barrel);
         return true;
     }
 
