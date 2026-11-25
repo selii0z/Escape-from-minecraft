@@ -62,6 +62,9 @@ public final class ForestRaid extends SavedData {
     private int reinforcementKills,reinforcementWaves,reinforcementLimit,reinforcementPending;
     private long reinforcementDue,reinforcementExpiry,reinforcementCooldown;
     private BlockPos dropPos;
+    private int fieldEvent,fieldEventAttempts;
+    private long fieldEventDue;
+    private BlockPos fieldEventPos;
     private UUID dropVisual;
     private boolean dropLanded;
     private final BitSet vaultPrepared = new BitSet(), vaultOpened = new BitSet();
@@ -130,6 +133,13 @@ public final class ForestRaid extends SavedData {
         raid.pmcGroups = assignFactions(raid.encounterPoints, raid.seed);
         raid.dropDue = level.getGameTime() + 20L * (45 + new Random(raid.seed).nextInt(46));
         raid.dropLanding = 0;
+        // Independent seeded roll: not every expedition has a bonus event.
+        Random eventRandom=new Random(raid.seed^0x54ad733fe82L);
+        int eventRoll=eventRandom.nextInt(100);
+        raid.fieldEvent=eventRoll<40?0:eventRoll<65?1:eventRoll<85?2:3;
+        raid.fieldEventDue=level.getGameTime()+20L*(120+eventRandom.nextInt(121));
+        raid.fieldEventAttempts=0;
+        raid.fieldEventPos=null;
         raid.dropAttempts = 0;
         raid.reinforcementKills=raid.reinforcementWaves=raid.reinforcementPending=0;
         raid.reinforcementLimit=partner==null?1:2;
@@ -239,6 +249,7 @@ public final class ForestRaid extends SavedData {
         if (online) {
             raid.tickAirdrop(level);
             raid.tickReinforcements(level);
+            raid.tickFieldEvent(level);
             if (raid.offlineSince != 0) {
                 raid.offlineSince = 0;
                 raid.setDirty();
@@ -249,6 +260,81 @@ public final class ForestRaid extends SavedData {
         } else if (System.currentTimeMillis() - raid.offlineSince >= RECONNECT_GRACE_MS) {
             raid.closeSession(level);
         }
+    }
+
+    private void tickFieldEvent(ServerLevel level){
+        long now=level.getGameTime();
+        if(fieldEvent==0||fieldEventPos!=null||now<fieldEventDue||fieldEventAttempts>=12)return;
+        var players=level.players().stream().filter(p->p.isAlive()&&!p.isSpectator()&&!p.isCreative()&&owns(p)).toList();
+        if(players.isEmpty())return;
+        fieldEventDue=now+100;
+        Random rng=new Random(seed^0x295bb8aL^fieldEventAttempts++);
+        var anchors=new ArrayList<>(industrial?IndustrialZone.GUARDS:ForestRaidAnchors.ENEMIES);
+        java.util.Collections.shuffle(anchors,rng);
+        int checked=0;
+        for(var anchor:anchors){
+            if(checked++>=12)break;
+            var local=new ForestPlan.Point(anchor.x()+rng.nextInt(17)-8,anchor.z()+rng.nextInt(17)-8);
+            BlockPos center=industrial?ForestExpedition.industrialPosition(local):ForestLandmarks.position(local);
+            if(!level.hasChunkAt(center)||players.stream().noneMatch(p->center.distToCenterSqr(p.position())<100*100))continue;
+            BlockPos place=findFloor(level,center,3,true);
+            if(place==null||!inArea(place)||!validEncounterPosition(industrial,place))continue;
+            if(dropPos!=null&&dropPos.distSqr(place)<12*12)continue;
+            if(players.stream().anyMatch(p->place.distToCenterSqr(p.position())<28*28))continue;
+            if(spawnedContainers.stream().anyMatch(p->p.distSqr(place)<8*8))continue;
+            if(industrial&&IndustrialZone.VAULTS.stream().anyMatch(v->v.door().distSqr(place)<18*18))continue;
+            if(!level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
+                new net.minecraft.world.phys.AABB(place).inflate(2)).isEmpty())continue;
+            if(createFieldCache(level,place,rng)){
+                fieldEventPos=place.immutable();
+                for(var p:players){
+                    RaidAudio.alert(p);
+                    p.sendSystemMessage(Component.literal("SIGNAL · "+fieldEventTitle()+" · X "+place.getX()+" Z "+place.getZ()+" (réserve abandonnée)"));
+                }
+                setDirty();return;
+            }
+        }
+    }
+    private String fieldEventTitle(){
+        return switch(fieldEvent){
+            case 1->"Réserve de secours";
+            case 2->"Dépôt de maintenance";
+            default->"Archives confidentielles";
+        };
+    }
+    private boolean createFieldCache(ServerLevel level,BlockPos pos,Random rng){
+        if(!level.getBlockState(pos).isAir())return false;
+        int furniture=fieldEvent==1?0:fieldEvent==2?1:5;
+        if(!ForestProtection.setRaidContainer(level,pos,OperationsMod.FURNITURE.get(furniture).get().defaultBlockState()))return false;
+        if(!(level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity cache))return false;
+        cache.getPersistentData().putUUID(CRATE,id);
+        cache.getPersistentData().putInt(CRATE_INDEX,-2);
+        spawnedContainers.add(pos.immutable());
+        ItemStack label=new ItemStack(Items.BARREL);
+        label.set(DataComponents.CUSTOM_NAME,Component.literal(fieldEventTitle()));
+        cache.applyComponentsFromItemStack(label);
+        var indices=new ArrayList<Integer>();
+        for(int i=0;i<27;i++)indices.add(i);
+        java.util.Collections.shuffle(indices,rng);
+        int cursor=0;
+        int category=fieldEvent==1?0:fieldEvent==2?1:3;
+        int count=2+rng.nextInt(3);
+        for(int i=0;i<count;i++){
+            TradeLoot loot=TradeLoot.roll(rng,category,0);
+            if(loot!=null)cache.setItem(indices.get(cursor++),loot.stack());
+        }
+        if(fieldEvent==1){
+            String[] medicines={"bandage","salewa","hemostat","splint","medkit"};
+            for(int i=0;i<2;i++)cache.setItem(indices.get(cursor++),PmcSpecialty.medicine(medicines[rng.nextInt(medicines.length)],1+rng.nextInt(2)));
+        }else if(fieldEvent==2){
+            cache.setItem(indices.get(cursor++),new ItemStack(Items.IRON_INGOT,2+rng.nextInt(5)));
+            if(rng.nextInt(100)<30)cache.setItem(indices.get(cursor++),BallisticVest.roll(rng,false));
+        }else{
+            cache.setItem(indices.get(cursor++),RaidRelic.roll(rng).stack());
+            if(rng.nextInt(100)<25)cache.setItem(indices.get(cursor++),RaidRelic.roll(rng).stack());
+        }
+        cache.setChanged();
+        return true;
     }
 
     private void tickReinforcements(ServerLevel level) {
