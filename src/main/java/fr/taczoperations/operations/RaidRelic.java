@@ -54,7 +54,7 @@ public enum RaidRelic {
         @Override
         public void appendHoverText(ItemStack stack, TooltipContext context,
             java.util.List<net.minecraft.network.chat.Component> text, net.minecraft.world.item.TooltipFlag flag) {
-            text.add(net.minecraft.network.chat.Component.literal(relic.rarity() + " · " + relic.price + " crédits"));
+            text.add(net.minecraft.network.chat.Component.literal(relic.rarity() + " · " + relic.price + " crédits (référence)"));
             text.add(net.minecraft.network.chat.Component.literal("Vente, contrat ou accès au catalogue."));
         }
     }

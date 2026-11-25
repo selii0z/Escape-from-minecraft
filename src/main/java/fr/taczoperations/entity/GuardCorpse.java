@@ -25,6 +25,15 @@ import net.minecraft.world.level.Level;
 
 public final class GuardCorpse extends Entity {
     private final CorpseInventory items = new CorpseInventory();
+    private static final net.minecraft.network.syncher.EntityDataAccessor<String> APPEARANCE=
+        SynchedEntityData.defineId(GuardCorpse.class,net.minecraft.network.syncher.EntityDataSerializers.STRING);
+    public void setAppearance(String value){
+        entityData.set(APPEARANCE,switch(value){
+            case "foreman","tracker","pmc_usec","pmc_bird_eye"->value;
+            default->"";
+        });
+    }
+    public String appearance(){return entityData.get(APPEARANCE);}
 
     public GuardCorpse(EntityType<? extends GuardCorpse> type, Level level) {
         super(type, level);
@@ -55,8 +64,8 @@ public final class GuardCorpse extends Entity {
         }
         if (player instanceof ServerPlayer server && items.stillValid(server)) {
             server.openMenu(new SimpleMenuProvider(
-                (id, inventory, viewer) -> new CorpseMenu(id, inventory, items),
-                Component.translatable("container.taczoperations.guard_corpse")));
+                (id, inventory, viewer) -> new fr.taczoperations.operations.RaidSearchMenu(id,inventory,items,getPersistentData(),items::stillValid),
+                hasCustomName()?getCustomName():Component.translatable("container.taczoperations.guard_corpse")));
         }
         return InteractionResult.sidedSuccess(level().isClientSide);
     }
@@ -77,16 +86,18 @@ public final class GuardCorpse extends Entity {
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.Builder builder) {}
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {builder.define(APPEARANCE,"");}
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ContainerHelper.loadAllItems(tag, items.getItems(), registryAccess());
+        setAppearance(tag.getString("appearance"));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         ContainerHelper.saveAllItems(tag, items.getItems(), registryAccess());
+        tag.putString("appearance",appearance());
     }
 
     private final class CorpseInventory extends SimpleContainer {
@@ -102,27 +113,4 @@ public final class GuardCorpse extends Entity {
         }
     }
 
-    private static final class CorpseMenu extends ChestMenu {
-        private CorpseMenu(int id, Inventory player, CorpseInventory corpse) {
-            super(MenuType.GENERIC_9x3, id, player, corpse, 3);
-        }
-
-        @Override
-        protected Slot addSlot(Slot slot) {
-            if (slot.container instanceof CorpseInventory) {
-                return super.addSlot(new Slot(slot.container, slot.getContainerSlot(), slot.x, slot.y) {
-                    @Override
-                    public boolean mayPlace(ItemStack stack) {
-                        return false;
-                    }
-                });
-            }
-            return super.addSlot(slot);
-        }
-
-        @Override
-        public ItemStack quickMoveStack(Player player, int slot) {
-            return slot < 27 ? super.quickMoveStack(player, slot) : ItemStack.EMPTY;
-        }
-    }
 }

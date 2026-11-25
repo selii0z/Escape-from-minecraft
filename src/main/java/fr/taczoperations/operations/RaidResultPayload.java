@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 public record RaidResultPayload(boolean success, long duration, int kills, int crates,
-                                int contracts, int combatXp, int searchXp, int contractXp, int adjustment)
+                                int contracts, int combatXp, int searchXp, int contractXp, int adjustment, int xpBefore, int xpAfter, long lootValue, int lootCount)
     implements CustomPacketPayload {
     public static final Type<RaidResultPayload> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, "raid_result"));
@@ -24,6 +24,10 @@ public record RaidResultPayload(boolean success, long duration, int kills, int c
             ByteBufCodecs.VAR_INT.encode(buf, report.searchXp());
             ByteBufCodecs.VAR_INT.encode(buf, report.contractXp());
             ByteBufCodecs.VAR_INT.encode(buf, report.adjustment());
+            ByteBufCodecs.VAR_INT.encode(buf, report.xpBefore());
+            ByteBufCodecs.VAR_INT.encode(buf, report.xpAfter());
+            ByteBufCodecs.VAR_LONG.encode(buf,report.lootValue());
+            ByteBufCodecs.VAR_INT.encode(buf,report.lootCount());
         },
         buf -> new RaidResultPayload(
             buf.readBoolean(),
@@ -34,6 +38,10 @@ public record RaidResultPayload(boolean success, long duration, int kills, int c
             ByteBufCodecs.VAR_INT.decode(buf),
             ByteBufCodecs.VAR_INT.decode(buf),
             ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_INT.decode(buf),
+            ByteBufCodecs.VAR_LONG.decode(buf),
             ByteBufCodecs.VAR_INT.decode(buf))
     );
 

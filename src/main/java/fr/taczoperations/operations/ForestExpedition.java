@@ -51,6 +51,42 @@ public final class ForestExpedition {
         player.getPersistentData().put(RAID_INVENTORY, items);
     }
 
+    // A full snapshot is safe only before the session starts (failed duo
+    // teleport). After gameplay, another player may already own a dropped
+    // starting item; recreating it from NBT would duplicate that item.
+    private static void recoverInterruptedInventory(ServerPlayer player){
+        var data=player.getPersistentData();
+        if(!data.contains(RAID_INVENTORY,9))return;
+        if(!data.contains("taczoperations_run_started")&&!ForestRaid.hasRaidToken(player)){
+            restoreInventory(player);
+            return;
+        }
+        var allowance=new java.util.HashMap<String,Integer>();
+        var snapshot=data.getList(RAID_INVENTORY,10);
+        for(int i=0;i<snapshot.size();i++){
+            var item=ItemStack.parseOptional(player.registryAccess(),snapshot.getCompound(i).getCompound("item"));
+            if(!item.isEmpty())allowance.merge(recoveryKey(item),item.getCount(),Integer::sum);
+        }
+        // Keep only currently held starting quantities; never create stacks.
+        // The secure case remains protected, including its current contents.
+        var inventory=player.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++){
+            var item=inventory.getItem(i);
+            if(item.isEmpty()||item.getItem() instanceof SecureCaseItem)continue;
+            String key=recoveryKey(item);
+            int keep=Math.min(item.getCount(),allowance.getOrDefault(key,0));
+            allowance.put(key,allowance.getOrDefault(key,0)-keep);
+            if(keep==0)inventory.setItem(i,ItemStack.EMPTY);
+            else if(keep<item.getCount())item.setCount(keep);
+        }
+        inventory.setChanged();
+    }
+    private static String recoveryKey(ItemStack item){
+        if(item.getItem() instanceof com.tacz.guns.api.item.IGun gun)return "gun/"+gun.getGunId(item);
+        if(item.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)return "ammo/"+ammo.getAmmoId(item);
+        return "item/"+net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem());
+    }
+
     private static void restoreInventory(ServerPlayer player) {
         if (!player.getPersistentData().contains(RAID_INVENTORY, 9)) return;
         ListTag items = player.getPersistentData().getList(RAID_INVENTORY, 10);
@@ -63,6 +99,10 @@ public final class ForestExpedition {
             }
         }
         player.getInventory().setChanged();
+    }
+
+    static int initialWeather(ServerPlayer player){
+        return player.getPersistentData().getCompound(RETURN_POINT).getInt("weather");
     }
 
     static boolean isNightRaid(ServerPlayer player) {
@@ -110,14 +150,16 @@ public final class ForestExpedition {
             clearStaleDeparture(partner);
         }
 
-        if (ForestRaid.hasActiveSession(forest)
-            || forest.players().stream().anyMatch(other -> !other.isSpectator())) {
-            return "Une équipe occupe déjà la dimension de raid (joueurs déconnectés inclus).";
+        if(ForestRaid.hasActiveSession(forest,industrial)
+            ||forest.players().stream().anyMatch(other->!other.isSpectator()&&
+                (industrial?IndustrialZone.inside(other.getBlockX(),other.getBlockZ()):ForestPlan.inside(other.getBlockX(),other.getBlockZ())))){
+            return "Une équipe occupe déjà cette carte (joueurs déconnectés inclus).";
         }
         var random = forest.getRandom();
         var entry = industrial ? industrialPosition(IndustrialZone.ENTRY)
             : ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
-        int weather = random.nextInt(3);
+        int weatherRoll=random.nextInt(100);
+        int weather=weatherRoll<50?0:weatherRoll<85?1:2;
         if (!enter(player, forest, entry, night, weather, industrial)) {
             return "Le départ a été annulé.";
         }
@@ -138,7 +180,8 @@ public final class ForestExpedition {
         if (player.level().dimension().equals(FOREST)) {
             return;
         }
-        restoreInventory(player);
+        recoverInterruptedInventory(player);
+        SupplyContract.abortRun(player);
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
     }
@@ -159,9 +202,8 @@ public final class ForestExpedition {
         point.putInt("weather", weather);
         point.putBoolean("industrial", industrial);
         player.getPersistentData().put(RETURN_POINT, point);
-        snapshotInventory(player);
-
         player.closeContainer();
+        snapshotInventory(player);
         Vec3 spawn = Vec3.atBottomCenterOf(destination);
         if (!standingRoom(player, forest, spawn)) {
             spawn = safeSpawn(player, forest, destination);
@@ -172,8 +214,12 @@ public final class ForestExpedition {
             return false;
         }
         atmosphere(player, point);
-        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · sortie sur le bloc d’or."
+        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · 3 sorties : or (gratuite), fer (clé), émeraude (600 crédits)."
             : "Forêt Noire · sortie principale sur le bloc d’or. Active le relais pour la sortie secondaire."));
+        if(industrial){
+            BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
+            player.sendSystemMessage(Component.literal("Sortie à clé · X "+key.getX()+" Z "+key.getZ()+" | Sortie payante · X "+paid.getX()+" Z "+paid.getZ()));
+        }
         return true;
     }
 
@@ -202,6 +248,29 @@ public final class ForestExpedition {
         BlockPos secondary = industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         boolean relay = !industrial && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
+        if(industrial && !player.isSpectator() && player.onGround()){
+            BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
+            BlockPos paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
+            boolean key=feet.equals(keyExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.IRON_BLOCK);
+            boolean paid=feet.equals(paidExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.EMERALD_BLOCK);
+            if(key||paid){
+                var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
+                boolean eligible=key?player.getInventory().items.stream().anyMatch(s->s.is(keyItem))
+                    :SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST;
+                if(!eligible){
+                    if(player.tickCount%20==0)player.displayClientMessage(Component.literal(key?"Extraction verrouillée · clé industrielle requise.":"Extraction payante · "+IndustrialZone.PAID_EXIT_COST+" crédits requis."),true);
+                    return;
+                }
+                // The server thread is synchronous. Charge only after a confirmed dimension change.
+                if(returnToOrigin(player,true)){
+                    if(key)SupplyContract.consume(player,keyItem,1);
+                    else SupplyContract.account(player).putInt("credits",SupplyContract.balance(player)-IndustrialZone.PAID_EXIT_COST);
+                    player.sendSystemMessage(Component.literal(key?"Extraction sécurisée · clé consommée.":"Extraction payante · -"+IndustrialZone.PAID_EXIT_COST+" crédits."));
+                    SupplyContract.extracted(player,true);
+                }
+                return;
+            }
+        }
         if (!player.isSpectator() && player.onGround()
             && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
             boolean qualifies = ForestRaid.isParticipant(player);
@@ -223,8 +292,19 @@ public final class ForestExpedition {
                 return;
             }
             BlockPos extraction = relay && secondary.distSqr(feet) < primary.distSqr(feet) ? secondary : primary;
+            String exitLabel="Extraction";
+            if(industrial){
+                BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT),paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
+                var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
+                if(player.getInventory().items.stream().anyMatch(s->s.is(keyItem)) && keyExit.distSqr(feet)<extraction.distSqr(feet)){
+                    extraction=keyExit;exitLabel="Extraction (clé)";
+                }
+                if(SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
+                    extraction=paidExit;exitLabel="Extraction (600 cr.)";
+                }
+            }
             double distance = Math.hypot(player.getX() - extraction.getX() - .5, player.getZ() - extraction.getZ() - .5);
-            player.displayClientMessage(Component.literal("Extraction · X " + extraction.getX()
+            player.displayClientMessage(Component.literal(exitLabel+" · X " + extraction.getX()
                 + "  Y " + extraction.getY() + "  Z " + extraction.getZ() + " · "
                 + Math.round(distance) + " m"), true);
         }
@@ -256,18 +336,23 @@ public final class ForestExpedition {
     }
 
     private static void atmosphere(ServerPlayer player, CompoundTag point) {
-        player.connection.send(new ClientboundSetTimePacket(player.level().getGameTime(),
-            point.getBoolean("night") ? 18000 : 6000, false));
-        int weather = point.getInt("weather");
-        if (weather == 0) {
+        long now=player.level().getGameTime();
+        RaidAtmosphere session=ForestRaid.atmosphere(player);
+        boolean night=point.getBoolean("night");
+        player.connection.send(new ClientboundSetTimePacket(now,
+            session==null?(night?16000:3500):session.skyTime(night,now),false));
+        int weather=point.getInt("weather");
+        float rain=session==null?(weather==0?0:weather==1?.65F:1F):session.rain(now);
+        float thunder=session==null?(weather==2?.8F:0):session.thunder(now);
+        if (rain <= .001F) {
             player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.STOP_RAINING, 0));
         } else {
             player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.START_RAINING, 0));
         }
         player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.RAIN_LEVEL_CHANGE,
-            weather == 0 ? 0 : 1));
+            rain));
         player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE,
-            weather == 2 ? .8F : 0));
+            thunder));
     }
 
     private static boolean returnToOrigin(ServerPlayer player) {
@@ -288,13 +373,24 @@ public final class ForestExpedition {
             origin = player.server.overworld();
             destination = safeSpawn(player, origin, origin.getSharedSpawnPos());
         }
+        // Return carried cursor items before changing dimension / restoring snapshot.
+        player.closeContainer();
+        if(player.isUsingItem()&&player.getUseItem().getItem() instanceof FieldMedicine)player.stopUsingItem();
         player.teleportTo(origin, destination.x, destination.y, destination.z, Set.of(),
             point.getFloat("yaw"), point.getFloat("pitch"));
         if (player.level() != origin) {
             return false;
         }
-        if (leavingRaid) ForestRaid.finishParticipant(player);
-        if (!extracted) restoreInventory(player);
+        if (leavingRaid) {
+            RaidInjuries.clear(player);
+            RaidAudio.clear(player);
+            if(extracted)RaidAudio.extract(player);
+            ForestRaid.finishParticipant(player);
+        }
+        if (!extracted) {
+            recoverInterruptedInventory(player);
+            SupplyContract.abortRun(player);
+        }
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
         if (leavingRaid) {

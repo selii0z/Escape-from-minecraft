@@ -1,7 +1,7 @@
 package fr.taczoperations.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.tacz.guns.api.item.builder.AmmoItemBuilder;
+import fr.taczoperations.operations.RaidLoadout;
 import fr.taczoperations.OperationsMod;
 import fr.taczoperations.operations.OperationsMenu;
 import fr.taczoperations.operations.OperationsShop;
@@ -73,7 +73,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private int selectedArea;
     private boolean night;
     private boolean duo;
-    private ItemStack[] rewards;
+    private RaidLoadout loadout;
+    private int lastLoadoutTick=Integer.MIN_VALUE;
     private int historyScroll;
     private static final int HISTORY_ROWS = 4;
 
@@ -110,7 +111,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();
+            case OperationsMenu.TIMED_CONTRACTS -> {
+                simple(690,79,125,29,"Classiques",()->send(OperationsMenu.CONTRACTS));
+                simple(710,376,105,24,"Actualiser",()->send(OperationsMenu.REFRESH));
+            }
             case OperationsMenu.CONTRACTS -> {
+                simple(690,79,125,29,"Défis périodiques",()->send(OperationsMenu.TIMED_CONTRACTS));
                 int start = view.page() * OperationsMenu.CONTRACT_ROWS;
                 for (int i = 0; i < OperationsMenu.CONTRACT_ROWS && start + i < view.filtered().size(); i++) {
                     int status = view.contracts().get(view.filtered().get(start + i));
@@ -136,11 +142,20 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 var vendor = vendor();
                 var offers = vendor.offers();
                 int page = view.page() % OperationsMenu.VENDOR_PAGES;
-                int start = page * OperationsMenu.LIST_ROWS;
-                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < offers.size(); i++) {
-                    var offer = offers.get(start + i);
+                for (int i = 0; i < view.shopRows().size(); i++) {
+                    int index=view.shopRows().get(i);
+                    if(index<0||index>=offers.size())continue;
+                    var offer = offers.get(index);
                     final int action = OperationsMenu.TRADE_FIRST + i;
-                    simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
+                    if(offer.action()==OperationsShop.Action.SELL){
+                        int count=view.saleCounts().get(i);
+                        int all=OperationsMenu.SELL_ALL_FIRST+i;
+                        int price=fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
+                        simple(446,136+i*41,42,24,"x1",()->send(action),()->false,
+                            ()->count>0&&(long)view.credits()+price<=Integer.MAX_VALUE);
+                        simple(491,136+i*41,49,24,"Tout",()->send(all),()->false,
+                            ()->count>1&&(long)view.credits()+(long)price*count<=Integer.MAX_VALUE);
+                    }else simple(446, 136 + i * 41, 94, 24, offer.action().label, () -> send(action), () -> false,
                         () -> offer.action() == OperationsShop.Action.UNLOCK ? !unlocked(offer.key())
                             : offer.action() != OperationsShop.Action.BUY || (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) >= offer.loyaltyLevel()
                             && (offer.key() == null || unlocked(offer.key()))));
@@ -149,14 +164,50 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     simple(584, 218 + merchant.ordinal() * 35, 225, 28, merchant.title,
                         () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
                 }
-                pager(page, (offers.size() + OperationsMenu.LIST_ROWS - 1) / OperationsMenu.LIST_ROWS);
+                pager(page,view.shopPages());
+                simple(423,83,125,20,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+                simple(423,105,125,20,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
+                simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
+                    ()->send(OperationsMenu.SHOP_OWNED_FILTER),()->view.shopOwned(),()->true);
+                simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
+            }
+            case OperationsMenu.MERCHANT_ORDERS -> {
+                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+                for(int i=0;i<4;i++){
+                    var fields=view.orders().get(i+1).split("\\|",-1);
+                    int action=OperationsMenu.ORDER_FIRST+i;
+                    boolean done=fields[8].equals("1");
+                    simple(700,151+i*56,110,28,done?"Livrée":"Livrer",()->send(action),()->false,
+                        ()->!done&&Integer.parseInt(fields[4])>=Integer.parseInt(fields[3]));
+                }
+                simple(700,376,110,24,"Actualiser",()->send(OperationsMenu.REFRESH));
+            }
+            case OperationsMenu.TRADE_JOURNAL -> {
+                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+                simple(173,376,65,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->view.page()>0);
+                simple(750,376,65,22,"›",()->send(OperationsMenu.NEXT),()->false,()->view.page()+1<view.pages());
+            }
+            case OperationsMenu.BLACK_MARKET -> {
+                simple(555,79,125,29,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+                for(int i=0;i<6;i++){
+                    String[] offer=view.market().get(i+1).split("\\|",-1);
+                    final int action=OperationsMenu.MARKET_FIRST+i;
+                    simple(700,135+i*41,110,25,offer[2].equals("0")?"Épuisé":"Acheter",()->send(action),()->false,
+                        ()->!offer[2].equals("0")&&offer[3].equals("1")&&view.credits()>=Integer.parseInt(offer[1]));
+                }
+                simple(700,386,110,22,"Actualiser",()->send(OperationsMenu.REFRESH));
             }
             case OperationsMenu.GROUP -> groupWidgets();
-            case OperationsMenu.SETTINGS -> simple(420, 145, 120, 29,
-                view.showExtraction() ? "Masquer" : "Afficher", () -> send(OperationsMenu.TOGGLE_EXTRACTION));
+            case OperationsMenu.SETTINGS -> {
+                simple(420,145,120,29,view.showExtraction()?"Masquer":"Afficher",()->send(OperationsMenu.TOGGLE_EXTRACTION));
+                simple(420,207,120,29,"Utilisation",()->send(OperationsMenu.SECURE_POUCH));
+                simple(420,269,120,29,"Assurer",()->send(OperationsMenu.INSURE_GEAR));
+                simple(420,331,120,29,"Ouvrir",()->send(OperationsMenu.CLAIM_INSURANCE));
+            }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -209,12 +260,6 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private void operationWidgets() {
-        if (rewards == null) {
-            ItemStack ammunition = AmmoItemBuilder.create()
-                .setId(ResourceLocation.fromNamespaceAndPath("tacz", "9mm")).build();
-            rewards = new ItemStack[]{new ItemStack(Items.IRON_INGOT), ammunition,
-                new ItemStack(Items.BREAD), new ItemStack(Items.COOKED_BEEF), new ItemStack(Items.GOLDEN_CARROT)};
-        }
         for (int i = 0; i < AREAS.length; i++) {
             final int index = i;
             int x = 166 + i % 2 * 196;
@@ -288,7 +333,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
         panel(g, 3, 74, 149, 337, 0xc0111713);
-        if (menu.view().tab() == OperationsMenu.CONTRACTS) {
+        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET || menu.view().tab()==OperationsMenu.TRADE_JOURNAL || menu.view().tab()==OperationsMenu.MERCHANT_ORDERS) {
             panel(g, 157, 74, 674, 339, 0xf0111612);
         } else {
             panel(g, 157, 74, 401, 339, 0xd8111612);
@@ -348,7 +393,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g, upper(area.title), 685, 102, area.title.length() > 19 ? 1.00F : 1.25F, WHITE, true);
         String[] lines = selectedArea == FOREST
             ? new String[]{"Zone forestière dense, scierie", "abandonnée et camp militaire.", "Deux voies d’extraction."}
-            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Première version jouable.", "Une sortie sur le bloc d’or."}
+            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Trois voies d’extraction.", "Or, clé industrielle ou crédits."}
             : new String[]{area.environment, "Zone de déploiement à venir."};
         for (int i = 0; i < lines.length; i++) text(g, lines[i], 673, 124 + i * 11, .94F, SOFT, false);
 
@@ -359,13 +404,14 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         detail(g, 221, "⊕", "Menace", open ? "Gardes armés" : "À venir");
 
         panel(g, 575, 241, 249, 54, DARK);
-        text(g, "Récompenses possibles", 585, 246, 1, WHITE, true);
-        if (open) {
-            for (int i = 0; i < rewards.length; i++) {
-                int x = 586 + i * 39;
-                panel(g, x, 258, 34, 31, 0xff1b2118);
-                item(g, rewards[i], x + 7, 263, 1.24F);
+        text(g, "PRÉPARATION · ÉQUIPEMENT PERSONNEL", 585, 245, .84F, GOLD, true);
+        if(open&&minecraft.player!=null){
+            int tick=minecraft.player.tickCount;
+            if(loadout==null||tick-lastLoadoutTick>=10||tick<lastLoadoutTick){
+                loadout=RaidLoadout.inspect(minecraft.player);
+                lastLoadoutTick=tick;
             }
+            renderLoadout(g,loadout);
         }
         panel(g, 575, 300, 127, 62, DARK);
         panel(g, 705, 300, 119, 62, DARK);
@@ -374,6 +420,18 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         if (open) {
             text(g, duo ? fit(menu.view().partner(), 104) : "Groupe sur invitation", 711, 351, .75F, SOFT, false);
         }
+    }
+
+    private void renderLoadout(GuiGraphics g,RaidLoadout kit){
+        boolean usable=kit.guns()>0&&kit.condition()>0&&!kit.jammed();
+        String condition=kit.guns()==0?"":kit.jammed()?" · enrayée":" · "+Math.round(kit.condition()/100F)+"%";
+        text(g,fit(kit.weapon()+condition,235),585,256,.83F,usable&&kit.condition()>=7000?LIME:GOLD,false);
+        text(g,fit("Munitions : "+kit.loaded()+" + "+kit.reserve(),145),585,267,.79F,kit.reserve()<30?GOLD:LIME,false);
+        text(g,fit("Soins : "+kit.medical()+" (saign. "+kit.bleeding()+")",143),709,267,.75F,kit.bleeding()==0?GOLD:LIME,false);
+        text(g,"Protection : "+kit.armor()+"/4",585,278,.79F,kit.armor()<4||kit.armorCondition()<=20?GOLD:LIME,false);
+        text(g,"Nourriture : "+kit.food(),709,278,.79F,kit.food()<3?GOLD:LIME,false);
+        text(g,"Places libres : "+kit.free()+"/36",585,289,.72F,kit.free()<6?GOLD:SOFT,false);
+        if(night)text(g,kit.nightOptics()?"Vision nuit : OK":"Vision nuit absente",709,289,.70F,kit.nightOptics()?LIME:GOLD,false);
     }
 
     private void mapCard(GuiGraphics g, int index, int x, int y, boolean hovered) {
@@ -394,6 +452,24 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private void secondaryPage(GuiGraphics g) {
         var view = menu.view();
         switch (view.tab()) {
+            case OperationsMenu.TIMED_CONTRACTS -> {
+                text(g,"DÉFIS PÉRIODIQUES",173,82,1.5F,WHITE,true);
+                text(g,"Progression automatique à chaque bilan de raid",173,108,.90F,SOFT,false);
+                var data=view.timedContracts();
+                for(int i=0;i<6;i++){
+                    int x=i<3?170:500, row=i%3, y=153+row*66;
+                    if(row==0)text(g,i<3?"QUOTIDIENS":"HEBDOMADAIRES",x,134,1.15F,GOLD,true);
+                    int progress=data.get(i*3),target=data.get(i*3+1);
+                    boolean done=data.get(i*3+2)!=0;
+                    panel(g,x,y,315,61,DARK);
+                    text(g,fr.taczoperations.operations.TimedContracts.title(i),x+10,y+8,1.1F,WHITE,true);
+                    text(g,done?"Terminé":progress+" / "+target,x+218,y+8,.95F,done?LIME:SOFT,true);
+                    g.fill(x+10,y+27,x+305,y+34,0xff30382b);
+                    g.fill(x+10,y+27,x+10+(int)(295L*Math.min(progress,target)/Math.max(1,target)),y+34,0xff8fdc57);
+                    text(g,"+"+fr.taczoperations.operations.TimedContracts.credits(i)+" crédits · +"+fr.taczoperations.operations.TimedContracts.xp(i)+" XP",x+10,y+43,.93F,GOLD,false);
+                }
+                text(g,"Renouvellement : minuit UTC / lundi minuit UTC",173,364,.85F,SOFT,false);
+            }
             case OperationsMenu.CONTRACTS -> {
                 long active = view.contracts().stream().filter(status -> status == SupplyContract.ACTIVE).count();
                 text(g, "CONTRATS", 173, 82, 1.55F, WHITE, true);
@@ -422,28 +498,105 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             case OperationsMenu.SHOP -> {
                 var vendor = vendor();
-                pageTitle(g, "▱", upper(vendor.title), vendor.specialty);
-                int start = view.page() % OperationsMenu.VENDOR_PAGES * OperationsMenu.LIST_ROWS;
+                pageTitle(g, "▱", upper(vendor.title), fit(vendor.specialty,210));
                 var offers = vendor.offers();
-                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < offers.size(); i++) {
-                    var offer = offers.get(start + i);
+                if(view.shopRows().isEmpty()){
+                    text(g,"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);
+                    text(g,"Désactive le filtre pour revoir son catalogue.",181,170,.84F,SOFT,false);
+                }
+                for (int i = 0; i < view.shopRows().size(); i++) {
+                    int index=view.shopRows().get(i);
+                    if(index<0||index>=offers.size())continue;
+                    var offer = offers.get(index);
                     int y = 128 + i * 41;
                     panel(g, 169, y, 379, 37, DARK);
                     boolean locked = offer.action() == OperationsShop.Action.BUY &&
                         (OperationsShop.reputationLevel(view.reputation().get(vendor.ordinal()), view.experience()) < offer.loyaltyLevel()
                          || offer.key() != null && !unlocked(offer.key()));
-                    text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
+                    if(offer.action()!=OperationsShop.Action.SELL)
+                        text(g, fit((locked ? "[Verrouillé] " : "") + offer.title(), 253), 181, y + 6, 1.04F, locked ? SOFT : WHITE, true);
                     String cost = switch (offer.action()) {
-                        case BUY, REPAIR -> offer.price() + " crédits";
-                        case SELL -> "+" + offer.price() + " crédits";
+                        case BUY -> offer.price() + " crédits";
+                        case REPAIR -> vendor==OperationsShop.ARMORER?"8 cr. / % manquant · min. 50":offer.price()+" crédits";
+                        case SELL -> {
+                            long day=Long.parseLong(view.market().getFirst());
+                            int price=fr.taczoperations.operations.ResaleMarket.price(offer,day);
+                            int variation=fr.taczoperations.operations.ResaleMarket.variation(offer,day);
+                            int count=view.saleCounts().get(i);
+                            yield "+"+price+" cr/u ("+(variation>0?"+":"")+variation+"%) · "+count+" en stock";
+                        }
                         case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
                     };
                     String requirement = offer.requirement();
                     if (offer.action() == OperationsShop.Action.BUY && offer.loyaltyLevel() > 1)
                         requirement += " · Niv. " + OperationsShop.requiredPlayerLevel(offer.loyaltyLevel());
-                    text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
-                        181, y + 23, .95F, GOLD, false);
+                    int priceColor=GOLD;
+                    if(offer.action()==OperationsShop.Action.SELL){
+                        int change=fr.taczoperations.operations.ResaleMarket.variation(offer,Long.parseLong(view.market().getFirst()));
+                        priceColor=change>0?LIME:change<0?0xffdf9c94:SOFT;
+                    }
+                    if(offer.action()==OperationsShop.Action.SELL){
+                        int count=view.saleCounts().get(i);
+                        long total=(long)count*fr.taczoperations.operations.ResaleMarket.price(offer,Long.parseLong(view.market().getFirst()));
+                        text(g,fit((locked?"[Verrouillé] ":"")+offer.title(),250),181,y+5,.94F,WHITE,true);
+                        text(g,fit(cost,250),181,y+16,.80F,priceColor,false);
+                        text(g,"Total : "+numberLong(total)+" cr.",181,y+26,.80F,GOLD,false);
+                    }else text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
+                        181, y + 23, .95F, priceColor, false);
                 }
+            }
+            case OperationsMenu.MERCHANT_ORDERS -> {
+                text(g,"COMMANDES SPÉCIALES",173,82,1.50F,GOLD,true);
+                text(g,"Quatre livraisons quotidiennes · renouvellement à minuit UTC",173,108,.9F,SOFT,false);
+                for(int i=0;i<4;i++){
+                    var f=view.orders().get(i+1).split("\\|",-1);
+                    int y=132+i*56;
+                    boolean done=f[8].equals("1");
+                    panel(g,169,y,650,52,DARK);
+                    text(g,f[0]+" · "+f[1],181,y+5,1.04F,WHITE,true);
+                    text(g,fit(f[2]+" ×"+f[3]+" · Possédés : "+f[4],455),181,y+20,.88F,done?SOFT:Integer.parseInt(f[4])>=Integer.parseInt(f[3])?LIME:GOLD,false);
+                    text(g,"+"+f[5]+" cr.  ·  +"+f[6]+" XP  ·  +"+f[7]+" rép.",181,y+35,.91F,done?SOFT:LIME,true);
+                }
+                text(g,"Les objets remis sont consommés. Aucune obligation d'accepter.",173,371,.83F,SOFT,false);
+            }
+            case OperationsMenu.TRADE_JOURNAL -> {
+                text(g,"JOURNAL DES TRANSACTIONS",173,82,1.45F,GOLD,true);
+                text(g,"50 dernières opérations · heure UTC",173,106,.9F,SOFT,false);
+                var sums=view.journalTotals();
+                String[] labels={"VENTES","ACHATS","RÉPARATIONS"};
+                for(int i=0;i<3;i++){
+                    int x=169+i*220;
+                    panel(g,x,123,210,38,DARK);
+                    text(g,labels[i],x+9,128,.84F,SOFT,true);
+                    text(g,(i==0?"+":"-")+numberLong(sums.get(i))+" cr.",x+9,142,1.05F,i==0?LIME:0xffdf9c94,true);
+                }
+                if(view.journal().isEmpty())text(g,"Aucune transaction enregistrée.",181,193,1,SOFT,false);
+                for(int i=0;i<view.journal().size();i++){
+                    var fields=view.journal().get(i).split("\\|",-1);
+                    if(fields.length!=7)continue;
+                    int y=166+i*34;
+                    long delta=Long.parseLong(fields[5]);
+                    panel(g,169,y,650,31,DARK);
+                    text(g,fields[0]+" · "+fields[1]+" · "+fields[2],181,y+4,.82F,SOFT,false);
+                    text(g,fit(fields[3]+" ×"+fields[4],370),181,y+16,.91F,WHITE,true);
+                    text(g,(delta>=0?"+":"")+numberLong(delta)+" cr.",595,y+4,.98F,delta>=0?LIME:0xffdf9c94,true);
+                    text(g,"Solde : "+numberLong(Long.parseLong(fields[6])),595,y+17,.82F,SOFT,false);
+                }
+                centered(g,(view.page()+1)+" / "+view.pages(),495,382,1,SOFT,false);
+            }
+            case OperationsMenu.BLACK_MARKET -> {
+                text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
+                text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
+                for(int i=0;i<6;i++){
+                    String[] o=view.market().get(i+1).split("\\|",-1);
+                    int y=128+i*41;
+                    panel(g,169,y,650,37,DARK);
+                    text(g,fit(o[0],280),185,y+5,1.1F,WHITE,true);
+                    text(g,fit(o[4],300),185,y+22,.85F,o[3].equals("1")?SOFT:0xffdf9c94,false);
+                    text(g,o[1]+" crédits",510,y+5,1.05F,GOLD,true);
+                    text(g,"Stock : "+o[2],510,y+22,.88F,SOFT,false);
+                }
+                text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
             }
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
@@ -505,6 +658,15 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 text(g, "Indication d’extraction", 185, 144, 1.13F, WHITE, true);
                 text(g, view.showExtraction() ? "Coordonnées affichées en raid" : "Coordonnées masquées en raid",
                     185, 163, .95F, SOFT, false);
+                panel(g,169,194,379,54,DARK);
+                text(g,"Coffre sécurisé",185,206,1.13F,WHITE,true);
+                text(g,"5 places · clic droit en main",185,225,.95F,SOFT,false);
+                panel(g,169,256,379,54,DARK);
+                text(g,"Assurance du matériel",185,268,1.13F,WHITE,true);
+                text(g,"100 crédits / équipement",185,287,.95F,SOFT,false);
+                panel(g,169,318,379,54,DARK);
+                text(g,"Espace de récupération",185,330,1.13F,WHITE,true);
+                text(g,"Après 30 min · chance 95 %",185,349,.95F,SOFT,false);
             }
             case OperationsMenu.GROUP -> {
                 pageTitle(g, "♟", "GROUPE", "Préparez un déploiement à deux");
@@ -525,12 +687,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() == OperationsMenu.CONTRACTS) return;
+        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL || view.tab()==OperationsMenu.MERCHANT_ORDERS) return;
         if (view.tab() == OperationsMenu.SHOP) {
             var vendor = vendor();
             panel(g, 578, 88, 239, 115, DARK);
             image(g, texture("merchant_" + vendor.name().toLowerCase(java.util.Locale.ROOT)), 593, 102, 62, 82);
             text(g, vendor.title, 669, 109, 1.2F, GOLD, true);
+            text(g,"Revente possible : "+numberLong(view.shopValue())+" cr.",585,191,.85F,LIME,true);
             int reputation = view.reputation().get(vendor.ordinal());
             int loyalty = OperationsShop.reputationLevel(reputation,view.experience());
             text(g, "Fidélité " + loyalty + " / 4", 669, 130, 1.0F, GOLD, true);
@@ -542,11 +705,41 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             return;
         }
+        if(view.tab()==OperationsMenu.PROGRESSION) {
+            var totals=view.raidTotals();
+            panel(g,575,88,249,145,DARK);
+            text(g,"STATISTIQUES DE RAID",585,97,1.17F,GOLD,true);
+            long raids=totals.get(0),wins=totals.get(1),losses=totals.get(2),kills=totals.get(3);
+            text(g,"Raids terminés : "+raids,585,117,.93F,WHITE,false);
+            text(g,"Extractions : "+wins+" · Morts : "+losses,585,132,.93F,SOFT,false);
+            text(g,"Survie : "+(raids==0?"—":String.format(java.util.Locale.FRANCE,"%.1f %%",100.0*wins/raids)),585,147,.93F,LIME,true);
+            text(g,"Éliminations : "+kills+" · K/D : "+(losses==0?"—":String.format(java.util.Locale.FRANCE,"%.2f",(double)kills/losses)),585,162,.9F,WHITE,false);
+            text(g,"Record : "+totals.get(8)+" éliminations",585,177,.91F,SOFT,false);
+            text(g,"Coffres : "+totals.get(4)+" · Contrats : "+totals.get(5),585,192,.89F,SOFT,false);
+            long seconds=totals.get(6);
+            text(g,"Temps : "+seconds/3600+" h "+seconds%3600/60+" min",585,207,.89F,SOFT,false);
+            panel(g,575,240,249,164,DARK);
+            text(g,"RECORDS PERSONNELS",585,249,1.09F,GOLD,true);
+            String bestLoot=totals.get(15)==0?"—":numberLong(totals.get(9))+" cr.";
+            text(g,"Meilleur butin : "+bestLoot,585,269,.94F,LIME,true);
+            text(g,"Butin cumulé : "+(totals.get(15)==0?"—":numberLong(totals.get(10))+" cr."),585,285,.92F,SOFT,false);
+            text(g,"Série actuelle : "+totals.get(11)+" extraction(s)",585,301,.93F,WHITE,false);
+            text(g,"Meilleure série : "+totals.get(12),585,317,.93F,LIME,false);
+            text(g,"Record XP : "+numberLong(totals.get(13))+" · Fouilles : "+totals.get(14),585,333,.87F,SOFT,false);
+            text(g,"XP totale : "+numberLong(totals.get(7)),585,349,.93F,WHITE,false);
+            text(g,"Butin évalué : "+totals.get(15)+" raid(s)",585,365,.81F,SOFT,false);
+            text(g,"Objets revendables : "+numberLong(totals.get(16)),585,381,.81F,SOFT,false);
+            return;
+        }
         image(g, AREAS[FOREST].texture(), 578, 88, 239, 108);
         g.renderOutline(578, 88, 239, 108, FRAME);
         text(g, "FORÊT NOIRE", 585, 205, 1.24F, WHITE, true);
         text(g, view.partner().isEmpty() ? "Solo · invitations disponibles" : "Équipier : " + view.partner(),
             585, 224, .92F, SOFT, false);
+    }
+
+    private static String numberLong(long value){
+        return java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE).format(value);
     }
 
     private OperationsShop vendor() {

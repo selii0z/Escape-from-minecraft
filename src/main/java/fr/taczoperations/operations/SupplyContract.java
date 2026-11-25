@@ -199,6 +199,8 @@ public enum SupplyContract {
         CompoundTag account = account(player);
         long earned = (long) Math.max(0, account.getInt("raid_activity_xp")) + Math.max(0, account.getInt("contract_cycle_xp"))
             + Math.max(0, account.getInt("contract_xp_bonus_v2"))
+            + Math.max(0, account.getInt("timed_contract_xp"))
+            + Math.max(0, account.getInt("merchant_order_xp"))
             + (account.getInt("OUTPOST") == 2 ? 8 : 0)
             + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
@@ -247,7 +249,15 @@ public enum SupplyContract {
 
     // Saved after each raid so a future result screen can reopen the last report.
     static void saveRaidReport(ServerPlayer player, boolean success, long seconds,
-                               int kills, int crates, int contracts, int killXp, int searchXp, int contractXp, int adjustment) {
+                               int kills, int crates, int contracts, int killXp, int searchXp, int contractXp, int adjustment, int xpBefore) {
+        saveRaidReport(player,success,seconds,kills,crates,contracts,killXp,searchXp,contractXp,adjustment,xpBefore,new RaidLootValue.Estimate(-1,0));
+    }
+    static void saveRaidReport(ServerPlayer player,boolean success,long seconds,
+                               int kills,int crates,int contracts,int killXp,int searchXp,int contractXp,int adjustment,int xpBefore,RaidLootValue.Estimate loot) {
+        int[] timed=TimedContracts.record(player,success,kills,crates);
+        contracts=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contracts)+timed[0]);
+        contractXp=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contractXp)+timed[1]);
+        rewardLevels(player);
         CompoundTag report = new CompoundTag();
         report.putBoolean("success", success);
         report.putLong("duration_seconds", Math.max(0, seconds));
@@ -258,9 +268,18 @@ public enum SupplyContract {
         report.putInt("search_xp", Math.max(0, searchXp));
         report.putInt("contract_xp", Math.max(0, contractXp));
         report.putInt("adjustment_xp", adjustment);
+        report.putLong("loot_value",loot.credits());
+        report.putInt("loot_count",loot.count());
         report.putInt("final_xp", (int) Math.min(Integer.MAX_VALUE,
             Math.max(0L, (long) killXp + searchXp + contractXp + adjustment)));
+        int xpAfter = experienceEarned(player);
+        report.putInt("xp_before", xpBefore < 0 ? -1 : Math.min(xpBefore,xpAfter));
+        report.putInt("xp_after", xpAfter);
+        if (xpBefore >= 0) report.putInt("final_xp", Math.max(0,xpAfter-xpBefore));
         CompoundTag data = account(player);
+        var totals = raidTotals(player);
+        addRaidTotals(totals, report);
+        data.put("raid_totals_v1",totals);
         data.put("last_raid_report", report);
         data.putBoolean("pending_raid_report", true);
         // Retain the ten most recent runs, newest first, for a future history tab.
@@ -271,6 +290,58 @@ public enum SupplyContract {
             history.add(previous.getCompound(i).copy());
         }
         data.put("raid_history", history);
+    }
+
+    // Migrate the available ten-raid history once. Earlier records are not reconstructible.
+    static CompoundTag raidTotals(ServerPlayer player) {
+        var data=account(player);
+        var history=data.getList("raid_history",10);
+        if(data.contains("raid_totals_v1")){
+            var totals=data.getCompound("raid_totals_v1");
+            if(!totals.getBoolean("records_v2")){
+                // Preserve lifetime totals. Only the new records are backfilled,
+                // oldest to newest so the current streak has the right order.
+                for(int i=history.size()-1;i>=0;i--)addRaidRecords(totals,history.getCompound(i));
+                totals.putBoolean("records_v2",true);
+            }
+            return totals;
+        }
+        var totals=new CompoundTag();
+        for(int i=history.size()-1;i>=0;i--)addRaidTotals(totals,history.getCompound(i));
+        totals.putBoolean("records_v2",true);
+        data.put("raid_totals_v1",totals);
+        return totals;
+    }
+    private static void addRaidTotals(CompoundTag totals,CompoundTag report) {
+        incrementTotal(totals,"raids",1);
+        incrementTotal(totals,report.getBoolean("success")?"wins":"losses",1);
+        incrementTotal(totals,"kills",report.getInt("kills"));
+        incrementTotal(totals,"crates",report.getInt("crates"));
+        incrementTotal(totals,"contracts",report.getInt("contracts"));
+        incrementTotal(totals,"seconds",report.getLong("duration_seconds"));
+        incrementTotal(totals,"xp",report.getInt("final_xp"));
+        totals.putLong("best_kills",Math.max(totals.getLong("best_kills"),report.getInt("kills")));
+        addRaidRecords(totals,report);
+    }
+    private static void addRaidRecords(CompoundTag totals,CompoundTag report){
+        boolean success=report.getBoolean("success");
+        if(success){
+            incrementTotal(totals,"current_streak",1);
+            totals.putLong("best_streak",Math.max(totals.getLong("best_streak"),totals.getLong("current_streak")));
+        }else totals.putLong("current_streak",0);
+        if(success&&report.contains("loot_value")&&report.getLong("loot_value")>=0){
+            long value=report.getLong("loot_value");
+            incrementTotal(totals,"loot_total",value);
+            incrementTotal(totals,"loot_count_total",report.getInt("loot_count"));
+            incrementTotal(totals,"valued_raids",1);
+            totals.putLong("best_loot",Math.max(totals.getLong("best_loot"),value));
+        }
+        totals.putLong("best_xp",Math.max(totals.getLong("best_xp"),report.getInt("final_xp")));
+        totals.putLong("best_crates",Math.max(totals.getLong("best_crates"),report.getInt("crates")));
+    }
+    private static void incrementTotal(CompoundTag totals,String key,long value) {
+        long current=Math.max(0L,totals.getLong(key));
+        totals.putLong(key,current+Math.min(Long.MAX_VALUE-current,Math.max(0L,value)));
     }
 
     static boolean showExtraction(ServerPlayer player) { return !account(player).getBoolean("hide_extraction"); }
@@ -335,7 +406,21 @@ public enum SupplyContract {
             && (gun.getPath().equals("ak47") || gun.getPath().equals("m4a1"));
     }
 
+    // Restored inventory after an interrupted raid must not leave provisional
+    // run XP pending indefinitely or grant periodic completion rewards.
+    static void abortRun(ServerPlayer player){
+        var run=player.getPersistentData();
+        if(run.contains("taczoperations_run_started")&&!run.getBoolean("taczoperations_run_xp_finalized"))
+            finalizeRaidXp(player,run,false);
+        for(String key:new String[]{"taczoperations_run_kill_xp","taczoperations_run_search_xp",
+            "taczoperations_run_crates","taczoperations_run_contracts","taczoperations_run_contract_xp",
+            "taczoperations_run_started","taczoperations_run_xp_before","taczoperations_run_xp_finalized",
+            "taczoperations_raid_kills","taczoperations_raid_boss","taczoperations_relic_baseline"})run.remove(key);
+        RaidLootValue.clear(player);
+    }
+
     static void departure(ServerPlayer player) {
+        RaidLootValue.departure(player);
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().remove("taczoperations_run_xp_finalized");
@@ -344,6 +429,7 @@ public enum SupplyContract {
         player.getPersistentData().putInt("taczoperations_run_crates", 0);
         player.getPersistentData().putInt("taczoperations_run_contracts", 0);
         player.getPersistentData().putInt("taczoperations_run_contract_xp", 0);
+        player.getPersistentData().putInt("taczoperations_run_xp_before", experienceEarned(player));
         player.getPersistentData().putLong("taczoperations_run_started", player.server.overworld().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
@@ -357,6 +443,7 @@ public enum SupplyContract {
     }
 
     static void extracted(ServerPlayer player, boolean industrial) {
+        RaidLootValue.Estimate loot=RaidLootValue.estimate(player);
         int kills = player.getPersistentData().getInt("taczoperations_raid_kills");
         CompoundTag baseline = player.getPersistentData().getCompound("taczoperations_relic_baseline");
         for (var contract : values()) {
@@ -381,7 +468,9 @@ public enum SupplyContract {
         long seconds = started > 0 ? Math.max(0, (player.server.overworld().getGameTime() - started) / 20) : 0;
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
-        saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus);
+        saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus,
+            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1,loot);
+        RaidLootValue.clear(player);
         // The persistent report is delivered by the player tick after the dimension transition.
         // The graphical report is authoritative; keep chat concise.
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -393,6 +482,7 @@ public enum SupplyContract {
         player.getPersistentData().remove("taczoperations_run_contracts");
         player.getPersistentData().remove("taczoperations_run_contract_xp");
         player.getPersistentData().remove("taczoperations_run_started");
+        player.getPersistentData().remove("taczoperations_run_xp_before");
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().remove("taczoperations_relic_baseline");

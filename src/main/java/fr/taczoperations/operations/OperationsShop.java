@@ -50,7 +50,7 @@ public enum OperationsShop {
 
     int reputation(ServerPlayer player) {
         var account = SupplyContract.account(player);
-        long points = 0;
+        long points = (long)Math.max(0,account.getInt("timed_reputation_"+ordinal()))+Math.max(0,account.getInt("merchant_order_rep_"+ordinal()));
         for (SupplyContract contract : SupplyContract.values()) {
             if (contract.merchant() != this) continue;
             String key = "completed_" + contract.name();
@@ -84,6 +84,7 @@ public enum OperationsShop {
         var offers = new ArrayList<Offer>();
         switch (this) {
             case ARMORER -> {
+                offers.add(new Offer("Entretien · arme tenue en main",0,Action.REPAIR,()->new ItemStack(Items.IRON_INGOT),null,0));
                 // Build a single authoritative catalogue from the installed TaCZ packs.
                 // Each calibre inherits the lowest tier of a weapon using it, with
                 // a minimum tier for the calibre itself. No duplicate cheap ammo offers.
@@ -118,6 +119,11 @@ public enum OperationsShop {
                 offers.add(buy("Viseur 552", 900, () -> attachment("sight_552"), RaidRelic.OPTIC, 0));
             }
             case MEDIC -> {
+                offers.add(buy("Bandage",45,()->medical("bandage"),null,0));
+                offers.add(buy("Attelle",95,()->medical("splint"),null,0));
+                offers.add(buy("Kit hémostatique",120,()->medical("hemostat"),null,0));
+                offers.add(buy("Kit de premiers secours",180,()->medical("medkit"),null,0));
+                offers.add(buy("Salewa",150,()->medical("salewa"),null,0));
                 offers.add(buy("Rations de terrain", 80, () -> new ItemStack(Items.COOKED_BEEF, 4), null, 0));
                 offers.add(buy("Soupe de survie", 55, () -> new ItemStack(Items.RABBIT_STEW), null, 0));
                 offers.add(buy("Pomme dorée", 190, () -> new ItemStack(Items.GOLDEN_APPLE), RaidRelic.WATCH, 0));
@@ -168,6 +174,8 @@ public enum OperationsShop {
                 }
             }
         }
+        for(var loot:TradeLoot.values())if(loot.merchant()==this)
+            offers.add(new Offer(loot.title,loot.price,Action.SELL,loot::stack,null,0));
         if (this == ARMORER) {
             offers.sort(java.util.Comparator.comparingInt(Offer::loyaltyLevel));
             for (Offer offer : List.copyOf(offers)) {
@@ -202,6 +210,10 @@ public enum OperationsShop {
         if (s.matches(".*(mp5|mp7|mp9|ump|uzi|vector|p90|pp19|bizon|smg|m870|shotgun|spas|aa12|ksg).*")) return Math.max(2,base);
         if (s.matches(".*(m4a1|hk416|scar_l|ak12|aug|famas|g36|ar15|m16|mk18|sopmod|as_val|vss).*")) return Math.max(3,base);
         return base==1 && rounds>18 ? 2 : base;
+    }
+
+    private static ItemStack medical(String id) {
+        return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("taczoperations",id)));
     }
 
     private static Offer sale(RaidRelic relic) {
@@ -246,10 +258,26 @@ public enum OperationsShop {
         return bits;
     }
 
-    String trade(ServerPlayer player, int index) {
+    public static boolean matchesSale(ItemStack sample,ItemStack candidate){
+        if(sample.isEmpty()||candidate.isEmpty())return false;
+        if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
+            return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
+                &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
+        return candidate.is(sample.getItem());
+    }
+    static int saleCount(ServerPlayer player,Offer offer){
+        if(offer.action()!=Action.SELL)return 0;
+        ItemStack sample=offer.stack().get();
+        return player.getInventory().items.stream().filter(s->matchesSale(sample,s)).mapToInt(ItemStack::getCount).sum();
+    }
+    String trade(ServerPlayer player,int index,long quotedDay){
+        return trade(player,index,quotedDay,1,false);
+    }
+    String trade(ServerPlayer player,int index,long quotedDay,int quantity,boolean bulk) {
         var offers = offers();
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
+        if(bulk&&offer.action!=Action.SELL)return "Cette offre ne permet pas la vente en lot.";
         var account = SupplyContract.account(player);
         if (offer.action == Action.UNLOCK) {
             String key = "unlock_" + offer.key.id;
@@ -262,6 +290,7 @@ public enum OperationsShop {
         if (stack.isEmpty()) return "Article indisponible dans cette installation TaCZ.";
         int balance = account.getInt("credits");
         if (offer.action == Action.REPAIR) {
+            if (this == ARMORER) return WeaponCondition.repair(player);
             if (this != SALVAGER) return "Service indisponible.";
             for (var slot : BallisticVest.SLOTS) {
                 if (!stack.is(BallisticVest.item(slot))) continue;
@@ -271,24 +300,33 @@ public enum OperationsShop {
                 if (balance < offer.price) return "Crédits insuffisants.";
                 if (!BallisticVest.repair(worn,slot)) return "Réparation impossible.";
                 account.putInt("credits", balance-offer.price);
+                TradeJournal.record(player,"Réparation",title,offer.title(),1,-offer.price());
                 player.getInventory().setChanged();
                 return "Protection réparée · état 100/100.";
             }
             return "Protection indisponible.";
         }
         if (offer.action == Action.SELL) {
-            if (balance > Integer.MAX_VALUE - offer.price) return "Solde maximal atteint.";
-            if (stack.getItem() instanceof com.tacz.guns.api.item.IGun gun) {
-                var expected = gun.getGunId(stack);
-                var found = player.getInventory().items.stream().filter(candidate ->
-                    candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
-                    && expected.equals(actual.getGunId(candidate))).findFirst();
-                if (found.isEmpty()) return "Tu ne possèdes pas cette arme.";
-                found.get().shrink(1);
-                player.getInventory().setChanged();
-            } else if (!SupplyContract.consume(player, stack.getItem(), 1)) return "Tu ne possèdes pas cet objet.";
-            account.putInt("credits", balance + offer.price);
-            return "Vente effectuée · +" + offer.price + " crédits.";
+            long today=ResaleMarket.day();
+            if(quotedDay!=today)return "Les tarifs ont changé. Vérifie le nouveau prix avant de vendre.";
+            int price=ResaleMarket.price(offer,today);
+            var matching=player.getInventory().items.stream().filter(s->matchesSale(stack,s)).toList();
+            int available=matching.stream().mapToInt(ItemStack::getCount).sum();
+            if(quantity<=0||available<quantity)return "Quantité indisponible. Vérifie ton inventaire.";
+            if(bulk&&available!=quantity)return "Quantité modifiée. Vérifie le nouveau montant.";
+            long total=(long)price*quantity;
+            if(total>Integer.MAX_VALUE-(long)balance)return "Solde maximal atteint.";
+            // Validate the entire quote before touching any stack.
+            int remaining=quantity;
+            for(ItemStack candidate:matching){
+                int take=Math.min(remaining,candidate.getCount());
+                candidate.shrink(take);remaining-=take;
+                if(remaining==0)break;
+            }
+            player.getInventory().setChanged();
+            account.putInt("credits",balance+(int)total);
+            TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
+            return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
         int experience = SupplyContract.experienceEarned(player);
         int loyalty = offer.loyaltyLevel();
@@ -303,8 +341,10 @@ public enum OperationsShop {
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
             : ItemStack.isSameItemSameComponents(slot, stack) ? slot.getMaxStackSize() - slot.getCount() : 0).sum();
         if (capacity < stack.getCount()) return "Inventaire plein.";
+        int purchased=stack.getCount();
         inventory.add(stack);
         account.putInt("credits", balance - offer.price);
+        TradeJournal.record(player,"Achat",title,offer.title(),purchased,-offer.price());
         return "Achat ajouté à ton inventaire.";
     }
 }

@@ -41,6 +41,18 @@ public final class OperationsMod {
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ID);
     private static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, ID);
     private static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ID);
+    private static final DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITIES=DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE,ID);
+    public static final java.util.List<Supplier<fr.taczoperations.operations.RaidFurnitureBlock>> FURNITURE=java.util.List.of(
+        BLOCKS.registerBlock("raid_medbag",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_toolbox",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_weaponbox",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_safe",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_pc",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("raid_cabinet",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion())
+    );
+    public static final Supplier<net.minecraft.world.level.block.entity.BlockEntityType<fr.taczoperations.operations.RaidFurnitureEntity>> FURNITURE_ENTITY=
+        BLOCK_ENTITIES.register("raid_furniture",()->net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(
+            fr.taczoperations.operations.RaidFurnitureEntity::new,FURNITURE.stream().map(Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
 
     public static final Supplier<OperationsBoardBlock> BOARD = BLOCKS.registerBlock(
         "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F));
@@ -49,6 +61,8 @@ public final class OperationsMod {
             .sized(1.55F, .36F).clientTrackingRange(8).updateInterval(10).build(ID + ":guard_corpse"));
     public static final Supplier<MenuType<OperationsMenu>> MENU = MENUS.register(
         "operations_board", () -> IMenuTypeExtension.create(OperationsMenu::new));
+    public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(
+        "raid_search",()->IMenuTypeExtension.create((id,inventory,buffer)->new fr.taczoperations.operations.RaidSearchMenu(id,inventory)));
 
     private static final DeferredRegister<MapCodec<? extends ChunkGenerator>> GENERATORS =
         DeferredRegister.create(Registries.CHUNK_GENERATOR, ID);
@@ -56,9 +70,21 @@ public final class OperationsMod {
     static {
         GENERATORS.register("forest", () -> ForestChunkGenerator.CODEC);
         RaidRelic.register(ITEMS);
+        fr.taczoperations.operations.TradeLoot.register(ITEMS);
         ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        ITEMS.registerItem("secure_case", fr.taczoperations.operations.SecureCaseItem::new, new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        for(String medical : new String[]{"bandage","hemostat","splint","medkit","salewa"}) {
+            ITEMS.registerItem(medical,props -> new fr.taczoperations.operations.FieldMedicine(props,medical),new net.minecraft.world.item.Item.Properties().stacksTo(8));
+        }
+        ITEMS.registerItem("industrial_key", props -> new net.minecraft.world.item.Item(props), new net.minecraft.world.item.Item.Properties().stacksTo(16));
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
+        ITEMS.registerSimpleBlockItem("raid_medbag",FURNITURE.get(0));
+        ITEMS.registerSimpleBlockItem("raid_toolbox",FURNITURE.get(1));
+        ITEMS.registerSimpleBlockItem("raid_weaponbox",FURNITURE.get(2));
+        ITEMS.registerSimpleBlockItem("raid_safe",FURNITURE.get(3));
+        ITEMS.registerSimpleBlockItem("raid_pc",FURNITURE.get(4));
+        ITEMS.registerSimpleBlockItem("raid_cabinet",FURNITURE.get(5));
     }
 
     private static net.minecraft.world.item.ArmorMaterial goggleMaterial(String id) {
@@ -71,13 +97,18 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("3");
+        var registrar = event.registrar("10");
         registrar.playToClient(RaidResultPayload.TYPE, RaidResultPayload.STREAM_CODEC,
             (report, context) -> {
                 // Never resolve client-only screen classes on a dedicated server.
                 if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
                     fr.taczoperations.client.RaidResultHandler.handle(report, context);
                 }
+            });
+        registrar.playToClient(fr.taczoperations.operations.RaidInjuryPayload.TYPE,
+            fr.taczoperations.operations.RaidInjuryPayload.STREAM_CODEC,(injury,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.RaidInjuryHud.handle(injury,context);
             });
         registrar.playToClient(fr.taczoperations.operations.RaidDropPayload.TYPE,
             fr.taczoperations.operations.RaidDropPayload.STREAM_CODEC, (drop, context) -> {
@@ -88,6 +119,7 @@ public final class OperationsMod {
 
     public OperationsMod(IEventBus bus) {
         BLOCKS.register(bus);
+        BLOCK_ENTITIES.register(bus);
         ARMOR_MATERIALS.register(bus);
         ITEMS.register(bus);
         MENUS.register(bus);
@@ -96,14 +128,19 @@ public final class OperationsMod {
         bus.addListener(OperationsMod::registerPayloads);
         NeoForge.EVENT_BUS.addListener(ForestPreparation::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidInjuries::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::interact);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onDrops);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::onDeathDrops);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::commands);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogout);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onServerTick);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onPlayerClone);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::cloneCases);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::returnCases);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onRespawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::deliverReport);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.BallisticVest::normalizePlayerEquipment);
@@ -111,6 +148,10 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
         NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
         NeoForge.EVENT_BUS.addListener(ForestCombat::onGunHurt);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::shoot);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::fire);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::reload);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.WeaponCondition::tooltip);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onExplosion);
     }
 }
