@@ -238,6 +238,8 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
         NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
         NeoForge.EVENT_BUS.addListener(ForestCombat::onGunHurt);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.DetailedStats::fire);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.DetailedStats::tick);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::shoot);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::fire);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::reload);
