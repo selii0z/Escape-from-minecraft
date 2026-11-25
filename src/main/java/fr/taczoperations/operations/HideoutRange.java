@@ -82,7 +82,7 @@ public final class HideoutRange {
     }
     public static void tick(PlayerTickEvent.Post event){
         if(!(event.getEntity() instanceof ServerPlayer p)||p.tickCount%4!=0)return;
-        var c=plot(p);if(c==null||!inside(p,c))return;
+        var c=plot(p);if(c==null||!inside(p,c)){finishIfStarted(p);return;}
         int tier=Hideout.tier(p,Hideout.Station.TIR);
         if(tier<2)return;
         var level=p.serverLevel();var o=origin(c);
@@ -123,6 +123,7 @@ public final class HideoutRange {
     public static void interactSpecific(PlayerInteractEvent.EntityInteractSpecific e){
         if(e.getTarget() instanceof ArmorStand stand&&stand.getPersistentData().hasUUID(OWNER))e.setCanceled(true);
     }
+    static void finishIfStarted(ServerPlayer p){if(p.getPersistentData().contains(SHOTS))report(p);}
     static void report(ServerPlayer p){
         var d=p.getPersistentData();int shots=d.getInt(SHOTS),hits=d.getInt(HITS),heads=d.getInt(HEADS);
         Hideout.say(p,"Entraînement : "+shots+" tirs · "+hits+" impacts · "+heads+" impacts tête.");
