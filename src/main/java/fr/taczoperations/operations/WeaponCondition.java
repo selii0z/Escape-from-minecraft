@@ -14,7 +14,7 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 public final class WeaponCondition {
     private static final String CONDITION="efm_weapon_condition", JAM="efm_weapon_jammed";
-    private static final int FULL=10000, WEAR=10;
+    private static final int FULL=10000, WEAR=2;
     private static CompoundTag tag(ItemStack stack){
         var data=stack.get(DataComponents.CUSTOM_DATA);
         return data==null?new CompoundTag():data.copyTag();
