@@ -59,6 +59,7 @@ public final class BallisticVest {
         piece.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         piece.set(DataComponents.DYED_COLOR, new DyedItemColor(classColor(tier), false));
         piece.set(DataComponents.CUSTOM_NAME, Component.literal(name(slot) + " · Classe " + tier));
+        applyProtection(piece,slot,tier,100);
         updateLore(piece, slot, tier, 100);
         return piece;
     }
@@ -74,8 +75,21 @@ public final class BallisticVest {
         return create(slot, tier, classColor(tier));
     }
 
-    private static float multiplier(int tier) {
-        return switch (tier) { case 2 -> .85F; case 3 -> .70F; case 4 -> .55F; case 5 -> .35F; case 6 -> .20F; default -> 1F; };
+    // Copy the installed game's armor attributes, not the reference item's abilities.
+    private static Item reference(EquipmentSlot slot,int tier){
+        String material=switch(tier){case 3->"golden";case 4->"diamond";case 5->"netherite";case 6->"vibranium";default->"leather";};
+        String part=switch(slot){case HEAD->"helmet";case LEGS->"leggings";case FEET->"boots";default->"chestplate";};
+        var registry=net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var id=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(tier==6?"allthemodium":"minecraft",material+"_"+part);
+        return registry.containsKey(id)?registry.get(id):registry.get(net.minecraft.resources.ResourceLocation.withDefaultNamespace("netherite_"+part));
+    }
+    private static boolean applyProtection(ItemStack stack,EquipmentSlot slot,int tier,int condition){
+        var template=new ItemStack(reference(slot,tier));
+        var attrs=condition<=0?net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY:
+            template.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY);
+        if(java.util.Objects.equals(stack.get(DataComponents.ATTRIBUTE_MODIFIERS),attrs))return false;
+        stack.set(DataComponents.ATTRIBUTE_MODIFIERS,attrs);
+        return true;
     }
 
     public static int tier(ItemStack stack, EquipmentSlot slot) {
@@ -100,7 +114,8 @@ public final class BallisticVest {
             int tier = tier(stack,slot);
             if (tier == 0) continue;
             var expected = new DyedItemColor(classColor(tier), false);
-            if (!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
+            boolean attributesChanged=applyProtection(stack,slot,tier,condition(stack));
+            if (attributesChanged||!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
                 stack.set(DataComponents.DYED_COLOR, expected);
                 updateLore(stack,slot,tier,condition(stack));
             }
@@ -123,9 +138,9 @@ public final class BallisticVest {
             case FEET -> "Pieds";
             default -> "Torse et bras";
         };
-        int effective = Math.round((1F-multiplier(tier))*condition);
+        String equivalent=reference(slot,tier).getDescription().getString();
         stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-            Component.literal("Protection balistique : " + effective + " %"),
+            Component.literal("Protection : " + equivalent),
             Component.literal("État balistique : " + condition + " / 100"),
             Component.literal("Zone protégée : " + zone))));
     }
@@ -136,6 +151,7 @@ public final class BallisticVest {
         tag.putInt(CONDITION, value);
         stack.set(DataComponents.DYED_COLOR,new DyedItemColor(classColor(tier),false));
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        applyProtection(stack,slot,tier,value);
         updateLore(stack,slot,tier,value);
     }
 
@@ -168,12 +184,12 @@ public final class BallisticVest {
         int tier = tier(piece,slot);
         if (tier == 0 || !Float.isFinite(damage) || damage <= 0) return 1F;
         int condition = condition(piece);
-        float resistance = (1F-multiplier(tier))*condition/100F;
         if (condition > 0) {
-            int wear = Math.clamp((int)Math.ceil(damage*resistance/3F),1,12);
+            int wear = Math.clamp((int)Math.ceil(damage/6F),1,12);
             setCondition(piece,slot,tier,Math.max(0,condition-wear));
         }
-        return 1F-resistance;
+        // Native armor calculation handles mitigation; no second custom reduction.
+        return 1F;
     }
     private BallisticVest() {}
 }
