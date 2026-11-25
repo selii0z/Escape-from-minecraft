@@ -61,6 +61,8 @@ public final class OperationsMod {
             .sized(1.55F, .36F).clientTrackingRange(8).updateInterval(10).build(ID + ":guard_corpse"));
     public static final Supplier<MenuType<fr.taczoperations.operations.HideoutControlMenu>> HIDEOUT_MENU=MENUS.register(
         "hideout_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.HideoutControlMenu::new));
+    public static final Supplier<MenuType<fr.taczoperations.operations.ProgressionControlMenu>> PROGRESSION_MENU=MENUS.register(
+        "progression_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.ProgressionControlMenu::new));
     public static final Supplier<MenuType<OperationsMenu>> MENU = MENUS.register(
         "operations_board", () -> IMenuTypeExtension.create(OperationsMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(
