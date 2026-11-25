@@ -68,7 +68,7 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         double x=(mx-leftPos)/scale,y=(my-topPos)/scale;
         if(menu.campaign()&&!initialSelection&&!stack(missionSlot(0)).isEmpty()){
-            for(int i=0;i<12;i++){String status=line(missionSlot(i),0);if(status.startsWith("Disponible")||status.startsWith("Acceptée")){selected=i;break;}}
+            for(int i=0;i<12;i++){String status=line(missionSlot(i),0);if(status.startsWith("Disponible")||status.startsWith("Acceptée")||status.startsWith("Niveau insuffisant")){selected=i;break;}}
             initialSelection=true;
         }
         g.pose().pushPose();g.pose().translate(leftPos,topPos,0);g.pose().scale(scale,scale,1);
@@ -115,7 +115,7 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         for(int i=0;i<12;i++){
             int x=20+(i%2)*196,y=107+(i/2)*40,slot=missionSlot(i);
             String status=line(slot,0);
-            int color=status.startsWith("Terminée")?LIME:status.startsWith("Verrouillée")?SOFT:GOLD;
+            int color=status.startsWith("Terminée")?LIME:status.startsWith("Verrouillée")||status.startsWith("Niveau insuffisant")?SOFT:GOLD;
             tile(g,x,y,190,37,selected==i,hit(mx,my,x,y,190,37));
             text(g,String.format(java.util.Locale.ROOT,"%02d",i+1),x+6,y+6,1.2F,color,true);
             text(g,fit(name(slot),152),x+32,y+5,1,WHITE,true);
@@ -131,7 +131,7 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         text(g,"RÉCOMPENSES",444,255,1.1F,GOLD,true);
         text(g,line(slot,6),444,275,1.1F,LIME,true);
         String status=line(slot,0);
-        String caption=acceptable()?"Accepter l'opération":status.startsWith("Terminée")?"Opération terminée":status.startsWith("Acceptée")?"Opération en cours":"Opération verrouillée";
+        String caption=acceptable()?"Accepter l'opération":status.startsWith("Terminée")?"Opération terminée":status.startsWith("Acceptée")?"Opération en cours":status.startsWith("Niveau insuffisant")?"Niveau militaire insuffisant":"Opération verrouillée";
         button(g,caption,444,310,292,27,mx,my,acceptable());
     }
     @Override protected void renderLabels(GuiGraphics g,int mx,int my){}
