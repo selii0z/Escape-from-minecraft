@@ -443,6 +443,8 @@ public enum SupplyContract {
     }
 
     static void extracted(ServerPlayer player, boolean industrial) {
+        var run=player.getPersistentData();
+        if(!player.isAlive()||!run.contains("taczoperations_run_started")||run.getBoolean("taczoperations_run_xp_finalized"))return;
         RaidLootValue.Estimate loot=RaidLootValue.estimate(player);
         StoryMissions.extracted(player,industrial);
         if(!player.getPersistentData().getBoolean("taczoperations_run_xp_finalized"))PassiveSkills.extracted(player);
