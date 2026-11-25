@@ -35,9 +35,9 @@ tasks.register('generateRaidArt') {
                     pts.drop(1).each { q -> p.lineTo(q[0] as double,q[1] as double) }
                     p.closePath();g.setColor(c);g.fill(p)
                 }
-                def rect={ Color c,int x,int y,int w,int h -> g.setColor(c);g.fillRect(x,y,w,h) }
-                def stroke={ Color c,float width,int x,int y,int x2,int y2 ->
-                    g.setColor(c);g.setStroke(new BasicStroke(width));g.drawLine(x,y,x2,y2)
+                def rect={ Color c,Number x,Number y,Number w,Number h -> g.setColor(c);g.fillRect(x.intValue(),y.intValue(),w.intValue(),h.intValue()) }
+                def stroke={ Color c,Number width,Number x,Number y,Number x2,Number y2 ->
+                    g.setColor(c);g.setStroke(new BasicStroke(width.floatValue()));g.drawLine(x.intValue(),y.intValue(),x2.intValue(),y2.intValue())
                 }
                 Color skyTop=color(victory?0x293e43:0x22282f)
                 Color skyBottom=color(victory?0xbda879:0x875e53)
