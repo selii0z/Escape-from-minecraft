@@ -36,8 +36,14 @@ public final class RaidResultScreen extends Screen {
 
     @Override
     protected void init() {
+        float scale=reportScale();
+        int w=Math.max(1,Math.round(150*scale)),h=Math.max(1,Math.round(20*scale));
         addRenderableWidget(Button.builder(Component.literal("FERMER"), button -> onClose())
-            .bounds(width / 2 - 75, height / 2 + 106, 150, 20).build());
+            .bounds(width/2-w/2,height/2+Math.round(106*scale),w,h).build());
+    }
+
+    private float reportScale(){
+        return Math.max(.1F,Math.min(1F,Math.min((width-12)/350F,(height-12)/268F)));
     }
 
     @Override
@@ -56,7 +62,11 @@ public final class RaidResultScreen extends Screen {
                 imageWidth, imageHeight, 0f, 0f, 1024, 576, 1024, 576);
         }
         graphics.fill(0, 0, width, height, 0x55000000);
-        int x = width / 2, y = height / 2;
+        graphics.pose().pushPose();
+        graphics.pose().translate(width/2F,height/2F,0);
+        float scale=reportScale();
+        graphics.pose().scale(scale,scale,1);
+        int x=0,y=0;
         graphics.fill(x - 175, y - 125, x + 175, y + 134, 0xb8202426);
         graphics.fill(x - 175, y - 125, x + 175, y - 121,
             success ? 0xff72ba87 : 0xffc76862);
@@ -81,6 +91,7 @@ public final class RaidResultScreen extends Screen {
             ?"Butin revendable : "+java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE).format(lootValue)+" cr. · "+lootCount+" objet(s)"
             :success?"Estimation du butin indisponible":"Butin non évalué (échec)";
         graphics.drawCenteredString(font,loot,x,y+90,lootValue>=0?0xffe9d394:0xffb8bdba);
+        graphics.pose().popPose();
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 

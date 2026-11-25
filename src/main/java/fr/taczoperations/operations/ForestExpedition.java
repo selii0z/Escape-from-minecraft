@@ -145,6 +145,7 @@ public final class ForestExpedition {
             return;
         }
         restoreInventory(player);
+        SupplyContract.abortRun(player);
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
     }
@@ -167,8 +168,6 @@ public final class ForestExpedition {
         player.getPersistentData().put(RETURN_POINT, point);
         player.closeContainer();
         snapshotInventory(player);
-
-        player.closeContainer();
         Vec3 spawn = Vec3.atBottomCenterOf(destination);
         if (!standingRoom(player, forest, spawn)) {
             spawn = safeSpawn(player, forest, destination);
@@ -354,6 +353,7 @@ public final class ForestExpedition {
         }
         if (!extracted) {
             restoreInventory(player);
+            SupplyContract.abortRun(player);
         }
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);

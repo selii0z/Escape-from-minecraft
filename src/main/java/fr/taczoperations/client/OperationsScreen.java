@@ -426,12 +426,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         boolean usable=kit.guns()>0&&kit.condition()>0&&!kit.jammed();
         String condition=kit.guns()==0?"":kit.jammed()?" · enrayée":" · "+Math.round(kit.condition()/100F)+"%";
         text(g,fit(kit.weapon()+condition,235),585,256,.83F,usable&&kit.condition()>=7000?LIME:GOLD,false);
-        text(g,"Munitions : "+kit.loaded()+" + "+kit.reserve(),585,267,.79F,kit.reserve()<30?GOLD:LIME,false);
-        text(g,"Soins : "+kit.medical()+" (saign. "+kit.bleeding()+")",709,267,.75F,kit.bleeding()==0?GOLD:LIME,false);
+        text(g,fit("Munitions : "+kit.loaded()+" + "+kit.reserve(),145),585,267,.79F,kit.reserve()<30?GOLD:LIME,false);
+        text(g,fit("Soins : "+kit.medical()+" (saign. "+kit.bleeding()+")",143),709,267,.75F,kit.bleeding()==0?GOLD:LIME,false);
         text(g,"Protection : "+kit.armor()+"/4",585,278,.79F,kit.armor()<4||kit.armorCondition()<=20?GOLD:LIME,false);
         text(g,"Nourriture : "+kit.food(),709,278,.79F,kit.food()<3?GOLD:LIME,false);
         text(g,"Places libres : "+kit.free()+"/36",585,289,.72F,kit.free()<6?GOLD:SOFT,false);
-        if(night)text(g,kit.nightOptics()?"Optique nocturne : OK":"Optique nocturne absente",709,289,.70F,kit.nightOptics()?LIME:GOLD,false);
+        if(night)text(g,kit.nightOptics()?"Vision nuit : OK":"Vision nuit absente",709,289,.70F,kit.nightOptics()?LIME:GOLD,false);
     }
 
     private void mapCard(GuiGraphics g, int index, int x, int y, boolean hovered) {
@@ -498,7 +498,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             case OperationsMenu.SHOP -> {
                 var vendor = vendor();
-                pageTitle(g, "▱", upper(vendor.title), vendor.specialty);
+                pageTitle(g, "▱", upper(vendor.title), fit(vendor.specialty,210));
                 var offers = vendor.offers();
                 if(view.shopRows().isEmpty()){
                     text(g,"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);

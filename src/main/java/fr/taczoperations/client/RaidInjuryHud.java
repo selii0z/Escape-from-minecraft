@@ -42,10 +42,10 @@ public final class RaidInjuryHud{
         g.drawString(mc.font,injured?"ÉTAT · BLESSURES":"ÉTAT · STABLE",x+7,y+5,injured?0xffe5ce88:0xffb5c9a4,false);
         y+=19;
         if(state.bleed()>0){
-            row(g,mc,x,y,state.bleed()==2?"Hémorragie":"Saignement",state.bleed()==2?"Hémostatique / bandages":"Bandage",0xffe07b72);y+=25;
+            row(g,mc,x,y,state.bleed()==2?"Hémorragie":"Saignement",state.bleed()==2?"Hémostatique / bandage":"Bandage",0xffe07b72);y+=25;
         }
         if(state.fracture()){row(g,mc,x,y,"Fracture","Attelle",0xffe5ce88);y+=25;}
-        if(state.arm()){row(g,mc,x,y,"Bras blessé","IFAK",0xffe5ce88);y+=25;}
+        if(state.arm()){row(g,mc,x,y,"Bras blessé","Kit de premiers secours",0xffe5ce88);y+=25;}
         var stack=mc.player.getUseItem();
         if(mc.player.isUsingItem()&&stack.getItem() instanceof FieldMedicine medicine){
             int duration=Math.max(1,medicine.getUseDuration(stack,mc.player));
@@ -71,8 +71,8 @@ public final class RaidInjuryHud{
             int height=alert?36:25;
             if(y+height<=limit){
                 g.fill(x,y,x+142,y+height,0xca171d18);
-                String name=mc.font.plainSubstrByWidth(weapon.getHoverName().getString(),88);
                 String percent=String.format(java.util.Locale.FRANCE,"%.1f %%",value/100.0);
+                String name=mc.font.plainSubstrByWidth(weapon.getHoverName().getString(),Math.max(0,126-mc.font.width(percent)));
                 g.drawString(mc.font,name,x+5,y+4,0xffd3dbcc,false);
                 g.drawString(mc.font,percent,x+137-mc.font.width(percent),y+4,color,false);
                 meter(g,x+5,y+16,132,value,10000,color);
@@ -80,25 +80,25 @@ public final class RaidInjuryHud{
                 y+=height+2;
             }
         }
-        if(y+45<=limit){
+        if(y+59<=limit){
             EquipmentSlot[] slots={EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET};
             String[] labels={"Tête","Torse","Jambes","Pieds"};
             boolean equipped=false;
             for(var slot:slots)if(BallisticVest.tier(mc.player.getItemBySlot(slot),slot)>0){equipped=true;break;}
             if(equipped){
-                g.fill(x,y,x+142,y+45,0xca171d18);
-                g.drawString(mc.font,"PROTECTIONS BALISTIQUES",x+5,y+3,0xffb8c0af,false);
+                g.fill(x,y,x+142,y+59,0xca171d18);
+                g.drawString(mc.font,"ARMURE BALISTIQUE",x+5,y+3,0xffb8c0af,false);
                 for(int i=0;i<4;i++){
                     var piece=mc.player.getItemBySlot(slots[i]);
                     int tier=BallisticVest.tier(piece,slots[i]);
-                    int xx=x+5+(i%2)*67,yy=y+14+(i/2)*15;
+                    int xx=x+5+(i%2)*67,yy=y+14+(i/2)*22;
                     int value=tier==0?0:BallisticVest.condition(piece);
                     int color=tier==0?0xff777f75:conditionColor(value,100);
                     String label=labels[i]+(tier==0?" —":" C"+tier);
                     String percent=tier==0?"":value+"%";
-                    g.drawString(mc.font,label,xx,yy,0xffb8c0af,false);
-                    g.drawString(mc.font,percent,xx+62-mc.font.width(percent),yy,color,false);
-                    meter(g,xx,yy+10,62,value,100,color);
+                    g.drawString(mc.font,mc.font.plainSubstrByWidth(label,62),xx,yy,0xffb8c0af,false);
+                    g.drawString(mc.font,percent,xx+62-mc.font.width(percent),yy+10,color,false);
+                    meter(g,xx,yy+13,Math.max(0,58-mc.font.width(percent)),value,100,color);
                 }
             }
         }
@@ -114,7 +114,7 @@ public final class RaidInjuryHud{
         g.fill(x,y,x+142,y+23,0xca171d18);
         g.fill(x,y,x+2,y+23,color);
         g.drawString(mc.font,name,x+7,y+3,color,false);
-        g.drawString(mc.font,treatment,x+7,y+13,0xffbdc7b8,false);
+        g.drawString(mc.font,mc.font.plainSubstrByWidth(treatment,130),x+7,y+13,0xffbdc7b8,false);
     }
     private RaidInjuryHud(){}
 }

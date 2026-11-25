@@ -406,6 +406,19 @@ public enum SupplyContract {
             && (gun.getPath().equals("ak47") || gun.getPath().equals("m4a1"));
     }
 
+    // Restored inventory after an interrupted raid must not leave provisional
+    // run XP pending indefinitely or grant periodic completion rewards.
+    static void abortRun(ServerPlayer player){
+        var run=player.getPersistentData();
+        if(run.contains("taczoperations_run_started")&&!run.getBoolean("taczoperations_run_xp_finalized"))
+            finalizeRaidXp(player,run,false);
+        for(String key:new String[]{"taczoperations_run_kill_xp","taczoperations_run_search_xp",
+            "taczoperations_run_crates","taczoperations_run_contracts","taczoperations_run_contract_xp",
+            "taczoperations_run_started","taczoperations_run_xp_before","taczoperations_run_xp_finalized",
+            "taczoperations_raid_kills","taczoperations_raid_boss","taczoperations_relic_baseline"})run.remove(key);
+        RaidLootValue.clear(player);
+    }
+
     static void departure(ServerPlayer player) {
         RaidLootValue.departure(player);
         player.getPersistentData().remove("taczoperations_raid_kills");
