@@ -113,7 +113,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("26");
+        var registrar = event.registrar("27");
         registrar.playToServer(fr.taczoperations.operations.ShopBuy.TYPE,fr.taczoperations.operations.ShopBuy.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p

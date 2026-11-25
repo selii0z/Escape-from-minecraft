@@ -56,13 +56,13 @@ public final class RaidInjuryHud{
         if(state.bleed()>0&&y+23<=limit){
             String label=state.bleed()==2?"Hémorragie":"Saignement";
             row(g,mc,x,y,label+" · "+regionName(state.bleedMask()),
-                state.bleed()==2?"Hémostatique / 2 bandages":"Bandage",0xffe07b72);y+=25;
+                bleedTreatment(),0xffe07b72);y+=25;
         }
         if(state.fracture()&&y+23<=limit){
-            row(g,mc,x,y,"Fracture · "+regionName(state.fractureZone()),"Attelle",0xffe5ce88);y+=25;
+            row(g,mc,x,y,"Fracture · "+regionName(state.fractureZone()),supply("Attelle",state.splints()),0xffe5ce88);y+=25;
         }
         if(state.arm()&&y+23<=limit){
-            row(g,mc,x,y,"Blessure · "+regionName(state.armZone()),"Kit de premiers secours",0xffe5ce88);y+=25;
+            row(g,mc,x,y,"Blessure · "+regionName(state.armZone()),supply("Kit de secours",state.medkits()),0xffe5ce88);y+=25;
         }
         if(treating&&stack.getItem() instanceof FieldMedicine medicine&&y+31<=limit){
             int duration=Math.max(1,medicine.getUseDuration(stack,mc.player));
@@ -75,6 +75,9 @@ public final class RaidInjuryHud{
             g.fill(x+5,y+17,x+5+132*progress/100,y+21,0xffa6bf7d);
             g.drawString(mc.font,progress+" % · "+((remaining+19)/20)+" s",x+5,y+22,0xffc7cfbf,false);
             y+=33;
+        }
+        if(mc.player.getHealth()<mc.player.getMaxHealth()&&y+23<=limit){
+            row(g,mc,x,y,"Santé à restaurer",supply("Salewa",state.salewas()),0xffe5ce88);y+=25;
         }
         if(y+38<=limit){
             g.fill(x,y,x+142,y+38,0xca171d18);
@@ -148,6 +151,14 @@ public final class RaidInjuryHud{
         else g.drawString(mc.font,mc.font.plainSubstrByWidth("Pas de saignement",82),right,y+43,0xffb5c9a4,false);
         if(state.fracture()||state.arm())g.drawString(mc.font,mc.font.plainSubstrByWidth(state.fracture()&&state.arm()?"Bras / jambes":state.fracture()?sideLabel("Fracture",state.fractureZone(),RaidInjuryPayload.LEFT_LEG,RaidInjuryPayload.RIGHT_LEG):sideLabel("Bras blessé",state.armZone(),RaidInjuryPayload.LEFT_ARM,RaidInjuryPayload.RIGHT_ARM),82),right,y+57,0xffe5ce88,false);
     }
+    private static String supply(String name,int count){
+        return count==0?name+" : absent":name+" ×"+(count>=99?"99+":Integer.toString(count));
+    }
+    private static String bleedTreatment(){
+        if(state.hemostats()>0&&(state.bleed()==2||state.bandages()==0))return supply("Hémostatique",state.hemostats());
+        if(state.bandages()>0)return supply("Bandage",state.bandages())+(state.bleed()>state.bandages()?" · incomplet":"");
+        return "Aucun soin disponible";
+    }
     private static String regionName(int mask){
         if(mask==0)return "zone inconnue";
         if(mask==RaidInjuryPayload.HEAD)return "Tête";
@@ -195,7 +206,8 @@ public final class RaidInjuryHud{
         g.fill(x,y,x+142,y+23,0xca171d18);
         g.fill(x,y,x+2,y+23,color);
         g.drawString(mc.font,mc.font.plainSubstrByWidth(name,130),x+7,y+3,color,false);
-        g.drawString(mc.font,mc.font.plainSubstrByWidth(treatment,130),x+7,y+13,0xffbdc7b8,false);
+        int treatmentColor=treatment.contains("absent")||treatment.contains("Aucun")||treatment.contains("incomplet")?0xffe07b72:0xffb5c9a4;
+        g.drawString(mc.font,mc.font.plainSubstrByWidth(treatment,130),x+7,y+13,treatmentColor,false);
     }
     private RaidInjuryHud(){}
 }

@@ -69,10 +69,16 @@ public final class RaidInjuries {
         var d=p.getPersistentData();
         int hit=active&&d.contains(HIT_TIME)&&p.level().getGameTime()-d.getLong(HIT_TIME)<30?d.getInt(HIT_ZONE):0;
         int mask=active&&d.getInt(BLEED)>0?d.getInt(BLEED_FIRST)|d.getInt(BLEED_SECOND):0;
+        CarriedStorage storage=active?CarriedStorage.of(p):null;
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,new RaidInjuryPayload(
             active,active?Math.clamp(d.getInt(BLEED),0,2):0,active&&d.getBoolean(FRACTURE),active&&d.getBoolean(ARM),active?RaidSurvival.water(p):100,active?RaidSurvival.energy(p):100,hit,mask,
             active&&d.getBoolean(FRACTURE)?(d.contains(FRACTURE_ZONE)?d.getInt(FRACTURE_ZONE):RaidInjuryPayload.LEGS):0,
-            active&&d.getBoolean(ARM)?(d.contains(ARM_ZONE)?d.getInt(ARM_ZONE):RaidInjuryPayload.ARMS):0));
+            active&&d.getBoolean(ARM)?(d.contains(ARM_ZONE)?d.getInt(ARM_ZONE):RaidInjuryPayload.ARMS):0,
+            medicalCount(storage,"bandage"),medicalCount(storage,"hemostat"),medicalCount(storage,"splint"),
+            medicalCount(storage,"salewa"),medicalCount(storage,"medkit")));
+    }
+    private static int medicalCount(CarriedStorage storage,String kind){
+        return storage==null?0:Math.min(99,storage.count(s->s.getItem() instanceof FieldMedicine med&&kind.equals(med.kind())));
     }
     public static void tick(PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!active(p)||p.tickCount%20!=0)return;

@@ -15,6 +15,8 @@ public final class FieldMedicine extends Item {
     private final String kind;
     public FieldMedicine(Properties props,String kind){super(props);this.kind=kind;}
 
+    String kind(){return kind;}
+
     @Override public int getUseDuration(ItemStack stack,LivingEntity user){
         return switch(kind){
             case "bandage"->40;
