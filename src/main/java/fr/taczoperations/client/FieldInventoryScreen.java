@@ -80,6 +80,16 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         g.drawString(font,"E : fermer · Maj+E : inventaire classique",10,229,TEXT,false);
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
-        super.render(g,mx,my,partial);renderTooltip(g,mx,my);
+        super.render(g,mx,my,partial);
+        DiscoveryClient.maskSlots(g,menu,leftPos,topPos);
+        renderTooltip(g,mx,my);
+    }
+    @Override public boolean keyPressed(int key,int scan,int mods){
+        if(key==org.lwjgl.glfw.GLFW.GLFW_KEY_I&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        return super.keyPressed(key,scan,mods);
+    }
+    @Override public boolean mouseClicked(double x,double y,int button){
+        if(button==2&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        return super.mouseClicked(x,y,button);
     }
 }
