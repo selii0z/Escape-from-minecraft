@@ -27,7 +27,9 @@ import net.neoforged.neoforge.items.SlotItemHandler;
 public final class FieldInventoryMenu extends AbstractContainerMenu {
     public static final String GOGGLES="efm_goggles", BAG="efm_backpack", RIG="efm_rig";
     public static final int WIDTH=368, HEIGHT=242;
+    private static final java.util.Map<ServerPlayer,FieldInventoryMenu> REFRESH=new java.util.WeakHashMap<>();
     private final Player owner;
+    private final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension;
     private final boolean server;
     private final IItemHandlerModifiable bagHandler,rigHandler;
     private final ItemStack bagCarrier,rigCarrier;
@@ -59,7 +61,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     }
     private FieldInventoryMenu(int id,Inventory inv,IItemHandlerModifiable goggles,IItemHandlerModifiable bag,IItemHandlerModifiable rig,int bs,int rs,boolean server){
         super(OperationsMod.FIELD_INVENTORY.get(),id);
-        this.owner=inv.player;this.server=server;bagHandler=bag;rigHandler=rig;
+        this.owner=inv.player;this.dimension=owner.level().dimension();this.server=server;bagHandler=bag;rigHandler=rig;
         bagCarrier=current(bag);rigCarrier=current(rig);
         bagSize=Math.clamp(bs,0,72);rigSize=Math.clamp(rs,0,12);
         // Original four armor slots, left of the player.
@@ -104,7 +106,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     public int bagSize(){return bagSize;}
     public int rigSize(){return rigSize;}
     @Override public boolean stillValid(Player p){
-        return p==owner&&(!server||allowed(p)&&!p.isCreative()&&current(bagHandler)==bagCarrier&&current(rigHandler)==rigCarrier);
+        return p==owner&&(!server||allowed(p)&&p.level().dimension().equals(dimension)&&!p.isCreative()&&current(bagHandler)==bagCarrier&&current(rigHandler)==rigCarrier);
     }
     @Override public void clicked(int slot,int button,ClickType type,Player p){
         if(!stillValid(p)||type==ClickType.CLONE)return;
@@ -112,6 +114,14 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
         if(slot>=5&&slot<8&&type!=ClickType.PICKUP)return;
         if(type==ClickType.PICKUP_ALL||type==ClickType.QUICK_CRAFT)return;
         super.clicked(slot,button,type,p);
+        if(server&&p instanceof ServerPlayer sp&&slot>=6&&slot<8&&!stillValid(p))REFRESH.put(sp,this);
+    }
+    public static void refresh(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event){
+        if(!(event.getEntity() instanceof ServerPlayer p))return;
+        var old=REFRESH.remove(p);
+        if(old==null||!allowed(p)||!p.level().dimension().equals(old.dimension))return;
+        if(p.containerMenu==old)p.closeContainer();
+        if(p.containerMenu==p.inventoryMenu)open(p);
     }
     @Override public ItemStack quickMoveStack(Player p,int index){
         if(!stillValid(p)||index<0||index>=slots.size()||index>=5&&index<8)return ItemStack.EMPTY;
