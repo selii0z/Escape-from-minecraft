@@ -15,7 +15,7 @@ import net.minecraft.world.entity.monster.Pillager;
 import java.util.*;
 
 public final class RaidEnemyModels {
-    public record Preview(IllagerModel<Pillager> model,ResourceLocation texture){}
+    public record Preview(IllagerModel<Pillager> model,ModelPart corpse,ResourceLocation texture){}
     private static final Map<String,Optional<Preview>> CACHE=new HashMap<>();
     private static ResourceManager resources;
     private static final String[] PARTS={"head","body","right_arm","left_arm","right_leg","left_leg"};
@@ -27,7 +27,10 @@ public final class RaidEnemyModels {
             case "Opérateur PMC"->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
             default->null;
         };
-        if(role==null)return null;
+        return selectAppearance(role);
+    }
+    public static Preview selectAppearance(String role){
+        if(role==null||!Set.of("foreman","tracker","pmc_usec","pmc_bird_eye").contains(role))return null;
         ResourceManager manager=Minecraft.getInstance().getResourceManager();
         if(resources!=manager){CACHE.clear();resources=manager;}
         return CACHE.computeIfAbsent(role,key->load(manager,key)).orElse(null);
@@ -70,7 +73,8 @@ public final class RaidEnemyModels {
                 float rad=(float)(Math.PI/180);
                 part.addOrReplaceChild("cube_"+index++,builder,PartPose.offsetAndRotation(off[0],off[1],off[2],rot[0]*rad,rot[1]*rad,rot[2]*rad));
             }
-            ModelPart baked=LayerDefinition.create(mesh,width,height).bakeRoot();
+            LayerDefinition layer=LayerDefinition.create(mesh,width,height);
+            ModelPart baked=layer.bakeRoot();
             IllagerModel<Pillager> model=new IllagerModel<Pillager>(baked){
                 @Override public void setupAnim(Pillager e,float swing,float amount,float age,float yaw,float pitch){
                     super.setupAnim(e,swing,amount,age,yaw,pitch);
@@ -80,7 +84,13 @@ public final class RaidEnemyModels {
                     root().getChild("left_arm").visible=true;
                 }
             };
-            return Optional.of(new Preview(model,texture));
+            ModelPart corpse=layer.bakeRoot();
+            corpse.getChild("arms").visible=false;
+            corpse.getChild("left_arm").zRot=-.22F;
+            corpse.getChild("right_arm").zRot=.28F;
+            corpse.getChild("left_leg").zRot=.06F;
+            corpse.getChild("right_leg").zRot=-.08F;
+            return Optional.of(new Preview(model,corpse,texture));
         }catch(Exception e){
             com.mojang.logging.LogUtils.getLogger().warn("Optional raid model {} unavailable; using vanilla",role,e);
             return Optional.empty();

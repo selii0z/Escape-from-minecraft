@@ -46,13 +46,17 @@ public final class GuardCorpseRenderer extends EntityRenderer<GuardCorpse> {
         pose.mulPose(Axis.XP.rotationDegrees(90));
         pose.scale(-1, -1, 1);
         pose.translate(0, -.62, 0);
-        body.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(TEXTURE)), light, OverlayTexture.NO_OVERLAY);
+        var preview=RaidEnemyModels.selectAppearance(corpse.appearance());
+        ModelPart selected=preview==null?body:preview.corpse();
+        ResourceLocation texture=preview==null?TEXTURE:preview.texture();
+        selected.render(pose,buffers.getBuffer(RenderType.entityCutoutNoCull(texture)),light,OverlayTexture.NO_OVERLAY);
         pose.popPose();
         super.render(corpse, yaw, partialTick, pose, buffers, light);
     }
 
     @Override
     public ResourceLocation getTextureLocation(GuardCorpse corpse) {
-        return TEXTURE;
+        var preview=RaidEnemyModels.selectAppearance(corpse.appearance());
+        return preview==null?TEXTURE:preview.texture();
     }
 }

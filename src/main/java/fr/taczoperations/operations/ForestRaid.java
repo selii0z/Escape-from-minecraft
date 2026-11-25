@@ -1090,6 +1090,12 @@ public final class ForestRaid extends SavedData {
         if (corpse == null) {
             return;
         }
+        corpse.setAppearance(switch(role){
+            case FOREMAN->"foreman";
+            case TRACKER->"tracker";
+            case PMC->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
+            default->"";
+        });
         corpse.moveTo(guard.getX(), guard.getY(), guard.getZ(), guard.getYRot(), 0);
         corpse.getPersistentData().putUUID(CORPSE, raid.id);
         EquipmentSlot[] equipment = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD,

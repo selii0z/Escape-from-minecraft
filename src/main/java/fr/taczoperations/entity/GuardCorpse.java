@@ -25,6 +25,15 @@ import net.minecraft.world.level.Level;
 
 public final class GuardCorpse extends Entity {
     private final CorpseInventory items = new CorpseInventory();
+    private static final net.minecraft.network.syncher.EntityDataAccessor<String> APPEARANCE=
+        SynchedEntityData.defineId(GuardCorpse.class,net.minecraft.network.syncher.EntityDataSerializers.STRING);
+    public void setAppearance(String value){
+        entityData.set(APPEARANCE,switch(value){
+            case "foreman","tracker","pmc_usec","pmc_bird_eye"->value;
+            default->"";
+        });
+    }
+    public String appearance(){return entityData.get(APPEARANCE);}
 
     public GuardCorpse(EntityType<? extends GuardCorpse> type, Level level) {
         super(type, level);
@@ -77,16 +86,18 @@ public final class GuardCorpse extends Entity {
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.Builder builder) {}
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {builder.define(APPEARANCE,"");}
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ContainerHelper.loadAllItems(tag, items.getItems(), registryAccess());
+        setAppearance(tag.getString("appearance"));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         ContainerHelper.saveAllItems(tag, items.getItems(), registryAccess());
+        tag.putString("appearance",appearance());
     }
 
     private final class CorpseInventory extends SimpleContainer {
