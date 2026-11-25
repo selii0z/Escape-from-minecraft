@@ -602,7 +602,7 @@ public final class ForestRaid extends SavedData {
         barrel.setItem(13,RaidRelic.values()[5+rng.nextInt(4)].stack());
         barrel.setItem(14,RaidRelic.roll(rng).stack());
         if (rng.nextInt(100)<5) barrel.setItem(15,RaidRelic.OMEGA.stack());
-        if (rng.nextInt(100)<8) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+        if (rng.nextInt(1000)<5) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
             net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))));
         RaidOrigin.markContainer(barrel);
         return true;
@@ -1112,14 +1112,25 @@ public final class ForestRaid extends SavedData {
             guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(role == GuardRole.TRACKER ? Items.DIAMOND_HELMET : Items.IRON_HELMET));
         }
         if (role == GuardRole.PMC) {
-            for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.LEGS,EquipmentSlot.FEET})
-                guard.setItemSlot(slot, BallisticVest.roll(slot,new Random(guard.getRandom().nextLong()),false));
+            // A PMC never has more than one class-5 piece. Secondary slots may be empty.
+            boolean rare=BallisticVest.tier(guard.getItemBySlot(EquipmentSlot.CHEST),EquipmentSlot.CHEST)>=5;
+            for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.LEGS,EquipmentSlot.FEET}){
+                if(guard.getRandom().nextInt(100)>=(slot==EquipmentSlot.HEAD?65:45)){
+                    guard.setItemSlot(slot,ItemStack.EMPTY);continue;
+                }
+                ItemStack piece=BallisticVest.roll(slot,new Random(guard.getRandom().nextLong()),false);
+                if(BallisticVest.tier(piece,slot)>=5){
+                    if(rare)piece=BallisticVest.create(slot,3,BallisticVest.classColor(3));
+                    else rare=true;
+                }
+                guard.setItemSlot(slot,piece);
+            }
         }
         if (role == GuardRole.PMC) {
             // Mutually exclusive headgear rolls, independent of armor rarity.
-            int optics = guard.getRandom().nextInt(100);
-            if (optics < 6) {
-                String id = optics < 3 ? "night_vision_goggles" : "thermal_goggles";
+            int optics = guard.getRandom().nextInt(1000);
+            if (optics < 7) {
+                String id = optics < 5 ? "night_vision_goggles" : "thermal_goggles";
                 guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations", id))));
             }
         }
@@ -1171,7 +1182,7 @@ public final class ForestRaid extends SavedData {
             TradeLoot bonus=TradeLoot.roll(random,kind==5?0:1,2);
             if(bonus!=null)barrel.setItem(7,bonus.stack());
             var slot=BallisticVest.SLOTS[random.nextInt(BallisticVest.SLOTS.length)];
-            int tier=random.nextInt(100)<12?5:4;
+            int tier=random.nextInt(100)<2?5:4;
             barrel.setItem(12,BallisticVest.create(slot,tier,BallisticVest.classColor(tier)));
             barrel.setItem(18,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","salewa")),2));
             barrel.setItem(24,new ItemStack(Items.GOLD_INGOT,4+random.nextInt(5)));
