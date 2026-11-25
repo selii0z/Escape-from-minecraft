@@ -165,6 +165,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
                 }
                 pager(page,view.shopPages());
+                if(vendor==OperationsShop.ARMORER)simple(241,376,61,22,"Access.",()->send(OperationsMenu.SHOP_ACCESSORIES),()->view.shopAccessories(),()->true);
                 simple(423,83,125,20,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
                 simple(423,105,125,20,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
                 simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
@@ -498,10 +499,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             case OperationsMenu.SHOP -> {
                 var vendor = vendor();
-                pageTitle(g, "▱", upper(vendor.title), fit(vendor.specialty,210));
+                pageTitle(g, "▱", upper(vendor.title), view.shopAccessories()?"Accessoires · sélection":fit(vendor.specialty,210));
                 var offers = vendor.offers();
                 if(view.shopRows().isEmpty()){
-                    text(g,"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);
+                    text(g,view.shopAccessories()?"Aucun accessoire proposé dans ce pack.":"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);
                     text(g,"Désactive le filtre pour revoir son catalogue.",181,170,.84F,SOFT,false);
                 }
                 for (int i = 0; i < view.shopRows().size(); i++) {

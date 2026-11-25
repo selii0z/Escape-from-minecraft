@@ -69,6 +69,7 @@ public enum OperationsShop {
 
     public record Offer(String title, int price, Action action, Supplier<ItemStack> stack,
                         RaidRelic key, int rankXp) {
+        public boolean accessory(){return title.startsWith("Accessoire · ");}
         public int loyaltyLevel() {
             if (action != Action.BUY) return 1;
             int level = rankXp >= 180 ? 4 : rankXp >= 65 ? 3 : rankXp > 0 ? 2 : 1;
@@ -115,8 +116,12 @@ public enum OperationsShop {
                     offers.add(buy("Munitions · "+ammoId.getPath().replace('_',' '),price,
                         () -> AmmoItemBuilder.create().setId(ammoId).setCount(count).build(),null,tierRequirement(tier)));
                 }
-                offers.add(buy("Chargeur étendu", 460, () -> attachment("extended_mag_1"), RaidRelic.CIRCUIT, 0));
-                offers.add(buy("Viseur 552", 900, () -> attachment("sight_552"), RaidRelic.OPTIC, 0));
+                // Limited, stable selection of real installed TaCZ accessories.
+                for(var accessory:ArmorerAccessories.catalogue()){
+                    offers.add(buy("Accessoire · "+accessory.title(),accessory.price(),
+                        ()->AttachmentItemBuilder.create().setId(accessory.id()).build(),
+                        accessory.key(),tierRequirement(accessory.tier())));
+                }
             }
             case MEDIC -> {
                 offers.add(buy("Bandage",45,()->medical("bandage"),null,0));
