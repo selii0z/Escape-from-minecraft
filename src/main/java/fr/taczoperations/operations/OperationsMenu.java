@@ -271,7 +271,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         } else if (tab == SHOP && button >= TRADE_FIRST && button < TRADE_FIRST + LIST_ROWS) {
             var vendor = OperationsShop.values()[page / VENDOR_PAGES];
             if (serverPlayer.level().dimension().equals(ForestExpedition.FOREST)) return false;
-            notice = vendor.trade(serverPlayer, page % VENDOR_PAGES * LIST_ROWS + button - TRADE_FIRST);
+            notice = vendor.trade(serverPlayer, page % VENDOR_PAGES * LIST_ROWS + button - TRADE_FIRST,Long.parseLong(view.market().getFirst()));
         } else if (tab == SHOP && (button == PREVIOUS || button == NEXT)) {
             int vendor = page / VENDOR_PAGES;
             int offers = OperationsShop.values()[vendor].offers().size();

@@ -258,7 +258,7 @@ public enum OperationsShop {
         return bits;
     }
 
-    String trade(ServerPlayer player, int index) {
+    String trade(ServerPlayer player, int index,long quotedDay) {
         var offers = offers();
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
@@ -290,7 +290,10 @@ public enum OperationsShop {
             return "Protection indisponible.";
         }
         if (offer.action == Action.SELL) {
-            if (balance > Integer.MAX_VALUE - offer.price) return "Solde maximal atteint.";
+            long today=ResaleMarket.day();
+            if(quotedDay!=today)return "Les tarifs ont changé. Vérifie le nouveau prix avant de vendre.";
+            int price=ResaleMarket.price(offer,today);
+            if (balance > Integer.MAX_VALUE - price) return "Solde maximal atteint.";
             if (stack.getItem() instanceof com.tacz.guns.api.item.IGun gun) {
                 var expected = gun.getGunId(stack);
                 var found = player.getInventory().items.stream().filter(candidate ->
@@ -300,8 +303,8 @@ public enum OperationsShop {
                 found.get().shrink(1);
                 player.getInventory().setChanged();
             } else if (!SupplyContract.consume(player, stack.getItem(), 1)) return "Tu ne possèdes pas cet objet.";
-            account.putInt("credits", balance + offer.price);
-            return "Vente effectuée · +" + offer.price + " crédits.";
+            account.putInt("credits", balance + price);
+            return "Vente effectuée · +" + price + " crédits.";
         }
         int experience = SupplyContract.experienceEarned(player);
         int loyalty = offer.loyaltyLevel();

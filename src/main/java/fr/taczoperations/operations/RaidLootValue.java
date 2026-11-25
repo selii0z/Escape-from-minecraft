@@ -39,10 +39,11 @@ final class RaidLootValue {
         CompoundTag baseline=p.getPersistentData().getCompound(BASE);
         var current=inventory(p);
         Map<String,Integer> prices=new HashMap<>();
+        long day=ResaleMarket.day();
         for(var merchant:OperationsShop.values())for(var offer:merchant.offers()){
             if(offer.action()!=OperationsShop.Action.SELL||offer.price()<=0)continue;
             ItemStack sample=offer.stack().get();
-            if(!sample.isEmpty())prices.merge(key(sample),offer.price(),Math::max);
+            if(!sample.isEmpty())prices.merge(key(sample),ResaleMarket.price(offer,day),Math::max);
         }
         long value=0;
         int amount=0;

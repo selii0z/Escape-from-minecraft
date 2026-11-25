@@ -52,7 +52,7 @@ public enum TradeLoot {
         LootItem(Properties properties,TradeLoot loot){super(properties);this.loot=loot;}
         @Override public void appendHoverText(ItemStack stack,TooltipContext context,
             java.util.List<net.minecraft.network.chat.Component> text,net.minecraft.world.item.TooltipFlag flag){
-            text.add(net.minecraft.network.chat.Component.literal(new String[]{"Commun","Peu commun","Rare","Épique","Légendaire"}[loot.tier]+" · "+loot.price+" crédits"));
+            text.add(net.minecraft.network.chat.Component.literal(new String[]{"Commun","Peu commun","Rare","Épique","Légendaire"}[loot.tier]+" · "+loot.price+" crédits (référence)"));
             text.add(net.minecraft.network.chat.Component.literal("Objet de revente · "+loot.merchant().title));
         }
     }

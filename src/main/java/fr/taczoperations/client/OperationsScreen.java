@@ -482,14 +482,24 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     String cost = switch (offer.action()) {
                         case BUY -> offer.price() + " crédits";
                         case REPAIR -> vendor==OperationsShop.ARMORER?"8 cr. / % manquant · min. 50":offer.price()+" crédits";
-                        case SELL -> "+" + offer.price() + " crédits";
+                        case SELL -> {
+                            long day=Long.parseLong(view.market().getFirst());
+                            int price=fr.taczoperations.operations.ResaleMarket.price(offer,day);
+                            int variation=fr.taczoperations.operations.ResaleMarket.variation(offer,day);
+                            yield "+"+price+" cr. · "+(variation>0?"+":"")+variation+" %";
+                        }
                         case UNLOCK -> unlocked(offer.key()) ? "Débloqué" : "Remettre 1 objet";
                     };
                     String requirement = offer.requirement();
                     if (offer.action() == OperationsShop.Action.BUY && offer.loyaltyLevel() > 1)
                         requirement += " · Niv. " + OperationsShop.requiredPlayerLevel(offer.loyaltyLevel());
+                    int priceColor=GOLD;
+                    if(offer.action()==OperationsShop.Action.SELL){
+                        int change=fr.taczoperations.operations.ResaleMarket.variation(offer,Long.parseLong(view.market().getFirst()));
+                        priceColor=change>0?LIME:change<0?0xffdf9c94:SOFT;
+                    }
                     text(g, fit(cost + (requirement.isEmpty() ? "" : " · " + requirement), 250),
-                        181, y + 23, .95F, GOLD, false);
+                        181, y + 23, .95F, priceColor, false);
                 }
             }
             case OperationsMenu.BLACK_MARKET -> {
