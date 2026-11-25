@@ -76,6 +76,8 @@ public final class Hideout {
         SupplyContract.account(p).put(RETURN,back);
         p.closeContainer();
         p.teleportTo(level,c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);
+        if(p.level()!=level){SupplyContract.account(p).remove(RETURN);return;}
+        HideoutDecor.refresh(p,c);
         say(p,"Bienvenue dans ta planque personnelle. Clique sur une installation ou utilise /efm planque menu.");
     }
     static void leave(ServerPlayer p){
@@ -89,9 +91,9 @@ public final class Hideout {
             &&level.getBlockState(target).getCollisionShape(level,target).isEmpty()
             &&level.getBlockState(target.above()).getCollisionShape(level,target.above()).isEmpty()
             &&level.getBlockState(target.below()).isFaceSturdy(level,target.below(),net.minecraft.core.Direction.UP);
-        if(!safe){target=level.getSharedSpawnPos();x=target.getX()+.5;y=target.getY()+1;z=target.getZ()+.5;}
+        if(!safe){var spawn=p.adjustSpawnLocation(level,level.getSharedSpawnPos());x=spawn.getX()+.5;y=spawn.getY();z=spawn.getZ()+.5;}
         p.closeContainer();p.teleportTo(level,x,y,z,Set.of(),safe?back.getFloat("yaw"):0,safe?back.getFloat("pitch"):0);
-        account.remove(RETURN);
+        if(p.level()==level)account.remove(RETURN);
     }
     private static CompoundTag stations(ServerPlayer p){
         var a=SupplyContract.account(p);if(!a.contains(STATIONS))a.put(STATIONS,new CompoundTag());return a.getCompound(STATIONS);
@@ -123,12 +125,14 @@ public final class Hideout {
         var item=s.material.stack().getItem();var storage=CarriedStorage.of(p);
         if(!storage.consume(stack->stack.is(item)&&RaidOrigin.found(stack),n)){say(p,"Il faut "+n+" × "+s.material.title+" trouvé en raid.");return;}
         SupplyContract.account(p).putInt("credits",balance-cost);stations(p).putInt(s.id,n);
+        HideoutDecor.refresh(p,center(plot));
         say(p,s.label+" améliorée au niveau "+n+".");
     }
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
             .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
             .then(Commands.literal("tir").executes(ctx->{HideoutRange.toggle(ctx.getSource().getPlayerOrException());return 1;}))
+            .then(Commands.literal("decoration").executes(ctx->{HideoutDecor.cycle(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("menu").executes(ctx->{HideoutMenu.open(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("sortir").executes(ctx->{leave(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("carburant").executes(ctx->{HideoutPower.refuel(ctx.getSource().getPlayerOrException());return 1;}))
