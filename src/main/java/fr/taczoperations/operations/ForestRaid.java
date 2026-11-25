@@ -697,6 +697,45 @@ public final class ForestRaid extends SavedData {
         return new BlockPos(data.getInt("guard_home_x"),data.getInt("guard_home_y"),data.getInt("guard_home_z"));
     }
 
+    /** A stable loop of nearby sectors, shared by the members of a squad. */
+    static List<BlockPos> patrolRoute(ServerLevel level,Pillager guard){
+        ForestRaid raid=at(level,guard.blockPosition());
+        if(!raid.matches(guard.getPersistentData(),ENEMY))return List.of();
+        int squad=guard.getPersistentData().getInt("taczoperations_squad");
+        if(squad<0||squad>=raid.encounterPoints.size())return List.of();
+        var rng=new Random(raid.seed^((squad+1L)*0x3a8bd7f19L));
+        boolean pmc=raid.pmcGroups.get(squad);
+        if(rng.nextInt(100)>=(pmc?75:45))return List.of();
+        int maxDistance=raid.industrial?95:135;
+        var points=raid.encounterPoints;
+        var visited=new java.util.ArrayList<Integer>();
+        visited.add(squad);
+        int current=squad;
+        int count=3+rng.nextInt(3);
+        while(visited.size()<count){
+            final int from=current;
+            var candidates=new java.util.ArrayList<Integer>();
+            for(int i=0;i<points.size();i++){
+                if(visited.contains(i))continue;
+                long d=pointDistanceSquared(points.get(from),points.get(i));
+                long home=pointDistanceSquared(points.get(squad),points.get(i));
+                if(d>=24L*24L&&d<=(long)maxDistance*maxDistance&&home<=(long)maxDistance*maxDistance)candidates.add(i);
+            }
+            if(candidates.isEmpty())break;
+            candidates.sort(java.util.Comparator.comparingLong(i->pointDistanceSquared(points.get(from),points.get(i))));
+            current=candidates.get(rng.nextInt(Math.min(3,candidates.size())));
+            visited.add(current);
+        }
+        if(visited.size()<2)return List.of();
+        return visited.stream().map(points::get).map(p->raid.industrial?ForestExpedition.industrialPosition(p):ForestLandmarks.position(p)).toList();
+    }
+
+    static boolean sameGuardSession(ServerLevel level,Pillager first,Pillager second){
+        return currentGuard(level,first)&&currentGuard(level,second)
+            &&first.getPersistentData().hasUUID(ENEMY)&&second.getPersistentData().hasUUID(ENEMY)
+            &&first.getPersistentData().getUUID(ENEMY).equals(second.getPersistentData().getUUID(ENEMY));
+    }
+
     static RaidAtmosphere atmosphere(ServerPlayer player){
         ForestRaid raid=forPlayer(player);
         return raid!=null&&raid.owns(player)?raid.atmosphere:null;
