@@ -1301,9 +1301,14 @@ public final class ForestRaid extends SavedData {
             corpse.put(19,new ItemStack(industrialKey()));
         }
         if(role.boss()){
+            int packRoll=guard.getRandom().nextInt(100);
+            if(packRoll<8)corpse.put(22,FieldPack.create(false,5));
+            else if(packRoll<38)corpse.put(22,FieldPack.create(false,3+guard.getRandom().nextInt(2)));
+            if(guard.getRandom().nextInt(100)<12)corpse.put(23,FieldPack.create(true,2));
             corpse.put(20,BossLoot.spare(guard));
             corpse.put(21,BossLoot.bonus(guard));
         }
+        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
         if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
         if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,new ItemStack(industrialKey()));
         if (level.addFreshEntity(corpse)) {
