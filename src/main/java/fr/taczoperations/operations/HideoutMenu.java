@@ -45,33 +45,31 @@ final class HideoutMenu {
         icons.setItem(45,tile(Items.REDSTONE,"Énergie : "+HideoutPower.energy(p)+"/"+Hideout.tier(p,Hideout.Station.GENERATEUR)*24,ChatFormatting.YELLOW));
         icons.setItem(46,tile(Items.GOLD_INGOT,"Solde : "+SupplyContract.balance(p)+" crédits",ChatFormatting.GOLD));
         icons.setItem(49,tile(Items.COMPASS,"Quitter la planque",ChatFormatting.RED));
-        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new ChestMenu(MenuType.GENERIC_9x6,id,inv,icons,6){
-            @Override public void clicked(int slot,int button,ClickType click,Player player){
-                if(player!=p||p.containerMenu!=this||!icons.stillValid(player)||button!=0
-                    ||click!=ClickType.PICKUP||!getCarried().isEmpty())return;
-                if(!((slot>=19&&slot<=26)||(slot>=28&&slot<=35)||slot==37||slot==39||slot==41||slot==43||slot==49))return;
-                p.closeContainer();
-                if(slot>=19&&slot<=26)Hideout.upgrade(p,Hideout.Station.values()[slot-19].id);
-                else switch(slot){
-                    case 28->HideoutServices.reserve(p);
-                    case 29->HideoutServices.craft(p,"bandage");
-                    case 30->HideoutServices.craft(p,"salewa");
-                    case 31->HideoutServices.craft(p,"ration");
-                    case 32->HideoutServices.craft(p,"eau");
-                    case 33->HideoutPower.refuel(p);
-                    case 34->HideoutPower.repair(p);
-                    case 35->HideoutPower.rest(p);
-                    case 37->HideoutRange.toggle(p);
-                    case 39->ProgressionMenus.missions(p);
-                    case 41->ProgressionMenus.skills(p);
-                    case 43->HideoutDecor.cycle(p);
-                    case 49->Hideout.leave(p);
-                    default->{}
-                }
-                if(slot!=49&&p.containerMenu==p.inventoryMenu&&Hideout.ownsPlot(p))open(p);
-            }
-            @Override public ItemStack quickMoveStack(Player player,int slot){return ItemStack.EMPTY;}
-        },Component.literal("EFM · Gestion de la planque")));
+        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new HideoutControlMenu(id,inv,icons),Component.literal("EFM · Gestion de la planque")),buf->{});
+    }
+    static boolean action(ServerPlayer p,int slot){
+        if(!Hideout.ownsPlot(p)||!((slot>=19&&slot<=26)||(slot>=28&&slot<=35)||slot==37||slot==39||slot==41||slot==43||slot==49))return false;
+        if(slot>=19&&slot<=26&&Hideout.tier(p,Hideout.Station.values()[slot-19])>=3)return false;
+        p.closeContainer();
+        if(slot>=19&&slot<=26)Hideout.upgrade(p,Hideout.Station.values()[slot-19].id);
+        else switch(slot){
+            case 28->HideoutServices.reserve(p);
+            case 29->HideoutServices.craft(p,"bandage");
+            case 30->HideoutServices.craft(p,"salewa");
+            case 31->HideoutServices.craft(p,"ration");
+            case 32->HideoutServices.craft(p,"eau");
+            case 33->HideoutPower.refuel(p);
+            case 34->HideoutPower.repair(p);
+            case 35->HideoutPower.rest(p);
+            case 37->HideoutRange.toggle(p);
+            case 39->ProgressionMenus.missions(p);
+            case 41->ProgressionMenus.skills(p);
+            case 43->HideoutDecor.cycle(p);
+            case 49->Hideout.leave(p);
+            default->{}
+        }
+        if(slot!=49&&slot!=37&&p.containerMenu==p.inventoryMenu&&Hideout.ownsPlot(p))open(p);
+        return true;
     }
     private static ItemStack repairTile(ServerPlayer p){
         int tier=Hideout.tier(p,Hideout.Station.ATELIER),balance=SupplyContract.balance(p);
