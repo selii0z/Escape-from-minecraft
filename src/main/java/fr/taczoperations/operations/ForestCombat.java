@@ -71,6 +71,11 @@ public final class ForestCombat {
         int nextShot;
         int failures;
         java.util.UUID visibleTarget;
+        java.util.UUID rememberedTarget;
+        net.minecraft.world.phys.Vec3 lastSeen;
+        int lastSeenTick, nextManeuver, movingUntil, alertUntil;
+        float previousHealth=-1;
+        boolean retreating;
     }
 
     static void arm(Pillager enemy) {
@@ -144,6 +149,8 @@ public final class ForestCombat {
                 operator.draw(guard::getMainHandItem);
                 aim.nextShot = guard.tickCount + 20;
             }
+            boolean hit=aim.previousHealth>=0&&guard.getHealth()<aim.previousHealth;
+            aim.previousHealth=guard.getHealth();
             net.minecraft.world.entity.LivingEntity target = null;
             double range = (role.range + 12) * (role.range + 12);
             for (ServerPlayer candidate : level.players()) {
@@ -173,6 +180,14 @@ public final class ForestCombat {
                 }
             }
             if (target == null) {
+                // A recent sighting is a short-lived investigation, not wall vision.
+                if(aim.lastSeen!=null&&guard.tickCount-aim.lastSeenTick<100){
+                    guard.setTarget(null);operator.aim(false);aim.visibleTarget=null;
+                    if(guard.tickCount%20==0&&guard.getNavigation().isDone())
+                        guard.getNavigation().moveTo(aim.lastSeen.x,aim.lastSeen.y,aim.lastSeen.z,.95);
+                    return;
+                }
+                aim.lastSeen=null;aim.rememberedTarget=null;
                 guard.setTarget(null);
                 aim.visibleTarget = null;
                 operator.aim(false);
@@ -187,6 +202,26 @@ public final class ForestCombat {
             }
             guard.setTarget(target);
             guard.getLookControl().setLookAt(target, 60, 60);
+            if(guard.hasLineOfSight(target)){
+                aim.lastSeen=target.position();aim.lastSeenTick=guard.tickCount;aim.rememberedTarget=target.getUUID();
+                if(target instanceof ServerPlayer&&guard.tickCount>=aim.alertUntil){
+                    aim.alertUntil=guard.tickCount+80;
+                    alertSquad(level,guard,role,target);
+                }
+            }
+            if(guard.tickCount<aim.movingUntil&&!guard.getNavigation().isDone()){
+                operator.aim(false);return;
+            }
+            boolean advanced=role==GuardRole.PMC||role==GuardRole.LEADER||role==GuardRole.SOLDIER||role.boss();
+            if(guard.tickCount>=aim.nextManeuver && (hit||advanced&&guard.getRandom().nextInt(12)==0)){
+                aim.nextManeuver=guard.tickCount+100+guard.getRandom().nextInt(80);
+                boolean cover=hit&&guard.getHealth()<=guard.getMaxHealth()*.8F;
+                if(maneuver(level,guard,target,cover)){
+                    aim.movingUntil=guard.tickCount+(cover?45:35);
+                    aim.nextShot=Math.max(aim.nextShot,aim.movingUntil+12);
+                    operator.aim(false);return;
+                }
+            }
             if (range > role.range * role.range || !guard.hasLineOfSight(target)) {
                 aim.visibleTarget = null;
                 operator.aim(false);
@@ -225,6 +260,10 @@ public final class ForestCombat {
                         aim.nextShot += 24;
                     } else {
                         operator.aim(false);
+                        if(guard.tickCount>=aim.nextManeuver){
+                            aim.nextManeuver=guard.tickCount+80;
+                            if(maneuver(level,guard,target,true))aim.movingUntil=guard.tickCount+50;
+                        }
                     }
                 }
                 case NOT_DRAW -> operator.draw(guard::getMainHandItem);
@@ -240,6 +279,50 @@ public final class ForestCombat {
             LogUtils.getLogger().warn("Forest guard switched to a crossbow after a TaCZ error", exception);
             crossbow(guard);
         }
+    }
+
+    private static void alertSquad(ServerLevel level,Pillager guard,GuardRole role,net.minecraft.world.entity.LivingEntity target){
+        int squad=guard.getPersistentData().getInt("taczoperations_squad");
+        if(squad<0)return;
+        for(Pillager ally:level.getEntitiesOfClass(Pillager.class,guard.getBoundingBox().inflate(24),
+            e->e!=guard&&e.isAlive()&&ForestRaid.currentGuard(level,e)
+                &&e.getPersistentData().getInt("taczoperations_squad")==squad
+                &&(GuardRole.get(e)==GuardRole.PMC)==(role==GuardRole.PMC))){
+            Aim other=AIM.get(ally);
+            if(other==null||other.visibleTarget!=null||other.lastSeen!=null&&ally.tickCount-other.lastSeenTick<80)continue;
+            other.lastSeen=target.position();
+            other.lastSeenTick=ally.tickCount;
+            other.rememberedTarget=target.getUUID();
+        }
+    }
+
+    // Bounded path checks, only on a maneuver cooldown. A guard does not shoot
+    // through blocks or while moving; normal damage caps remain unchanged.
+    private static boolean maneuver(ServerLevel level,Pillager guard,net.minecraft.world.entity.LivingEntity target,boolean cover){
+        var delta=guard.position().subtract(target.position());
+        var horizontal=new net.minecraft.world.phys.Vec3(delta.x,0,delta.z).normalize();
+        if(horizontal.lengthSqr()<.01)return false;
+        var side=new net.minecraft.world.phys.Vec3(-horizontal.z,0,horizontal.x);
+        int sign=guard.getRandom().nextBoolean()?1:-1;
+        for(int i=0;i<4;i++){
+            double direction=i%2==0?sign:-sign;
+            var offset=side.scale(direction*(i<2?5:8)).add(horizontal.scale(cover?4:-2));
+            var candidate=guard.position().add(offset);
+            for(int dy:new int[]{0,1,-1}){
+                var pos=net.minecraft.core.BlockPos.containing(candidate.x,candidate.y+dy,candidate.z);
+                if(!level.hasChunkAt(pos)||!level.getBlockState(pos).isAir()||!level.getBlockState(pos.above()).isAir()
+                    ||!level.getBlockState(pos.below()).isFaceSturdy(level,pos.below(),net.minecraft.core.Direction.UP))continue;
+                if(!fr.taczoperations.worldgen.ForestPlan.inside(pos.getX(),pos.getZ())&&!fr.taczoperations.worldgen.IndustrialZone.inside(pos.getX(),pos.getZ()))continue;
+                if(cover){
+                    var eye=net.minecraft.world.phys.Vec3.atBottomCenterOf(pos).add(0,guard.getEyeHeight(),0);
+                    var trace=level.clip(new net.minecraft.world.level.ClipContext(eye,target.getEyePosition(),net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,guard));
+                    if(trace.getType()==net.minecraft.world.phys.HitResult.Type.MISS)continue;
+                }
+                var path=guard.getNavigation().createPath(pos,0);
+                if(path!=null&&path.canReach()&&guard.getNavigation().moveTo(path,cover?1.12:1.04))return true;
+            }
+        }
+        return false;
     }
 
     private static ItemStack customizePmcWeapon(Pillager guard, ItemStack base) {
