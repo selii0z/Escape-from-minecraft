@@ -52,3 +52,17 @@ Base figée : 1.3.0 RC1 build 547. Branche indépendante, aucun changement au JA
 - Bilan de séance : tirs, impacts, impacts tête, détail par distance ; records personnels persistants des impacts, des impacts tête et du nombre de séances. /efm planque records. Les impacts peuvent dépasser le nombre de tirs (projectiles multiples) ; aucune statistique de précision en pourcentage affichée.
 - Tir TaCZ annulé dans la dimension planque hors du couloir personnel. Vérifier en jeu annulation des événements, collision et détection des porte-armures, mouvement visible côté client, tirs et impacts, reconnexion, limites et absence de gains de raid.
 - Munitions réelles toujours consommées. Pas d'arme ou munition d'entraînement générée : munitions illimitées et mannequins balistiques reportés jusqu'à validation de la compilation et du comportement TaCZ. Build 641 échoué, aucun artefact ; compilation du lot non confirmée.
+
+
+## Préparation RC1 — critères bloquants (non validés)
+La branche reste en version 1.4.0-dev. Ne pas distribuer de RC1 sans build vert et artefact vérifié. Minecraft 1.21.1 / NeoForge 21.1.249 / TaCZ 1.2.0 ; tester avec Curios puis sans Curios. Sauvegarder le monde et les données joueur avant migration. Conserver la 1.3.0 RC1 séparée.
+- Lancer client et serveur dédié avec le même JAR (protocole 18), rejoindre, vérifier chargement des dimensions.
+- Deux comptes : parcelles distinctes, aucune interaction entre réserves, reconnexion et redémarrage du serveur, décès exceptionnel et conservation du compte.
+- Vérifier protections contre dégâts ordinaires, mobs, explosions, casse/pose ; vérifier retour hors zone, chute dans le vide et /kill administrateur.
+- Réserve 18/36/54 : transfert rapide, clics rapides, échange avec barre d'accès rapide, fermeture et sauvegarde, refus du coffre sécurisé.
+- Fabrication : piles partielles, inventaire saturé, matériau/énergie/crédits insuffisants, débit unique et résultat complet.
+- Missions : ordre combat/renseignement libre après secteur, renseignement perdu, extraction réussie ou échouée, aucun paiement répété, mission suivante déverrouillée.
+- Compétences : achat fractionné vs groupé (1 XP/250 Cr., plafond 120/jour), survie +25 XP une seule fois, force conditionnée à 24 cases occupées, fouille partagée 8–10 ticks.
+- Stand : accès par niveau, cibles mobiles, bilan, pas d'XP de raid ; munitions réelles seulement. Munitions illimitées et mannequins balistiques non livrés.
+- Régression 1.3 : raids solo/duo, extraction et bilan, coffre sécurisé/assurance, sacs et munitions, marchands, événements boss.
+Dernier build observé avant ce lot : 685 en échec et diagnostic indépendant en échec, sans journal exploitable. Les tests ci-dessus sont une procédure, pas des résultats.
