@@ -1268,7 +1268,7 @@ public final class ForestRaid extends SavedData {
             TradeLoot loot=TradeLoot.roll(random,kind==2?1:kind,0);
             if(loot!=null)barrel.setItem(20,loot.stack());
         }
-        if(industrial&&random.nextInt(100)<8)barrel.setItem(23,new ItemStack(industrialKey()));
+        if(industrial&&random.nextInt(100)<8)barrel.setItem(23,randomVaultKey(random));
         if(kind==0){
             // All injury treatments are obtainable through exploration, not just shops.
             int roll=random.nextInt(100);
@@ -1290,6 +1290,22 @@ public final class ForestRaid extends SavedData {
         return net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","industrial_key"));
     }
 
+    private static ItemStack randomVaultKey(java.util.Random random){
+        ItemStack stack=new ItemStack(industrialKey());
+        if(IndustrialZone.VAULTS.isEmpty())return stack;
+        int index=random.nextInt(IndustrialZone.VAULTS.size());
+        var data=new CompoundTag();data.putInt("efm_vault_index",index);
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,net.minecraft.world.item.component.CustomData.of(data));
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,Component.literal("Clé · "+IndustrialZone.VAULTS.get(index).title()));
+        return stack;
+    }
+    private static boolean matchesVault(ItemStack stack,int index){
+        if(!stack.is(industrialKey()))return false;
+        var data=stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+        if(data==null)return true; // old master keys retain compatibility
+        var tag=data.copyTag();
+        return !tag.contains("efm_vault_index")||tag.getInt("efm_vault_index")==index;
+    }
     private boolean prepareVault(ServerLevel level,int index){
         if(vaultPrepared.get(index))return true;
         var door=IndustrialZone.VAULTS.get(index).door();
@@ -1311,8 +1327,9 @@ public final class ForestRaid extends SavedData {
             if(event.getHand()!=net.minecraft.world.InteractionHand.MAIN_HAND)return true;
             if(raid.vaultOpened.get(i))return true;
             if(!raid.prepareVault(p.serverLevel(),i))return true;
-            var inventory=p.getInventory();
-            if(inventory.items.stream().noneMatch(s->s.is(industrialKey()))){
+            final int vaultIndex=i;
+            java.util.function.Predicate<ItemStack> match=s->matchesVault(s,vaultIndex);
+            if(!KeyRingItem.has(p,match)){
                 p.displayClientMessage(Component.literal(v.title()+" · clé industrielle requise"),true);
                 return true;
             }
@@ -1321,7 +1338,7 @@ public final class ForestRaid extends SavedData {
                 ForestProtection.setVaultDoor(level,door,true);ForestProtection.setVaultDoor(level,door.above(),true);
                 return true;
             }
-            if(!SupplyContract.consume(p,industrialKey(),1)){
+            if(!KeyRingItem.consume(p,match)){
                 ForestProtection.setVaultDoor(level,door,true);ForestProtection.setVaultDoor(level,door.above(),true);
                 return true;
             }
@@ -1451,7 +1468,7 @@ public final class ForestRaid extends SavedData {
             corpse.put(18, RaidRelic.CHIP.stack());
         } else if (role == GuardRole.FOREMAN) {
             corpse.put(18, RaidRelic.CIRCUIT.stack());
-            corpse.put(19,new ItemStack(industrialKey()));
+            corpse.put(19,randomVaultKey(new Random(guard.getRandom().nextLong())));
         }
         if(role.boss()){
             int packRoll=guard.getRandom().nextInt(100);
@@ -1464,8 +1481,8 @@ public final class ForestRaid extends SavedData {
         if(role==GuardRole.PMC)corpse.put(25,MilitaryTag.create(guard,event.getSource().getEntity() instanceof ServerPlayer p&&raid.owns(p)?p:null));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<7)corpse.put(24,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","tactical_headset"))));
-        if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
-        if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,new ItemStack(industrialKey()));
+        if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,randomVaultKey(new Random(guard.getRandom().nextLong())));
+        if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,randomVaultKey(new Random(guard.getRandom().nextLong())));
         if (level.addFreshEntity(corpse)) {
             for (EquipmentSlot slot : equipment) {
                 guard.setItemSlot(slot, ItemStack.EMPTY);
