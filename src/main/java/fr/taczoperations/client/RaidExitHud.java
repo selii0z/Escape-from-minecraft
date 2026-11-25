@@ -33,14 +33,22 @@ public final class RaidExitHud {
         if(!valid(Minecraft.getInstance())){state=null;level=null;}
     }
     @SubscribeEvent public static void render(RenderGuiEvent.Post event){
+        var graphics=event.getGuiGraphics();
+        graphics.pose().pushPose();
+        try{
+            graphics.pose().scale(RaidHudSettings.scale(),RaidHudSettings.scale(),1);
+            if(RaidHudSettings.visible())draw(event);
+        }finally{graphics.pose().popPose();}
+    }
+    private static void draw(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();
         if(!valid(mc)||state==null||mc.options.hideGui||System.nanoTime()-updated>3_500_000_000L)return;
-        int w=mc.getWindow().getGuiScaledWidth();
+        int w=RaidHudSettings.width();
         // The original nearest-exit actionbar remains the compact fallback.
-        if(w<500)return;
+        if(w<320)return;
         var g=event.getGuiGraphics();
-        int width=146,x=w-width-8,y=8;
-        g.fill(x,y,x+width,y+17,0xca171d18);
+        int width=146,x=RaidHudSettings.right()?8:w-width-8,y=8;
+        g.fill(x,y,x+width,y+17,RaidHudSettings.bg(0xca171d18));
         g.drawString(mc.font,"EXTRACTIONS",x+7,y+5,0xffd3dbcc,false);
         y+=19;
         row(g,mc,x,y,width,"Principale",RaidExitPayload.OPEN,state.primaryDistance());y+=25;
