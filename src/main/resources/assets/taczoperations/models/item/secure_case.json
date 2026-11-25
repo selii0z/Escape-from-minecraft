@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "taczoperations:item/intel_case"
+    "layer0": "taczoperations:item/secure_case"
   }
 }
