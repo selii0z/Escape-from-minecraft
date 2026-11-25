@@ -129,6 +129,7 @@ public final class ForestExpedition {
     private static String recoveryKey(ItemStack item){
         if(item.getItem() instanceof com.tacz.guns.api.item.IGun gun)return "gun/"+gun.getGunId(item);
         if(item.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)return "ammo/"+ammo.getAmmoId(item);
+        if(item.getItem() instanceof com.tacz.guns.api.item.IAttachment attachment)return "attachment/"+attachment.getAttachmentId(item);
         return "item/"+net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem());
     }
 
