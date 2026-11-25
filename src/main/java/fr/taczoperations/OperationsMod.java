@@ -73,6 +73,14 @@ public final class OperationsMod {
         fr.taczoperations.operations.TradeLoot.register(ITEMS);
         ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        for(int i=0;i<fr.taczoperations.operations.FieldPack.BAGS.length;i++){
+            final int capacity=fr.taczoperations.operations.FieldPack.CAPACITY[i];
+            ITEMS.registerItem("backpack_"+fr.taczoperations.operations.FieldPack.BAGS[i],props->new fr.taczoperations.operations.FieldPack(props,capacity,false),new net.minecraft.world.item.Item.Properties());
+        }
+        for(int i=0;i<fr.taczoperations.operations.FieldPack.RIGS.length;i++){
+            final int capacity=fr.taczoperations.operations.FieldPack.RIG_CAPACITY[i];
+            ITEMS.registerItem("rig_"+fr.taczoperations.operations.FieldPack.RIGS[i],props->new fr.taczoperations.operations.FieldPack(props,capacity,true),new net.minecraft.world.item.Item.Properties());
+        }
         ITEMS.registerItem("secure_case", fr.taczoperations.operations.SecureCaseItem::new, new net.minecraft.world.item.Item.Properties().stacksTo(1));
         for(String medical : new String[]{"bandage","hemostat","splint","medkit","salewa"}) {
             ITEMS.registerItem(medical,props -> new fr.taczoperations.operations.FieldMedicine(props,medical),new net.minecraft.world.item.Item.Properties().stacksTo(8));
