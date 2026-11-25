@@ -40,7 +40,10 @@ public final class RaidSurvival {
         boolean rested=seconds<=d.getInt(REST);
         if(!rested&&seconds%3==0)e=Math.max(0,e-PassiveSkills.reduce(p,PassiveSkills.Skill.SURVIVAL,1));
         if(p.isSprinting()){
-            if(!rested&&seconds%2==0)e=Math.max(0,e-PassiveSkills.reduce(p,PassiveSkills.Skill.ENDURANCE,PassiveSkills.reduce(p,PassiveSkills.Skill.STRENGTH,1)));
+            if(!rested&&seconds%2==0){
+                int sprintCost=PassiveSkills.loaded(p)?PassiveSkills.reduce(p,PassiveSkills.Skill.STRENGTH,1):1;
+                e=Math.max(0,e-PassiveSkills.reduce(p,PassiveSkills.Skill.ENDURANCE,sprintCost));
+            }
             if(seconds%3==0)w=Math.max(0,w-PassiveSkills.reduce(p,PassiveSkills.Skill.ENDURANCE,1));
         }
         d.putInt(WATER,w);d.putInt(ENERGY,e);
