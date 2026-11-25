@@ -65,6 +65,10 @@ public final class ForestExpedition {
         player.getInventory().setChanged();
     }
 
+    static int initialWeather(ServerPlayer player){
+        return player.getPersistentData().getCompound(RETURN_POINT).getInt("weather");
+    }
+
     static boolean isNightRaid(ServerPlayer player) {
         return player.getPersistentData().getCompound(RETURN_POINT).getBoolean("night");
     }
@@ -118,7 +122,8 @@ public final class ForestExpedition {
         var random = forest.getRandom();
         var entry = industrial ? industrialPosition(IndustrialZone.ENTRY)
             : ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
-        int weather = random.nextInt(3);
+        int weatherRoll=random.nextInt(100);
+        int weather=weatherRoll<50?0:weatherRoll<85?1:2;
         if (!enter(player, forest, entry, night, weather, industrial)) {
             return "Le départ a été annulé.";
         }
@@ -296,18 +301,23 @@ public final class ForestExpedition {
     }
 
     private static void atmosphere(ServerPlayer player, CompoundTag point) {
-        player.connection.send(new ClientboundSetTimePacket(player.level().getGameTime(),
-            point.getBoolean("night") ? 18000 : 6000, false));
-        int weather = point.getInt("weather");
-        if (weather == 0) {
+        long now=player.level().getGameTime();
+        RaidAtmosphere session=ForestRaid.atmosphere(player);
+        boolean night=point.getBoolean("night");
+        player.connection.send(new ClientboundSetTimePacket(now,
+            session==null?(night?16000:3500):session.skyTime(night,now),false));
+        int weather=point.getInt("weather");
+        float rain=session==null?(weather==0?0:weather==1?.65F:1F):session.rain(now);
+        float thunder=session==null?(weather==2?.8F:0):session.thunder(now);
+        if (rain <= .001F) {
             player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.STOP_RAINING, 0));
         } else {
             player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.START_RAINING, 0));
         }
         player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.RAIN_LEVEL_CHANGE,
-            weather == 0 ? 0 : 1));
+            rain));
         player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE,
-            weather == 2 ? .8F : 0));
+            thunder));
     }
 
     private static boolean returnToOrigin(ServerPlayer player) {

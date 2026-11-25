@@ -64,6 +64,7 @@ public final class ForestRaid extends SavedData {
     private BlockPos dropPos;
     private int fieldEvent,fieldEventAttempts;
     private long fieldEventDue;
+    private RaidAtmosphere atmosphere;
     private BlockPos fieldEventPos;
     private UUID dropVisual;
     private boolean dropLanded;
@@ -123,6 +124,7 @@ public final class ForestRaid extends SavedData {
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
+        raid.atmosphere=new RaidAtmosphere(raid.seed,level.getGameTime(),ForestExpedition.initialWeather(player));
         raid.industrial = industrial;
         raid.crates.clear();
         raid.spawnedContainers.clear();
@@ -197,6 +199,7 @@ public final class ForestRaid extends SavedData {
             }
         }
         id = null;
+        atmosphere=null;
         participants.clear();
         offlineSince = 0;
         setDirty();
@@ -250,6 +253,7 @@ public final class ForestRaid extends SavedData {
             raid.tickAirdrop(level);
             raid.tickReinforcements(level);
             raid.tickFieldEvent(level);
+            if(raid.atmosphere!=null)raid.atmosphere.tick(level,level.players().stream().filter(raid::owns).toList());
             if (raid.offlineSince != 0) {
                 raid.offlineSince = 0;
                 raid.setDirty();
@@ -643,6 +647,10 @@ public final class ForestRaid extends SavedData {
         return new BlockPos(data.getInt("guard_home_x"),data.getInt("guard_home_y"),data.getInt("guard_home_z"));
     }
 
+    static RaidAtmosphere atmosphere(ServerPlayer player){
+        ForestRaid raid=forPlayer(player);
+        return raid!=null&&raid.owns(player)?raid.atmosphere:null;
+    }
     static boolean sameSession(ServerLevel level,Pillager guard,ServerPlayer player){
         return at(level,guard.blockPosition()).owns(player);
     }
