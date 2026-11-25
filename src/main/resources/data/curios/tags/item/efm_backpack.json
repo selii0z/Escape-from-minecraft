@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "taczoperations:backpack_small",
+    "taczoperations:backpack_patrol",
+    "taczoperations:backpack_tactical",
+    "taczoperations:backpack_military",
+    "taczoperations:backpack_expedition",
+    "taczoperations:backpack_elite"
+  ]
+}
