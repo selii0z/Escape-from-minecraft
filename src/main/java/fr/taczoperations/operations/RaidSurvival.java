@@ -14,9 +14,10 @@ public final class RaidSurvival {
     private static final String WATER="efm_raid_water", ENERGY="efm_raid_energy";
     private static final String STARTED="efm_survival_started", SECONDS="efm_survival_seconds";
     private static final int FULL=1000;
+    private static final String REST="efm_raid_rest_seconds";
     static void begin(ServerPlayer p){
         var d=p.getPersistentData();
-        d.putBoolean(STARTED,true);d.putInt(WATER,FULL);d.putInt(ENERGY,FULL);d.putInt(SECONDS,0);
+        d.putBoolean(STARTED,true);d.putInt(WATER,FULL);d.putInt(ENERGY,FULL);d.putInt(SECONDS,0);d.putInt(REST,HideoutPower.claimRest(p));
     }
     static int water(ServerPlayer p){return percent(p,WATER);}
     static int energy(ServerPlayer p){return percent(p,ENERGY);}
@@ -35,8 +36,9 @@ public final class RaidSurvival {
         // Sprinting drains both faster; no extra drain outside the raid.
         int w=d.getInt(WATER),e=d.getInt(ENERGY);
         if(seconds%2==0)w=Math.max(0,w-1);
-        if(seconds%3==0)e=Math.max(0,e-1);
-        if(p.isSprinting()){if(seconds%2==0)e=Math.max(0,e-1);if(seconds%3==0)w=Math.max(0,w-1);}
+        boolean rested=seconds<=d.getInt(REST);
+        if(!rested&&seconds%3==0)e=Math.max(0,e-1);
+        if(p.isSprinting()){if(!rested&&seconds%2==0)e=Math.max(0,e-1);if(seconds%3==0)w=Math.max(0,w-1);}
         d.putInt(WATER,w);d.putInt(ENERGY,e);
         if(beforeWater>20&&water(p)<=20)p.sendSystemMessage(Component.literal("Hydratation faible : bois de l'eau."));
         if(beforeEnergy>20&&energy(p)<=20)p.sendSystemMessage(Component.literal("Énergie faible : mange une ration."));
@@ -65,7 +67,7 @@ public final class RaidSurvival {
         p.displayClientMessage(Component.literal("Hydratation : "+water(p)+" % · Énergie : "+energy(p)+" %"),true);
     }
     static void clear(ServerPlayer p){
-        var d=p.getPersistentData();d.remove(WATER);d.remove(ENERGY);d.remove(STARTED);d.remove(SECONDS);
+        var d=p.getPersistentData();d.remove(WATER);d.remove(ENERGY);d.remove(STARTED);d.remove(SECONDS);d.remove(REST);
     }
     private RaidSurvival(){}
 }
