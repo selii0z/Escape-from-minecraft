@@ -90,6 +90,7 @@ public final class OperationsMod {
             final int capacity=fr.taczoperations.operations.FieldPack.RIG_CAPACITY[i];
             ITEMS.registerItem("rig_"+fr.taczoperations.operations.FieldPack.RIGS[i],props->new fr.taczoperations.operations.FieldPack(props,capacity,true),new net.minecraft.world.item.Item.Properties());
         }
+        ITEMS.registerItem("tactical_headset",net.minecraft.world.item.Item::new,new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("secure_case", fr.taczoperations.operations.SecureCaseItem::new, new net.minecraft.world.item.Item.Properties().stacksTo(1));
         for(String medical : new String[]{"bandage","hemostat","splint","medkit","salewa"}) {
             ITEMS.registerItem(medical,props -> new fr.taczoperations.operations.FieldMedicine(props,medical),new net.minecraft.world.item.Item.Properties().stacksTo(8));
@@ -117,7 +118,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("29");
+        var registrar = event.registrar("30");
         registrar.playToServer(fr.taczoperations.operations.WipeAccount.TYPE,fr.taczoperations.operations.WipeAccount.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p)
