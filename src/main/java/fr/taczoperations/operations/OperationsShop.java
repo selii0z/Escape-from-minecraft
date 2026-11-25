@@ -70,6 +70,16 @@ public enum OperationsShop {
     public record Offer(String title, int price, Action action, Supplier<ItemStack> stack,
                         RaidRelic key, int rankXp) {
         public boolean accessory(){return title.startsWith("Accessoire · ");}
+        public int shopCategory(){
+            if(action==Action.REPAIR||action==Action.UNLOCK)return 6;
+            if(accessory())return 3;
+            var item=stack.get().getItem();
+            if(item instanceof com.tacz.guns.api.item.IGun)return 1;
+            if(item instanceof com.tacz.guns.api.item.IAmmo)return 2;
+            if(item instanceof net.minecraft.world.item.ArmorItem)return 4;
+            if(item instanceof FieldMedicine||item==Items.GOLDEN_APPLE||item==Items.POTION)return 5;
+            return 6;
+        }
         public int loyaltyLevel() {
             if (action != Action.BUY) return 1;
             int level = rankXp >= 180 ? 4 : rankXp >= 65 ? 3 : rankXp > 0 ? 2 : 1;
