@@ -63,9 +63,10 @@ public final class WeaponCondition {
         int value=condition(stack);
         // A burst must not bypass a jam or fire after reaching zero condition.
         if(value==0||jammed(stack)){event.setCanceled(true);return;}
-        var data=tag(stack);data.putInt(CONDITION,Math.max(0,value-WEAR));write(stack,data);
+        int wear=PassiveSkills.reduce(p,PassiveSkills.Skill.WEAPONS,WEAR);
+        var data=tag(stack);data.putInt(CONDITION,Math.max(0,value-wear));write(stack,data);
         p.getInventory().setChanged();
-        if(value>2000&&value-WEAR<=2000)p.sendSystemMessage(Component.literal("Attention : état de l'arme inférieur ou égal à 20 %."));
+        if(value>2000&&value-wear<=2000)p.sendSystemMessage(Component.literal("Attention : état de l'arme inférieur ou égal à 20 %."));
     }
     public static void reload(GunReloadEvent event){
         if(event.getLogicalSide().isClient()||event.isCanceled()||!(event.getEntity() instanceof ServerPlayer p))return;
