@@ -24,6 +24,26 @@ public final class FieldMedicine extends Item {
             default->60;
         };
     }
+    private String treatmentDescription(){
+        return switch(kind){
+            case "bandage" -> "Arrête un saignement.";
+            case "hemostat" -> "Arrête tous les saignements.";
+            case "splint" -> "Traite une fracture à la jambe.";
+            case "salewa" -> "Restaure 4 cœurs (+ bonus de médecine).";
+            case "medkit" -> "Traite une blessure au bras.";
+            default -> "Soin de terrain.";
+        };
+    }
+
+    @Override public void appendHoverText(ItemStack stack,TooltipContext context,
+            java.util.List<Component> tooltip,net.minecraft.world.item.TooltipFlag flag){
+        tooltip.add(Component.literal(treatmentDescription()).withStyle(net.minecraft.ChatFormatting.GRAY));
+        int seconds=getUseDuration(stack,null)/20;
+        tooltip.add(Component.literal("Durée : "+seconds+" s").withStyle(net.minecraft.ChatFormatting.GOLD));
+        tooltip.add(Component.literal("Maintenir le clic droit en raid").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.literal("Consommé seulement si le soin réussit").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+    }
+
     // Vanilla held-use pose: no extra client dependency. No eating particles.
     @Override public UseAnim getUseAnimation(ItemStack stack){return UseAnim.BLOCK;}
 

@@ -14,7 +14,7 @@ public final class RaidInjuries {
     private static final String FRACTURE_ZONE="efm_fracture_zone",ARM_ZONE="efm_arm_zone";
     static boolean active(ServerPlayer p) {
         return p.isAlive() && !p.isCreative() && !p.isSpectator()
-            && p.level().dimension().equals(ForestExpedition.FOREST) && ForestRaid.isParticipant(p);
+            && p.level().dimension().equals(ForestExpedition.FOREST) && ForestRaid.canContinue(p);
     }
     static void hit(ServerPlayer p,Entity bullet,boolean headshot,float damage) {
         if(!active(p)||damage<1.5F||!Float.isFinite(damage))return;
@@ -106,7 +106,12 @@ public final class RaidInjuries {
                 else {d.putInt(BLEED,bleed-1);d.remove(BLEED_SECOND);}
             }
             case "hemostat" -> {if(d.getInt(BLEED)<=0)return false;d.remove(BLEED);d.remove(BLEED_FIRST);d.remove(BLEED_SECOND);}
-            case "splint" -> {if(!d.getBoolean(FRACTURE))return false;d.remove(FRACTURE);d.remove(FRACTURE_ZONE);}
+            case "splint" -> {
+                if(!d.getBoolean(FRACTURE))return false;
+                d.remove(FRACTURE);d.remove(FRACTURE_ZONE);
+                // Existing short-duration slowness expires naturally.
+                // Never remove effects supplied by other mods.
+            }
             case "salewa" -> {
                 if(p.getHealth()>=p.getMaxHealth())return false;
                 p.heal(8F*(1F+PassiveSkills.bonus(p,PassiveSkills.Skill.MEDICINE)/100F));
