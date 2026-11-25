@@ -70,6 +70,12 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Le marché prépare désormais toutes les modifications de cases d'inventaire avant de débiter ou libérer le séquestre, vérifie l'intégralité des composants du lot coté et refuse une livraison partielle. Cette amélioration ne rend pas atomiques les sauvegardes séparées du marché et des joueurs lors d'un crash.
 - Tests prioritaires : rechargement avec zéro munition native, quantité partielle, inventaire natif plein, changement de calibre, annulation d'animation, retrait du gilet pendant le rechargement, ouverture E pendant un rechargement, client/serveur dédié, absence de duplication. Marché : inventaire plein, fusion de piles, annonce concurrente, annulation et composants TaCZ. Compilation du lot à confirmer.
 
+## Candidat 1.3.0-rc1
+- Dernières corrections : copies indépendantes des composants de stockage, shift-clic prioritaire gilet puis sac pour les objets admissibles, distinction des calibres et accessoires TaCZ à la revente, contrôle hors raid des transactions marchands, infobulles d'objets sur les trois catalogues sans révéler les objets inconnus.
+- Version Gradle 1.3.0-rc1 (protocole 17), à installer sur le serveur ET les clients, Curios recommandé. Faire une sauvegarde du monde et des données joueur avant installation, ne pas fusionner sur la branche stable.
+- Checklist de validation bloquante avant 1.3.0 : démarrage client et serveur dédié sans erreurs Mixin ; ouverture E, Maj+E, toutes tailles de sacs et changement avec curseur plein ; transfert depuis caisse en duo ; rechargement uniquement depuis le gilet puis sac, comptage avant/après ; mort avec Curios, assurance et coffre sécurisé ; extraction principale/secondaire et fin de raid, reconnexion et raid suivant ; achats multi-lots et concurrence sur le marché ; inspection personnelle ; affichage des équipements et des boutiques à plusieurs échelles GUI. Vérifier les logs et comparer quantités avant/après chaque scénario.
+- Sauvegarde normale du marché prévue, mais atomicité après arrêt brutal non garantie. Ne pas utiliser le candidat sur le monde de production sans sauvegarde et essais. Les builds Gradle ne remplacent pas ces tests en jeu.
+
 ## Lots à réaliser (pas encore codés)
 - Test en jeu et revue graphique des boutiques, aperçu au survol, amélioration fidélité/rareté distincte si nécessaire.
 - Vérifier visuellement les modèles 3D, les drops Curios assurés et l'activation effective des hooks TaCZ ; récupération crash atomique du marché reste à traiter.
