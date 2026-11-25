@@ -359,15 +359,17 @@ public enum OperationsShop {
             return "Fidélité " + loyalty + " requise · " + requiredReputation(loyalty) + " rép.";
         if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id))
             return "Accès permanent requis.";
-        if (balance < offer.price) return "Crédits insuffisants.";
+        if(quantity<1||quantity>64)return "Quantité invalide.";
+        long total=(long)offer.price*quantity;
+        if(total>balance||total<0)return "Crédits insuffisants.";
         var inventory = player.getInventory();
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
             : ItemStack.isSameItemSameComponents(slot, stack) ? slot.getMaxStackSize() - slot.getCount() : 0).sum();
-        if (capacity < stack.getCount()) return "Inventaire plein.";
-        int purchased=stack.getCount();
-        inventory.add(stack);
-        account.putInt("credits", balance - offer.price);
-        TradeJournal.record(player,"Achat",title,offer.title(),purchased,-offer.price());
-        return "Achat ajouté à ton inventaire.";
+        int purchased=stack.getCount()*quantity;
+        if(capacity<purchased)return "Inventaire plein : libère des cases pour le lot complet.";
+        for(int i=0;i<quantity;i++)inventory.add(stack.copy());
+        account.putInt("credits",balance-(int)total);
+        TradeJournal.record(player,"Achat",title,offer.title(),purchased,-total);
+        return "Achat · "+purchased+" objet(s) · -"+total+" crédits.";
     }
 }
