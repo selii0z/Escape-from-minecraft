@@ -118,6 +118,7 @@ public final class ForestCombat {
             if (!gunId.equals(role.gun)) {
                 enemy.getPersistentData().putString("taczoperations_guard_weapon", gunId);
             }
+            if(gun.isEmpty()&&role.boss())gun=OperationsShop.weapon("m4a1",30);
             if (!gun.isEmpty()) {
                 if (role == GuardRole.PMC) {
                     gun = customizePmcWeapon(enemy, gun);
