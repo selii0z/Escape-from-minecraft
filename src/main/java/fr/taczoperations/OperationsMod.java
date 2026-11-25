@@ -113,7 +113,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("22");
+        var registrar = event.registrar("23");
         registrar.playToServer(fr.taczoperations.operations.ShopBuy.TYPE,fr.taczoperations.operations.ShopBuy.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p
@@ -151,6 +151,11 @@ public final class OperationsMod {
             fr.taczoperations.operations.RaidInjuryPayload.STREAM_CODEC,(injury,context)->{
                 if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
                     fr.taczoperations.client.RaidInjuryHud.handle(injury,context);
+            });
+        registrar.playToClient(fr.taczoperations.operations.ExtractionProgressPayload.TYPE,
+            fr.taczoperations.operations.ExtractionProgressPayload.STREAM_CODEC,(progress,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.ExtractionHud.handle(progress,context);
             });
         registrar.playToClient(fr.taczoperations.operations.RaidTimerPayload.TYPE,
             fr.taczoperations.operations.RaidTimerPayload.STREAM_CODEC,(timer,context)->{

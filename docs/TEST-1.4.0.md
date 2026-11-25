@@ -56,7 +56,7 @@ Base figée : 1.3.0 RC1 build 547. Branche indépendante, aucun changement au JA
 
 ## Préparation RC1 — critères bloquants (non validés)
 La branche reste en version 1.4.0-dev. Ne pas distribuer de RC1 sans build vert et artefact vérifié. Minecraft 1.21.1 / NeoForge 21.1.249 / TaCZ 1.2.0 ; tester avec Curios puis sans Curios. Sauvegarder le monde et les données joueur avant migration. Conserver la 1.3.0 RC1 séparée.
-- Lancer client et serveur dédié avec le même JAR (protocole 22), rejoindre, vérifier chargement des dimensions.
+- Lancer client et serveur dédié avec le même JAR (protocole 23), rejoindre, vérifier chargement des dimensions.
 - Deux comptes : parcelles distinctes, aucune interaction entre réserves, reconnexion et redémarrage du serveur, décès exceptionnel et conservation du compte.
 - Vérifier protections contre dégâts ordinaires, mobs, explosions, casse/pose ; vérifier retour hors zone, chute dans le vide et /kill administrateur.
 - Réserve 18/36/54 : transfert rapide, clics rapides, échange avec barre d'accès rapide, fermeture et sauvegarde, refus du coffre sécurisé.
@@ -93,16 +93,19 @@ Tous les contrôles ci-dessous sont à exécuter, aucun résultat de test en jeu
 
 La règle de reconnexion est désormais un délai individuel de 10 minutes, même si l'équipier reste connecté. Vérifier reconnexion avant/après le délai, expiration des deux membres, fermeture de la carte uniquement quand le dernier participant quitte ou expire. Les objets de départ encore détenus sont conservés après interruption ; aucun objet disparu n'est recréé depuis le snapshot. Tester aussi le cas d'un membre de duo restant connecté.
 Le menu des réclamations indique le prochain retour à son ouverture, pas un compte à rebours en direct.
-Le protocole client/serveur actuel est 22. Ne pas distribuer avant compilation et tests.
+Le protocole client/serveur actuel est 23. Ne pas distribuer avant compilation et tests.
 
 ## Limite de durée des raids
 - Forêt Noire : 45 minutes ; Zone industrielle : 30 minutes. Chronomètre commun au raid, ne repart pas de zéro lors d'une reconnexion. Alertes à 10, 5 et 1 minute. Expiration : fermeture de la session, retour et bilan d'échec via le traitement existant. La limite globale prévaut sur les 10 minutes de reconnexion individuelles. Tester les deux cartes, la reconnexion après expiration, un duo et un départ immédiatement après la fin de la session. Durée exprimée en ticks serveur (ralentissement possible en cas de lag). HUD ajouté au lot suivant.
 
 ## HUD chronomètre
-- Paquet serveur toutes les secondes de jeu, temps commun aux participants ; aucune extrapolation locale, expiration autoritaire. Affichage haut, vert >5 min, ambre ≤5 min, rouge ≤1 min. Masqué hors raid, mort, spectateur, F1 ou paquet périmé (3,5 s). Vérifier petite résolution, reconnexion, départ successif sur une autre carte et cohabitation avec TaCZ et les indicateurs de blessure. Protocole 22 ; compilation non confirmée.
+- Paquet serveur toutes les secondes de jeu, temps commun aux participants ; aucune extrapolation locale, expiration autoritaire. Affichage haut, vert >5 min, ambre ≤5 min, rouge ≤1 min. Masqué hors raid, mort, spectateur, F1 ou paquet périmé (3,5 s). Vérifier petite résolution, reconnexion, départ successif sur une autre carte et cohabitation avec TaCZ et les indicateurs de blessure. protocole 23 ; compilation non confirmée.
 
 ## Limite exacte d'extraction
 - Vérification au tick joueur et juste avant toute extraction gratuite, payante ou à clé. À zéro, retour en échec, aucun débit d'extraction et aucune consommation de clé. Tester à une seconde de la limite puis à zéro sur les trois types de sortie. La maintenance de session reste périodique ; elle ne peut plus prolonger le droit d'extraction.
 
 ## Compte à rebours d'extraction
 - Toutes les sorties : rester au sol sur le bloc d'extraction pendant 100 ticks (5 secondes nominales), barre et secondes dans l'actionbar. Quitter le bloc, sauter, perdre l'accès ou les ressources requises interrompt la progression. Nouvelle connexion ou interruption des ticks : reprise à zéro. Le délai global prévaut ; aucun paiement avant téléportation confirmée. Tester sortie principale, relais, clé, crédits, abandon et retour sur le bloc, déconnexion pendant le décompte et expiration du raid durant les cinq secondes. Compilation non confirmée.
+
+## HUD extraction
+- Progression envoyée toutes les 5 ticks, panneau sous le chronomètre global, indépendant de l'actionbar. Annulation immédiate sur sortie du bloc ; masquage à la mort, au retour ou après 1,5 s sans mise à jour. En cas d'échec de téléportation, recommencer le décompte. Protocole 23, même version client/serveur requise. À tester notamment avec TaCZ et les autres HUD.

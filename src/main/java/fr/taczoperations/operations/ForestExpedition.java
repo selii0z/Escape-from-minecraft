@@ -35,9 +35,14 @@ public final class ForestExpedition {
     private record ExtractionHold(BlockPos exit,int start,int last){}
     private static final java.util.Map<ServerPlayer,ExtractionHold> EXTRACTION_HOLDS=new java.util.WeakHashMap<>();
 
+    private static void sendExtraction(ServerPlayer p,boolean active,int elapsed){
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,
+            new ExtractionProgressPayload(active,Math.clamp(elapsed,0,EXTRACTION_TICKS)));
+    }
     private static void cancelExtraction(ServerPlayer p,boolean notify){
-        if(EXTRACTION_HOLDS.remove(p)!=null&&notify)
-            p.displayClientMessage(Component.literal("Extraction annulée"),true);
+        if(EXTRACTION_HOLDS.remove(p)==null)return;
+        sendExtraction(p,false,0);
+        if(notify)p.displayClientMessage(Component.literal("Extraction annulée"),true);
     }
     private static boolean extractionReady(ServerPlayer p,BlockPos exit){
         int now=p.tickCount;
@@ -50,12 +55,7 @@ public final class ForestExpedition {
         EXTRACTION_HOLDS.put(p,hold);
         int elapsed=Math.max(0,now-hold.start());
         if(elapsed>=EXTRACTION_TICKS)return true;
-        int remaining=(EXTRACTION_TICKS-elapsed+19)/20;
-        int bars=Math.clamp(elapsed*10/EXTRACTION_TICKS,0,10);
-        if(elapsed%5==0)p.displayClientMessage(Component.literal("EXTRACTION · "+remaining+" s  ")
-            .withStyle(net.minecraft.ChatFormatting.GREEN)
-            .append(Component.literal("■".repeat(bars)).withStyle(net.minecraft.ChatFormatting.GREEN))
-            .append(Component.literal("■".repeat(10-bars)).withStyle(net.minecraft.ChatFormatting.DARK_GRAY)),true);
+        if(elapsed%5==0)sendExtraction(p,true,elapsed);
         return false;
     }
 
@@ -374,7 +374,7 @@ public final class ForestExpedition {
                     else SupplyContract.account(player).putInt("credits",SupplyContract.balance(player)-IndustrialZone.PAID_EXIT_COST);
                     player.sendSystemMessage(Component.literal(key?"Extraction sécurisée · clé consommée.":"Extraction payante · -"+IndustrialZone.PAID_EXIT_COST+" crédits."));
                     SupplyContract.extracted(player,true);
-                }
+                }else cancelExtraction(player,true);
                 return;
             }
         }
@@ -384,7 +384,7 @@ public final class ForestExpedition {
             if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
             if (returnToOrigin(player, true)) {
                 SupplyContract.extracted(player, industrial);
-            }
+            }else cancelExtraction(player,true);
             return;
         }
         cancelExtraction(player,true);
