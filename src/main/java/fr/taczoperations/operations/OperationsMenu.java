@@ -100,7 +100,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         }
     }
 
-    public static final int ARM_WIPE=270;
+    public static final int ARM_WIPE=270, DETAILED_STATS=271;
     private long wipeUntil=-1;
     private final View view;
     private final BlockPos position;
@@ -235,7 +235,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             lastRaidSummary(player), raidHistory(player), tab==SHOP?shopCategory:category, difficulty, statusFilter, merchantFilter, filtered, SupplyContract.cyclesCompleted(player),
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
-                "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
+                "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total","shots","impacts","headshots","pmc_kills","scav_kills","boss_kills","distance_cm")
                 .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of(),shopAccessories,PassiveSkills.bonus(player,PassiveSkills.Skill.TRADE),tab==PLAYER_MARKET?PlayerMarket.of(player).view(player,page,marketOwn,marketCategory):PlayerMarket.Page.empty());
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
@@ -352,7 +352,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int page = view.page();
         String notice = "";
         if (button == CONTRACTS || button == GROUP || button == FOREST
-            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET) {
+            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET || button==DETAILED_STATS) {
             tab = button;
             page = 0;
         } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
