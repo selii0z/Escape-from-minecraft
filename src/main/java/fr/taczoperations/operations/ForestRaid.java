@@ -1434,7 +1434,8 @@ public final class ForestRaid extends SavedData {
         if (event.getSource().getEntity() instanceof ServerPlayer killer
             && raid.owns(killer)&& !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
-            SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
+            SupplyContract.kill(killer, role.elite(), role.boss());
+            DetailedStats.kill(killer,role);
             StoryMissions.kill(killer,role);
             PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
