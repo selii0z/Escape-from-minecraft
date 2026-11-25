@@ -118,24 +118,27 @@ public final class RaidInjuryHud{
         int xx=x+11,yy=y+5;
         limb(g,xx+13,yy,13,13,zoneColor(RaidInjuryPayload.HEAD,false));
         limb(g,xx+10,yy+15,19,24,zoneColor(RaidInjuryPayload.TORSO,false));
-        int arm=state.arm()?0xffe5ce88:0xff829477;
-        limb(g,xx+1,yy+16,7,26,arm);
-        limb(g,xx+31,yy+16,7,26,arm);
-        int legs=zoneColor(RaidInjuryPayload.LEGS,state.fracture());
-        limb(g,xx+10,yy+41,8,18,legs);
-        limb(g,xx+21,yy+41,8,18,legs);
-        int feet=zoneColor(RaidInjuryPayload.FEET,false);
-        limb(g,xx+9,yy+61,9,5,feet);
-        limb(g,xx+21,yy+61,9,5,feet);
+        // Front-facing silhouette: patient's right is on screen left.
+        limb(g,xx+1,yy+16,7,26,zoneColor(RaidInjuryPayload.RIGHT_ARM,(state.armZone()&RaidInjuryPayload.RIGHT_ARM)!=0));
+        limb(g,xx+31,yy+16,7,26,zoneColor(RaidInjuryPayload.LEFT_ARM,(state.armZone()&RaidInjuryPayload.LEFT_ARM)!=0));
+        limb(g,xx+10,yy+41,8,18,zoneColor(RaidInjuryPayload.RIGHT_LEG|RaidInjuryPayload.LEGS,(state.fractureZone()&(RaidInjuryPayload.RIGHT_LEG|RaidInjuryPayload.LEGS))!=0));
+        limb(g,xx+21,yy+41,8,18,zoneColor(RaidInjuryPayload.LEFT_LEG|RaidInjuryPayload.LEGS,(state.fractureZone()&(RaidInjuryPayload.LEFT_LEG|RaidInjuryPayload.LEGS))!=0));
+        limb(g,xx+9,yy+61,9,5,zoneColor(RaidInjuryPayload.RIGHT_FOOT|RaidInjuryPayload.FEET,false));
+        limb(g,xx+21,yy+61,9,5,zoneColor(RaidInjuryPayload.LEFT_FOOT|RaidInjuryPayload.FEET,false));
+        g.drawString(mc.font,"D",xx+1,yy+4,0xffb8c0af,false);
+        g.drawString(mc.font,"G",xx+32,yy+4,0xffb8c0af,false);
         int right=x+54;
-        g.drawString(mc.font,"ÉTAT CORPOREL",right,y+6,0xffd3dbcc,false);
+        g.drawString(mc.font,mc.font.plainSubstrByWidth("ÉTAT CORPOREL",82),right,y+6,0xffd3dbcc,false);
         int health=Math.clamp(Math.round(100*mc.player.getHealth()/Math.max(1,mc.player.getMaxHealth())),0,100);
         g.drawString(mc.font,"Santé : "+health+" %",right,y+21,conditionColor(health,100),false);
         meter(g,right,y+33,81,health,100,conditionColor(health,100));
         if(state.bleed()>0)g.drawString(mc.font,state.bleed()==2?"Hémorragie":"Saignement",right,y+43,0xffe07b72,false);
         else if(state.hitZone()!=0)g.drawString(mc.font,"Impact récent",right,y+43,0xffe5ce88,false);
-        else g.drawString(mc.font,"Pas de saignement",right,y+43,0xffb5c9a4,false);
-        if(state.fracture()||state.arm())g.drawString(mc.font,state.fracture()&&state.arm()?"Bras / jambes":state.fracture()?"Fracture":"Bras blessé",right,y+57,0xffe5ce88,false);
+        else g.drawString(mc.font,"Pas de fuite",right,y+43,0xffb5c9a4,false);
+        if(state.fracture()||state.arm())g.drawString(mc.font,mc.font.plainSubstrByWidth(state.fracture()&&state.arm()?"Bras / jambes":state.fracture()?sideLabel("Fracture",state.fractureZone(),RaidInjuryPayload.LEFT_LEG,RaidInjuryPayload.RIGHT_LEG):sideLabel("Bras blessé",state.armZone(),RaidInjuryPayload.LEFT_ARM,RaidInjuryPayload.RIGHT_ARM),82),right,y+57,0xffe5ce88,false);
+    }
+    private static String sideLabel(String label,int mask,int left,int right){
+        return label+(mask==left?" G":mask==right?" D":"");
     }
     private static int zoneColor(int region,boolean injury){
         if((state.bleedMask()&region)!=0)return 0xffe07b72;
