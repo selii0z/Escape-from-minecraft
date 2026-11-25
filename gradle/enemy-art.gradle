@@ -1,0 +1,62 @@
+import groovy.json.JsonOutput
+import java.awt.Color
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Local, original PMC models and textures. No external asset dependency.
+def enemyArt=layout.buildDirectory.dir('generated/enemyArt')
+tasks.register('generateEnemyArt'){
+    inputs.file('gradle/enemy-art.gradle')
+    outputs.dir(enemyArt)
+    doLast{
+        ['pmc_usec','pmc_bird_eye'].eachWithIndex { id,variant ->
+            def cubes=[]
+            def cube={String part,List origin,List size,List uv ->
+                cubes.add([part:part,origin:origin,size:size,uv:uv,offset:[0,0,0],rotation:[0,0,0],inflate:0])
+            }
+            cube('head',[-4,-8,-4],[8,8,8],[0,0])
+            cube('body',[-4,0,-2],[8,12,4],[32,0])
+            cube('right_arm',[-3,-2,-2],[4,12,4],[0,24])
+            cube('left_arm',[-1,-2,-2],[4,12,4],[16,24])
+            cube('right_leg',[-2,0,-2],[4,12,4],[32,24])
+            cube('left_leg',[-2,0,-2],[4,12,4],[48,24])
+            cube('head',[-4.5,-9,-4.5],[9,4,9],[0,48])
+            cube('body',[-4.5,1,-3],[9,9,6],[40,48])
+            cube('body',[-3,4,-4],[6,4,1],[0,70])
+            cube('body',[-4,0,2],[8,10,3],[20,70])
+            cube('right_leg',[-2,8,-2.5],[4,4,5],[48,70])
+            cube('left_leg',[-2,8,-2.5],[4,4,5],[70,70])
+            File root=new File(enemyArt.get().asFile,'assets/taczoperations')
+            File model=new File(root,'enemy_models/'+id+'.json')
+            model.parentFile.mkdirs()
+            model.text=JsonOutput.toJson([width:128,height:128,cubes:cubes])
+            BufferedImage image=new BufferedImage(128,128,BufferedImage.TYPE_INT_ARGB)
+            def g=image.createGraphics()
+            def rng=new Random(variant+2309L)
+            def tone=variant==0?0x686b4e:0x485a53
+            def colors=[0xa18b71,tone,tone,tone,0x666650,0x666650,0x333c35,0x333e32,0x767b61,0x444c39,0x292c29,0x292c29]
+            cubes.eachWithIndex { c,i ->
+                int u=c.uv[0],v=c.uv[1],w=c.size[0],h=c.size[1],d=c.size[2]
+                int rgb=colors[i] as int
+                // Fill all six unwrapped cube faces, with subtle cloth grain.
+                for(int y=v;y<v+d+h;y++)for(int x=u;x<u+2*(w+d);x++){
+                    int delta=rng.nextInt(19)-9
+                    int r=Math.max(0,Math.min(255,((rgb>>16)&255)+delta))
+                    int gr=Math.max(0,Math.min(255,((rgb>>8)&255)+delta))
+                    int b=Math.max(0,Math.min(255,(rgb&255)+delta))
+                    image.setRGB(x,y,(int)(0xff000000L|(r<<16)|(gr<<8)|b))
+                }
+                g.setColor(new Color(0x252e27))
+                if(i==0){g.fillRect(u+d+1,v+d+2,2,1);g.fillRect(u+d+5,v+d+2,2,1);g.fillRect(u+d,v+d+5,w,3)}
+                if(i==7){g.fillRect(u+d,v+d+1,w,1);g.fillRect(u+d,v+d+7,w,1)}
+                if(i==8){g.fillRect(u+d+1,v+d,1,h);g.fillRect(u+d+4,v+d,1,h)}
+            }
+            g.dispose()
+            File out=new File(root,'textures/entity/raid/'+id+'.png')
+            out.parentFile.mkdirs();ImageIO.write(image,'png',out)
+        }
+    }
+}
+sourceSets.main.resources.srcDir(enemyArt)
+tasks.named('processResources'){dependsOn tasks.named('generateEnemyArt')}
