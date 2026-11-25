@@ -130,6 +130,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     text(g, fit(section.subtitle, 105), 52, y + 21, .83F, SOFT, false);
                 });
         }
+        widget(8,360,139,36,"Planque",()->send(OperationsMenu.ENTER_HIDEOUT),()->true,(g,hover)->{
+            key(g,8,360,139,36,false,hover,true);
+            item(g,new ItemStack(Items.IRON_DOOR),20,367,1.35F);
+            text(g,"PLANQUE",52,366,1.15F,WHITE,true);
+            text(g,"Base personnelle",52,381,.83F,SOFT,false);
+        });
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();
             case OperationsMenu.TIMED_CONTRACTS -> {
