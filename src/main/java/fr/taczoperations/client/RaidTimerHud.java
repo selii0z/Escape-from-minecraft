@@ -33,8 +33,8 @@ public final class RaidTimerHud {
         var graphics=event.getGuiGraphics();
         graphics.pose().pushPose();
         try{
-            graphics.pose().scale(RaidHudSettings.scale(),RaidHudSettings.scale(),1);
-            if(RaidHudSettings.visible())draw(event);
+            graphics.pose().scale(RaidHudSettings.scale(RaidHudSettings.Panel.TIMER),RaidHudSettings.scale(RaidHudSettings.Panel.TIMER),1);
+            if(RaidHudSettings.visible(RaidHudSettings.Panel.TIMER))draw(event);
         }finally{graphics.pose().popPose();}
     }
     private static void draw(RenderGuiEvent.Post event){
@@ -42,16 +42,16 @@ public final class RaidTimerHud {
         if(!valid(mc)||state==null||mc.options.hideGui)return;
         if(System.nanoTime()-updated>3_500_000_000L)return;
         int seconds=Math.clamp(state.seconds(),0,state.industrial()?1800:2700);
-        int w=RaidHudSettings.width();
+        int w=RaidHudSettings.width(RaidHudSettings.Panel.TIMER);
         // Prefer the upper center; at small GUI sizes keep clear of the injury column.
-        int width=w>=420?150:90;
-        int x=w>=420?(w-width)/2:Math.max(2,(w-width)/2),y=8;
-        if(x+width>w-2)return;
+        int width=150;
+        int x=RaidHudSettings.x(RaidHudSettings.Panel.TIMER),y=RaidHudSettings.y(RaidHudSettings.Panel.TIMER);
+        
         int color=seconds<=60?0xffe07b72:seconds<=300?0xffe5ce88:0xffb5c9a4;
         var g=event.getGuiGraphics();
-        g.fill(x,y,x+width,y+28,RaidHudSettings.bg(0xca171d18));
+        g.fill(x,y,x+width,y+28,RaidHudSettings.bg(RaidHudSettings.Panel.TIMER,0xca171d18));
         g.fill(x,y,x+2,y+28,color);
-        String label=w>=420?(state.industrial()?"ZONE INDUSTRIELLE":"FORÊT NOIRE"):"RAID";
+        String label=state.industrial()?"ZONE INDUSTRIELLE":"FORÊT NOIRE";
         g.drawCenteredString(mc.font,label,x+width/2,y+3,0xffd3dbcc);
         String clock=String.format(java.util.Locale.ROOT,"%02d:%02d",seconds/60,seconds%60);
         g.drawCenteredString(mc.font,clock,x+width/2,y+14,color);
