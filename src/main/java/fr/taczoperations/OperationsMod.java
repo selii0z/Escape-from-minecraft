@@ -172,6 +172,8 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::commands);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::interact);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.HideoutRange::tick);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,fr.taczoperations.operations.HideoutRange::shoot);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.HideoutRange::interact);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.HideoutRange::interactSpecific);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,fr.taczoperations.operations.HideoutRange::hit);
