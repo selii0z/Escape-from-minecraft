@@ -12,11 +12,12 @@ public final class RaidResultScreen extends Screen {
     private final long duration;
     private final int kills, crates, contracts, combatXp, searchXp, contractXp, adjustment;
 
-    private final int xpBefore, xpAfter;
+    private final int xpBefore, xpAfter,lootCount;
+    private final long lootValue;
     private final long animationStart = System.nanoTime();
 
     public RaidResultScreen(boolean success, long duration, int kills, int crates,
-                            int contracts, int combatXp, int searchXp, int contractXp, int adjustment, int xpBefore, int xpAfter) {
+                            int contracts, int combatXp, int searchXp, int contractXp, int adjustment, int xpBefore, int xpAfter,long lootValue,int lootCount) {
         super(Component.literal(success ? "EXTRACTION RÉUSSIE" : "RAID ÉCHOUÉ"));
         this.success = success;
         this.duration = duration;
@@ -29,6 +30,8 @@ public final class RaidResultScreen extends Screen {
         this.adjustment = adjustment;
         this.xpBefore = xpBefore;
         this.xpAfter = xpAfter;
+        this.lootValue=lootValue;
+        this.lootCount=lootCount;
     }
 
     @Override
@@ -74,6 +77,10 @@ public final class RaidResultScreen extends Screen {
             "XP FINALE : " + (xpBefore >= 0 && xpAfter >= xpBefore ? (long)xpAfter-xpBefore : Math.max(0L, (long) combatXp + searchXp + contractXp + adjustment)),
             x, y - 9, 0xffe9d394);
         renderProgress(graphics,x,y+8);
+        String loot=lootValue>=0
+            ?"Butin revendable : "+java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE).format(lootValue)+" cr. · "+lootCount+" objet(s)"
+            :success?"Estimation du butin indisponible":"Butin non évalué (échec)";
+        graphics.drawCenteredString(font,loot,x,y+90,lootValue>=0?0xffe9d394:0xffb8bdba);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 

@@ -561,6 +561,7 @@ public final class ForestRaid extends SavedData {
         // The normal death-drop process has already run. Do not duplicate
         // equipment into a custom corpse or copy the raid token on respawn.
         clearPlayer(respawned);
+        RaidLootValue.clear(respawned);
         ForestExpedition.clearReturnPoint(respawned);
         // A surviving duo member can still collect vanilla death drops.
         finishParticipant(original);
@@ -609,7 +610,9 @@ public final class ForestRaid extends SavedData {
                     report.getInt("combat_xp"), report.getInt("search_xp"),
                     report.getInt("contract_xp"), report.getInt("adjustment_xp"),
                     report.contains("xp_before") ? report.getInt("xp_before") : -1,
-                    report.contains("xp_after") ? report.getInt("xp_after") : -1));
+                    report.contains("xp_after") ? report.getInt("xp_after") : -1,
+                    report.contains("loot_value")?report.getLong("loot_value"):-1,
+                    report.getInt("loot_count")));
             account.remove("pending_raid_report");
             REPORT_READY.remove(player);
         } catch (RuntimeException exception) {

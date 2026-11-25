@@ -42,6 +42,6 @@ public final class RaidResultHandler {
         stableTicks = 0;
         mc.setScreen(new RaidResultScreen(report.success(), report.duration(), report.kills(),
             report.crates(), report.contracts(), report.combatXp(), report.searchXp(),
-            report.contractXp(), report.adjustment(), report.xpBefore(), report.xpAfter()));
+            report.contractXp(), report.adjustment(), report.xpBefore(), report.xpAfter(),report.lootValue(),report.lootCount()));
     }
 }

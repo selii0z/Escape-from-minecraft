@@ -126,6 +126,17 @@ public final class RaidSecurity {
         }
         if(changed){account.put(PROTECTED,queue);p.getInventory().setChanged();}
     }
+    static java.util.List<ItemStack> caseContents(ServerPlayer p,ItemStack carrier){
+        var result=new java.util.ArrayList<ItemStack>();
+        if(!(carrier.getItem() instanceof SecureCaseItem))return result;
+        var items=tag(carrier).getList(POUCH,10);
+        for(int i=0;i<items.size()&&i<5;i++){
+            var entry=items.getCompound(i);
+            int slot=entry.getInt("slot");
+            if(slot>=0&&slot<5)result.add(ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item")));
+        }
+        return result;
+    }
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }

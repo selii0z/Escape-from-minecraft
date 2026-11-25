@@ -249,6 +249,10 @@ public enum SupplyContract {
     // Saved after each raid so a future result screen can reopen the last report.
     static void saveRaidReport(ServerPlayer player, boolean success, long seconds,
                                int kills, int crates, int contracts, int killXp, int searchXp, int contractXp, int adjustment, int xpBefore) {
+        saveRaidReport(player,success,seconds,kills,crates,contracts,killXp,searchXp,contractXp,adjustment,xpBefore,new RaidLootValue.Estimate(-1,0));
+    }
+    static void saveRaidReport(ServerPlayer player,boolean success,long seconds,
+                               int kills,int crates,int contracts,int killXp,int searchXp,int contractXp,int adjustment,int xpBefore,RaidLootValue.Estimate loot) {
         int[] timed=TimedContracts.record(player,success,kills,crates);
         contracts=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contracts)+timed[0]);
         contractXp=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contractXp)+timed[1]);
@@ -263,6 +267,8 @@ public enum SupplyContract {
         report.putInt("search_xp", Math.max(0, searchXp));
         report.putInt("contract_xp", Math.max(0, contractXp));
         report.putInt("adjustment_xp", adjustment);
+        report.putLong("loot_value",loot.credits());
+        report.putInt("loot_count",loot.count());
         report.putInt("final_xp", (int) Math.min(Integer.MAX_VALUE,
             Math.max(0L, (long) killXp + searchXp + contractXp + adjustment)));
         int xpAfter = experienceEarned(player);
@@ -373,6 +379,7 @@ public enum SupplyContract {
     }
 
     static void departure(ServerPlayer player) {
+        RaidLootValue.departure(player);
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().remove("taczoperations_run_xp_finalized");
@@ -395,6 +402,7 @@ public enum SupplyContract {
     }
 
     static void extracted(ServerPlayer player, boolean industrial) {
+        RaidLootValue.Estimate loot=RaidLootValue.estimate(player);
         int kills = player.getPersistentData().getInt("taczoperations_raid_kills");
         CompoundTag baseline = player.getPersistentData().getCompound("taczoperations_relic_baseline");
         for (var contract : values()) {
@@ -420,7 +428,8 @@ public enum SupplyContract {
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus,
-            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1);
+            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1,loot);
+        RaidLootValue.clear(player);
         // The persistent report is delivered by the player tick after the dimension transition.
         // The graphical report is authoritative; keep chat concise.
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
