@@ -42,8 +42,15 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Tous les traitements passent par le thread serveur. Les annonces/recettes et données joueur utilisent des fichiers de sauvegarde distincts : la persistance normale est prévue, mais la reprise atomique après un arrêt brutal n'est pas garantie. Sauvegarder le monde avant les tests.
 - Tests : deux acheteurs sur une même offre, double-clics, paquet périmé, inventaire plein, annulation, retrait hors ligne après redémarrage normal, composants TaCZ, taxe, prix invalide, limite annonces, pertes au crash, pagination et taille des paquets. Protocole 15, compilation du marché à vérifier. Build 447 (patrouilles) réussi.
  
+## Inspection des objets — sixième lot ajouté
+- Registre personnel persistant (jusqu'à 2048 identités), synchronisé à la connexion et après respawn, puis par découverte individuelle. Identité par type d'objet, identifiant TaCZ de l'arme, calibre ou accessoire. Les variantes d'état/usure d'une même identité ne nécessitent pas une nouvelle inspection.
+- Objets inspectables : objets TaCZ, EFM et objets générés en raid. Les objets ordinaires non marqués restent utilisables normalement. Pas de modification des composants du lot, pas de gain d'XP ni de consommation. Une inspection est instantanée.
+- Dans les menus fouille et inventaire tactique : icône « ? » et tooltip masqué avant examen, I ou clic molette sur une case visible pour identifier. La fouille continue de révéler les cases avant inspection ; impossible de demander une case non révélée. Le HUD et les menus vanilla ne sont pas masqués.
+- Marchands, marché noir et marché joueurs : aperçu inconnu remplacé par « ? », action Examiner pour identifier le lot sélectionné, puis nom/modèle normal. Le panneau de vente permet aussi d'examiner l'objet tenu. Inventaire en lecture seule des marchands : clic molette pour examiner. Certains détails de prix, quantité, provenance, fidélité restent visibles. L'inspection est un élément d'immersion côté interface, pas un système de secret réseau ni une condition serveur d'achat.
+- Le client envoie uniquement un identifiant du menu et un index ; le serveur valide la session, l'existence du lot ou de la case visible. Les découvertes d'un joueur ne sont pas partagées au duo.
+- Protocole 16 ; tests requis : deux joueurs, mêmes armes avec variantes, accessoires et munitions TaCZ, reconnexion, mort, changement de serveur, objet vendu, cases non révélées, achats verrouillés, lisibilité des « ? » et conflits de touche I. Build 464 du lot précédent (marché joueurs) réussi ; compilation de l'inspection à confirmer.
+ 
 ## Lots à réaliser (pas encore codés)
-- Inspection persistante par joueur, objets inconnus puis connus ; distinguer de la fouille progressive existante.
 - Test en jeu et revue graphique des boutiques, aperçu au survol, achat par quantité, amélioration fidélité/rareté distincte si nécessaire.
 
 Les nouveaux taux et catégories sont des choix d'équilibrage à tester. Pas de planque, trophées ou intégration Woods.
