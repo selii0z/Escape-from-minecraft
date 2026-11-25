@@ -42,10 +42,10 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int LIST_ROWS = 6;
     public static final int CONTRACT_ROWS = 5;
     public static final int VENDOR_FIRST = 35;
-    public static final int VENDOR_PAGES = 128;
-    public static final int SHOP_ROWS = 24;
-    public static final int TRADE_FIRST = 180, SHOP_CATEGORY_FIRST=228;
-    public static final int SELL_ALL_FIRST=204, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
+    public static final int VENDOR_PAGES = 4096;
+    public static final int SHOP_COLUMNS = 10, SHOP_VISIBLE_ROWS = 4, SHOP_ROWS = SHOP_COLUMNS * SHOP_VISIBLE_ROWS;
+    public static final int TRADE_FIRST = 55, SHOP_CATEGORY_FIRST=228;
+    public static final int SELL_ALL_FIRST=100, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
 
@@ -213,10 +213,10 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 }
             }
             for(long value:valued.values())shopValue+=value;
-            shopPages=Math.max(1,Math.min(VENDOR_PAGES,(indices.size()+SHOP_ROWS-1)/SHOP_ROWS));
+            shopPages=Math.max(1,Math.min(VENDOR_PAGES,(indices.size()+SHOP_COLUMNS-1)/SHOP_COLUMNS-SHOP_VISIBLE_ROWS+1));
             int local=Math.clamp(page%VENDOR_PAGES,0,shopPages-1);
             page=vendorIndex*VENDOR_PAGES+local;
-            int first=local*SHOP_ROWS;
+            int first=local*SHOP_COLUMNS;
             for(int i=first;i<Math.min(first+SHOP_ROWS,indices.size());i++){
                 shopRows.add(indices.get(i));saleCounts.add(counts.get(i));
             }
