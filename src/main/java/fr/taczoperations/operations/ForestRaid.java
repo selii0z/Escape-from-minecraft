@@ -175,12 +175,14 @@ public final class ForestRaid extends SavedData {
         RaidSurvival.begin(player);
         SupplyContract.departure(player);
         StoryMissions.begin(player,industrial);
+        PassiveSkills.begin(player);
         raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
             RaidSurvival.begin(partner);
             SupplyContract.departure(partner);
             StoryMissions.begin(partner,industrial);
+            PassiveSkills.begin(partner);
             raid.announceExits(partner);
         }
         // Clear stale containers in the chunks around the spawn immediately,
@@ -1313,6 +1315,7 @@ public final class ForestRaid extends SavedData {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
             SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
             StoryMissions.kill(killer);
+            PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
             SupplyContract.activityXp(killer, xp, true, role.title + " éliminé");
