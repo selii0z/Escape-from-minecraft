@@ -179,5 +179,22 @@ public final class Hideout {
     public static void protectBreak(BlockEvent.BreakEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
     public static void protectPlace(BlockEvent.EntityPlaceEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
     public static void protectExplosion(ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.getAffectedBlocks().clear();}
+    public static void preventMobEntry(net.neoforged.neoforge.event.entity.EntityJoinLevelEvent event){
+        if(event.getLevel() instanceof ServerLevel level&&level.dimension().equals(DIMENSION)
+            &&event.getEntity() instanceof net.minecraft.world.entity.Mob)event.setCanceled(true);
+    }
+    public static void preserveAccount(net.neoforged.neoforge.event.entity.player.PlayerEvent.Clone event){
+        if(!event.isWasDeath()||!(event.getOriginal() instanceof ServerPlayer old)
+            ||!(event.getEntity() instanceof ServerPlayer p)||!here(old))return;
+        var previous=old.getPersistentData().getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+        if(!previous.contains("taczoperations",10))return;
+        var root=p.getPersistentData();var persisted=root.getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+        // Do not replace an account already transferred by vanilla/NeoForge.
+        if(!persisted.contains("taczoperations",10)){
+            persisted.put("taczoperations",previous.getCompound("taczoperations").copy());
+            root.put(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG,persisted);
+        }
+        SupplyContract.account(p).remove(RETURN);
+    }
     private Hideout(){}
 }
