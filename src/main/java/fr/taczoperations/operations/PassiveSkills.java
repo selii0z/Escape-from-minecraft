@@ -38,6 +38,7 @@ public final class PassiveSkills {
         int before=level(p,s);var d=data(p);d.putInt(s.name(),Math.min(threshold(50),xp(p,s)+amount));
         int after=level(p,s);if(after>before)p.sendSystemMessage(Component.literal(s.title+" · niveau "+after+"/50"));
     }
+    static boolean loaded(ServerPlayer p){return p.getInventory().items.stream().filter(s->!s.isEmpty()).count()>=24;}
     // Sample movement once a second; reject stationary and teleport-scale displacements.
     static void movement(ServerPlayer p){
         if(!RaidInjuries.active(p))return;
@@ -48,7 +49,7 @@ public final class PassiveSkills {
         if(!moved)return;
         if(p.isSprinting())gain(p,Skill.ENDURANCE,1,false);
         if(p.isCrouching())gain(p,Skill.STEALTH,1,false);
-        if(p.tickCount%100==0&&p.getInventory().items.stream().filter(s->!s.isEmpty()).count()>=24)
+        if(p.tickCount%100==0&&loaded(p))
             gain(p,Skill.STRENGTH,2,false);
     }
     static void medicine(ServerPlayer p){gain(p,Skill.MEDICINE,8,false);}
