@@ -58,8 +58,10 @@ public final class FieldMedicine extends Item {
             return InteractionResultHolder.fail(stack);
         }
         player.startUsingItem(hand);
-        if(player instanceof ServerPlayer p)
+        if(player instanceof ServerPlayer p){
+            RaidAudio.medicineStart(p,kind);
             p.displayClientMessage(Component.literal("Soin en cours · maintiens le clic droit."),true);
+        }
         return InteractionResultHolder.consume(stack);
     }
 
