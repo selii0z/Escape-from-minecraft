@@ -1,7 +1,7 @@
 package fr.taczoperations.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.tacz.guns.api.item.builder.AmmoItemBuilder;
+import fr.taczoperations.operations.RaidLoadout;
 import fr.taczoperations.OperationsMod;
 import fr.taczoperations.operations.OperationsMenu;
 import fr.taczoperations.operations.OperationsShop;
@@ -73,7 +73,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private int selectedArea;
     private boolean night;
     private boolean duo;
-    private ItemStack[] rewards;
+    private RaidLoadout loadout;
+    private int lastLoadoutTick=Integer.MIN_VALUE;
     private int historyScroll;
     private static final int HISTORY_ROWS = 4;
 
@@ -229,12 +230,6 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private void operationWidgets() {
-        if (rewards == null) {
-            ItemStack ammunition = AmmoItemBuilder.create()
-                .setId(ResourceLocation.fromNamespaceAndPath("tacz", "9mm")).build();
-            rewards = new ItemStack[]{new ItemStack(Items.IRON_INGOT), ammunition,
-                new ItemStack(Items.BREAD), new ItemStack(Items.COOKED_BEEF), new ItemStack(Items.GOLDEN_CARROT)};
-        }
         for (int i = 0; i < AREAS.length; i++) {
             final int index = i;
             int x = 166 + i % 2 * 196;
@@ -379,13 +374,14 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         detail(g, 221, "⊕", "Menace", open ? "Gardes armés" : "À venir");
 
         panel(g, 575, 241, 249, 54, DARK);
-        text(g, "Récompenses possibles", 585, 246, 1, WHITE, true);
-        if (open) {
-            for (int i = 0; i < rewards.length; i++) {
-                int x = 586 + i * 39;
-                panel(g, x, 258, 34, 31, 0xff1b2118);
-                item(g, rewards[i], x + 7, 263, 1.24F);
+        text(g, "PRÉPARATION · ÉQUIPEMENT PERSONNEL", 585, 245, .84F, GOLD, true);
+        if(open&&minecraft.player!=null){
+            int tick=minecraft.player.tickCount;
+            if(loadout==null||tick-lastLoadoutTick>=10||tick<lastLoadoutTick){
+                loadout=RaidLoadout.inspect(minecraft.player);
+                lastLoadoutTick=tick;
             }
+            renderLoadout(g,loadout);
         }
         panel(g, 575, 300, 127, 62, DARK);
         panel(g, 705, 300, 119, 62, DARK);
@@ -394,6 +390,18 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         if (open) {
             text(g, duo ? fit(menu.view().partner(), 104) : "Groupe sur invitation", 711, 351, .75F, SOFT, false);
         }
+    }
+
+    private void renderLoadout(GuiGraphics g,RaidLoadout kit){
+        boolean usable=kit.guns()>0&&kit.condition()>0&&!kit.jammed();
+        String condition=kit.guns()==0?"":kit.jammed()?" · enrayée":" · "+Math.round(kit.condition()/100F)+"%";
+        text(g,fit(kit.weapon()+condition,235),585,256,.83F,usable&&kit.condition()>=7000?LIME:GOLD,false);
+        text(g,"Munitions : "+kit.loaded()+" + "+kit.reserve(),585,267,.79F,kit.reserve()<30?GOLD:LIME,false);
+        text(g,"Soins : "+kit.medical()+" (saign. "+kit.bleeding()+")",709,267,.75F,kit.bleeding()==0?GOLD:LIME,false);
+        text(g,"Protection : "+kit.armor()+"/4",585,278,.79F,kit.armor()<4||kit.armorCondition()<=20?GOLD:LIME,false);
+        text(g,"Nourriture : "+kit.food(),709,278,.79F,kit.food()<3?GOLD:LIME,false);
+        text(g,"Places libres : "+kit.free()+"/36",585,289,.72F,kit.free()<6?GOLD:SOFT,false);
+        if(night)text(g,kit.nightOptics()?"Optique nocturne : OK":"Optique nocturne absente",709,289,.70F,kit.nightOptics()?LIME:GOLD,false);
     }
 
     private void mapCard(GuiGraphics g, int index, int x, int y, boolean hovered) {
