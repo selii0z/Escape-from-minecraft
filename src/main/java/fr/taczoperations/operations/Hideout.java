@@ -181,6 +181,12 @@ public final class Hideout {
     public static void protectPlace(BlockEvent.EntityPlaceEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
     public static void protectExplosion(ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.getAffectedBlocks().clear();}
     @net.neoforged.bus.api.SubscribeEvent
+    public static void protectPlayer(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event){
+        if(event.getEntity() instanceof ServerPlayer p&&here(p)
+            &&!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)
+            &&!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL))event.setCanceled(true);
+    }
+    @net.neoforged.bus.api.SubscribeEvent
     public static void preventMobEntry(net.neoforged.neoforge.event.entity.EntityJoinLevelEvent event){
         if(event.getLevel() instanceof ServerLevel level&&level.dimension().equals(DIMENSION)
             &&event.getEntity() instanceof net.minecraft.world.entity.Mob)event.setCanceled(true);
