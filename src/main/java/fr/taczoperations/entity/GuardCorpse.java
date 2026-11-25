@@ -29,7 +29,9 @@ public final class GuardCorpse extends Entity {
         SynchedEntityData.defineId(GuardCorpse.class,net.minecraft.network.syncher.EntityDataSerializers.STRING);
     public void setAppearance(String value){
         entityData.set(APPEARANCE,switch(value){
-            case "foreman","tracker","pmc_usec","pmc_bird_eye"->value;
+            case "foreman"->"tagilla";
+            case "tracker"->"shturman";
+            case "pmc_usec","pmc_bird_eye","raider","scout","soldier","marksman","heavy","leader","tagilla","shturman","killa","reshala","glukhar","sanitar","kaban","kollontay","partisan","zryachiy","knight","big_pipe","birdeye","cultist_priest","wedge","wedge_labs","shadow_tagilla","vengeful_killa","infected_tagilla","black_division"->value;
             default->"";
         });
     }
