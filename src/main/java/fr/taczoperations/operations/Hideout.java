@@ -66,6 +66,10 @@ public final class Hideout {
         }
         block(l,c.below(2),Blocks.OBSIDIAN);
     }
+    static void fromBoard(ServerPlayer p){
+        if(!(p.containerMenu instanceof OperationsMenu)||!p.containerMenu.getCarried().isEmpty())return;
+        p.closeContainer();go(p);
+    }
     private static void go(ServerPlayer p){
         if(ownsPlot(p)){HideoutMenu.open(p);return;}
         if(!survival(p)||!p.level().dimension().equals(Level.OVERWORLD)||ForestRaid.isParticipant(p)){say(p,"Accès à la planque depuis le monde principal, hors raid.");return;}
@@ -82,7 +86,8 @@ public final class Hideout {
         p.teleportTo(level,c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);
         if(p.level()!=level){SupplyContract.account(p).remove(RETURN);return;}
         HideoutDecor.refresh(p,c);
-        say(p,"Bienvenue dans ta planque personnelle. Clique sur une installation ou utilise /efm planque menu.");
+        say(p,"Bienvenue dans ta planque personnelle. Les installations sont identifiées par des panneaux.");
+        HideoutMenu.open(p);
     }
     static void leave(ServerPlayer p){
         if(!here(p))return;
@@ -171,7 +176,7 @@ public final class Hideout {
         BlockPos c=center(id);
         for(int i=0;i<Station.values().length;i++){
             int x=-10+(i%4)*6,z=i<4?-11:11;
-            if(e.getPos().equals(c.offset(x,0,z))){
+            if(e.getPos().equals(c.offset(x,0,z))||e.getPos().equals(c.offset(x,2,z))){
                 HideoutMenu.open(p);return;
             }
         }
