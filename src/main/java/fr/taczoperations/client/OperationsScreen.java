@@ -165,10 +165,22 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
                 }
                 pager(page,view.shopPages());
-                simple(423,83,125,28,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+                simple(423,83,125,20,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+                simple(423,105,125,20,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
                 simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
                     ()->send(OperationsMenu.SHOP_OWNED_FILTER),()->view.shopOwned(),()->true);
                 simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
+            }
+            case OperationsMenu.MERCHANT_ORDERS -> {
+                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+                for(int i=0;i<4;i++){
+                    var fields=view.orders().get(i+1).split("\\|",-1);
+                    int action=OperationsMenu.ORDER_FIRST+i;
+                    boolean done=fields[8].equals("1");
+                    simple(700,151+i*56,110,28,done?"Livrée":"Livrer",()->send(action),()->false,
+                        ()->!done&&Integer.parseInt(fields[4])>=Integer.parseInt(fields[3]));
+                }
+                simple(700,376,110,24,"Actualiser",()->send(OperationsMenu.REFRESH));
             }
             case OperationsMenu.TRADE_JOURNAL -> {
                 simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
@@ -195,7 +207,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -321,7 +333,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
         panel(g, 3, 74, 149, 337, 0xc0111713);
-        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET || menu.view().tab()==OperationsMenu.TRADE_JOURNAL) {
+        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET || menu.view().tab()==OperationsMenu.TRADE_JOURNAL || menu.view().tab()==OperationsMenu.MERCHANT_ORDERS) {
             panel(g, 157, 74, 674, 339, 0xf0111612);
         } else {
             panel(g, 157, 74, 401, 339, 0xd8111612);
@@ -533,6 +545,20 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         181, y + 23, .95F, priceColor, false);
                 }
             }
+            case OperationsMenu.MERCHANT_ORDERS -> {
+                text(g,"COMMANDES SPÉCIALES",173,82,1.50F,GOLD,true);
+                text(g,"Quatre livraisons quotidiennes · renouvellement à minuit UTC",173,108,.9F,SOFT,false);
+                for(int i=0;i<4;i++){
+                    var f=view.orders().get(i+1).split("\\|",-1);
+                    int y=132+i*56;
+                    boolean done=f[8].equals("1");
+                    panel(g,169,y,650,52,DARK);
+                    text(g,f[0]+" · "+f[1],181,y+5,1.04F,WHITE,true);
+                    text(g,fit(f[2]+" ×"+f[3]+" · Possédés : "+f[4],455),181,y+20,.88F,done?SOFT:Integer.parseInt(f[4])>=Integer.parseInt(f[3])?LIME:GOLD,false);
+                    text(g,"+"+f[5]+" cr.  ·  +"+f[6]+" XP  ·  +"+f[7]+" rép.",181,y+35,.91F,done?SOFT:LIME,true);
+                }
+                text(g,"Les objets remis sont consommés. Aucune obligation d'accepter.",173,371,.83F,SOFT,false);
+            }
             case OperationsMenu.TRADE_JOURNAL -> {
                 text(g,"JOURNAL DES TRANSACTIONS",173,82,1.45F,GOLD,true);
                 text(g,"50 dernières opérations · heure UTC",173,106,.9F,SOFT,false);
@@ -661,7 +687,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL) return;
+        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL || view.tab()==OperationsMenu.MERCHANT_ORDERS) return;
         if (view.tab() == OperationsMenu.SHOP) {
             var vendor = vendor();
             panel(g, 578, 88, 239, 115, DARK);

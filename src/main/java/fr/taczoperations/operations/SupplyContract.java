@@ -200,6 +200,7 @@ public enum SupplyContract {
         long earned = (long) Math.max(0, account.getInt("raid_activity_xp")) + Math.max(0, account.getInt("contract_cycle_xp"))
             + Math.max(0, account.getInt("contract_xp_bonus_v2"))
             + Math.max(0, account.getInt("timed_contract_xp"))
+            + Math.max(0, account.getInt("merchant_order_xp"))
             + (account.getInt("OUTPOST") == 2 ? 8 : 0)
             + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);

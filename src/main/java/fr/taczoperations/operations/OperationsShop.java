@@ -50,7 +50,7 @@ public enum OperationsShop {
 
     int reputation(ServerPlayer player) {
         var account = SupplyContract.account(player);
-        long points = Math.max(0,account.getInt("timed_reputation_"+ordinal()));
+        long points = (long)Math.max(0,account.getInt("timed_reputation_"+ordinal()))+Math.max(0,account.getInt("merchant_order_rep_"+ordinal()));
         for (SupplyContract contract : SupplyContract.values()) {
             if (contract.merchant() != this) continue;
             String key = "completed_" + contract.name();
