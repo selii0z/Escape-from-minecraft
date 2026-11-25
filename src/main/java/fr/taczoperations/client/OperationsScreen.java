@@ -687,7 +687,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
     private int listingPrice(){
         if(marketPrice==null)return 0;
-        try{return Math.clamp(Integer.parseInt(marketPrice.getValue()),0,fr.taczoperations.operations.PlayerMarket.MAX_PRICE);}
+        try{int price=Integer.parseInt(marketPrice.getValue());return price>=1&&price<=fr.taczoperations.operations.PlayerMarket.MAX_PRICE?price:0;}
         catch(NumberFormatException ignored){return 0;}
     }
     private void playerMarketWidgets(){
@@ -760,7 +760,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             text(g,"avant d'ouvrir le tableau.",584,261,.86F,SOFT,false);
         }
         int price=listingPrice();
-        text(g,"Recette nette : "+numberLong(price-price/20)+" cr.",581,324,.83F,SOFT,false);
+        text(g,price>0?"Recette nette : "+numberLong(price-price/20)+" cr.":"Prix requis : 1 à 100 000 000 cr.",581,324,.83F,price>0?SOFT:0xffdf9c94,false);
         text(g,"CRÉDITS À RETIRER",581,346,1.01F,GOLD,true);
         text(g,numberLong(page.pending())+" cr.",701,346,1.02F,LIME,true);
     }
