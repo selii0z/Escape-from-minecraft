@@ -924,13 +924,16 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         g.fill(541,thumbY,547,thumbY+thumb,0xff89976a);
         centered(g,maxScroll==0?"Catalogue complet":"Défiler avec la molette",357,323,.9F,SOFT,false);
         int rep=v.reputation().get(merchant.ordinal()),loyalty=OperationsShop.reputationLevel(rep,v.experience());
-        text(g,"FIDÉLITÉ DU MARCHAND",581,88,1.04F,GOLD,true);
+        ResourceLocation portrait=texture("merchant_"+merchant.name().toLowerCase(java.util.Locale.ROOT));
+        image(g,portrait,581,84,52,52);
+        g.renderOutline(580,83,54,54,FRAME);
+        text(g,"FIDÉLITÉ DU MARCHAND",642,88,.86F,GOLD,true);
         for(int i=1;i<=4;i++){
-            int x=581+(i-1)*59;
-            key(g,x,104,55,20,i==loyalty,false,i<=loyalty);
-            centered(g,new String[]{"I","II","III","IV"}[i-1],x+27,109,1, i<=loyalty?WHITE:SOFT,true);
+            int x=642+(i-1)*44;
+            key(g,x,104,41,20,i==loyalty,false,i<=loyalty);
+            centered(g,new String[]{"I","II","III","IV"}[i-1],x+20,109,.9F, i<=loyalty?WHITE:SOFT,true);
         }
-        text(g,loyalty==4?"Fidélité maximale":rep+" / "+OperationsShop.nextReputation(rep,v.experience())+" rép. · Niv. "+OperationsShop.requiredPlayerLevel(loyalty+1)+" requis",581,129,.88F,SOFT,false);
+        text(g,loyalty==4?"Fidélité maximale":rep+" / "+OperationsShop.nextReputation(rep,v.experience())+" rép. · Niv. "+OperationsShop.requiredPlayerLevel(loyalty+1)+" requis",642,129,.68F,SOFT,false);
         panel(g,578,143,242,68,0xff20251f);
         var o=shopOffer(shopSelection);
         if(o!=null){
