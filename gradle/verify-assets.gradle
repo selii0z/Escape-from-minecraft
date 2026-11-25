@@ -44,8 +44,9 @@ tasks.register('verifyEfmAssets') {
                     missing.add(model.name+' : geometrie detaillee absente')
             } catch(Exception ex) { missing.add(model.name+' : '+ex.message) }
         }
+        ['endurance','strength','medicine','search','stealth','survival','weapons','trade'].each { id -> checkImage('textures/gui/skills/'+id+'.png',512,512) }
         if(!missing.isEmpty()) throw new GradleException('Ressources EFM invalides :\n'+missing.join('\n'))
-        logger.lifecycle('EFM : 32 icones, 4 illustrations Full HD, 4 portraits, 12 textures textiles et 6 modeles verifies.')
+        logger.lifecycle('EFM : 32 icones, 4 illustrations Full HD, 4 portraits, 12 textures textiles et 6 modeles et 8 illustrations de competences verifies.')
     }
 }
 tasks.named('check') { dependsOn tasks.named('verifyEfmAssets') }
