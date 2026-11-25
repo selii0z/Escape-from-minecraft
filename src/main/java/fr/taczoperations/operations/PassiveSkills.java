@@ -26,7 +26,7 @@ public final class PassiveSkills {
     }
     static int bonus(ServerPlayer p,Skill s){return (level(p,s)-1)*s.maxBonus/49;}
     static void begin(ServerPlayer p){
-        p.getPersistentData().remove(LIMITS);p.getPersistentData().remove(MOVE);
+        p.getPersistentData().remove(LIMITS);p.getPersistentData().remove(MOVE);p.getPersistentData().remove("efm_skill_extraction_awarded");
     }
     private static void gain(ServerPlayer p,Skill s,int amount,boolean extraction){
         if(amount<=0||p.isCreative()||p.isSpectator()||(!extraction&&!RaidInjuries.active(p)))return;
@@ -54,7 +54,12 @@ public final class PassiveSkills {
     static void medicine(ServerPlayer p){gain(p,Skill.MEDICINE,8,false);}
     static void search(ServerPlayer p){gain(p,Skill.SEARCH,2,false);}
     static void kill(ServerPlayer p){gain(p,Skill.WEAPONS,6,false);}
-    static void extracted(ServerPlayer p){gain(p,Skill.SURVIVAL,25,true);}
+    static void extracted(ServerPlayer p){
+        var run=p.getPersistentData();
+        if(!p.isAlive()||!run.contains("taczoperations_run_started")||run.getBoolean("taczoperations_run_xp_finalized")||run.getBoolean("efm_skill_extraction_awarded"))return;
+        run.putBoolean("efm_skill_extraction_awarded",true);
+        gain(p,Skill.SURVIVAL,25,true);
+    }
     static void trade(ServerPlayer p,long delta){
         if(delta==0||!PlayerMarket.available(p))return;
         var a=SupplyContract.account(p);var day=a.getCompound(DAY);
