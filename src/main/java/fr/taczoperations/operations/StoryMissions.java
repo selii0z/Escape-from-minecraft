@@ -101,6 +101,8 @@ public final class StoryMissions {
     }
     // Called only after confirmed extraction, before the standard report.
     static void extracted(ServerPlayer p,boolean industrial){
+        var data=p.getPersistentData();
+        if(!data.contains("taczoperations_run_started")||data.getBoolean("taczoperations_run_xp_finalized")){clear(p);return;}
         Mission m=current(p);var r=run(p,m);
         if(r==null){clear(p);return;}
         boolean ready=m.industrial==industrial&&r.getInt("stage")>=1&&r.getInt("kills")>=m.kills;
