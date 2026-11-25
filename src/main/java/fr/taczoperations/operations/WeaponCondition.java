@@ -74,17 +74,19 @@ public final class WeaponCondition {
         var data=tag(stack);data.remove(JAM);write(stack,data);p.getInventory().setChanged();
         notice(p,"Enrayement résolu.");
     }
-    static String repair(ServerPlayer p){
+    static String repair(ServerPlayer p){return repair(p,0);}
+    static String repair(ServerPlayer p,int discount){
         var stack=p.getMainHandItem();
         if(!(stack.getItem() instanceof IGun))return "Tiens l'arme TaCZ à réparer en main.";
         int value=condition(stack);
         if(value==FULL&&!jammed(stack))return "Arme déjà en parfait état.";
         int cost=Math.max(50,(int)Math.ceil((FULL-value)*8.0/100));
+        cost=Math.max(1,(cost*(100-Math.clamp(discount,0,30))+99)/100);
         int balance=SupplyContract.balance(p);
         if(balance<cost)return "Crédits insuffisants · réparation : "+cost+" crédits.";
         var data=tag(stack);data.putInt(CONDITION,FULL);data.remove(JAM);write(stack,data);
         SupplyContract.account(p).putInt("credits",balance-cost);
-        TradeJournal.record(p,"Réparation",OperationsShop.ARMORER.title,stack.getHoverName().getString(),1,-cost);
+        TradeJournal.record(p,"Réparation",discount>0?"Atelier":OperationsShop.ARMORER.title,stack.getHoverName().getString(),1,-cost);
         p.getInventory().setChanged();
         return "Arme réparée · 100 % · -"+cost+" crédits.";
     }
