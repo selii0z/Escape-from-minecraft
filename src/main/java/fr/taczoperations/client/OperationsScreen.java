@@ -110,7 +110,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();
+            case OperationsMenu.TIMED_CONTRACTS -> {
+                simple(690,79,125,29,"Classiques",()->send(OperationsMenu.CONTRACTS));
+                simple(710,376,105,24,"Actualiser",()->send(OperationsMenu.REFRESH));
+            }
             case OperationsMenu.CONTRACTS -> {
+                simple(690,79,125,29,"Défis périodiques",()->send(OperationsMenu.TIMED_CONTRACTS));
                 int start = view.page() * OperationsMenu.CONTRACT_ROWS;
                 for (int i = 0; i < OperationsMenu.CONTRACT_ROWS && start + i < view.filtered().size(); i++) {
                     int status = view.contracts().get(view.filtered().get(start + i));
@@ -160,7 +165,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -292,7 +297,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
         panel(g, 3, 74, 149, 337, 0xc0111713);
-        if (menu.view().tab() == OperationsMenu.CONTRACTS) {
+        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS) {
             panel(g, 157, 74, 674, 339, 0xf0111612);
         } else {
             panel(g, 157, 74, 401, 339, 0xd8111612);
@@ -398,6 +403,24 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private void secondaryPage(GuiGraphics g) {
         var view = menu.view();
         switch (view.tab()) {
+            case OperationsMenu.TIMED_CONTRACTS -> {
+                text(g,"DÉFIS PÉRIODIQUES",173,82,1.5F,WHITE,true);
+                text(g,"Progression automatique à chaque bilan de raid",173,108,.90F,SOFT,false);
+                var data=view.timedContracts();
+                for(int i=0;i<6;i++){
+                    int x=i<3?170:500, row=i%3, y=153+row*66;
+                    if(row==0)text(g,i<3?"QUOTIDIENS":"HEBDOMADAIRES",x,134,1.15F,GOLD,true);
+                    int progress=data.get(i*3),target=data.get(i*3+1);
+                    boolean done=data.get(i*3+2)!=0;
+                    panel(g,x,y,315,61,DARK);
+                    text(g,fr.taczoperations.operations.TimedContracts.title(i),x+10,y+8,1.1F,WHITE,true);
+                    text(g,done?"Terminé":progress+" / "+target,x+218,y+8,.95F,done?LIME:SOFT,true);
+                    g.fill(x+10,y+27,x+305,y+34,0xff30382b);
+                    g.fill(x+10,y+27,x+10+(int)(295L*Math.min(progress,target)/Math.max(1,target)),y+34,0xff8fdc57);
+                    text(g,"+"+fr.taczoperations.operations.TimedContracts.credits(i)+" crédits · +"+fr.taczoperations.operations.TimedContracts.xp(i)+" XP",x+10,y+43,.93F,GOLD,false);
+                }
+                text(g,"Renouvellement : minuit UTC / lundi minuit UTC",173,364,.85F,SOFT,false);
+            }
             case OperationsMenu.CONTRACTS -> {
                 long active = view.contracts().stream().filter(status -> status == SupplyContract.ACTIVE).count();
                 text(g, "CONTRATS", 173, 82, 1.55F, WHITE, true);
@@ -538,7 +561,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() == OperationsMenu.CONTRACTS) return;
+        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS) return;
         if (view.tab() == OperationsMenu.SHOP) {
             var vendor = vendor();
             panel(g, 578, 88, 239, 115, DARK);

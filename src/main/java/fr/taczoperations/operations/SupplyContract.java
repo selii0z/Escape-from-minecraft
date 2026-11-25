@@ -199,6 +199,7 @@ public enum SupplyContract {
         CompoundTag account = account(player);
         long earned = (long) Math.max(0, account.getInt("raid_activity_xp")) + Math.max(0, account.getInt("contract_cycle_xp"))
             + Math.max(0, account.getInt("contract_xp_bonus_v2"))
+            + Math.max(0, account.getInt("timed_contract_xp"))
             + (account.getInt("OUTPOST") == 2 ? 8 : 0)
             + (account.getInt("BARRICADE") == 2 ? 12 : 0)
             + (account.getInt("WORKSHOP") == 2 ? 18 : 0);
@@ -248,6 +249,10 @@ public enum SupplyContract {
     // Saved after each raid so a future result screen can reopen the last report.
     static void saveRaidReport(ServerPlayer player, boolean success, long seconds,
                                int kills, int crates, int contracts, int killXp, int searchXp, int contractXp, int adjustment, int xpBefore) {
+        int[] timed=TimedContracts.record(player,success,kills,crates);
+        contracts=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contracts)+timed[0]);
+        contractXp=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contractXp)+timed[1]);
+        rewardLevels(player);
         CompoundTag report = new CompoundTag();
         report.putBoolean("success", success);
         report.putLong("duration_seconds", Math.max(0, seconds));
