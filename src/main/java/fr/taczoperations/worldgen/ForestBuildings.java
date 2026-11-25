@@ -15,7 +15,7 @@ final class ForestBuildings {
         int y = site.floor();
         int x = site.x();
         int z = site.z();
-        if (!out.intersects(x, z - 3, x + w - 1, z + d - 1)) {
+        if (!out.intersects(x, z - 3, x + w - 1, z + d)) {
             return;
         }
         switch (site.kind()) {
@@ -61,7 +61,7 @@ final class ForestBuildings {
                             continue;
                         }
                         Block material = dy == 2 && (side ? dz % 5 == 2 : dx % 5 == 2)
-                            ? Blocks.GLASS : side && end ? Blocks.STRIPPED_SPRUCE_LOG : wall;
+                            ? Blocks.GLASS_PANE : (side&&end)||(side&&dz%6==0)||(end&&dx%6==0) ? Blocks.STRIPPED_SPRUCE_LOG : dy==1 && site.kind()==ForestPlan.Kind.CABIN ? Blocks.COBBLESTONE : wall;
                         out.put(x + dx, y + dy, z + dz, material);
                     }
                 }
@@ -79,6 +79,23 @@ final class ForestBuildings {
                     }
                 }
             }
+        }
+        // Exterior roof edging, threshold and wall details; preserve the original floor and loot anchors.
+        for(int dx=0;dx<w;dx++){
+            int ridge=site.kind()==ForestPlan.Kind.CABIN&&(w&1)==0?w/3:w/2;
+            int roof=top+switch(site.kind()){
+                case WAREHOUSE -> dx<3||dx>=w-3?0:(dx/4)%2;
+                case SHED -> dx/4;
+                default -> Math.max(0,ridge-Math.abs(dx-ridge))/2;
+            };
+            out.put(x+dx,y+roof,z-1,Blocks.DEEPSLATE_TILE_SLAB);
+            out.put(x+dx,y+roof,z+d,Blocks.DEEPSLATE_TILE_SLAB);
+        }
+        if(site.kind()==ForestPlan.Kind.CABIN){
+            out.put(x+door,y,z-1,Blocks.COBBLESTONE);
+            int chimney=x+w-2;
+            for(int dy=top;dy<=top+4;dy++)out.put(chimney,y+dy,z+d-2,Blocks.BRICKS);
+            out.put(chimney,y+top+5,z+d-2,Blocks.STONE_BRICK_SLAB);
         }
         door(out, x + door, y + 1, z, Direction.NORTH);
         if (site.kind() == ForestPlan.Kind.CABIN || site.kind() == ForestPlan.Kind.STATION) {
