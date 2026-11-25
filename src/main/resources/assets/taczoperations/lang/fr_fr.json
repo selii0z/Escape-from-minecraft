@@ -68,5 +68,7 @@
   "curios.identifier.efm_goggles": "Lunettes tactiques",
   "curios.identifier.efm_backpack": "Sac à dos",
   "curios.identifier.efm_rig": "Gilet tactique",
-  "item.taczoperations.field_ration": "Ration de terrain"
+  "item.taczoperations.field_ration": "Ration de terrain",
+  "item.taczoperations.tactical_headset": "Casque audio tactique",
+  "curios.identifier.efm_headset": "Casque audio"
 }
