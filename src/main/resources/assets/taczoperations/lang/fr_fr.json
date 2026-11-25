@@ -14,6 +14,7 @@
   "item.taczoperations.night_vision_goggles": "Lunettes de vision nocturne",
   "item.taczoperations.thermal_goggles": "Lunettes thermiques",
   "key.taczoperations.goggles": "Activer / désactiver les lunettes",
+  "key.taczoperations.field_inventory": "Ouvrir l'inventaire tactique EFM",
   "key.categories.taczoperations": "Escape from Minecraft",
   "message.taczoperations.goggles.off": "Lunettes désactivées",
   "message.taczoperations.goggles.nvg": "Vision nocturne activée",
