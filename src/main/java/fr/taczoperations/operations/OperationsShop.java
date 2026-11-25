@@ -174,6 +174,8 @@ public enum OperationsShop {
                 }
             }
         }
+        for(var loot:TradeLoot.values())if(loot.merchant()==this)
+            offers.add(new Offer(loot.title,loot.price,Action.SELL,loot::stack,null,0));
         if (this == ARMORER) {
             offers.sort(java.util.Comparator.comparingInt(Offer::loyaltyLevel));
             for (Offer offer : List.copyOf(offers)) {

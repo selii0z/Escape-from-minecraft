@@ -34,3 +34,5 @@ Les fonctionnalités restantes du roadmap ne sont pas terminées.
 
 - Vérifier les cinq soins en butin médical : bandages, Salewa, attelles, kits hémostatiques, kits de premiers secours. Les clés industrielles gardent leur emplacement indépendant.
 - Ressources EFT optionnelles : tester les cinq modèles 3D en inventaire, en main et au sol, sans Fabric, puis contrôler l'absence de texture manquante. Voir docs/EFT-ASSETS.md.
+
+- 24 objets de revente distincts des reliques de quête : contrôler poids de tirage, rareté, vente unitaire au marchand désigné, conservation des clés/soins, butin rare des réserves et prix. Modèles vanilla provisoires dans CI ; modèles EFT locaux facultatifs.

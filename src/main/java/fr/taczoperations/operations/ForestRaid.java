@@ -823,6 +823,8 @@ public final class ForestRaid extends SavedData {
             barrel.applyComponentsFromItemStack(label);
             barrel.setItem(2, (kind==4?RaidRelic.DRIVE:kind==5?RaidRelic.CHIP:RaidRelic.OPTIC).stack());
             barrel.setItem(6,RaidRelic.roll(random).stack());
+            TradeLoot bonus=TradeLoot.roll(random,kind==5?0:1,2);
+            if(bonus!=null)barrel.setItem(7,bonus.stack());
             var slot=BallisticVest.SLOTS[random.nextInt(BallisticVest.SLOTS.length)];
             int tier=random.nextInt(100)<12?5:4;
             barrel.setItem(12,BallisticVest.create(slot,tier,BallisticVest.classColor(tier)));
@@ -880,6 +882,10 @@ public final class ForestRaid extends SavedData {
                     barrel.setItem(25, OperationsShop.attachment(random.nextBoolean() ? "sight_552" : "extended_mag_1"));
             }
             default -> barrel.setItem(18, new ItemStack(Items.PAPER, 2 + random.nextInt(5)));
+        }
+        if(random.nextInt(100)<(kind==0?45:kind==1?60:kind==3?35:20)){
+            TradeLoot loot=TradeLoot.roll(random,kind==2?1:kind,0);
+            if(loot!=null)barrel.setItem(20,loot.stack());
         }
         if(industrial&&random.nextInt(100)<8)barrel.setItem(23,new ItemStack(industrialKey()));
         if(kind==0){
