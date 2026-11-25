@@ -168,6 +168,7 @@ public final class OperationsMod {
         bus.addListener(OperationsMod::registerPayloads);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::commands);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::tick);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::interact);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectBreak);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectPlace);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectExplosion);
