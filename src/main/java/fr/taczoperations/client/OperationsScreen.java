@@ -142,9 +142,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 var vendor = vendor();
                 var offers = vendor.offers();
                 int page = view.page() % OperationsMenu.VENDOR_PAGES;
-                int start = page * OperationsMenu.LIST_ROWS;
-                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < offers.size(); i++) {
-                    var offer = offers.get(start + i);
+                for (int i = 0; i < view.shopRows().size(); i++) {
+                    int index=view.shopRows().get(i);
+                    if(index<0||index>=offers.size())continue;
+                    var offer = offers.get(index);
                     final int action = OperationsMenu.TRADE_FIRST + i;
                     if(offer.action()==OperationsShop.Action.SELL){
                         int count=view.saleCounts().get(i);
@@ -163,7 +164,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     simple(584, 218 + merchant.ordinal() * 35, 225, 28, merchant.title,
                         () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
                 }
-                pager(page, (offers.size() + OperationsMenu.LIST_ROWS - 1) / OperationsMenu.LIST_ROWS);
+                pager(page,view.shopPages());
+                simple(584,389,225,22,view.shopOwned()?"Mes reventes : ON":"Mes reventes : OFF",
+                    ()->send(OperationsMenu.SHOP_OWNED_FILTER),()->view.shopOwned(),()->true);
                 simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
             }
             case OperationsMenu.BLACK_MARKET -> {
@@ -477,10 +480,15 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             case OperationsMenu.SHOP -> {
                 var vendor = vendor();
                 pageTitle(g, "▱", upper(vendor.title), vendor.specialty);
-                int start = view.page() % OperationsMenu.VENDOR_PAGES * OperationsMenu.LIST_ROWS;
                 var offers = vendor.offers();
-                for (int i = 0; i < OperationsMenu.LIST_ROWS && start + i < offers.size(); i++) {
-                    var offer = offers.get(start + i);
+                if(view.shopRows().isEmpty()){
+                    text(g,"Aucun objet revendable chez ce marchand.",181,151,.94F,SOFT,false);
+                    text(g,"Désactive le filtre pour revoir son catalogue.",181,170,.84F,SOFT,false);
+                }
+                for (int i = 0; i < view.shopRows().size(); i++) {
+                    int index=view.shopRows().get(i);
+                    if(index<0||index>=offers.size())continue;
+                    var offer = offers.get(index);
                     int y = 128 + i * 41;
                     panel(g, 169, y, 379, 37, DARK);
                     boolean locked = offer.action() == OperationsShop.Action.BUY &&
@@ -627,6 +635,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             panel(g, 578, 88, 239, 115, DARK);
             image(g, texture("merchant_" + vendor.name().toLowerCase(java.util.Locale.ROOT)), 593, 102, 62, 82);
             text(g, vendor.title, 669, 109, 1.2F, GOLD, true);
+            text(g,"Revente possible : "+numberLong(view.shopValue())+" cr.",585,191,.85F,LIME,true);
             int reputation = view.reputation().get(vendor.ordinal());
             int loyalty = OperationsShop.reputationLevel(reputation,view.experience());
             text(g, "Fidélité " + loyalty + " / 4", 669, 130, 1.0F, GOLD, true);
