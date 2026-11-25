@@ -21,7 +21,7 @@ import net.minecraft.world.level.Level;
 
 /** Read-only equipment snapshots; selection and payment are server-authoritative. */
 public final class DepartureInsuranceMenu extends AbstractContainerMenu {
-    public static final int WIDTH=254,HEIGHT=222,SELECT_ALL=50,CONFIRM=51,SKIP=52,BACK=53;
+    public static final int WIDTH=310,HEIGHT=236,SELECT_ALL=50,CONFIRM=51,SKIP=52,BACK=53;
     public static final int AVAILABLE=1,SELECTED=2,INSURED=3,FEE=RaidSecurity.FEE;
     private record Entry(Supplier<ItemStack> source,ItemStack snapshot){}
     private final Player owner;
@@ -137,7 +137,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
             if(owner instanceof ServerPlayer p){
                 preview.setItem(i,entries.get(i).snapshot().copy());
             }
-            addSlot(new Slot(preview,i,11+(i%9)*26,53+(i/9)*23){
+            addSlot(new Slot(preview,i,15+(i%9)*32,60+(i/9)*25){
                 @Override public boolean mayPlace(ItemStack s){return false;}
                 @Override public boolean mayPickup(Player p){return false;}
             });
