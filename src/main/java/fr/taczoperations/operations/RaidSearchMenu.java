@@ -20,20 +20,33 @@ import java.util.function.Predicate;
 public final class RaidSearchMenu extends ChestMenu {
     private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next", LAST_ACTIVE="efm_search_last_active";
     private static final int ITEM_TICKS=10; // half a second per occupied slot at 20 TPS
-    private int lastShown=-1;
     private final SearchView view;
     private final Player viewer;
+    private final net.minecraft.world.inventory.DataSlot revealedSync=net.minecraft.world.inventory.DataSlot.standalone();
+    private final net.minecraft.world.inventory.DataSlot progressSync=net.minecraft.world.inventory.DataSlot.standalone();
+    public int discoveredSlots(){return Math.clamp(revealedSync.get(),0,27);}
+    public int itemProgress(){return Math.clamp(progressSync.get(),0,100);}
+    // Client inventory receives only the server's already revealed items.
+    public RaidSearchMenu(int id,Inventory inventory){
+        super(fr.taczoperations.OperationsMod.SEARCH_MENU.get(),id,inventory,new net.minecraft.world.SimpleContainer(27),3);
+        this.view=null;
+        this.viewer=inventory.player;
+        addDataSlot(revealedSync);
+        addDataSlot(progressSync);
+    }
     public RaidSearchMenu(int id,Inventory inventory,Container backing,CompoundTag state,Predicate<Player> valid){
         this(id,inventory,new SearchView(backing,state,valid));
     }
     private RaidSearchMenu(int id,Inventory inventory,SearchView view){
-        super(MenuType.GENERIC_9x3,id,inventory,view,3);
+        super(fr.taczoperations.OperationsMod.SEARCH_MENU.get(),id,inventory,view,3);
         this.view=view;
         this.viewer=inventory.player;
+        addDataSlot(revealedSync);
+        addDataSlot(progressSync);
         if(viewer instanceof ServerPlayer p){
             view.skipEmpty();
             if(view.revealed()<27)view.resume(p.level().getGameTime());
-            showProgress(p);
+            syncProgress(p.level().getGameTime());
         }
     }
     @Override public void broadcastChanges(){
@@ -49,25 +62,28 @@ public final class RaidSearchMenu extends ChestMenu {
                     view.backing.setChanged();
                 }
             }
-            showProgress(p);
+            syncProgress(now);
         }
         super.broadcastChanges();
     }
-    private void showProgress(ServerPlayer player){
-        int current=view.revealed();
-        if(current==lastShown)return;
-        lastShown=current;
-        player.displayClientMessage(Component.literal(current==27?"Fouille terminée":"Fouille en cours… "+current+"/27"),true);
+    private void syncProgress(long now){
+        int count=view.revealed();
+        revealedSync.set(count);
+        progressSync.set(count==27?100:(int)Math.clamp(100L*(ITEM_TICKS-(view.state.getLong(NEXT)-now))/ITEM_TICKS,0,100));
     }
     @Override protected Slot addSlot(Slot slot){
-        if(slot.container instanceof SearchView search)return super.addSlot(new Slot(search,slot.getContainerSlot(),slot.x,slot.y){
+        if(slots.size()<27)return super.addSlot(new Slot(slot.container,slot.getContainerSlot(),slot.x,slot.y){
             @Override public boolean mayPlace(ItemStack item){return false;}
-            @Override public boolean mayPickup(Player player){return search.visible(getContainerSlot())&&search.stillValid(player);}
+            @Override public boolean mayPickup(Player player){return slot.container instanceof SearchView search
+                ?search.visible(getContainerSlot())&&search.stillValid(player)
+                :getContainerSlot()<discoveredSlots();}
         });
         return super.addSlot(slot);
     }
     @Override public ItemStack quickMoveStack(Player player,int index){
-        if(index<0||index>=27||!view.visible(index)||!view.stillValid(player))return ItemStack.EMPTY;
+        if(index<0||index>=27)return ItemStack.EMPTY;
+        if(view==null){if(index>=discoveredSlots())return ItemStack.EMPTY;}
+        else if(!view.visible(index)||!view.stillValid(player))return ItemStack.EMPTY;
         return super.quickMoveStack(player,index);
     }
     private static final class SearchView implements Container{

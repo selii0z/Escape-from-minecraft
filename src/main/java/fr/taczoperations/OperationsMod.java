@@ -61,6 +61,8 @@ public final class OperationsMod {
             .sized(1.55F, .36F).clientTrackingRange(8).updateInterval(10).build(ID + ":guard_corpse"));
     public static final Supplier<MenuType<OperationsMenu>> MENU = MENUS.register(
         "operations_board", () -> IMenuTypeExtension.create(OperationsMenu::new));
+    public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(
+        "raid_search",()->IMenuTypeExtension.create((id,inventory,buffer)->new fr.taczoperations.operations.RaidSearchMenu(id,inventory)));
 
     private static final DeferredRegister<MapCodec<? extends ChunkGenerator>> GENERATORS =
         DeferredRegister.create(Registries.CHUNK_GENERATOR, ID);
