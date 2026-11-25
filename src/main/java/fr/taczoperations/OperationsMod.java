@@ -64,6 +64,8 @@ public final class OperationsMod {
     public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(
         "raid_search",()->IMenuTypeExtension.create((id,inventory,buffer)->new fr.taczoperations.operations.RaidSearchMenu(id,inventory)));
 
+    public static final Supplier<MenuType<fr.taczoperations.operations.DepartureInsuranceMenu>> DEPARTURE_INSURANCE=MENUS.register(
+        "departure_insurance",()->IMenuTypeExtension.create(fr.taczoperations.operations.DepartureInsuranceMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.FieldInventoryMenu>> FIELD_INVENTORY=MENUS.register(
         "field_inventory",()->IMenuTypeExtension.create(fr.taczoperations.operations.FieldInventoryMenu::new));
 
@@ -111,7 +113,7 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("20");
+        var registrar = event.registrar("21");
         registrar.playToServer(fr.taczoperations.operations.ShopBuy.TYPE,fr.taczoperations.operations.ShopBuy.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p

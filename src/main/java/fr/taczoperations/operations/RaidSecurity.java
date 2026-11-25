@@ -22,7 +22,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 public final class RaidSecurity {
     private static final String POUCH="secure_pouch_v1",
         INSURED="operations_insured_owner", CLAIMS="insurance_claims_v1";
-    private static final int FEE=100;
+    static final int FEE=100;
     private static final long DELAY=30L*60*1000;
 
     public static void commands(RegisterCommandsEvent event) {
@@ -142,7 +142,7 @@ public final class RaidSecurity {
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }
-    private static boolean eligible(ItemStack s) {
+    static boolean eligible(ItemStack s) {
         return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s));
     }
     private static boolean isOptics(ItemStack s){
@@ -153,6 +153,19 @@ public final class RaidSecurity {
     private static void removeInsurance(ItemStack s) {
         CompoundTag d=tag(s);d.remove(INSURED);
         if(d.isEmpty())s.remove(DataComponents.CUSTOM_DATA);else s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));
+    }
+    static boolean insuredBy(ServerPlayer p,ItemStack s){
+        CompoundTag d=tag(s);return d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED));
+    }
+    // All stacks must have been resolved from the player's actual equipment by the server.
+    static boolean insureSelection(ServerPlayer p,java.util.List<ItemStack> items){
+        if(!available(p)||p.level().dimension().equals(ForestExpedition.FOREST))return false;
+        var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
+        for(ItemStack s:items)if(!unique.add(s)||!eligible(s)||insuredBy(p,s))return false;
+        var account=SupplyContract.account(p);int cost=items.size()*FEE,balance=account.getInt("credits");
+        if(balance<cost)return false;
+        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
+        account.putInt("credits",balance-cost);p.getInventory().setChanged();return true;
     }
     static String insure(ServerPlayer p) {
         if(!available(p)||p.level().dimension().equals(ForestExpedition.FOREST))return "Assurance disponible uniquement hors raid.";

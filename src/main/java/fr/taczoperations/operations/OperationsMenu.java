@@ -341,12 +341,10 @@ public final class OperationsMenu extends AbstractContainerMenu {
             || button == DEPART_DUO_NIGHT || (button >= INDUSTRIAL_FIRST && button < INDUSTRIAL_FIRST + 4))) {
             boolean industrial = button >= INDUSTRIAL_FIRST;
             int mode = industrial ? button - INDUSTRIAL_FIRST : -1;
-            notice = ForestExpedition.depart(serverPlayer, position,
+            DepartureInsuranceMenu.open(serverPlayer,position,
                 industrial ? (mode & 1) != 0 : button == DEPART_NIGHT || button == DEPART_DUO_NIGHT,
-                industrial ? (mode & 2) != 0 : button == DEPART_DUO || button == DEPART_DUO_NIGHT, industrial);
-            if (notice.isEmpty()) {
-                return true;
-            }
+                industrial ? (mode & 2) != 0 : button == DEPART_DUO || button == DEPART_DUO_NIGHT,industrial);
+            return true;
         } else if(tab==PLAYER_MARKET&&button>=PLAYER_OFFER_FIRST&&button<PLAYER_OFFER_FIRST+PlayerMarket.PAGE_SIZE){
             int row=button-PLAYER_OFFER_FIRST;
             if(row>=view.playerMarket().offers().size())return false;
