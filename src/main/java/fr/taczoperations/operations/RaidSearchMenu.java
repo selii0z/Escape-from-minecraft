@@ -18,7 +18,9 @@ import java.util.function.Predicate;
  * cursor belong to the loot source, not to a particular viewer.
  */
 public final class RaidSearchMenu extends ChestMenu {
-    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next";
+    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next", LAST_ACTIVE="efm_search_last_active";
+    private static final int ITEM_TICKS=10; // half a second per occupied slot at 20 TPS
+    private int lastShown=-1;
     private final SearchView view;
     private final Player viewer;
     public RaidSearchMenu(int id,Inventory inventory,Container backing,CompoundTag state,Predicate<Player> valid){
@@ -28,24 +30,34 @@ public final class RaidSearchMenu extends ChestMenu {
         super(MenuType.GENERIC_9x3,id,inventory,view,3);
         this.view=view;
         this.viewer=inventory.player;
-        if(viewer instanceof ServerPlayer p&&view.revealed()<27){
-            if(!view.state.contains(NEXT))view.state.putLong(NEXT,p.level().getGameTime()+4);
-            view.backing.setChanged();
-            p.displayClientMessage(Component.literal("Fouille en cours… "+view.revealed()+"/27"),true);
+        if(viewer instanceof ServerPlayer p){
+            view.skipEmpty();
+            if(view.revealed()<27)view.resume(p.level().getGameTime());
+            showProgress(p);
         }
     }
     @Override public void broadcastChanges(){
         if(view!=null&&viewer instanceof ServerPlayer p&&p.containerMenu==this&&view.stillValid(p)){
-            int before=view.revealed();
+            view.skipEmpty();
             long now=p.level().getGameTime();
-            if(before<27&&now>=view.state.getLong(NEXT)){
-                view.state.putInt(REVEALED,before+1);
-                view.state.putLong(NEXT,now+4);
-                view.backing.setChanged();
-                if((before+1)%3==0)p.displayClientMessage(Component.literal(before+1==27?"Fouille terminée":"Fouille en cours… "+(before+1)+"/27"),true);
+            if(view.revealed()<27){
+                view.resume(now);
+                if(now>=view.state.getLong(NEXT)){
+                    view.state.putInt(REVEALED,view.revealed()+1);
+                    view.skipEmpty();
+                    view.state.putLong(NEXT,now+ITEM_TICKS);
+                    view.backing.setChanged();
+                }
             }
+            showProgress(p);
         }
         super.broadcastChanges();
+    }
+    private void showProgress(ServerPlayer player){
+        int current=view.revealed();
+        if(current==lastShown)return;
+        lastShown=current;
+        player.displayClientMessage(Component.literal(current==27?"Fouille terminée":"Fouille en cours… "+current+"/27"),true);
     }
     @Override protected Slot addSlot(Slot slot){
         if(slot.container instanceof SearchView search)return super.addSlot(new Slot(search,slot.getContainerSlot(),slot.x,slot.y){
@@ -67,6 +79,23 @@ public final class RaidSearchMenu extends ChestMenu {
         }
         int revealed(){return Math.clamp(state.getInt(REVEALED),0,27);}
         boolean visible(int i){return i>=0&&i<revealed();}
+        // Empty slots cost no search time. Only the next occupied slot can
+        // stop the shared cursor. Never expose a hidden non-empty stack.
+        void skipEmpty(){
+            int from=revealed(),to=from;
+            while(to<27&&backing.getItem(to).isEmpty())to++;
+            if(to!=from){state.putInt(REVEALED,to);backing.setChanged();}
+        }
+        void resume(long now){
+            long last=state.getLong(LAST_ACTIVE);
+            // Closing all viewers pauses the search. Reopening preserves
+            // discovered items, but cannot fast-forward the next item.
+            if(!state.contains(NEXT)||!state.contains(LAST_ACTIVE)||now<last||now-last>1){
+                state.putLong(NEXT,now+ITEM_TICKS);
+                backing.setChanged();
+            }
+            state.putLong(LAST_ACTIVE,now);
+        }
         @Override public int getContainerSize(){return 27;}
         @Override public boolean isEmpty(){for(int i=0;i<revealed();i++)if(!getItem(i).isEmpty())return false;return true;}
         @Override public ItemStack getItem(int i){return visible(i)?backing.getItem(i):ItemStack.EMPTY;}
