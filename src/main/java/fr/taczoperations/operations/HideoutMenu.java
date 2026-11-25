@@ -39,6 +39,8 @@ final class HideoutMenu {
         icons.setItem(34,tile(Items.ANVIL,"Réparer l'arme en main",ChatFormatting.GOLD));
         icons.setItem(35,tile(Items.GREEN_BED,"Préparer le bonus de repos",ChatFormatting.GREEN));
         icons.setItem(37,tile(Items.TARGET,"Entrer dans le stand de tir",ChatFormatting.AQUA));
+        icons.setItem(39,tile(Items.WRITABLE_BOOK,"Campagne militaire",ChatFormatting.GOLD));
+        icons.setItem(41,tile(Items.EXPERIENCE_BOTTLE,"Compétences passives",ChatFormatting.GREEN));
         icons.setItem(45,tile(Items.REDSTONE,"Énergie : "+HideoutPower.energy(p)+"/"+Hideout.tier(p,Hideout.Station.GENERATEUR)*24,ChatFormatting.YELLOW));
         icons.setItem(46,tile(Items.GOLD_INGOT,"Solde : "+SupplyContract.balance(p)+" crédits",ChatFormatting.GOLD));
         icons.setItem(49,tile(Items.COMPASS,"Quitter la planque",ChatFormatting.RED));
@@ -46,7 +48,7 @@ final class HideoutMenu {
             @Override public void clicked(int slot,int button,ClickType click,Player player){
                 if(player!=p||p.containerMenu!=this||!icons.stillValid(player)||button!=0
                     ||click!=ClickType.PICKUP||!getCarried().isEmpty())return;
-                if(!((slot>=19&&slot<=26)||(slot>=28&&slot<=35)||slot==37||slot==49))return;
+                if(!((slot>=19&&slot<=26)||(slot>=28&&slot<=35)||slot==37||slot==39||slot==41||slot==49))return;
                 p.closeContainer();
                 if(slot>=19&&slot<=26)Hideout.upgrade(p,Hideout.Station.values()[slot-19].id);
                 else switch(slot){
@@ -59,6 +61,8 @@ final class HideoutMenu {
                     case 34->HideoutPower.repair(p);
                     case 35->HideoutPower.rest(p);
                     case 37->HideoutRange.toggle(p);
+                    case 39->ProgressionMenus.missions(p);
+                    case 41->ProgressionMenus.skills(p);
                     case 49->Hideout.leave(p);
                     default->{}
                 }
