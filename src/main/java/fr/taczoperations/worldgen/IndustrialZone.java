@@ -20,6 +20,18 @@ public final class IndustrialZone {
         new ForestPlan.Point(460, 230), new ForestPlan.Point(555, 155), new ForestPlan.Point(590, 120), new ForestPlan.Point(145, 215), new ForestPlan.Point(315, 175),
         new ForestPlan.Point(405, 135), new ForestPlan.Point(120, 330), new ForestPlan.Point(350, 520),
         new ForestPlan.Point(525, 515), new ForestPlan.Point(600, 400));
+    public record Vault(String title,int x,int z) {
+        public net.minecraft.core.BlockPos door() {
+            return new net.minecraft.core.BlockPos(ORIGIN+x,FLOOR+1,ORIGIN+z);
+        }
+        public ForestRaidAnchors.Mark loot(int index) {
+            return new ForestRaidAnchors.Mark(x,FLOOR+1,z+7,4+index);
+        }
+    }
+    public static final List<Vault> VAULTS=List.of(
+        new Vault("Réserve logistique",208,182),
+        new Vault("Archives de l'usine",410,175),
+        new Vault("Dépôt ferroviaire",560,390));
     public static final List<ForestPlan.Point> BOSSES = List.of(
         new ForestPlan.Point(310, 330), new ForestPlan.Point(405, 320), new ForestPlan.Point(510, 195));
 
@@ -60,7 +72,9 @@ public final class IndustrialZone {
             points.add(new ForestRaidAnchors.Mark(b.x + 7, FLOOR + 1, b.z + b.depth - 5));
         }
         java.util.Collections.shuffle(points, new java.util.Random(seed));
-        return List.copyOf(points.subList(0, Math.min(32, points.size())));
+        var result=new ArrayList<>(points.subList(0,Math.min(32,points.size())));
+        for(int i=0;i<VAULTS.size();i++)result.add(VAULTS.get(i).loot(i));
+        return List.copyOf(result);
     }
 
     private static boolean road(int x, int z) {
@@ -202,10 +216,28 @@ public final class IndustrialZone {
         office(out,94,175,100,68);
         office(out,370,500,68,49);
         serviceTunnel(out);
+        for(Vault vault:VAULTS) secureRoom(out,vault);
 
         out.put(EXIT.x(), FLOOR, EXIT.z(), Blocks.GOLD_BLOCK);
         out.put(EXIT.x() + 1, FLOOR + 1, EXIT.z(), Blocks.TORCH);
         out.put(ENTRY.x(), FLOOR, ENTRY.z(), Blocks.POLISHED_ANDESITE);
+    }
+
+    private static void secureRoom(ForestChunkGenerator.Painter out,Vault v) {
+        int x=v.x(),z=v.z();
+        if(!out.intersects(x-5,z,x+5,z+10))return;
+        for(int dx=-5;dx<=5;dx++)for(int dz=0;dz<=10;dz++) {
+            out.put(x+dx,FLOOR,z+dz,Blocks.POLISHED_DEEPSLATE);
+            boolean wall=Math.abs(dx)==5||dz==0||dz==10;
+            for(int dy=1;dy<=5;dy++){
+                Block block=dy==5?Blocks.DEEPSLATE_TILES:wall?Blocks.DEEPSLATE_BRICKS:Blocks.AIR;
+                if(dx==0&&dz==0&&dy<=2)block=Blocks.IRON_BLOCK;
+                if(!wall&&dy==4&&dx==0&&dz==5)block=Blocks.SEA_LANTERN;
+                out.put(x+dx,FLOOR+dy,z+dz,block);
+            }
+        }
+        out.put(x,FLOOR,z-1,Blocks.YELLOW_CONCRETE);
+        out.put(x,FLOOR+3,z,Blocks.REDSTONE_BLOCK);
     }
 
     private static void vehicle(ForestChunkGenerator.Painter out,int x,int z,Block color) {

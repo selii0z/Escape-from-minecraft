@@ -19,8 +19,19 @@ public final class ForestProtection {
         }
     }
 
+    static boolean setVaultDoor(ServerLevel level,BlockPos pos,boolean closed) {
+        if(!vaultDoor(pos))return false;
+        RAID_EDIT.set(pos);
+        try{
+            BlockState state=(closed?Blocks.IRON_BLOCK:Blocks.AIR).defaultBlockState();
+            return level.getBlockState(pos).equals(state)||level.setBlockAndUpdate(pos,state);
+        }finally{RAID_EDIT.remove();}
+    }
+    private static boolean vaultDoor(BlockPos pos) {
+        return fr.taczoperations.worldgen.IndustrialZone.VAULTS.stream().anyMatch(v->pos.equals(v.door())||pos.equals(v.door().above()));
+    }
     public static boolean allowsRaidContainer(BlockPos pos, BlockState state) {
-        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.isAir());
+        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.isAir() || state.is(Blocks.IRON_BLOCK)&&vaultDoor(pos));
     }
 
     public static void onBreak(BlockEvent.BreakEvent event) {
