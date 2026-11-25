@@ -180,7 +180,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         List<Integer> saleCounts=new java.util.ArrayList<>();
         List<Integer> shopRows=new java.util.ArrayList<>();
         boolean shopOwned=account.getBoolean("shop_owned_only");
-        if(tab==SHOP)category=Math.clamp(account.getInt("shop_category"),0,6);
+        int shopCategory=Math.clamp(account.getInt("shop_category"),0,6);
         boolean shopAccessories=tab==SHOP&&page/VENDOR_PAGES==OperationsShop.ARMORER.ordinal()&&!shopOwned&&account.getBoolean("shop_accessories_only");
         int shopPages=1;
         long shopValue=0;
@@ -195,7 +195,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
                 int count=OperationsShop.saleCount(player,offer);
-                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||category==0||offer.shopCategory()==category)){
+                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
@@ -220,7 +220,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(SupplyContract.values()).map(contract -> contract.progress(player)).toList(),
             name(player, partner), name(player, inviter),
             shown.stream().map(target -> target.getGameProfile().getName()).toList(), notice,
-            lastRaidSummary(player), raidHistory(player), category, difficulty, statusFilter, merchantFilter, filtered, SupplyContract.cyclesCompleted(player),
+            lastRaidSummary(player), raidHistory(player), tab==SHOP?shopCategory:category, difficulty, statusFilter, merchantFilter, filtered, SupplyContract.cyclesCompleted(player),
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
                 "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
