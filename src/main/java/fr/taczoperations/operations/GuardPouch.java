@@ -43,8 +43,10 @@ final class GuardPouch {
             Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE,
             Items.TORCH, Items.STRING, Items.FLINT, Items.PAPER, Items.COAL
         };
-        items.set(1, new ItemStack(food[random.nextInt(food.length)], 1 + random.nextInt(4)));
-        items.set(2, new ItemStack(scrap[random.nextInt(scrap.length)], 1 + random.nextInt(5)));
+        if(specialty==null||random.nextInt(100)<65)
+            items.set(1, new ItemStack(food[random.nextInt(food.length)], 1 + random.nextInt(4)));
+        if(specialty==null||random.nextInt(100)<55)
+            items.set(2, new ItemStack(scrap[random.nextInt(scrap.length)], 1 + random.nextInt(5)));
         if (random.nextInt(3) == 0) {
             items.set(3, new ItemStack(random.nextBoolean() ? Items.GOLDEN_CARROT : Items.HONEY_BOTTLE,
                 1 + random.nextInt(2)));
@@ -63,13 +65,16 @@ final class GuardPouch {
             items.set(7, OperationsShop.attachment(
                 random.nextBoolean() ? "sight_552" : "extended_mag_1"));
         }
-        // Slot eight is separate from ammo, relics and existing attachments.
-        // Medical specialists always carry a useful treatment, others 40%.
-        if(specialty!=null&&(specialty==PmcSpecialty.MEDIC||random.nextInt(100)<40)){
-            items.set(8,specialty.fieldLoot(random));
-        }else if(role.boss()){
-            items.set(8,PmcSpecialty.medicine(random.nextBoolean()?"salewa":"hemostat",1));
-        }else if(specialty==null&&random.nextInt(100)<12){
+        // Independent bonus rolls, saved exactly once. No guaranteed
+        // specialty loot. The rarest PMC has more chances, not fixed rewards.
+        if(specialty!=null){
+            if(random.nextInt(100)<specialty.lootChance())items.set(8,specialty.fieldLoot(random));
+            int extra=specialty==PmcSpecialty.MARKSMAN?30:15;
+            if(items.get(5).isEmpty()&&random.nextInt(100)<extra)items.set(5,specialty.fieldLoot(random));
+        }else if(role.boss()&&random.nextInt(100)<80){
+            String[] medicines={"salewa","hemostat","medkit","bandage","splint"};
+            items.set(8,PmcSpecialty.medicine(medicines[random.nextInt(medicines.length)],1));
+        }else if(!role.boss()&&random.nextInt(100)<12){
             items.set(8,PmcSpecialty.medicine("bandage",1));
         }
         save(guard, items);

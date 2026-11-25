@@ -22,18 +22,30 @@ enum PmcSpecialty {
     }
     static PmcSpecialty get(Pillager p){
         int roll=Math.floorMod(p.getUUID().hashCode(),100);
-        return roll<35?ASSAULT:roll<55?RECON:roll<70?MARKSMAN:roll<90?SUPPORT:MEDIC;
+        return roll<50?ASSAULT:roll<70?RECON:roll<85?SUPPORT:roll<95?MEDIC:MARKSMAN;
     }
     String preferredGun(Random rng){return preferred[rng.nextInt(preferred.length)];}
     int reserve(Random rng){return ammoBase+rng.nextInt(ammoSpread);}
+    int lootChance(){return this==MARKSMAN?80:this==MEDIC?75:this==SUPPORT?65:this==RECON?55:50;}
     ItemStack fieldLoot(Random rng){
-        return switch(this){
-            case MEDIC->medicine(rng.nextInt(4)==0?"salewa":rng.nextBoolean()?"hemostat":"bandage",1);
-            case SUPPORT->rng.nextBoolean()?TradeLoot.PARACORD.stack():TradeLoot.SCREWDRIVER.stack();
-            case RECON->rng.nextBoolean()?TradeLoot.MEASURING_TAPE.stack():TradeLoot.TEA_BOX.stack();
-            case MARKSMAN->rng.nextBoolean()?medicine("bandage",1):TradeLoot.RIPSTOP_FABRIC.stack();
-            case ASSAULT->medicine(rng.nextInt(4)==0?"splint":"bandage",1);
-        };
+        // Specialty biases the pool, but never restricts it. Every PMC
+        // can carry any kind of item, including nothing in a given slot.
+        int roll=rng.nextInt(100);
+        int medical=this==MEDIC?60:25;
+        if(roll<medical){
+            int med=rng.nextInt(100);
+            String id=med<40?"bandage":med<60?"splint":med<78?"salewa":med<93?"hemostat":"medkit";
+            return medicine(id,id.equals("bandage")?1+rng.nextInt(2):1);
+        }
+        if(roll<medical+10)return RaidRelic.roll(rng).stack();
+        if(roll<medical+15)return OperationsShop.attachment(rng.nextBoolean()?"sight_552":"extended_mag_1");
+        int category=rng.nextInt(3);
+        if(category==2)category=3;
+        // Extra preference for industrial supplies on support, without
+        // excluding the medical or civilian pools.
+        if(this==SUPPORT&&rng.nextBoolean())category=1;
+        TradeLoot loot=TradeLoot.roll(rng,category,0);
+        return loot==null?ItemStack.EMPTY:loot.stack();
     }
     static ItemStack medicine(String id,int amount){
         return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("taczoperations",id)),amount);
