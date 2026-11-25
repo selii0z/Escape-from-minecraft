@@ -106,7 +106,7 @@ tasks.register('generateRaidArt') {
                         rect(wall,x,y,w,h)
                         polygon(color(0x323e3a),[[x-12,y],[x+w/2,y-65],[x+w+12,y],[x+w,y+12],[x,y+12]])
                         for(int j=0;j<w;j+=15)stroke(new Color(35,44,42,80),1f,x+j,y+14,x+j,680)
-                        for(int j=0;j<Math.max(1,w/58);j++){
+                        for(int j=0;j<Math.max(1,(w+57).intdiv(58));j++){
                             int wx=x+15+j*58
                             rect(color(0x25332f),wx,y+42,37,46)
                             rect(color(victory&&j%3==0?0x9b895d:0x4d625e),wx+3,y+45,31,40)
