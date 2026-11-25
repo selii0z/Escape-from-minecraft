@@ -57,8 +57,14 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Achats marchands par quantité (1 à 64 lots de catalogue) : +/- et total visible, contrôle intégral du prix, accès, solde et capacité de l'inventaire natif avant tout achat ; aucun achat partiel. Protocole 17. Les achats de lots ne concernent ni le marché noir ni le marché joueurs.
 - Tests : transfert rapide avec inventaire plein et sac partiellement plein, duo sur même caisse, extraction avec clé dans le sac, contrats/revente avec objets répartis entre les espaces, inventaire plein à l'achat, prix total et limites de quantité. Nouvelle compilation à confirmer.
 
+## Finitions équipement — huitième lot ajouté
+- Assurance étendue aux sacs, gilets et lunettes EFM tenus ou équipés dans les slots dédiés. Prix 100 crédits, retour 95 % après 30 min, uniquement pour des objets effectivement retirés de LivingDropsEvent. Un sac ou gilet récupéré par assurance revient vide ; son contenu est ajouté aux véritables drops du raid. Les objets non récupérés restent dans leurs sacs. Pas de copie des objets depuis un inventaire encore détenu. Vérifier la présence des drops Curios dans cet événement et son ordre avec les règles de mort du serveur ; keepInventory ne doit créer aucune demande.
+- Six modèles de sacs et trois de gilets cubiques originaux, tailles et poches distinctes, nuances kaki/sable/anthracite. Textures tissu, sangles et boucles générées par Gradle dans les ressources du JAR. Modèles utilisés dans l'inventaire et en main ; couche de rendu client sur le torse pour les accessoires équipés, avec Curios facultatif. Vérifier le rendu en jeu sur skins standard et slim, armures, position accroupie, inventaire, multijoueur et shaders ; pas de capture réelle disponible.
+- Les munitions TaCZ contenues dans les sacs/gilets ne sont pas encore directement accessibles à son mécanisme de rechargement. Cette intégration nécessite une vérification de l'API de la version installée.
+- Compilation de ce lot et tests en jeu non confirmés.
+
 ## Lots à réaliser (pas encore codés)
 - Test en jeu et revue graphique des boutiques, aperçu au survol, amélioration fidélité/rareté distincte si nécessaire.
-- Modèles 3D portés et icônes définitives des packs, assurance Curios, utilisation directe des munitions par TaCZ et récupération crash du marché restent à traiter.
+- Vérifier visuellement les modèles 3D et tester les drops Curios assurés ; utilisation directe des munitions par TaCZ et récupération crash du marché restent à traiter.
 
 Les nouveaux taux et catégories sont des choix d'équilibrage à tester. Pas de planque, trophées ou intégration Woods.
