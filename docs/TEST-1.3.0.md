@@ -19,10 +19,16 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Visuels d'objet provisoires vanilla, pas encore de modèle dorsal 3D. Assurance spécifique des nouveaux accessoires non intégrée ; mort et règles Curios à tester avant livraison. Protocole 13.
 - Tests requis : deux joueurs, changement de sac vide/plein, curseur plein, shift-clic, sortie et mort, retour forcé, reconnexion, drop Curios et keepInventory, sauvegarde, absence de duplication, résolution/GUI scale, AllTheMons/JEI, touche E et Maj+E, ouverture sans Curios, gilets, lunettes N avec casque, achats, butin élite.
 
+## Survie — troisième lot ajouté
+- Hydratation et énergie de 0 à 100, état serveur initialisé à chaque raid et conservé en reconnexion. Déclin de base sur environ 33 et 50 minutes ; accélération en sprint. Alerte à 20 %, lenteur ou faiblesse à 0 %, pas de dégâts directs ni de mécanique supplémentaire hors raid.
+- Eau +40 points, lait +25, miel +12 eau/+10 énergie. Nourriture +5 à +40 énergie selon nutrition, certains aliments hydratent de 8 points. Ration de terrain +30 énergie, utilisable même quand la faim vanilla est pleine (lot de quatre à 80 crédits chez le médecin). Eau à 65 crédits, et butin médical : eau 45 %, ration 30 %.
+- Synchronisation via le paquet de blessures (protocole 14), jauges dans le HUD, masquées hors raid. Les effets de survie expirent rapidement après sortie. Les visuels de ration sont provisoires.
+- Les packs affichent leur occupation ; vente d'un pack contenant des objets interdite côté serveur pour éviter une perte de contenu.
+- Compilation du lot précédent (commit 2b58a9ab, build 412) réussie. Nouveau lot à compiler et tester en jeu : consommation du dernier objet d'une pile, faim pleine, accélération sprint, effets à zéro, reconnexion, raid duo et sortie.
+ 
 ## Lots à réaliser (pas encore codés)
 - Patrouilles itinérantes inter-secteurs ; les rondes et combats gardes/PMC existent déjà, à approfondir et vérifier isolation des sessions.
 - Marché entre joueurs : séquestre des objets, crédits et récupération hors ligne, taxe proposée 5 %, validation serveur et tests de concurrence.
-- Hydratation/énergie 0–100 uniquement en raid, restauration par consommables ; HUD et synchro.
 - Inspection persistante par joueur, objets inconnus puis connus ; distinguer de la fouille progressive existante.
 - Test en jeu et revue graphique des boutiques, aperçu au survol, achat par quantité, amélioration fidélité/rareté distincte si nécessaire.
 
