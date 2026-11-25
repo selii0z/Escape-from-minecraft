@@ -23,6 +23,26 @@ public final class RaidEnemyModels {
         if(!guard.level().dimension().equals(ForestExpedition.FOREST)||!guard.hasCustomName())return null;
         String role=switch(guard.getCustomName().getString()){
             case "Le Contremaître"->"foreman";
+            case "Tagilla"->"tagilla";
+            case "Shturman"->"shturman";
+            case "Killa"->"killa";
+            case "Reshala"->"reshala";
+            case "Glukhar"->"glukhar";
+            case "Sanitar"->"sanitar";
+            case "Kaban"->"kaban";
+            case "Kollontay"->"kollontay";
+            case "Partisan"->"partisan";
+            case "Zryachiy"->"zryachiy";
+            case "Knight"->"knight";
+            case "Big Pipe"->"big_pipe";
+            case "Birdeye"->"birdeye";
+            case "Cultist Priest"->"cultist_priest";
+            case "The Wedge"->"wedge";
+            case "The Wedge (Labs)"->"wedge_labs";
+            case "Shadow of Tagilla"->"shadow_tagilla";
+            case "Vengeful Killa"->"vengeful_killa";
+            case "Infected Tagilla"->"infected_tagilla";
+            case "Black Div."->"black_division";
             case "Le Traqueur"->"tracker";
             case "Opérateur PMC"->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
             default->null;
@@ -30,7 +50,7 @@ public final class RaidEnemyModels {
         return selectAppearance(role);
     }
     public static Preview selectAppearance(String role){
-        if(role==null||!Set.of("foreman","tracker","pmc_usec","pmc_bird_eye").contains(role))return null;
+        if(role==null||!role.matches("[a-z_]{1,32}"))return null;
         ResourceManager manager=Minecraft.getInstance().getResourceManager();
         if(resources!=manager){CACHE.clear();resources=manager;}
         return CACHE.computeIfAbsent(role,key->load(manager,key)).orElse(null);

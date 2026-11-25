@@ -41,9 +41,9 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int LIST_ROWS = 6;
     public static final int CONTRACT_ROWS = 5;
     public static final int VENDOR_FIRST = 35;
-    public static final int VENDOR_PAGES = 32;
+    public static final int VENDOR_PAGES = 128;
     public static final int TRADE_FIRST = 45;
-    public static final int SELL_ALL_FIRST=160, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170;
+    public static final int SELL_ALL_FIRST=160, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
     public static final int INDUSTRIAL_FIRST = 65;
 
@@ -51,7 +51,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals,List<String> orders) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals,List<String> orders,boolean shopAccessories) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -83,6 +83,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeCollection(journal,(buf,line)->buf.writeUtf(line));
             buffer.writeCollection(journalTotals,(buf,value)->buf.writeVarLong(value));
             buffer.writeCollection(orders,(buf,line)->buf.writeUtf(line));
+            buffer.writeBoolean(shopAccessories);
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -90,7 +91,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()),buffer.readList(buf->buf.readUtf()));
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()),buffer.readList(buf->buf.readUtf()),buffer.readBoolean());
         }
     }
 
@@ -178,6 +179,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         List<Integer> saleCounts=new java.util.ArrayList<>();
         List<Integer> shopRows=new java.util.ArrayList<>();
         boolean shopOwned=account.getBoolean("shop_owned_only");
+        boolean shopAccessories=tab==SHOP&&page/VENDOR_PAGES==OperationsShop.ARMORER.ordinal()&&!shopOwned&&account.getBoolean("shop_accessories_only");
         int shopPages=1;
         long shopValue=0;
         if(tab==SHOP){
@@ -191,7 +193,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
                 int count=OperationsShop.saleCount(player,offer);
-                if(!shopOwned||count>0){
+                if((!shopOwned||count>0)&&(!shopAccessories||offer.accessory())){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
@@ -220,7 +222,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
                 "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
-                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of());
+                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of(),shopAccessories);
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -317,6 +319,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
             page = (button - VENDOR_FIRST) * VENDOR_PAGES;
         } else if(tab==SHOP&&button==SHOP_OWNED_FILTER){
             SupplyContract.account(serverPlayer).putBoolean("shop_owned_only",!view.shopOwned());
+            SupplyContract.account(serverPlayer).putBoolean("shop_accessories_only",false);
+            page=page/VENDOR_PAGES*VENDOR_PAGES;
+        } else if(tab==SHOP&&button==SHOP_ACCESSORIES&&page/VENDOR_PAGES==OperationsShop.ARMORER.ordinal()){
+            var account=SupplyContract.account(serverPlayer);
+            account.putBoolean("shop_accessories_only",!view.shopAccessories());
+            account.putBoolean("shop_owned_only",false);
             page=page/VENDOR_PAGES*VENDOR_PAGES;
         } else if(tab==SHOP&&button>=SELL_ALL_FIRST&&button<SELL_ALL_FIRST+LIST_ROWS){
             if(serverPlayer.level().dimension().equals(ForestExpedition.FOREST))return false;

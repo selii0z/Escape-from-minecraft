@@ -22,7 +22,7 @@ final class GuardPatrol {
         Random route=new Random(id.getLeastSignificantBits()^((long)squad*0x9e3779b97f4a7c15L));
         double angle=route.nextDouble()*Math.PI*2;
         int phase=Math.floorMod(data.getInt(STEP),4);
-        int radius=role.boss()?8:role==GuardRole.PMC?24:role==GuardRole.SCOUT?16:10;
+        int radius=role==GuardRole.PARTISAN?48:role.boss()?8:role==GuardRole.PMC?24:role==GuardRole.SCOUT?16:10;
         if(role==GuardRole.PMC&&PmcSpecialty.get(guard)==PmcSpecialty.MARKSMAN)radius=14;
         int offsetX=Math.floorMod(guard.getUUID().hashCode(),5)-2;
         int offsetZ=Math.floorMod(guard.getUUID().hashCode()/5,5)-2;

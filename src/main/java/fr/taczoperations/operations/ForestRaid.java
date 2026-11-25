@@ -63,6 +63,9 @@ public final class ForestRaid extends SavedData {
     private long reinforcementDue,reinforcementExpiry,reinforcementCooldown;
     private BlockPos dropPos;
     private int fieldEvent,fieldEventAttempts;
+    private boolean bossConvergence;
+    private List<GuardRole> selectedBosses=List.of();
+    private List<ForestPlan.Point> bossAnchors=List.of();
     private long fieldEventDue;
     private RaidAtmosphere atmosphere;
     private long ambientDue;
@@ -126,6 +129,13 @@ public final class ForestRaid extends SavedData {
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
+        raid.bossConvergence=new Random(raid.seed^0x72c6aee3L).nextInt(20)==0;
+        raid.selectedBosses=raid.bossConvergence?BossRoster.all():BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed);
+        if(raid.bossConvergence){
+            var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
+            player.sendSystemMessage(warning);
+            if(partner!=null)partner.sendSystemMessage(warning);
+        }
         raid.atmosphere=new RaidAtmosphere(raid.seed,level.getGameTime(),ForestExpedition.initialWeather(player));
         raid.ambientDue=level.getGameTime()+400+new Random(raid.seed^0x88fae3L).nextInt(401);
         raid.ambientSequence=0;
@@ -136,6 +146,10 @@ public final class ForestRaid extends SavedData {
         raid.vaultOpened.clear();
         raid.enemies.clear();
         raid.encounterPoints = chooseEncounterPoints(industrial, raid.seed);
+        var bossSites=new ArrayList<>(raid.encounterPoints);
+        if(bossSites.isEmpty())bossSites.addAll(industrial?IndustrialZone.BOSSES:ForestRaidAnchors.TRACKER);
+        java.util.Collections.shuffle(bossSites,new Random(raid.seed^0x7ff330L));
+        raid.bossAnchors=List.copyOf(bossSites);
         raid.pmcGroups = assignFactions(raid.encounterPoints, raid.seed);
         raid.dropDue = level.getGameTime() + 20L * (45 + new Random(raid.seed).nextInt(46));
         raid.dropLanding = 0;
@@ -213,6 +227,8 @@ public final class ForestRaid extends SavedData {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
         if (isParticipant(player)) {
+            var session=forPlayer(player);
+            if(session!=null&&session.bossConvergence)player.sendSystemMessage(Component.literal("ALERTE · Convergence des boss en cours."));
             player.sendSystemMessage(Component.literal(
                 "Expédition reprise. Ton raid est toujours actif : rejoins l'extraction pour conserver ton butin."));
         } else {
@@ -774,18 +790,36 @@ public final class ForestRaid extends SavedData {
             }
         }
 
-        // The Tracker is a separate boss, not a member of either faction.
-        int bossSlot = guards.size() * 3;
-        if (budget > 0 && !raid.enemies.get(bossSlot)) {
-            var locations = raid.industrial ? IndustrialZone.BOSSES : ForestRaidAnchors.TRACKER;
-            var point = locations.get(Math.floorMod(raid.seed, locations.size()));
-            BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
-            if (center.distToCenterSqr(player.position()) <= 160.0*160.0 && level.hasChunkAt(center)) {
-                BlockPos place = findFloor(level, center, 4, true);
-                if (place != null && raid.spawnGuard(level, place, raid.industrial ? GuardRole.FOREMAN : GuardRole.TRACKER, -1)) {
-                    raid.enemies.set(bossSlot);
-                    raid.setDirty();
+        // Separate stable slots for boss and escort members; at most two
+        // new boss-group entities per population pass, even in convergence.
+        int bossBudget=2;
+        var bosses=raid.selectedBosses;
+        for(int i=0;i<bosses.size()&&bossBudget>0;i++){
+            var boss=bosses.get(i);
+            int anchorIndex=i;
+            if(boss==GuardRole.BIG_PIPE||boss==GuardRole.BIRDEYE)anchorIndex=bosses.indexOf(GuardRole.KNIGHT);
+            if(boss==GuardRole.VENGEFUL_KILLA)anchorIndex=bosses.indexOf(GuardRole.SHADOW_TAGILLA);
+            var point=raid.bossAnchors.get(Math.floorMod(anchorIndex,raid.bossAnchors.size()));
+            BlockPos center=raid.industrial?ForestExpedition.industrialPosition(point):ForestLandmarks.position(point);
+            if(center.distToCenterSqr(player.position())>160.0*160.0||!level.hasChunkAt(center))continue;
+            int squad=guards.size()+Math.max(0,anchorIndex);
+            for(int member=0;member<=BossRoster.escorts(boss)&&bossBudget>0;member++){
+                int slot=guards.size()*3+i*12+member;
+                if(raid.enemies.get(slot))continue;
+                var role=member==0?boss:BossRoster.escort(boss,member-1);
+                Random rng=new Random(raid.seed^slot^player.tickCount/20L);
+                for(int attempt=0;attempt<6;attempt++){
+                    BlockPos near=center.offset(rng.nextInt(21)-10,0,rng.nextInt(21)-10);
+                    if(!level.hasChunkAt(near))continue;
+                    BlockPos place=findFloor(level,near,4,true);
+                    if(place==null||!validEncounterPosition(raid.industrial,place)
+                        ||level.players().stream().anyMatch(p->raid.owns(p)&&place.distToCenterSqr(p.position())<20*20)
+                        ||!level.getEntitiesOfClass(Pillager.class,new net.minecraft.world.phys.AABB(place).inflate(2),e->e.isAlive()&&currentGuard(level,e)).isEmpty())continue;
+                    if(raid.spawnGuard(level,place,role,squad)){
+                        raid.enemies.set(slot);raid.setDirty();bossBudget--;break;
+                    }
                 }
+                if(member==0&&!raid.enemies.get(slot))break;
             }
         }
     }
@@ -966,6 +1000,7 @@ public final class ForestRaid extends SavedData {
         guard.setDropChance(EquipmentSlot.CHEST, 0);
         ForestCombat.arm(guard);
         WeaponCondition.usedLoot(guard.getMainHandItem(),55+guard.getRandom().nextInt(41));
+        if(role.boss())BossLoot.equip(guard);
         GuardPouch.load(guard);
         return level.addFreshEntity(guard);
     }
@@ -1223,11 +1258,12 @@ public final class ForestRaid extends SavedData {
             return;
         }
         corpse.setAppearance(switch(role){
-            case FOREMAN->"foreman";
-            case TRACKER->"tracker";
+            case FOREMAN->"tagilla";
+            case TRACKER->"shturman";
             case PMC->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
-            default->"";
+            default->role.boss()?role.name().toLowerCase(java.util.Locale.ROOT):"";
         });
+        if(role.boss())corpse.setCustomName(Component.literal(role.title));
         if(role==GuardRole.PMC)corpse.setCustomName(Component.literal("PMC · "+PmcSpecialty.get(guard).title));
         corpse.moveTo(guard.getX(), guard.getY(), guard.getZ(), guard.getYRot(), 0);
         corpse.getPersistentData().putUUID(CORPSE, raid.id);
@@ -1246,12 +1282,18 @@ public final class ForestRaid extends SavedData {
             corpse.put(18, RaidRelic.CIRCUIT.stack());
             corpse.put(19,new ItemStack(industrialKey()));
         }
+        if(role.boss()){
+            corpse.put(20,BossLoot.spare(guard));
+            corpse.put(21,BossLoot.bonus(guard));
+        }
+        if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
         if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,new ItemStack(industrialKey()));
         if (level.addFreshEntity(corpse)) {
             for (EquipmentSlot slot : equipment) {
                 guard.setItemSlot(slot, ItemStack.EMPTY);
             }
             GuardPouch.clear(guard);
+            if(role.boss())BossLoot.clear(guard);
         }
     }
 

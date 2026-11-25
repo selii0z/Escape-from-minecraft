@@ -118,6 +118,7 @@ public final class ForestCombat {
             if (!gunId.equals(role.gun)) {
                 enemy.getPersistentData().putString("taczoperations_guard_weapon", gunId);
             }
+            if(gun.isEmpty()&&role.boss())gun=OperationsShop.weapon("m4a1",30);
             if (!gun.isEmpty()) {
                 if (role == GuardRole.PMC) {
                     gun = customizePmcWeapon(enemy, gun);
@@ -333,13 +334,16 @@ public final class ForestCombat {
     }
 
     private static ItemStack customizePmcWeapon(Pillager guard, ItemStack base) {
+        return customizeWeapon(guard,base,false);
+    }
+    static ItemStack customizeWeapon(Pillager guard,ItemStack base,boolean premium) {
         if (!(base.getItem() instanceof IGun gun)) return base;
         ItemStack modified = base.copy();
         try {
             // Cumulative quality thresholds: 3% full, 10% >=4, 20% >=3,
             // 30% >=2, 50% >=1. Incompatible slots are never forced.
             int roll = guard.getRandom().nextInt(100);
-            int limit = roll < 3 ? Integer.MAX_VALUE : roll < 10 ? 4 :
+            int limit = premium || roll < 3 ? Integer.MAX_VALUE : roll < 10 ? 4 :
                 roll < 20 ? 3 : roll < 30 ? 2 : roll < 50 ? 1 : 0;
             if (limit == 0) return base;
             var candidates = new java.util.ArrayList<>(TimelessAPI.getAllCommonAttachmentIndex());
