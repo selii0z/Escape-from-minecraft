@@ -14,22 +14,38 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 /** Campaign progress is persistent; intermediate objectives belong to one raid. */
 public final class StoryMissions {
     private static final String ACCOUNT="efm_story_v1",RUN="efm_story_run_v1";
+    enum Target {ANY("ennemis"),PMC("PMC"),ELITE("ennemis d’élite"),BOSS("boss");
+        final String label;Target(String label){this.label=label;}
+        boolean matches(GuardRole role){return switch(this){case ANY->true;case PMC->role==GuardRole.PMC;case ELITE->role.elite();case BOSS->role.boss();};}
+    }
     enum Mission {
         SILENCE("Opération Silence",false,"Relais forestier",ForestPlan.RELAY,RaidRelic.DOCUMENTS,2,900,180,1),
         INDUSTRIE("Opération Engrenage",true,"Secteur de la sortie principale",IndustrialZone.EXIT,RaidRelic.CIRCUIT,3,1800,320,10),
-        OMEGA("Opération Signal perdu",false,"Secteur de la sortie secondaire",ForestPlan.CONDITIONAL_EXIT,RaidRelic.DRIVE,3,3000,500,20);
+        OMEGA("Opération Signal perdu",false,"Secteur de la sortie secondaire",ForestPlan.CONDITIONAL_EXIT,RaidRelic.DRIVE,3,3000,500,20),
+        LOGISTIQUE("Opération Ravitaillement",true,"Réserve logistique",new ForestPlan.Point(208,182),RaidRelic.RADIO,3,3600,650,25,2,Target.ANY,false),
+        VEILLE("Opération Veille nocturne",false,"Secteur du relais",ForestPlan.RELAY,RaidRelic.WATCH,3,4800,850,30,1,Target.ANY,true),
+        FER("Opération Ligne de fer",true,"Dépôt ferroviaire",new ForestPlan.Point(560,390),RaidRelic.CIRCUIT,4,6000,1100,40,2,Target.ANY,false),
+        FANTOME("Opération Fantôme",false,"Patrouille du nord",new ForestPlan.Point(652,197),RaidRelic.CASE,2,8000,1500,50,1,Target.PMC,true),
+        ARCHIVES("Opération Archives",true,"Archives de l'usine",new ForestPlan.Point(410,175),RaidRelic.DRIVE,3,10000,1900,60,2,Target.ELITE,false),
+        VIGIE("Opération Vigie",false,"Secteur des patrouilles ouest",new ForestPlan.Point(245,342),RaidRelic.OPTIC,4,14000,2600,75,1,Target.ELITE,false),
+        NEMESIS("Opération Némésis",true,"Complexe industriel central",new ForestPlan.Point(405,320),RaidRelic.CHIP,1,18000,3500,90,1,Target.BOSS,false),
+        CREPUSCULE("Opération Crépuscule",false,"Secteur de la sortie secondaire",ForestPlan.CONDITIONAL_EXIT,RaidRelic.CASE,3,24000,4500,110,2,Target.PMC,true),
+        ECLIPSE("Opération Éclipse",true,"Archives de l'usine",new ForestPlan.Point(410,175),RaidRelic.OMEGA,1,35000,7000,150,1,Target.BOSS,false);
         final String title,site;final boolean industrial;final ForestPlan.Point point;final RaidRelic relic;
-        final int kills,credits,xp,level;
+        final int kills,credits,xp,level,quantity;final Target target;final boolean night;
         Mission(String title,boolean industrial,String site,ForestPlan.Point point,RaidRelic relic,int kills,int credits,int xp,int level){
-            this.title=title;this.industrial=industrial;this.site=site;this.point=point;this.relic=relic;this.kills=kills;this.credits=credits;this.xp=xp;this.level=level;
+            this(title,industrial,site,point,relic,kills,credits,xp,level,1,Target.ANY,false);
+        }
+        Mission(String title,boolean industrial,String site,ForestPlan.Point point,RaidRelic relic,int kills,int credits,int xp,int level,int quantity,Target target,boolean night){
+            this.title=title;this.industrial=industrial;this.site=site;this.point=point;this.relic=relic;this.kills=kills;this.credits=credits;this.xp=xp;this.level=level;this.quantity=quantity;this.target=target;this.night=night;
         }
         BlockPos pos(){return industrial?ForestExpedition.industrialPosition(point):ForestLandmarks.position(point);}
     }
     private static CompoundTag campaign(ServerPlayer p){
         var a=SupplyContract.account(p);if(!a.contains(ACCOUNT))a.put(ACCOUNT,new CompoundTag());return a.getCompound(ACCOUNT);
     }
-    private static int next(ServerPlayer p){return Math.clamp(campaign(p).getInt("next"),0,Mission.values().length);}
-    private static Mission current(ServerPlayer p){int n=next(p);return campaign(p).getBoolean("accepted")&&n<Mission.values().length?Mission.values()[n]:null;}
+    static int next(ServerPlayer p){return Math.clamp(campaign(p).getInt("next"),0,Mission.values().length);}
+    static Mission current(ServerPlayer p){int n=next(p);return campaign(p).getBoolean("accepted")&&n<Mission.values().length?Mission.values()[n]:null;}
     private static int count(ServerPlayer p,Mission m){return CarriedStorage.of(p).count(s->s.is(m.relic.item())&&RaidOrigin.found(s));}
     private static void say(ServerPlayer p,String s){p.sendSystemMessage(Component.literal(s));}
     static void status(ServerPlayer p){
@@ -37,8 +53,8 @@ public final class StoryMissions {
         Mission m=Mission.values()[n];var run=p.getPersistentData().getCompound(RUN);
         int stage=run.getInt("stage");boolean inRaid=ForestRaid.isParticipant(p)&&run.getBoolean("active");
         say(p,m.title+" · "+(n+1)+"/"+Mission.values().length+" · "+(current(p)==null?"À accepter":inRaid?"En cours":"En attente du prochain raid"));
-        say(p,(m.industrial?"Zone industrielle":"Forêt Noire")+" · niveau "+m.level+" · "+m.credits+" crédits / "+m.xp+" XP");
-        say(p,"1. "+m.site+" (X "+m.pos().getX()+" Z "+m.pos().getZ()+") · 2. Récupérer "+m.relic.title+" · 3. Éliminer "+m.kills+" ennemis · 4. S'extraire.");
+        say(p,(m.industrial?"Zone industrielle":"Forêt Noire")+(m.night?" · Nuit":"")+" · niveau "+m.level+" · "+m.credits+" crédits / "+m.xp+" XP");
+        say(p,"1. "+m.site+" (X "+m.pos().getX()+" Z "+m.pos().getZ()+") · 2. Récupérer "+m.quantity+" × "+m.relic.title+" · 3. Éliminer "+m.kills+" "+m.target.label+" · 4. S'extraire.");
         if(inRaid)say(p,"Étape "+Math.min(4,stage+1)+"/4 · éliminations "+run.getInt("kills")+"/"+m.kills);
     }
     static void accept(ServerPlayer p){
@@ -49,11 +65,11 @@ public final class StoryMissions {
         campaign(p).putBoolean("accepted",true);status(p);
     }
     static void begin(ServerPlayer p,boolean industrial){
-        clear(p);Mission m=current(p);if(m==null||m.industrial!=industrial)return;
+        clear(p);Mission m=current(p);if(m==null||m.industrial!=industrial||m.night&&!ForestExpedition.isNightRaid(p))return;
         var run=new CompoundTag();run.putBoolean("active",true);run.putInt("mission",next(p));run.putInt("baseline",count(p,m));p.getPersistentData().put(RUN,run);
         say(p,m.title+" · objectif : "+m.site+" (X "+m.pos().getX()+" Z "+m.pos().getZ()+").");
     }
-    private static CompoundTag run(ServerPlayer p,Mission m){
+    static CompoundTag run(ServerPlayer p,Mission m){
         var r=p.getPersistentData().getCompound(RUN);
         return m!=null&&r.getBoolean("active")&&r.getInt("mission")==next(p)?r:null;
     }
@@ -61,15 +77,15 @@ public final class StoryMissions {
         if(!(event.getEntity() instanceof ServerPlayer p)||p.tickCount%20!=0||!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.isParticipant(p))return;
         Mission m=current(p);var r=run(p,m);if(r==null)return;
         if(r.getInt("stage")==0&&m.pos().distToCenterSqr(p.position())<=24*24){
-            r.putInt("stage",1);say(p,"Secteur atteint · récupère "+m.relic.title+".");
+            r.putInt("stage",1);say(p,"Secteur atteint · récupère "+m.quantity+" × "+m.relic.title+".");
         }
-        if(r.getInt("stage")==1&&count(p,m)>r.getInt("baseline")){
-            r.putInt("stage",2);say(p,"Renseignement récupéré · élimine "+m.kills+" ennemis.");
+        if(r.getInt("stage")==1&&(long)count(p,m)-r.getInt("baseline")>=m.quantity){
+            r.putInt("stage",2);say(p,"Renseignement récupéré · élimine "+m.kills+" "+m.target.label+".");
         }
     }
-    static void kill(ServerPlayer p){
+    static void kill(ServerPlayer p,GuardRole role){
         if(!ForestRaid.isParticipant(p)||p.isCreative()||p.isSpectator())return;
-        Mission m=current(p);var r=run(p,m);if(r==null||r.getInt("stage")!=2)return;
+        Mission m=current(p);var r=run(p,m);if(r==null||r.getInt("stage")!=2||!m.target.matches(role))return;
         int k=Math.min(m.kills,r.getInt("kills")+1);r.putInt("kills",k);
         if(k==m.kills){r.putInt("stage",3);say(p,"Objectifs accomplis · extrais-toi avec le renseignement.");}
     }
@@ -79,10 +95,10 @@ public final class StoryMissions {
         if(r==null){clear(p);return;}
         boolean ready=m.industrial==industrial&&r.getInt("stage")==3&&r.getInt("kills")>=m.kills;
         int baseline=r.getInt("baseline");clear(p);
-        if(!ready||count(p,m)<=baseline){say(p,"Opération incomplète · nouvelle tentative au prochain raid.");return;}
+        if(!ready||(long)count(p,m)-baseline<m.quantity){say(p,"Opération incomplète · nouvelle tentative au prochain raid.");return;}
         var a=SupplyContract.account(p);
         if((long)SupplyContract.balance(p)+m.credits>Integer.MAX_VALUE){say(p,"Solde maximal · opération non validée.");return;}
-        if(!CarriedStorage.of(p).consume(s->s.is(m.relic.item())&&RaidOrigin.found(s),1))return;
+        if(!CarriedStorage.of(p).consume(s->s.is(m.relic.item())&&RaidOrigin.found(s),m.quantity))return;
         int index=next(p);campaign(p).putInt("next",index+1);campaign(p).putBoolean("accepted",false);
         a.putInt("credits",SupplyContract.balance(p)+m.credits);
         a.putInt("contract_xp_bonus_v2",(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,a.getInt("contract_xp_bonus_v2"))+m.xp));
