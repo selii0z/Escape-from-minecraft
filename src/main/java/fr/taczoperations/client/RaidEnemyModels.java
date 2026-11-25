@@ -53,7 +53,7 @@ public final class RaidEnemyModels {
             case "Opérateur PMC"->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
             default->null;
         };
-        return selectAppearance(role);
+        return selectAppearance(fr.taczoperations.operations.EnemyAppearance.choose(role,guard.getUUID()));
     }
     public static Preview selectAppearance(String role){
         if(role==null||!role.matches("[a-z_]{1,32}"))return null;
