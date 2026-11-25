@@ -50,7 +50,15 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Le client envoie uniquement un identifiant du menu et un index ; le serveur valide la session, l'existence du lot ou de la case visible. Les découvertes d'un joueur ne sont pas partagées au duo.
 - Protocole 16 ; tests requis : deux joueurs, mêmes armes avec variantes, accessoires et munitions TaCZ, reconnexion, mort, changement de serveur, objet vendu, cases non révélées, achats verrouillés, lisibilité des « ? » et conflits de touche I. Build 464 du lot précédent (marché joueurs) réussi ; compilation de l'inspection à confirmer.
  
+## Finitions — septième lot ajouté
+- Build 483 réussi : toutes les grandes fonctionnalités jusqu'à l'inspection compilent. Pas de validation en jeu déduite de ce résultat.
+- Le transfert rapide de la fouille remplit l'inventaire classique, puis le gilet (si compatible) et le sac équipé. L'espace restant non transférable demeure dans la source. Aucun objet créé depuis une copie client.
+- Contrats, commandes, déblocages, clés d'extraction et revente des marchands comptent et consomment les objets dans les sacs/gilets équipés et les 36 cases natives. Le coffre sécurisé et les sacs non équipés restent exclus de ces transactions. Le contrôle de provenance raid est conservé. Les variantes TaCZ d'accessoires sont distinguées lors de la récupération interrompue.
+- Achats marchands par quantité (1 à 64 lots de catalogue) : +/- et total visible, contrôle intégral du prix, accès, solde et capacité de l'inventaire natif avant tout achat ; aucun achat partiel. Protocole 17. Les achats de lots ne concernent ni le marché noir ni le marché joueurs.
+- Tests : transfert rapide avec inventaire plein et sac partiellement plein, duo sur même caisse, extraction avec clé dans le sac, contrats/revente avec objets répartis entre les espaces, inventaire plein à l'achat, prix total et limites de quantité. Nouvelle compilation à confirmer.
+
 ## Lots à réaliser (pas encore codés)
-- Test en jeu et revue graphique des boutiques, aperçu au survol, achat par quantité, amélioration fidélité/rareté distincte si nécessaire.
+- Test en jeu et revue graphique des boutiques, aperçu au survol, amélioration fidélité/rareté distincte si nécessaire.
+- Modèles 3D portés et icônes définitives des packs, assurance Curios, utilisation directe des munitions par TaCZ et récupération crash du marché restent à traiter.
 
 Les nouveaux taux et catégories sont des choix d'équilibrage à tester. Pas de planque, trophées ou intégration Woods.
