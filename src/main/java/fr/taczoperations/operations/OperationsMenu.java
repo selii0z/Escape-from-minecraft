@@ -303,6 +303,17 @@ public final class OperationsMenu extends AbstractContainerMenu {
         }else if(kind==3&&view.tab()==SHOP&&row<36)stack=player.getInventory().getItem(row);
         ItemDiscovery.inspect(player,stack);
     }
+    public void buyLots(ServerPlayer player,int row,int lots){
+        if(player.containerMenu!=this||view.tab()!=SHOP||!stillValid(player)||!PlayerMarket.available(player)
+            ||row<0||row>=view.shopRows().size()||lots<1||lots>64)return;
+        var merchant=OperationsShop.values()[view.page()/VENDOR_PAGES];
+        int index=view.shopRows().get(row);
+        var offers=merchant.offers();
+        if(index<0||index>=offers.size()||offers.get(index).action()!=OperationsShop.Action.BUY)return;
+        String notice=merchant.trade(player,index,Long.parseLong(view.market().getFirst()),lots,false);
+        open(player,position,SHOP,view.page(),notice);
+    }
+
     public void listPlayerItem(ServerPlayer player,int price){
         if(player.containerMenu!=this||view.tab()!=PLAYER_MARKET||!stillValid(player))return;
         String notice=PlayerMarket.of(player).list(player,view.playerMarket().held(),price);
