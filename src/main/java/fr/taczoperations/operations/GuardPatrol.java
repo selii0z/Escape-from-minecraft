@@ -9,11 +9,13 @@ import java.util.Random;
 
 /** Bounded, non-spawning idle patrols. Combat and health stay unchanged. */
 final class GuardPatrol {
-    private static final String STEP="efm_patrol_step";
+    private static final String STEP="efm_patrol_step", SECTOR="efm_patrol_sector", FAIL="efm_patrol_fail";
     static boolean advance(ServerLevel level,Pillager guard,GuardRole role){
         var data=guard.getPersistentData();
         if(!data.contains("guard_home_x"))return false;
         BlockPos home=new BlockPos(data.getInt("guard_home_x"),data.getInt("guard_home_y"),data.getInt("guard_home_z"));
+        var sectors=role.boss()?java.util.List.<BlockPos>of():ForestRaid.patrolRoute(level,guard);
+        if(!sectors.isEmpty())return travel(level,guard,role,sectors);
         BlockPos anchor=role.boss()?home:ForestRaid.patrolAnchor(level,guard);
         int squad=data.getInt("taczoperations_squad");
         var id=data.getUUID(ForestRaid.ENEMY);
@@ -64,6 +66,62 @@ final class GuardPatrol {
         // Don't get stuck retrying one impossible waypoint.
         data.putInt(STEP,(phase+1)%4);
         return false;
+    }
+    /** Make long journeys in short validated legs, not teleports. */
+    private static boolean travel(ServerLevel level,Pillager guard,GuardRole role,java.util.List<BlockPos> route){
+        var data=guard.getPersistentData();
+        int index=Math.floorMod(data.contains(SECTOR)?data.getInt(SECTOR):1,route.size());
+        var here=guard.blockPosition();
+        var goal=route.get(index);
+        int ox=Math.floorMod(guard.getUUID().hashCode(),7)-3;
+        int oz=Math.floorMod(guard.getUUID().hashCode()/7,7)-3;
+        goal=goal.offset(ox,0,oz);
+        if(horizontalDistance(here,goal)<8){
+            index=(index+1)%route.size();
+            data.putInt(SECTOR,index);data.putInt(FAIL,0);
+            goal=route.get(index).offset(ox,0,oz);
+        }
+        double dx=goal.getX()-here.getX(),dz=goal.getZ()-here.getZ();
+        double distance=Math.hypot(dx,dz);
+        if(distance<1)return false;
+        double length=Math.min(26,distance);
+        // Two attempts per cooldown; second attempt takes a modest detour.
+        for(int i=0;i<2;i++){
+            double side=i==0?0:(Math.floorMod(guard.getUUID().hashCode()+index,2)==0?6:-6);
+            int x=here.getX()+(int)Math.round(dx/distance*length-dz/distance*side);
+            int z=here.getZ()+(int)Math.round(dz/distance*length+dx/distance*side);
+            var flat=new BlockPos(x,here.getY(),z);
+            if(!ForestRaid.patrolPosition(level,guard,flat))continue;
+            BlockPos destination=null;
+            for(int dy:new int[]{0,1,-1,2,-2,3,-3}){
+                var p=flat.offset(0,dy,0);
+                if(standable(level,guard,p)){destination=p;break;}
+            }
+            if(destination==null){
+                int y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
+                var p=new BlockPos(x,y,z);
+                if(Math.abs(y-here.getY())<=8&&standable(level,guard,p))destination=p;
+            }
+            if(destination==null)continue;
+            var path=guard.getNavigation().createPath(destination,0);
+            if(path==null||!path.canReach()||path.getNodeCount()>96)continue;
+            boolean safe=true;
+            for(int n=0;n<path.getNodeCount();n++){
+                var node=path.getNode(n);
+                if(!ForestRaid.patrolPosition(level,guard,new BlockPos(node.x,node.y,node.z))){safe=false;break;}
+            }
+            if(safe&&guard.getNavigation().moveTo(path,role==GuardRole.PMC?.85:.72)){
+                data.putInt(SECTOR,index);data.putInt(FAIL,0);return true;
+            }
+        }
+        int fails=data.getInt(FAIL)+1;
+        // Skip blocked or unloaded sectors after three attempts.
+        if(fails>=3){data.putInt(SECTOR,(index+1)%route.size());fails=0;}
+        data.putInt(FAIL,fails);
+        return false;
+    }
+    private static double horizontalDistance(BlockPos a,BlockPos b){
+        return Math.hypot(a.getX()-b.getX(),a.getZ()-b.getZ());
     }
     private static boolean standable(ServerLevel level,Pillager guard,BlockPos p){
         return ForestRaid.patrolPosition(level,guard,p)&&level.getBlockState(p).isAir()
