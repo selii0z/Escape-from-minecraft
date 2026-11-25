@@ -176,7 +176,7 @@ public final class Hideout {
         BlockPos c=center(id);
         for(int i=0;i<Station.values().length;i++){
             int x=-10+(i%4)*6,z=i<4?-11:11;
-            if(e.getPos().equals(c.offset(x,0,z))||e.getPos().equals(c.offset(x,2,z))){
+            if(e.getPos().equals(c.offset(x,0,z))||e.getPos().equals(c.offset(x,3,z))){
                 HideoutMenu.open(p);return;
             }
         }
