@@ -129,8 +129,10 @@ public final class ForestRaid extends SavedData {
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
-        raid.bossConvergence=new Random(raid.seed^0x72c6aee3L).nextInt(20)==0;
-        raid.selectedBosses=raid.bossConvergence?BossRoster.all():BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed);
+        int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
+        raid.bossConvergence=bossRoll<5;
+        raid.selectedBosses=raid.bossConvergence?BossRoster.all():bossRoll<15?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,true)
+            :bossRoll<45?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,false):List.of();
         if(raid.bossConvergence){
             var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
             player.sendSystemMessage(warning);
@@ -171,9 +173,11 @@ public final class ForestRaid extends SavedData {
         raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
         player.getPersistentData().putUUID(PLAYER, raid.id);
         SupplyContract.departure(player);
+        raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
             SupplyContract.departure(partner);
+            raid.announceExits(partner);
         }
         // Clear stale containers in the chunks around the spawn immediately,
         // rather than waiting for the first scheduled player tick.
@@ -184,6 +188,19 @@ public final class ForestRaid extends SavedData {
         raid.setDirty();
     }
 
+    // Shared deterministic availability for every participant in the session.
+    private boolean exitOpen(int index){
+        return new Random(seed^0x3fa1b7c9L^(index*0x9e3779b9L)).nextInt(100)<(index==0?65:index==1?65:50);
+    }
+    static boolean secondaryOpen(ServerPlayer player,int index){
+        var raid=forPlayer(player);
+        return raid!=null&&raid.owns(player)&&raid.exitOpen(index);
+    }
+    private void announceExits(ServerPlayer p){
+        String exits=industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
+            :"Sortie principale ouverte · relais : "+(exitOpen(0)?"activable":"indisponible pour ce raid");
+        p.sendSystemMessage(Component.literal(exits));
+    }
     // Offline players retain their raid slot for a limited reconnection window.
     static void finishParticipant(ServerPlayer player) {
         ForestRaid raid=forPlayer(player);
@@ -228,6 +245,7 @@ public final class ForestRaid extends SavedData {
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
         if (isParticipant(player)) {
             var session=forPlayer(player);
+            if(session!=null)session.announceExits(player);
             if(session!=null&&session.bossConvergence)player.sendSystemMessage(Component.literal("ALERTE · Convergence des boss en cours."));
             player.sendSystemMessage(Component.literal(
                 "Expédition reprise. Ton raid est toujours actif : rejoins l'extraction pour conserver ton butin."));
