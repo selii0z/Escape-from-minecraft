@@ -640,6 +640,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
 
 
+    private void inspectSelected(int row){DiscoveryClient.request(menu.containerId,1,row);}
+    private void discoveryItem(GuiGraphics g,ItemStack stack,int x,int y,float size){
+        if(DiscoveryClient.unknown(stack)){
+            centered(g,"?",x+Math.round(8*size),y+Math.round(4*size),size,GOLD,true);
+        }else item(g,stack,x,y,size);
+    }
+    private String discoveredName(ItemStack stack,String name){return DiscoveryClient.unknown(stack)?"Objet non identifié":name;}
     private String[] blackOffer(int index){
         return menu.view().market().get(index+1).split("\\|",-1);
     }
@@ -655,10 +662,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             int row=i,x=173+i*74,y=142;
             String[] o=blackOffer(row);
             var stack=fr.taczoperations.operations.BlackMarket.preview(day,row);
-            widget(x,y,70,70,o[0],()->shopSelection=row,()->true,(g,hover)->{
+            widget(x,y,70,70,discoveredName(stack,o[0]),()->shopSelection=row,()->true,(g,hover)->{
                 g.fillGradient(x,y,x+70,y+70,0xff3a4332,0xff1d231c);
                 frame(g,x,y,70,70,shopSelection==row,hover);
-                item(g,stack,x+11,y+13,3F);
+                discoveryItem(g,stack,x+11,y+13,3F);
                 text(g,numberLong(Long.parseLong(o[1])),x+4,y+4,.9F,GOLD,true);
                 text(g,"Stock : "+o[2],x+4,y+58,.82F,o[2].equals("0")?SOFT:LIME,true);
             });
@@ -667,15 +674,17 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             boolean ok=blackCanBuy();key(g,640,252,172,28,ok,hover,ok);
             centered(g,blackOffer(shopSelection)[2].equals("0")?"Épuisé":"Acheter · "+blackOffer(shopSelection)[1]+" cr.",726,261,1,ok?WHITE:SOFT,true);
         });
-        simple(640,288,172,24,"Actualiser",()->send(OperationsMenu.REFRESH));
+        simple(640,288,172,24,"Examiner",()->inspectSelected(shopSelection),()->false,()->DiscoveryClient.unknown(fr.taczoperations.operations.BlackMarket.preview(day,shopSelection)));
+        simple(640,318,172,24,"Actualiser",()->send(OperationsMenu.REFRESH));
     }
     private void drawBlackMarket(GuiGraphics g){
         text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
         text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
         var o=blackOffer(shopSelection);
         panel(g,173,231,454,92,DARK);
-        item(g,fr.taczoperations.operations.BlackMarket.preview(Long.parseLong(menu.view().market().getFirst()),shopSelection),185,242,4F);
-        text(g,fit(o[0],350),266,241,1.18F,WHITE,true);
+        var stack=fr.taczoperations.operations.BlackMarket.preview(Long.parseLong(menu.view().market().getFirst()),shopSelection);
+        discoveryItem(g,stack,185,242,4F);
+        text(g,fit(discoveredName(stack,o[0]),350),266,241,1.18F,WHITE,true);
         text(g,fit(o[4],350),266,264,.9F,o[3].equals("1")?SOFT:0xffdf9c94,false);
         text(g,numberLong(Long.parseLong(o[1]))+" cr. · stock "+o[2],266,288,1.1F,GOLD,true);
         text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
@@ -701,10 +710,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         for(int i=0;i<page.offers().size();i++){
             final int row=i;var o=page.offers().get(i);int x=169+(i%4)*94,y=171+(i/4)*53;
-            widget(x,y,90,50,o.item().getHoverName().getString(),()->marketSelection=row,()->true,(g,hover)->{
+            widget(x,y,90,50,discoveredName(o.item(),o.item().getHoverName().getString()),()->marketSelection=row,()->true,(g,hover)->{
                 g.fillGradient(x,y,x+90,y+50,o.own()?0xff435037:0xff343e31,0xff1d231d);
                 frame(g,x,y,90,50,marketSelection==row,hover);
-                item(g,o.item(),x+30,y+7,2.1F);
+                discoveryItem(g,o.item(),x+30,y+7,2.1F);
                 text(g,numberLong(o.price())+" cr.",x+4,y+3,.82F,GOLD,true);
                 text(g,"x"+o.item().getCount(),x+4,y+38,.82F,WHITE,true);
                 if(o.own())text(g,"MOI",x+66,y+38,.76F,LIME,true);
@@ -713,12 +722,14 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         simple(169,337,60,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()>0);
         simple(485,337,60,22,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()+1<v.pages());
+        simple(581,164,234,19,"Examiner",()->inspectSelected(marketSelection),()->false,()->marketOffer()!=null&&DiscoveryClient.unknown(marketOffer().item()));
         widget(581,185,234,25,"Confirmer l'offre",()->send(OperationsMenu.PLAYER_OFFER_FIRST+marketSelection),
             ()->marketOffer()!=null&&(marketOffer().own()||v.credits()>=marketOffer().price()),(g,hover)->{
                 var o=marketOffer();boolean ok=o!=null&&(o.own()||v.credits()>=o.price());
                 key(g,581,185,234,25,ok,hover,ok);
                 centered(g,o==null?"Sélectionne une offre":o.own()?"Annuler et récupérer":"Acheter le lot",698,193,1,ok?WHITE:SOFT,true);
             });
+        simple(731,268,84,18,"Examiner",()->DiscoveryClient.request(menu.containerId,2,0),()->false,()->DiscoveryClient.unknown(page.held()));
         marketPrice=new net.minecraft.client.gui.components.EditBox(font,offsetX+Math.round(581*scale),
             offsetY+Math.round(296*scale),Math.round(111*scale),Math.max(14,Math.round(23*scale)),Component.literal("Prix total"));
         marketPrice.setMaxLength(9);marketPrice.setFilter(t->t.matches("[0-9]*"));marketPrice.setValue("100");
@@ -743,8 +754,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         panel(g,578,106,242,73,0xff20251f);
         var o=marketOffer();
         if(o!=null){
-            item(g,o.item(),585,115,3F);
-            text(g,fit(o.item().getHoverName().getString(),174),640,113,.92F,WHITE,true);
+            discoveryItem(g,o.item(),585,115,3F);
+            text(g,fit(discoveredName(o.item(),o.item().getHoverName().getString()),174),640,113,.92F,WHITE,true);
             text(g,"Vendeur : "+fit(o.seller(),118),640,129,.87F,SOFT,false);
             text(g,numberLong(o.price())+" cr. · x"+o.item().getCount(),640,144,.92F,GOLD,true);
             text(g,fr.taczoperations.operations.RaidOrigin.found(o.item())?"Trouvé en raid":"Matériel standard",640,159,.82F,SOFT,false);
@@ -752,8 +763,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g,"METTRE EN VENTE · "+page.ownCount()+"/10",581,222,1.02F,GOLD,true);
         panel(g,578,239,242,50,0xff20251f);
         if(!page.held().isEmpty()){
-            item(g,page.held(),584,244,2.2F);
-            text(g,fit(page.held().getHoverName().getString(),178),625,246,.92F,WHITE,true);
+            discoveryItem(g,page.held(),584,244,2.2F);
+            text(g,fit(discoveredName(page.held(),page.held().getHoverName().getString()),178),625,246,.92F,WHITE,true);
             text(g,"Lot : x"+page.held().getCount()+" · main principale",625,263,.83F,SOFT,false);
         }else{
             text(g,"Tiens un objet vendable en main",584,245,.86F,SOFT,false);
@@ -809,12 +820,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             if(index<0||index>=offers.size())continue;
             var o=offers.get(index);var stack=o.stack().get();
             int x=169+(i%8)*47,y=169+(i/8)*48;
-            widget(x,y,45,45,o.title(),()->shopSelection=row,()->true,(g,hover)->{
+            widget(x,y,45,45,discoveredName(stack,o.title()),()->shopSelection=row,()->true,(g,hover)->{
                 int tier=o.loyaltyLevel();
                 int top=tier>=4?0xff42374b:tier==3?0xff32434a:0xff354030;
                 g.fillGradient(x,y,x+45,y+45,top,0xff1c211d);
                 frame(g,x,y,45,45,shopSelection==row,hover);
-                item(g,stack,x+7,y+9,1.9F);
+                discoveryItem(g,stack,x+7,y+9,1.9F);
                 String cost=o.action()==OperationsShop.Action.UNLOCK?"Accès":o.action()==OperationsShop.Action.REPAIR?"Répar.":numberLong(shopPrice(o));
                 text(g,fit(cost,54),x+3,y+2,.79F,GOLD,true);
                 if(shopLocked(o))text(g,"F"+tier,x+28,y+34,.82F,0xffe5a9a0,true);
@@ -829,6 +840,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
         simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
         simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
+        simple(733,193,83,20,"Examiner",()->inspectSelected(shopSelection),()->false,()->shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()));
         widget(581,215,147,26,"Confirmer",()->send(OperationsMenu.TRADE_FIRST+shopSelection),()->shopCanTrade(false),(g,hover)->{
             var o=shopOffer(shopSelection);boolean ok=shopCanTrade(false);
             key(g,581,215,147,26,ok,hover,ok);
@@ -857,8 +869,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var o=shopOffer(shopSelection);
         if(o!=null){
             var stack=o.stack().get();
-            item(g,stack,585,151,3F);
-            text(g,fit(o.title(),174),640,149,.91F,WHITE,true);
+            discoveryItem(g,stack,585,151,3F);
+            text(g,fit(discoveredName(stack,o.title()),174),640,149,.91F,WHITE,true);
             text(g,fit(o.requirement(),174),640,163,.83F,SOFT,false);
             String cost=o.action()==OperationsShop.Action.SELL?numberLong(shopPrice(o))+" cr/u · x"+v.saleCounts().get(shopSelection):o.action()==OperationsShop.Action.BUY?numberLong(o.price())+" cr. · x"+stack.getCount():o.action()==OperationsShop.Action.UNLOCK?"Remettre un objet":merchant==OperationsShop.ARMORER?"8 cr./% · min. 50":numberLong(o.price())+" cr.";
             text(g,fit(cost,174),640,177,.9F,GOLD,true);
@@ -873,13 +885,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 g.fill(x,y,x+24,y+24,0xff252a24);g.renderOutline(x,y,24,24,0xff485044);
                 var stack=inv.getItem(i);
                 if(!stack.isEmpty()){
-                    item(g,stack,x+3,y+3,1.12F);
+                    discoveryItem(g,stack,x+3,y+3,1.12F);
                     if(stack.getCount()>1)text(g,""+stack.getCount(),x+12,y+15,.78F,WHITE,true);
                 }
             }
         }
         text(g,"Revente possible : "+numberLong(v.shopValue())+" cr.",581,378,.92F,LIME,true);
-        text(g,"Inventaire en lecture seule · achats et ventes confirmés",581,393,.74F,SOFT,false);
+        text(g,"Clic molette sur un objet inconnu pour examiner",581,393,.74F,SOFT,false);
     }
 
     private void pager(int page, int total) {
@@ -1044,4 +1056,17 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static String stars(int n) { return "★".repeat(n) + "☆".repeat(5 - n); }
     private static ResourceLocation asset(String name) { return ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, name); }
     private static ResourceLocation texture(String name) { return asset("textures/gui/" + name + ".png"); }
+    @Override public boolean mouseClicked(double mouseX,double mouseY,int button){
+        if(button==2&&menu.view().tab()==OperationsMenu.SHOP&&scale>0&&minecraft.player!=null){
+            double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
+            if(x>=581&&x<815&&y>=265&&y<369){
+                int col=(int)(x-581)/26,row=(int)(y-265)/26,k=row*9+col;
+                int i=k<27?k+9:k-27;
+                if(i>=0&&i<36&&DiscoveryClient.unknown(minecraft.player.getInventory().getItem(i))){
+                    DiscoveryClient.request(menu.containerId,3,i);return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX,mouseY,button);
+    }
 }
