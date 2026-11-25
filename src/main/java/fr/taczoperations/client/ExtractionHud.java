@@ -32,16 +32,24 @@ public final class ExtractionHud {
         if(!valid(Minecraft.getInstance())){state=null;level=null;}
     }
     @SubscribeEvent public static void render(RenderGuiEvent.Post event){
+        var graphics=event.getGuiGraphics();
+        graphics.pose().pushPose();
+        try{
+            graphics.pose().scale(RaidHudSettings.scale(),RaidHudSettings.scale(),1);
+            draw(event);
+        }finally{graphics.pose().popPose();}
+    }
+    private static void draw(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();
         if(!valid(mc)||state==null||mc.options.hideGui||System.nanoTime()-updated>1_500_000_000L)return;
-        int w=mc.getWindow().getGuiScaledWidth();
+        int w=RaidHudSettings.width();
         int width=w>=420?150:90;
-        int x=w>=420?(w-width)/2:Math.max(154,w-width-8),y=40;
+        int x=w>=420?(w-width)/2:Math.max(2,(w-width)/2),y=40;
         if(x+width>w-2)return;
         int elapsed=Math.clamp(state.elapsed(),0,100);
         int seconds=(100-elapsed+19)/20;
         var g=event.getGuiGraphics();
-        g.fill(x,y,x+width,y+32,0xe01a2219);
+        g.fill(x,y,x+width,y+32,RaidHudSettings.bg(0xe01a2219));
         g.fill(x,y,x+2,y+32,0xffa6bf7d);
         g.drawCenteredString(mc.font,"EXTRACTION",x+width/2,y+4,0xffb5d78e);
         g.drawCenteredString(mc.font,seconds+" s",x+width/2,y+16,0xffedf2e4);
