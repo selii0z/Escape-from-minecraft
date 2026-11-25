@@ -143,7 +143,11 @@ public final class RaidSecurity {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }
     private static boolean eligible(ItemStack s) {
-        return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun);
+        return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s));
+    }
+    private static boolean isOptics(ItemStack s){
+        var id=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
+        return id.equals("taczoperations:night_vision_goggles")||id.equals("taczoperations:thermal_goggles");
     }
     static void removeInsuranceForTrade(ItemStack s){if(tag(s).contains(INSURED))removeInsurance(s);}
     private static void removeInsurance(ItemStack s) {
@@ -155,8 +159,10 @@ public final class RaidSecurity {
         var items=new java.util.ArrayList<ItemStack>();
         items.add(p.getMainHandItem());
         for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET})items.add(p.getItemBySlot(slot));
-        items.removeIf(s->!eligible(s)||tag(s).hasUUID(INSURED)&&p.getUUID().equals(tag(s).getUUID(INSURED)));
-        if(items.isEmpty())return "Aucune arme tenue ou armure équipée non assurée.";
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
+        var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
+        items.removeIf(s->!unique.add(s)||!eligible(s)||tag(s).hasUUID(INSURED)&&p.getUUID().equals(tag(s).getUUID(INSURED)));
+        if(items.isEmpty())return "Aucun équipement porté ou tenu à assurer.";
         var account=SupplyContract.account(p);int cost=items.size()*FEE,balance=account.getInt("credits");
         if(balance<cost)return "Crédits insuffisants : "+cost+" requis.";
         for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
@@ -176,15 +182,23 @@ public final class RaidSecurity {
         if(!protectedCases.isEmpty())p.getPersistentData().put(DEATH_CASES,protectedCases);
         if(!p.level().dimension().equals(ForestExpedition.FOREST)||!ForestRaid.isParticipant(p))return;
         var account=SupplyContract.account(p);ListTag claims=account.getList(CLAIMS,10);int recovered=0;
+        var looseContents=new java.util.ArrayList<ItemEntity>();
         var iterator=event.getDrops().iterator();
         while(iterator.hasNext()) {
             ItemEntity drop=iterator.next();ItemStack s=drop.getItem();CompoundTag d=tag(s);
             if(!d.hasUUID(INSURED)||!p.getUUID().equals(d.getUUID(INSURED)))continue;
             removeInsurance(s);
             if(claims.size()>=128||p.getRandom().nextInt(100)>=95)continue;
+            // The insured carrier returns empty. Its real contents remain in the raid.
+            if(s.getItem() instanceof FieldPack){
+                var contents=FieldPack.contents(s);
+                for(var inside:contents)if(!inside.isEmpty())looseContents.add(new ItemEntity(p.level(),drop.getX(),drop.getY(),drop.getZ(),inside.copy()));
+                contents.replaceAll(ignored->ItemStack.EMPTY);FieldPack.replaceContents(s,contents);
+            }
             CompoundTag e=new CompoundTag();e.putLong("ready",System.currentTimeMillis()+DELAY);
             e.put("item",s.saveOptional(p.registryAccess()));claims.add(e);iterator.remove();recovered++;
         }
+        event.getDrops().addAll(looseContents);
         account.put(CLAIMS,claims);
         if(recovered>0)p.sendSystemMessage(Component.literal("Assurance : "+recovered+" équipement(s) en récupération (30 min)."));
     }
