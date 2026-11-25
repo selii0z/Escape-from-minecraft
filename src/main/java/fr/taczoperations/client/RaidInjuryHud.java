@@ -31,7 +31,7 @@ public final class RaidInjuryHud{
         var graphics=event.getGuiGraphics();
         graphics.pose().pushPose();
         try{
-            graphics.pose().scale(RaidHudSettings.scale(),RaidHudSettings.scale(),1);
+            graphics.pose().scale(RaidHudSettings.scale(RaidHudSettings.Panel.HEALTH),RaidHudSettings.scale(RaidHudSettings.Panel.HEALTH),1);
             draw(event);
         }finally{graphics.pose().popPose();}
     }
@@ -41,15 +41,15 @@ public final class RaidInjuryHud{
             ||!mc.level.dimension().equals(ForestExpedition.FOREST)||mc.level!=currentLevel){
             state=null;return;
         }
-        if(!RaidHudSettings.visible()||mc.options.hideGui||state==null||System.nanoTime()-updated>3_500_000_000L)return;
+        if(!RaidHudSettings.visible(RaidHudSettings.Panel.HEALTH)||mc.options.hideGui||state==null||System.nanoTime()-updated>3_500_000_000L)return;
         var g=event.getGuiGraphics();
-        int x=RaidHudSettings.right()?Math.max(8,RaidHudSettings.width()-150):8,y=8;
-        int limit=RaidHudSettings.height()-65;
+        int x=RaidHudSettings.x(RaidHudSettings.Panel.HEALTH),y=RaidHudSettings.y(RaidHudSettings.Panel.HEALTH);
+        int limit=RaidHudSettings.height(RaidHudSettings.Panel.HEALTH)-4;
         if(y+17>limit)return;
         boolean injured=state.bleed()>0||state.fracture()||state.arm();
         boolean critical=state.bleed()==2||mc.player.getHealth()<=mc.player.getMaxHealth()*.2F;
         int statusColor=critical?0xffe07b72:injured?0xffe5ce88:0xffb5c9a4;
-        g.fill(x,y,x+142,y+17,RaidHudSettings.bg(0xca171d18));
+        g.fill(x,y,x+142,y+17,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xca171d18));
         g.fill(x,y,x+2,y+17,statusColor);
         g.drawString(mc.font,critical?"ÉTAT · CRITIQUE":injured?"ÉTAT · BLESSURES":"ÉTAT · STABLE",x+7,y+5,statusColor,false);
         y+=19;
@@ -76,7 +76,7 @@ public final class RaidInjuryHud{
             int duration=Math.max(1,medicine.getUseDuration(stack,mc.player));
             int remaining=Math.clamp(mc.player.getUseItemRemainingTicks(),0,duration);
             int progress=100*(duration-remaining)/duration;
-            g.fill(x,y,x+142,y+31,RaidHudSettings.bg(0xda171d18));
+            g.fill(x,y,x+142,y+31,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xda171d18));
             String name=mc.font.plainSubstrByWidth(stack.getHoverName().getString(),132);
             g.drawString(mc.font,name,x+5,y+4,0xffe5ce88,false);
             g.fill(x+5,y+17,x+137,y+21,0xff414b3c);
@@ -88,7 +88,7 @@ public final class RaidInjuryHud{
             row(g,mc,x,y,"Santé à restaurer",supply("Salewa",state.salewas()),0xffe5ce88);y+=25;
         }
         if(y+38<=limit){
-            g.fill(x,y,x+142,y+38,RaidHudSettings.bg(0xca171d18));
+            g.fill(x,y,x+142,y+38,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xca171d18));
             survivalMeter(g,mc,x+5,y+3,"Hydratation",state.water(),0xff83b7ce);
             survivalMeter(g,mc,x+5,y+20,"Énergie",state.energy(),0xffcbb776);
             y+=40;
@@ -101,7 +101,7 @@ public final class RaidInjuryHud{
             boolean alert=value==0||jammed;
             int height=alert?36:25;
             if(y+height<=limit){
-                g.fill(x,y,x+142,y+height,RaidHudSettings.bg(0xca171d18));
+                g.fill(x,y,x+142,y+height,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xca171d18));
                 String percent=String.format(java.util.Locale.FRANCE,"%.1f %%",value/100.0);
                 String name=mc.font.plainSubstrByWidth(weapon.getHoverName().getString(),Math.max(0,126-mc.font.width(percent)));
                 g.drawString(mc.font,name,x+5,y+4,0xffd3dbcc,false);
@@ -117,7 +117,7 @@ public final class RaidInjuryHud{
             boolean equipped=false;
             for(var slot:slots)if(BallisticVest.tier(mc.player.getItemBySlot(slot),slot)>0){equipped=true;break;}
             if(equipped){
-                g.fill(x,y,x+142,y+59,RaidHudSettings.bg(0xca171d18));
+                g.fill(x,y,x+142,y+59,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xca171d18));
                 g.drawString(mc.font,"ARMURE BALISTIQUE",x+5,y+3,0xffb8c0af,false);
                 for(int i=0;i<4;i++){
                     var piece=mc.player.getItemBySlot(slots[i]);
@@ -136,7 +136,7 @@ public final class RaidInjuryHud{
     }
     // Original vector-style silhouette; no third-party textures.
     private static void bodyPanel(GuiGraphics g,Minecraft mc,int x,int y){
-        g.fill(x,y,x+142,y+76,0xca171d18);
+        g.fill(x,y,x+142,y+76,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xca171d18));
         int xx=x+11,yy=y+5;
         limb(g,xx+13,yy,13,13,zoneColor(RaidInjuryPayload.HEAD,false));
         limb(g,xx+10,yy+15,19,24,zoneColor(RaidInjuryPayload.TORSO,false));
@@ -211,7 +211,7 @@ public final class RaidInjuryHud{
         if(value>0)g.fill(x,y,x+width*value/max,y+3,color);
     }
     private static void row(GuiGraphics g,Minecraft mc,int x,int y,String name,String treatment,int color){
-        g.fill(x,y,x+142,y+23,0xca171d18);
+        g.fill(x,y,x+142,y+23,RaidHudSettings.bg(RaidHudSettings.Panel.HEALTH,0xca171d18));
         g.fill(x,y,x+2,y+23,color);
         g.drawString(mc.font,mc.font.plainSubstrByWidth(name,130),x+7,y+3,color,false);
         int treatmentColor=treatment.contains("absent")||treatment.contains("Aucun")||treatment.contains("incomplet")?0xffe07b72:0xffb5c9a4;
