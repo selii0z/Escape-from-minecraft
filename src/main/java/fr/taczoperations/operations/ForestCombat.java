@@ -76,6 +76,7 @@ public final class ForestCombat {
         int lastSeenTick, nextManeuver, movingUntil, alertUntil;
         float previousHealth=-1;
         boolean retreating;
+        int nextPatrol;
     }
 
     static void arm(Pillager enemy) {
@@ -174,7 +175,7 @@ public final class ForestCombat {
                 }
                 if (distance < range && distance < detection * detection
                     && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
-                    && ForestRaid.isParticipant(candidate) && guard.hasLineOfSight(candidate)) {
+                    && ForestRaid.sameSession(level,guard,candidate) && guard.hasLineOfSight(candidate)) {
                     target = candidate;
                     range = distance;
                 }
@@ -198,12 +199,11 @@ public final class ForestCombat {
                 guard.setTarget(null);
                 aim.visibleTarget = null;
                 operator.aim(false);
-                if (guard.tickCount % 80 == 0 && guard.getNavigation().isDone()) {
-                    var home = guard.getPersistentData();
-                    if (home.contains("guard_home_x")) {
-                        guard.getNavigation().moveTo(home.getInt("guard_home_x") + guard.getRandom().nextInt(role == GuardRole.PMC ? 41 : 11) - (role == GuardRole.PMC ? 20 : 5),
-                            home.getInt("guard_home_y"), home.getInt("guard_home_z") + guard.getRandom().nextInt(role == GuardRole.PMC ? 41 : 11) - (role == GuardRole.PMC ? 20 : 5), .75);
-                    }
+                if(guard.tickCount>=aim.nextPatrol&&guard.getNavigation().isDone()){
+                    boolean moved=GuardPatrol.advance(level,guard,role);
+                    // stagger path queries; idle at the next waypoint for a
+                    // short period, retry later if terrain is not passable.
+                    aim.nextPatrol=guard.tickCount+(moved?160:80)+guard.getRandom().nextInt(61);
                 }
                 return;
             }

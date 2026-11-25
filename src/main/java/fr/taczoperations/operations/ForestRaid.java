@@ -624,6 +624,29 @@ public final class ForestRaid extends SavedData {
         return at(level,guard.blockPosition()).matches(guard.getPersistentData(),ENEMY);
     }
 
+    // Patrol destinations are confined to the guard's own session and map.
+    // This is deliberately separate from combat pursuit.
+    static boolean patrolPosition(ServerLevel level,Pillager guard,BlockPos pos){
+        ForestRaid raid=at(level,guard.blockPosition());
+        return raid.matches(guard.getPersistentData(),ENEMY)&&raid.inArea(pos)
+            &&level.hasChunkAt(pos)&&validEncounterPosition(raid.industrial,pos);
+    }
+
+    static BlockPos patrolAnchor(ServerLevel level,Pillager guard){
+        ForestRaid raid=at(level,guard.blockPosition());
+        int squad=guard.getPersistentData().getInt("taczoperations_squad");
+        if(squad>=0&&squad<raid.encounterPoints.size()){
+            var point=raid.encounterPoints.get(squad);
+            return raid.industrial?ForestExpedition.industrialPosition(point):ForestLandmarks.position(point);
+        }
+        var data=guard.getPersistentData();
+        return new BlockPos(data.getInt("guard_home_x"),data.getInt("guard_home_y"),data.getInt("guard_home_z"));
+    }
+
+    static boolean sameSession(ServerLevel level,Pillager guard,ServerPlayer player){
+        return at(level,guard.blockPosition()).owns(player);
+    }
+
     public static boolean canKeepCorpse(ServerLevel level, GuardCorpse corpse) {
         return level.dimension().equals(ForestExpedition.FOREST)
             && at(level,corpse.blockPosition()).matches(corpse.getPersistentData(),CORPSE);
