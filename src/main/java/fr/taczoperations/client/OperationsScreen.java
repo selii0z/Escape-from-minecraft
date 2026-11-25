@@ -191,6 +191,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 simple(420,269,120,29,"Assurer",()->send(OperationsMenu.INSURE_GEAR));
                 simple(420,331,120,29,"Ouvrir",()->send(OperationsMenu.CLAIM_INSURANCE));
                 simple(581,185,232,29,"Configuration des HUD",()->minecraft.setScreen(new RaidHudSettings.Screen(this)));
+                simple(581,305,232,29,"Réinitialiser mon compte",()->{send(OperationsMenu.ARM_WIPE);minecraft.setScreen(new AccountWipeScreen(this,menu.containerId));});
             }
             default -> { }
         }
@@ -634,6 +635,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 panel(g,169,318,379,54,DARK);
                 text(g,"Espace de récupération",185,330,1.13F,WHITE,true);
                 text(g,"Après 30 min · chance 95 %",185,349,.95F,SOFT,false);
+                text(g,"ZONE DE RÉINITIALISATION",581,251,1.0F,0xffe18979,true);
+                text(g,"Efface uniquement ta progression EFM.",581,272,.9F,SOFT,false);
+                text(g,"Action définitive.",581,288,.9F,SOFT,false);
             }
             case OperationsMenu.GROUP -> {
                 pageTitle(g, "♟", "GROUPE", "Préparez un déploiement à deux");
