@@ -303,6 +303,10 @@ public enum OperationsShop {
         ItemStack sample=offer.stack().get();
         return CarriedStorage.of(player).count(s->matchesSale(sample,s));
     }
+    public static int purchasePrice(Offer offer,int discount){
+        if(offer.action()!=Action.BUY||offer.price()<=0)return offer.price();
+        return (int)Math.max(1,((long)offer.price()*(100-Math.clamp(discount,0,10))+99)/100);
+    }
     String trade(ServerPlayer player,int index,long quotedDay){
         return trade(player,index,quotedDay,1,false);
     }
@@ -366,7 +370,7 @@ public enum OperationsShop {
         if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id))
             return "Accès permanent requis.";
         if(quantity<1||quantity>64)return "Quantité invalide.";
-        long total=(long)offer.price*quantity;
+        long total=(long)purchasePrice(offer,PassiveSkills.bonus(player,PassiveSkills.Skill.TRADE))*quantity;
         if(total>balance||total<0)return "Crédits insuffisants.";
         var inventory = player.getInventory();
         int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
