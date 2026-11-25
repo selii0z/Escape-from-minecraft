@@ -33,8 +33,16 @@ Base : 1.2.0 boss-events. Ne pas fusionner ni remplacer le JAR stable avant test
 - Les boss, escortes et renforts hors escouades normales conservent les rondes locales. Ciblage et alertes entre gardes exigent désormais le même identifiant de raid ; les manœuvres de flanc/couverture utilisent également les vérifications de périmètre.
 - Tests nécessaires : suivre les escouades durant plusieurs minutes, vérifier obstacles, secteurs déchargés, reprise après combat, absence de respawn ou de duplication, deux raids simultanés, escorte des boss et charge serveur. Les pourcentages sont des valeurs d'équilibrage proposées, pas une garantie de déplacement sur terrain impraticable.
 
+## Marché entre joueurs — cinquième lot ajouté
+- Nouvelle page depuis les marchands, grille de 12 lots par page, catégories, classement prix croissant, annonces personnelles, aperçu du véritable ItemStack et provenance raid. Prix total libre entre 1 et 100 000 000 crédits.
+- Publication : tenir le lot en main principale avant d'ouvrir le tableau, saisir son prix puis confirmer. L'intégralité de la pile est transférée au séquestre du serveur ; le client ne transmet que le prix et l'identifiant du menu. Comparaison avec le lot coté à l'ouverture. Limites : 10 annonces par vendeur, 256 sur le serveur, pas d'expiration automatique.
+- Achat ou annulation : identification par UUID stable, vérification côté serveur du prix, du solde, de la place en inventaire et du propriétaire. Achat de son propre lot impossible (action annulation). Les ventes sont possibles en survie hors raid. Les composants de l'objet sont conservés ; assurance supprimée uniquement lors d'un changement de propriétaire.
+- Taxe 5 % arrondie à l'entier inférieur, prélevée lors de la vente. Recettes stockées par UUID dans SavedData du monde principal, y compris quand le vendeur est hors ligne. Retrait manuel, limitation au solde maximal, notification du vendeur connecté, journal côté acheteur et au retrait des recettes.
+- Coffre sécurisé, packs pleins, conteneurs, bundles et lots dépassant 1536 octets de représentation NBT texte refusés afin de limiter les risques de perte et la taille des aperçus. Les objets moddés complexes peuvent donc être refusés. Pas de sélection partielle de pile ni de recherche textuelle pour l'instant.
+- Tous les traitements passent par le thread serveur. Les annonces/recettes et données joueur utilisent des fichiers de sauvegarde distincts : la persistance normale est prévue, mais la reprise atomique après un arrêt brutal n'est pas garantie. Sauvegarder le monde avant les tests.
+- Tests : deux acheteurs sur une même offre, double-clics, paquet périmé, inventaire plein, annulation, retrait hors ligne après redémarrage normal, composants TaCZ, taxe, prix invalide, limite annonces, pertes au crash, pagination et taille des paquets. Protocole 15, compilation du marché à vérifier. Build 447 (patrouilles) réussi.
+ 
 ## Lots à réaliser (pas encore codés)
-- Marché entre joueurs : séquestre des objets, crédits et récupération hors ligne, taxe proposée 5 %, validation serveur et tests de concurrence.
 - Inspection persistante par joueur, objets inconnus puis connus ; distinguer de la fouille progressive existante.
 - Test en jeu et revue graphique des boutiques, aperçu au survol, achat par quantité, amélioration fidélité/rareté distincte si nécessaire.
 
