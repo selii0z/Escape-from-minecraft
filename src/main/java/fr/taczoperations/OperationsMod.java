@@ -129,7 +129,6 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestPreparation::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidInjuries::tick);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidAudio::tick);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::interact);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);

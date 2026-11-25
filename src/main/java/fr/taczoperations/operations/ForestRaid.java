@@ -65,6 +65,8 @@ public final class ForestRaid extends SavedData {
     private int fieldEvent,fieldEventAttempts;
     private long fieldEventDue;
     private RaidAtmosphere atmosphere;
+    private long ambientDue;
+    private int ambientSequence;
     private BlockPos fieldEventPos;
     private UUID dropVisual;
     private boolean dropLanded;
@@ -125,6 +127,8 @@ public final class ForestRaid extends SavedData {
         raid.offlineSince = 0;
         raid.seed = level.getRandom().nextLong();
         raid.atmosphere=new RaidAtmosphere(raid.seed,level.getGameTime(),ForestExpedition.initialWeather(player));
+        raid.ambientDue=level.getGameTime()+400+new Random(raid.seed^0x88fae3L).nextInt(401);
+        raid.ambientSequence=0;
         raid.industrial = industrial;
         raid.crates.clear();
         raid.spawnedContainers.clear();
@@ -254,6 +258,13 @@ public final class ForestRaid extends SavedData {
             raid.tickReinforcements(level);
             raid.tickFieldEvent(level);
             if(raid.atmosphere!=null)raid.atmosphere.tick(level,level.players().stream().filter(raid::owns).toList());
+            long now=level.getGameTime();
+            if(now>=raid.ambientDue){
+                Random audioRandom=new Random(raid.seed^0x16ca02bL^raid.ambientSequence++);
+                raid.ambientDue=now+400+audioRandom.nextInt(1001);
+                RaidAudio.ambient(level,level.players().stream().filter(p->raid.owns(p)&&p.isAlive()&&!p.isSpectator()).toList(),
+                    raid.industrial,raid.atmosphere,audioRandom);
+            }
             if (raid.offlineSince != 0) {
                 raid.offlineSince = 0;
                 raid.setDirty();
