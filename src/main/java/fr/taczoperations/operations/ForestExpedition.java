@@ -306,7 +306,7 @@ public final class ForestExpedition {
                     return;
                 }
                 var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
-                boolean eligible=key?player.getInventory().items.stream().anyMatch(s->s.is(keyItem))
+                boolean eligible=key?CarriedStorage.of(player).count(s->s.is(keyItem))>0
                     :SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST;
                 if(!eligible){
                     if(player.tickCount%20==0)player.displayClientMessage(Component.literal(key?"Extraction verrouillée · clé industrielle requise.":"Extraction payante · "+IndustrialZone.PAID_EXIT_COST+" crédits requis."),true);
@@ -347,7 +347,7 @@ public final class ForestExpedition {
             if(industrial){
                 BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT),paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
                 var keyItem=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"industrial_key"));
-                if(ForestRaid.secondaryOpen(player,1)&&player.getInventory().items.stream().anyMatch(s->s.is(keyItem)) && keyExit.distSqr(feet)<extraction.distSqr(feet)){
+                if(ForestRaid.secondaryOpen(player,1)&&CarriedStorage.of(player).count(s->s.is(keyItem))>0 && keyExit.distSqr(feet)<extraction.distSqr(feet)){
                     extraction=keyExit;exitLabel="Extraction (clé)";
                 }
                 if(ForestRaid.secondaryOpen(player,2)&&SupplyContract.balance(player)>=IndustrialZone.PAID_EXIT_COST && paidExit.distSqr(feet)<extraction.distSqr(feet)){
