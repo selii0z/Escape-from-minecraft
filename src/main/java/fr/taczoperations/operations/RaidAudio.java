@@ -48,10 +48,10 @@ public final class RaidAudio {
             float volume=thunder?.20F:indoor?.28F:.23F;
             float pitch=.75F+rng.nextFloat()*.4F;
             long soundSeed=rng.nextLong();
-            for(var p:players)if(pos.distToCenterSqr(p.position())<=32*32){
+            for(var p:players)if(pos.distToCenterSqr(p.position())<=(headset(p)?44*44:32*32)){
                 p.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
                     net.minecraft.core.Holder.direct(event),SoundSource.AMBIENT,
-                    pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5,volume,pitch,soundSeed));
+                    pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5,headset(p)?volume*1.45F:volume,pitch,soundSeed));
             }
             return;
         }
@@ -70,6 +70,41 @@ public final class RaidAudio {
             default->SoundEvents.BUNDLE_INSERT;
         };
         privateSound(p,sound,.35F,.9F,SoundSource.PLAYERS);
+    }
+    private static SoundEvent imported(String key){
+        return SoundEvent.createVariableRangeEvent(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",key));
+    }
+    static boolean headset(ServerPlayer p){
+        return FieldInventoryMenu.isHeadset(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.HEADSET)));
+    }
+    static void medicineStart(ServerPlayer p,String kind){
+        privateSound(p,imported("medical."+kind),.65F,1F,SoundSource.PLAYERS);
+    }
+    // Positional sounds are sent exclusively to members of the guard's current raid.
+    static void voice(net.minecraft.world.entity.monster.Pillager guard,String action){
+        if(!(guard.level() instanceof net.minecraft.server.level.ServerLevel level)||!ForestRaid.currentGuard(level,guard))return;
+        long now=level.getGameTime();
+        var data=guard.getPersistentData();
+        if(!action.equals("death")&&data.getLong("efm_voice_next")>now)return;
+        data.putLong("efm_voice_next",now+100+guard.getRandom().nextInt(100));
+        GuardRole role=GuardRole.get(guard);
+        String group=switch(role){
+            case PMC -> (guard.getUUID().getLeastSignificantBits()&1)==0?"usec":"bear";
+            case KILLA -> "killa";case FOREMAN -> "tagilla";case RESHALA -> "reshala";
+            case KNIGHT -> "knight";case BIG_PIPE -> "big_pipe";case KOLLONTAY -> "kollontay";
+            default -> "scav";
+        };
+        SoundEvent sound=imported("voice."+group+"."+action);
+        long seed=guard.getRandom().nextLong();
+        for(ServerPlayer p:level.players()){
+            if(!ForestRaid.sameSession(level,guard,p))continue;
+            boolean amplified=headset(p);
+            int range=amplified?36:24;
+            if(guard.distanceToSqr(p)>range*range)continue;
+            p.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.core.Holder.direct(sound),SoundSource.HOSTILE,guard.getX(),guard.getY(),guard.getZ(),
+                amplified?1.25F:.85F,1F,seed));
+        }
     }
     static void clear(ServerPlayer p){p.getPersistentData().remove(NEXT);}
     private RaidAudio(){}
