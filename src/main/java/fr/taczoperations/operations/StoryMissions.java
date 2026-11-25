@@ -111,6 +111,7 @@ public final class StoryMissions {
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("missions")
             .executes(ctx->{status(ctx.getSource().getPlayerOrException());return 1;})
+            .then(Commands.literal("menu").executes(ctx->{ProgressionMenus.missions(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("accepter").executes(ctx->{accept(ctx.getSource().getPlayerOrException());return 1;}))));
     }
     private StoryMissions(){}
