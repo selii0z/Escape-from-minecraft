@@ -24,8 +24,14 @@ final class RaidLootValue {
         for(int i=0;i<p.getInventory().getContainerSize();i++){
             ItemStack stack=p.getInventory().getItem(i);
             count(counts,stack);
+            for(ItemStack inside:FieldPack.contents(stack))count(counts,inside);
             if(stack.getItem() instanceof SecureCaseItem)
                 for(ItemStack inside:RaidSecurity.caseContents(p,stack))count(counts,inside);
+        }
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG}){
+            var stack=FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id));
+            count(counts,stack);
+            for(var inside:FieldPack.contents(stack))count(counts,inside);
         }
         return counts;
     }
