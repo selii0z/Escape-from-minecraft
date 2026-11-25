@@ -148,10 +148,10 @@ public final class RaidSecurity {
         return p.level().dimension().equals(ForestExpedition.FOREST)&&ForestRaid.isParticipant(p);
     }
     public static boolean isRaidCurio(ItemStack stack){
-        return stack.getItem() instanceof FieldPack||isOptics(stack);
+        return stack.getItem() instanceof FieldPack||isOptics(stack)||FieldInventoryMenu.isHeadset(stack);
     }
     static boolean eligible(ItemStack s) {
-        return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s));
+        return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s)||FieldInventoryMenu.isHeadset(s));
     }
     private static boolean isOptics(ItemStack s){
         var id=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
@@ -178,7 +178,7 @@ public final class RaidSecurity {
     static void clearStaleInsurance(ServerPlayer p){
         var items=new java.util.ArrayList<ItemStack>();
         for(int i=0;i<p.getInventory().getContainerSize();i++)items.add(p.getInventory().getItem(i));
-        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG,FieldInventoryMenu.HEADSET})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
         boolean changed=false;
         for(var s:items){if(s.isEmpty())continue;var d=tag(s);if(d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&!insuredBy(p,s)){removeInsurance(s);changed=true;}}
         if(changed)p.getInventory().setChanged();
@@ -201,7 +201,7 @@ public final class RaidSecurity {
         var items=new java.util.ArrayList<ItemStack>();
         items.add(p.getMainHandItem());
         for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET})items.add(p.getItemBySlot(slot));
-        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG,FieldInventoryMenu.HEADSET})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
         var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
         items.removeIf(s->!unique.add(s)||!eligible(s)||insuredBy(p,s));
         if(items.isEmpty())return "Aucun équipement porté ou tenu à assurer.";
