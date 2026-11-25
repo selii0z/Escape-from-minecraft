@@ -34,6 +34,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     private final IItemHandlerModifiable bagHandler,rigHandler;
     private final ItemStack bagCarrier,rigCarrier;
     private final int bagSize,rigSize;
+    private final SimpleContainer bagStorage,rigStorage;
     private static boolean allowed(Player p){
         return p.isAlive()&&!p.isSpectator()&&(!p.level().dimension().equals(ForestExpedition.FOREST)||p instanceof ServerPlayer s&&ForestRaid.isParticipant(s));
     }
@@ -81,6 +82,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
         for(int col=0;col<9;col++)addSlot(new Slot(inv,col,10+col*18,195));
         var bags=server?new PackStorage(bagCarrier,bagSize):new SimpleContainer(bagSize);
         var rigs=server?new PackStorage(rigCarrier,rigSize):new SimpleContainer(rigSize);
+        bagStorage=bags;rigStorage=rigs;
         for(int i=0;i<bagSize;i++)addStorage(bags,i,false,194+(i%9)*18,28+(i/9)*18);
         for(int i=0;i<rigSize;i++)addStorage(rigs,i,true,194+(i%9)*18,195+(i/9)*18);
     }
@@ -106,7 +108,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     public int bagSize(){return bagSize;}
     public int rigSize(){return rigSize;}
     @Override public boolean stillValid(Player p){
-        return p==owner&&(!server||allowed(p)&&p.level().dimension().equals(dimension)&&!p.isCreative()&&current(bagHandler)==bagCarrier&&current(rigHandler)==rigCarrier);
+        return p==owner&&(!server||allowed(p)&&p.level().dimension().equals(dimension)&&!p.isCreative()&&current(bagHandler)==bagCarrier&&current(rigHandler)==rigCarrier&&((PackStorage)bagStorage).unchanged()&&((PackStorage)rigStorage).unchanged());
     }
     @Override public void clicked(int slot,int button,ClickType type,Player p){
         if(!stillValid(p)||type==ClickType.CLONE)return;
@@ -149,18 +151,22 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     private static final class PackStorage extends SimpleContainer{
         final ItemStack carrier;
         private boolean ready;
+        private ItemContainerContents expected;
+        boolean unchanged(){return java.util.Objects.equals(expected,carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY));}
         PackStorage(ItemStack carrier,int size){
             super(size);this.carrier=carrier;
             var contents=NonNullList.withSize(size,ItemStack.EMPTY);
             carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(contents);
             for(int i=0;i<size;i++)super.setItem(i,contents.get(i));
-            ready=true;
+            expected=carrier.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY);ready=true;
         }
         @Override public void setChanged(){
             super.setChanged();if(!ready||carrier.isEmpty())return;
             var items=NonNullList.withSize(getContainerSize(),ItemStack.EMPTY);
             for(int i=0;i<getContainerSize();i++)items.set(i,getItem(i).copy());
-            carrier.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(items));
+            if(!unchanged())return;
+            expected=ItemContainerContents.fromItems(items);
+            carrier.set(DataComponents.CONTAINER,expected);
         }
     }
 }
