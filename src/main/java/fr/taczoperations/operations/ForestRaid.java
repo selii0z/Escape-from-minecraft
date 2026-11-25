@@ -882,12 +882,19 @@ public final class ForestRaid extends SavedData {
             default -> barrel.setItem(18, new ItemStack(Items.PAPER, 2 + random.nextInt(5)));
         }
         if(industrial&&random.nextInt(100)<8)barrel.setItem(23,new ItemStack(industrialKey()));
-        if(kind==0&&random.nextInt(100)<50){
-            String medical=random.nextBoolean()?"bandage":"salewa";
-            barrel.setItem(22,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",medical)),1+random.nextInt(2)));
+        if(kind==0){
+            // All injury treatments are obtainable through exploration, not just shops.
+            int roll=random.nextInt(100);
+            String medical=roll<30?"bandage":roll<50?"salewa":roll<65?"splint":roll<75?"hemostat":roll<80?"medkit":null;
+            if(medical!=null)barrel.setItem(22,medicalLoot(medical,medical.equals("bandage")?1+random.nextInt(3):1));
+            if(random.nextInt(100)<20)barrel.setItem(21,medicalLoot("bandage",1));
         }
         barrel.setChanged();
         return true;
+    }
+
+    private static ItemStack medicalLoot(String name,int amount){
+        return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",name)),amount);
     }
 
     private static net.minecraft.world.item.Item industrialKey(){
