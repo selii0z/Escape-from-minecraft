@@ -54,7 +54,7 @@ public final class StoryMissions {
         int stage=run.getInt("stage");boolean inRaid=ForestRaid.isParticipant(p)&&run.getBoolean("active");
         say(p,m.title+" · "+(n+1)+"/"+Mission.values().length+" · "+(current(p)==null?"À accepter":inRaid?"En cours":"En attente du prochain raid"));
         say(p,(m.industrial?"Zone industrielle":"Forêt Noire")+(m.night?" · Nuit":"")+" · niveau "+m.level+" · "+m.credits+" crédits / "+m.xp+" XP");
-        say(p,"1. "+m.site+" (X "+m.pos().getX()+" Z "+m.pos().getZ()+") · 2. Récupérer "+m.quantity+" × "+m.relic.title+" · 3. Éliminer "+m.kills+" "+m.target.label+" · 4. S'extraire.");
+        say(p,"1. "+m.site+" (X "+m.pos().getX()+" Z "+m.pos().getZ()+") · Récupérer "+m.quantity+" × "+m.relic.title+" et éliminer "+m.kills+" "+m.target.label+" · Extraction.");
         if(inRaid)say(p,"Étape "+Math.min(4,stage+1)+"/4 · éliminations "+run.getInt("kills")+"/"+m.kills);
     }
     static void accept(ServerPlayer p){
@@ -77,23 +77,33 @@ public final class StoryMissions {
         if(!(event.getEntity() instanceof ServerPlayer p)||p.tickCount%20!=0||!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.isParticipant(p))return;
         Mission m=current(p);var r=run(p,m);if(r==null)return;
         if(r.getInt("stage")==0&&m.pos().distToCenterSqr(p.position())<=24*24){
-            r.putInt("stage",1);say(p,"Secteur atteint · récupère "+m.quantity+" × "+m.relic.title+".");
+            r.putInt("stage",1);say(p,"Secteur atteint · récupère "+m.quantity+" × "+m.relic.title+" et élimine "+m.kills+" "+m.target.label+".");
         }
-        if(r.getInt("stage")==1&&(long)count(p,m)-r.getInt("baseline")>=m.quantity){
-            r.putInt("stage",2);say(p,"Renseignement récupéré · élimine "+m.kills+" "+m.target.label+".");
-        }
+        updateObjectives(p,m,r);
+    }
+    private static void updateObjectives(ServerPlayer p,Mission m,CompoundTag r){
+        if(r.getInt("stage")==0)return;
+        boolean relics=(long)count(p,m)-r.getInt("baseline")>=m.quantity;
+        boolean kills=r.getInt("kills")>=m.kills;
+        int stage=relics&&kills?3:relics||kills?2:1;
+        int before=r.getInt("stage");r.putInt("stage",stage);
+        if(stage==3&&before!=3)say(p,"Objectifs accomplis · extrais-toi avec le renseignement.");
+        else if(before==3&&stage!=3)say(p,"Renseignement manquant · récupère-le avant l'extraction.");
+        else if(stage==2&&before==1)say(p,relics?"Renseignement récupéré · termine les éliminations.":"Éliminations terminées · récupère le renseignement.");
     }
     static void kill(ServerPlayer p,GuardRole role){
         if(!ForestRaid.isParticipant(p)||p.isCreative()||p.isSpectator())return;
-        Mission m=current(p);var r=run(p,m);if(r==null||r.getInt("stage")!=2||!m.target.matches(role))return;
+        Mission m=current(p);var r=run(p,m);if(r==null||!m.target.matches(role))return;
+        if(r.getInt("stage")==0&&m.pos().distToCenterSqr(p.position())<=24*24){r.putInt("stage",1);say(p,"Secteur atteint.");}
+        if(r.getInt("stage")==0||r.getInt("kills")>=m.kills)return;
         int k=Math.min(m.kills,r.getInt("kills")+1);r.putInt("kills",k);
-        if(k==m.kills){r.putInt("stage",3);say(p,"Objectifs accomplis · extrais-toi avec le renseignement.");}
+        updateObjectives(p,m,r);
     }
     // Called only after confirmed extraction, before the standard report.
     static void extracted(ServerPlayer p,boolean industrial){
         Mission m=current(p);var r=run(p,m);
         if(r==null){clear(p);return;}
-        boolean ready=m.industrial==industrial&&r.getInt("stage")==3&&r.getInt("kills")>=m.kills;
+        boolean ready=m.industrial==industrial&&r.getInt("stage")>=1&&r.getInt("kills")>=m.kills;
         int baseline=r.getInt("baseline");clear(p);
         if(!ready||(long)count(p,m)-baseline<m.quantity){say(p,"Opération incomplète · nouvelle tentative au prochain raid.");return;}
         var a=SupplyContract.account(p);
