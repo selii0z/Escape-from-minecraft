@@ -33,6 +33,12 @@ public final class RaidInjuries {
         if(zone==EquipmentSlot.CHEST&&!headshot&&!data.getBoolean(ARM)&&damage>=3F&&random.nextFloat()<.12F){
             data.putBoolean(ARM,true);p.sendSystemMessage(Component.literal("Blessure au bras : kit de premiers secours requis."));
         }
+        sync(p,true);
+    }
+    private static void sync(ServerPlayer p,boolean active){
+        var d=p.getPersistentData();
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,new RaidInjuryPayload(
+            active,active?Math.clamp(d.getInt(BLEED),0,2):0,active&&d.getBoolean(FRACTURE),active&&d.getBoolean(ARM)));
     }
     public static void tick(PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!active(p)||p.tickCount%20!=0)return;
@@ -41,8 +47,7 @@ public final class RaidInjuries {
         if(d.getBoolean(ARM))p.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN,40,0,false,false,true));
         int bleed=d.getInt(BLEED);
         if(bleed>0&&p.tickCount%(bleed==2?80:160)==0)p.hurt(p.damageSources().magic(),1F);
-        if((bleed>0||d.getBoolean(FRACTURE)||d.getBoolean(ARM))&&p.tickCount%60==0)
-            p.displayClientMessage(Component.literal((bleed==2?"Hémorragie  ":bleed==1?"Saignement  ":"")+(d.getBoolean(FRACTURE)?"Fracture  ":"")+(d.getBoolean(ARM)?"Bras blessé":"")),true);
+        if(p.isAlive())sync(p,true);
     }
     static boolean canTreat(ServerPlayer p,String kind){
         if(!active(p))return false;
@@ -76,12 +81,14 @@ public final class RaidInjuries {
             }
             default -> {return false;}
         }
+        sync(p,true);
         p.sendSystemMessage(Component.literal("Soin appliqué."));
         return true;
     }
     static void clear(ServerPlayer p) {
         var d=p.getPersistentData();
         d.remove(BLEED);d.remove(FRACTURE);d.remove(ARM);d.remove(LAST);
+        sync(p,false);
     }
     private RaidInjuries(){}
 }

@@ -47,10 +47,7 @@ public final class FieldMedicine extends Item {
                 p.stopUsingItem();
                 return;
             }
-            if(remaining%5==0){
-                int progress=Math.clamp(100*(getUseDuration(stack,p)-remaining)/getUseDuration(stack,p),0,100);
-                p.displayClientMessage(Component.literal("Soin en cours · "+progress+" %"),true);
-            }
+            // Progress is rendered by the client HUD; leave extraction hints unobstructed.
         }
     }
 
