@@ -88,6 +88,9 @@ public final class OperationsMod {
         for(String medical : new String[]{"bandage","hemostat","splint","medkit","salewa"}) {
             ITEMS.registerItem(medical,props -> new fr.taczoperations.operations.FieldMedicine(props,medical),new net.minecraft.world.item.Item.Properties().stacksTo(8));
         }
+        ITEMS.registerItem("field_ration", net.minecraft.world.item.Item::new,
+            new net.minecraft.world.item.Item.Properties().stacksTo(16).food(new net.minecraft.world.food.FoodProperties.Builder()
+                .nutrition(6).saturationModifier(.6F).alwaysEdible().build()));
         ITEMS.registerItem("industrial_key", props -> new net.minecraft.world.item.Item(props), new net.minecraft.world.item.Item.Properties().stacksTo(16));
         ITEMS.registerSimpleBlockItem("operations_board", BOARD);
         ITEMS.registerSimpleBlockItem("raid_medbag",FURNITURE.get(0));
