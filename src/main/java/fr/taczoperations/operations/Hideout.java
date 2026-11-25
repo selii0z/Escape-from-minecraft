@@ -19,6 +19,7 @@ import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import java.util.Set;
 
+@net.neoforged.fml.common.EventBusSubscriber(modid="taczoperations")
 public final class Hideout {
     public static final ResourceKey<Level> DIMENSION=ResourceKey.create(Registries.DIMENSION,ResourceLocation.fromNamespaceAndPath("taczoperations","hideout"));
     private static final int SPACING=256,Y=64,RADIUS=15;
@@ -179,10 +180,12 @@ public final class Hideout {
     public static void protectBreak(BlockEvent.BreakEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
     public static void protectPlace(BlockEvent.EntityPlaceEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
     public static void protectExplosion(ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.getAffectedBlocks().clear();}
+    @net.neoforged.bus.api.SubscribeEvent
     public static void preventMobEntry(net.neoforged.neoforge.event.entity.EntityJoinLevelEvent event){
         if(event.getLevel() instanceof ServerLevel level&&level.dimension().equals(DIMENSION)
             &&event.getEntity() instanceof net.minecraft.world.entity.Mob)event.setCanceled(true);
     }
+    @net.neoforged.bus.api.SubscribeEvent(priority=net.neoforged.bus.api.EventPriority.HIGHEST)
     public static void preserveAccount(net.neoforged.neoforge.event.entity.player.PlayerEvent.Clone event){
         if(!event.isWasDeath()||!(event.getOriginal() instanceof ServerPlayer old)
             ||!(event.getEntity() instanceof ServerPlayer p)||!here(old))return;
