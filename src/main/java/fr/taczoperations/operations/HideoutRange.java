@@ -108,7 +108,9 @@ public final class HideoutRange {
         var data=p.getPersistentData();data.putInt(SHOTS,Math.min(1000000,data.getInt(SHOTS)+1));
     }
     public static void hit(EntityHurtByGunEvent.Pre e){
-        if(e.getLogicalSide().isClient()||!(e.getHurtEntity() instanceof ArmorStand stand)||!stand.getPersistentData().hasUUID(OWNER))return;
+        if(e.getLogicalSide().isClient())return;
+        if(e.getHurtEntity() instanceof ServerPlayer victim&&victim.level().dimension().equals(Hideout.DIMENSION)){e.setCanceled(true);return;}
+        if(!(e.getHurtEntity() instanceof ArmorStand stand)||!stand.getPersistentData().hasUUID(OWNER))return;
         e.setCanceled(true);
         if(!(e.getAttacker() instanceof ServerPlayer p)||!active(p)||!stand.getPersistentData().getUUID(OWNER).equals(p.getUUID()))return;
         var d=p.getPersistentData();int hits=Math.min(1000000,d.getInt(HITS)+1);d.putInt(HITS,hits);
