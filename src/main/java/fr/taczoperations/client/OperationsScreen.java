@@ -157,17 +157,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 simple(173,376,65,22,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->view.page()>0);
                 simple(750,376,65,22,"›",()->send(OperationsMenu.NEXT),()->false,()->view.page()+1<view.pages());
             }
-            case OperationsMenu.BLACK_MARKET -> {
-                simple(555,79,125,29,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
-                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
-                for(int i=0;i<6;i++){
-                    String[] offer=view.market().get(i+1).split("\\|",-1);
-                    final int action=OperationsMenu.MARKET_FIRST+i;
-                    simple(700,135+i*41,110,25,offer[2].equals("0")?"Épuisé":"Acheter",()->send(action),()->false,
-                        ()->!offer[2].equals("0")&&offer[3].equals("1")&&view.credits()>=Integer.parseInt(offer[1]));
-                }
-                simple(700,386,110,22,"Actualiser",()->send(OperationsMenu.REFRESH));
-            }
+            case OperationsMenu.BLACK_MARKET -> blackMarketWidgets();
             case OperationsMenu.GROUP -> groupWidgets();
             case OperationsMenu.SETTINGS -> {
                 simple(420,145,120,29,view.showExtraction()?"Masquer":"Afficher",()->send(OperationsMenu.TOGGLE_EXTRACTION));
@@ -506,20 +496,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 }
                 centered(g,(view.page()+1)+" / "+view.pages(),495,382,1,SOFT,false);
             }
-            case OperationsMenu.BLACK_MARKET -> {
-                text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
-                text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
-                for(int i=0;i<6;i++){
-                    String[] o=view.market().get(i+1).split("\\|",-1);
-                    int y=128+i*41;
-                    panel(g,169,y,650,37,DARK);
-                    text(g,fit(o[0],280),185,y+5,1.1F,WHITE,true);
-                    text(g,fit(o[4],300),185,y+22,.85F,o[3].equals("1")?SOFT:0xffdf9c94,false);
-                    text(g,o[1]+" crédits",510,y+5,1.05F,GOLD,true);
-                    text(g,"Stock : "+o[2],510,y+22,.88F,SOFT,false);
-                }
-                text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
-            }
+            case OperationsMenu.BLACK_MARKET -> drawBlackMarket(g);
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
                 panel(g, 169, 130, 379, 91, DARK);
@@ -656,6 +633,48 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         return (menu.view().unlocks() & (1 << relic.ordinal())) != 0;
     }
 
+
+
+    private String[] blackOffer(int index){
+        return menu.view().market().get(index+1).split("\\|",-1);
+    }
+    private boolean blackCanBuy(){
+        var o=blackOffer(shopSelection);
+        return !o[2].equals("0")&&o[3].equals("1")&&menu.view().credits()>=Integer.parseInt(o[1]);
+    }
+    private void blackMarketWidgets(){
+        simple(555,79,125,29,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
+        simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+        long day=Long.parseLong(menu.view().market().getFirst());
+        for(int i=0;i<6;i++){
+            int row=i,x=173+i*74,y=142;
+            String[] o=blackOffer(row);
+            var stack=fr.taczoperations.operations.BlackMarket.preview(day,row);
+            widget(x,y,70,70,o[0],()->shopSelection=row,()->true,(g,hover)->{
+                g.fillGradient(x,y,x+70,y+70,0xff3a4332,0xff1d231c);
+                frame(g,x,y,70,70,shopSelection==row,hover);
+                item(g,stack,x+11,y+13,3F);
+                text(g,numberLong(Long.parseLong(o[1])),x+4,y+4,.9F,GOLD,true);
+                text(g,"Stock : "+o[2],x+4,y+58,.82F,o[2].equals("0")?SOFT:LIME,true);
+            });
+        }
+        widget(640,252,172,28,"Acheter",()->send(OperationsMenu.MARKET_FIRST+shopSelection),()->blackCanBuy(),(g,hover)->{
+            boolean ok=blackCanBuy();key(g,640,252,172,28,ok,hover,ok);
+            centered(g,blackOffer(shopSelection)[2].equals("0")?"Épuisé":"Acheter · "+blackOffer(shopSelection)[1]+" cr.",726,261,1,ok?WHITE:SOFT,true);
+        });
+        simple(640,288,172,24,"Actualiser",()->send(OperationsMenu.REFRESH));
+    }
+    private void drawBlackMarket(GuiGraphics g){
+        text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
+        text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
+        var o=blackOffer(shopSelection);
+        panel(g,173,231,454,92,DARK);
+        item(g,fr.taczoperations.operations.BlackMarket.preview(Long.parseLong(menu.view().market().getFirst()),shopSelection),185,242,4F);
+        text(g,fit(o[0],350),266,241,1.18F,WHITE,true);
+        text(g,fit(o[4],350),266,264,.9F,o[3].equals("1")?SOFT:0xffdf9c94,false);
+        text(g,numberLong(Long.parseLong(o[1]))+" cr. · stock "+o[2],266,288,1.1F,GOLD,true);
+        text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
+    }
 
     private static final String[] SHOP_FILTERS={"Tout","Armes","Munitions","Access.","Protections","Soins","Divers"};
     private OperationsShop.Offer shopOffer(int row){
