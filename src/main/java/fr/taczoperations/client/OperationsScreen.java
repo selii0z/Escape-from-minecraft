@@ -82,6 +82,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private net.minecraft.client.gui.components.EditBox marketPrice;
     private java.util.List<OperationsShop.Offer> shopCatalogue=java.util.List.of();
     private static final int HISTORY_ROWS = 4;
+    private static final int SHOP_X=169,SHOP_Y=169,SHOP_DX=37,SHOP_DY=36,SHOP_CELL=35;
+    private int shopRowAt(double x,double y){
+        if(x<SHOP_X||y<SHOP_Y||x>=SHOP_X+OperationsMenu.SHOP_COLUMNS*SHOP_DX||y>=SHOP_Y+OperationsMenu.SHOP_VISIBLE_ROWS*SHOP_DY)return -1;
+        if((x-SHOP_X)%SHOP_DX>=SHOP_CELL||(y-SHOP_Y)%SHOP_DY>=SHOP_CELL)return -1;
+        return (int)((y-SHOP_Y)/SHOP_DY)*OperationsMenu.SHOP_COLUMNS+(int)((x-SHOP_X)/SHOP_DX);
+    }
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -178,6 +184,15 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if(menu.view().tab()==OperationsMenu.SHOP&&scale>0&&scrollY!=0){
+            double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
+            if(x>=SHOP_X&&x<=548&&y>=SHOP_Y&&y<313){
+                var v=menu.view();int row=v.page()%OperationsMenu.VENDOR_PAGES;
+                if(scrollY>0&&row>0)send(OperationsMenu.PREVIOUS);
+                else if(scrollY<0&&row+1<v.shopPages())send(OperationsMenu.NEXT);
+                return true;
+            }
+        }
         if (menu.view().tab() == OperationsMenu.PROGRESSION && scale > 0) {
             double x = (mouseX - offsetX) / scale;
             double y = (mouseY - offsetY) / scale;
@@ -301,12 +316,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         ItemStack hovered=ItemStack.EMPTY;
         int tab=menu.view().tab();
         if(tab==OperationsMenu.SHOP){
-            if(x>=169&&x<545&&y>=169&&y<313){
-                int col=(int)(x-169)/47,row=(int)(y-169)/48;
-                if((x-169)%47<45&&(y-169)%48<45){
-                    var offer=shopOffer(row*8+col);
-                    if(offer!=null)hovered=offer.stack().get();
-                }
+            int shopRow=shopRowAt(x,y);
+            if(shopRow>=0){
+                var offer=shopOffer(shopRow);
+                if(offer!=null)hovered=offer.stack().get();
             }else if(x>=581&&x<815&&y>=265&&y<369){
                 int k=((int)(y-265)/26)*9+(int)(x-581)/26;
                 if(k>=0&&k<36)hovered=minecraft.player.getInventory().getItem(k<27?k+9:k-27);
@@ -851,22 +864,22 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             final int row=i,index=v.shopRows().get(i);
             if(index<0||index>=offers.size())continue;
             var o=offers.get(index);var stack=o.stack().get();
-            int x=169+(i%8)*47,y=169+(i/8)*48;
-            widget(x,y,45,45,discoveredName(stack,o.title()),()->{shopSelection=row;shopLots=1;},()->true,(g,hover)->{
+            int x=SHOP_X+(i%OperationsMenu.SHOP_COLUMNS)*SHOP_DX,y=SHOP_Y+(i/OperationsMenu.SHOP_COLUMNS)*SHOP_DY;
+            widget(x,y,SHOP_CELL,SHOP_CELL,discoveredName(stack,o.title()),()->{shopSelection=row;shopLots=1;},()->true,(g,hover)->{
                 int tier=o.loyaltyLevel();
                 int top=tier>=4?0xff42374b:tier==3?0xff32434a:0xff354030;
-                g.fillGradient(x,y,x+45,y+45,top,0xff1c211d);
-                frame(g,x,y,45,45,shopSelection==row,hover);
-                discoveryItem(g,stack,x+7,y+9,1.9F);
+                g.fillGradient(x,y,x+SHOP_CELL,y+SHOP_CELL,top,0xff1c211d);
+                frame(g,x,y,SHOP_CELL,SHOP_CELL,shopSelection==row,hover);
+                discoveryItem(g,stack,x+5,y+8,1.5F);
                 String cost=o.action()==OperationsShop.Action.UNLOCK?"Accès":o.action()==OperationsShop.Action.REPAIR?"Répar.":numberLong(shopPrice(o));
-                text(g,fit(cost,54),x+3,y+2,.79F,GOLD,true);
-                if(shopLocked(o))text(g,"F"+tier,x+28,y+34,.82F,0xffe5a9a0,true);
-                else if(o.action()==OperationsShop.Action.SELL)text(g,"x"+v.saleCounts().get(row),x+2,y+35,.79F,LIME,true);
-                else if(stack.getCount()>1)text(g,"x"+stack.getCount(),x+2,y+35,.79F,SOFT,true);
+                text(g,fit(cost,43),x+2,y+2,.72F,GOLD,true);
+                if(shopLocked(o))text(g,"F"+tier,x+21,y+25,.7F,0xffe5a9a0,true);
+                else if(o.action()==OperationsShop.Action.SELL)text(g,"x"+v.saleCounts().get(row),x+2,y+25,.7F,LIME,true);
+                else if(stack.getCount()>1)text(g,"x"+stack.getCount(),x+2,y+25,.7F,SOFT,true);
             });
         }
-        simple(169,317,60,20,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES>0);
-        simple(485,317,60,20,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES+1<v.shopPages());
+        simple(169,317,32,20,"↑",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES>0);
+        simple(513,317,32,20,"↓",()->send(OperationsMenu.NEXT),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES+1<v.shopPages());
         simple(169,344,122,25,v.shopOwned()?"Achats":"Mes reventes",()->send(OperationsMenu.SHOP_OWNED_FILTER),()->v.shopOwned(),()->true);
         simple(295,344,122,25,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
         simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
@@ -900,11 +913,16 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var v=menu.view();var merchant=vendor();
         pageTitle(g,"▱",upper(merchant.title),v.shopOwned()?"Revente · objets en inventaire":fit(merchant.specialty,275));
         for(int i=0;i<OperationsMenu.SHOP_ROWS;i++){
-            int x=169+i%8*47,y=169+i/8*48;
-            g.fill(x,y,x+45,y+45,0xff1b201b);g.renderOutline(x,y,45,45,0xff343d32);
+            int x=SHOP_X+i%OperationsMenu.SHOP_COLUMNS*SHOP_DX,y=SHOP_Y+i/OperationsMenu.SHOP_COLUMNS*SHOP_DY;
+            g.fill(x,y,x+SHOP_CELL,y+SHOP_CELL,0xff1b201b);g.renderOutline(x,y,SHOP_CELL,SHOP_CELL,0xff343d32);
         }
         if(v.shopRows().isEmpty())text(g,"Aucune offre pour ce filtre.",180,308,.9F,SOFT,false);
-        centered(g,"Page "+(v.page()%OperationsMenu.VENDOR_PAGES+1)+" / "+v.shopPages(),357,323,1,SOFT,false);
+        int maxScroll=v.shopPages()-1,scroll=v.page()%OperationsMenu.VENDOR_PAGES;
+        int track=143,thumb=Math.max(10,track*OperationsMenu.SHOP_VISIBLE_ROWS/(maxScroll+OperationsMenu.SHOP_VISIBLE_ROWS));
+        int thumbY=SHOP_Y+(maxScroll==0?0:(track-thumb)*scroll/maxScroll);
+        g.fill(541,SHOP_Y,547,SHOP_Y+track,0xff252a24);
+        g.fill(541,thumbY,547,thumbY+thumb,0xff89976a);
+        centered(g,maxScroll==0?"Catalogue complet":"Défiler avec la molette",357,323,.9F,SOFT,false);
         int rep=v.reputation().get(merchant.ordinal()),loyalty=OperationsShop.reputationLevel(rep,v.experience());
         text(g,"FIDÉLITÉ DU MARCHAND",581,88,1.04F,GOLD,true);
         for(int i=1;i<=4;i++){
