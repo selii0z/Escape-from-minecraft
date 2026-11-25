@@ -91,7 +91,17 @@ public final class RaidSearchMenu extends ChestMenu {
         if(index<0||index>=27)return ItemStack.EMPTY;
         if(view==null){if(index>=discoveredSlots())return ItemStack.EMPTY;}
         else if(!view.visible(index)||!view.stillValid(player))return ItemStack.EMPTY;
-        return super.quickMoveStack(player,index);
+        ItemStack original=getSlot(index).getItem().copy();
+        ItemStack moved=super.quickMoveStack(player,index);
+        if(view!=null&&player instanceof ServerPlayer sp&&view.stillValid(player)){
+            var remaining=getSlot(index).getItem();
+            if(!remaining.isEmpty()&&CarriedStorage.of(sp).insertIntoPacks(remaining)>0){
+                if(remaining.isEmpty())getSlot(index).set(ItemStack.EMPTY);
+                else getSlot(index).setChanged();
+                return original;
+            }
+        }
+        return moved;
     }
     private static final class SearchView implements Container{
         final Container backing;
