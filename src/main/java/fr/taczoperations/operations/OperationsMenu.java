@@ -100,6 +100,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
         }
     }
 
+    public static final int ARM_WIPE=270;
+    private long wipeUntil=-1;
     private final View view;
     private final BlockPos position;
     private final ServerLevel level;
@@ -328,10 +330,22 @@ public final class OperationsMenu extends AbstractContainerMenu {
         open(player,position,PLAYER_MARKET,view.page(),notice);
     }
 
+    void confirmWipe(ServerPlayer p){
+        if(p.containerMenu!=this||view.tab()!=SETTINGS||!stillValid(p)||wipeUntil<0||p.level().getGameTime()>wipeUntil)return;
+        wipeUntil=-1;
+        String notice=WipeAccount.reset(p);
+        open(p,position,SETTINGS,0,notice);
+    }
     @Override
     public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer serverPlayer) || player.containerMenu!=this || !stillValid(player)) {
             return false;
+        }
+        if(button==ARM_WIPE&&view.tab()==SETTINGS){
+            String problem=WipeAccount.problem(serverPlayer);
+            if(problem.isEmpty())wipeUntil=serverPlayer.level().getGameTime()+20*60;
+            else {wipeUntil=-1;serverPlayer.sendSystemMessage(Component.literal(problem));}
+            return true;
         }
         if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
         int tab = view.tab();
