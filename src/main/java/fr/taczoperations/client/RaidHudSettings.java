@@ -144,13 +144,16 @@ public final class RaidHudSettings {
             }
             g.pose().popPose();
         }
+        @Override public void renderBackground(GuiGraphics g,int mx,int my,float partial){
+            // Avoid the vanilla blur pass over the HUD preview.
+            g.fill(0,0,width,height,0xb5101611);
+        }
         @Override public void render(GuiGraphics g,int mx,int my,float partial){
-            renderBackground(g,mx,my,partial);
+            super.render(g,mx,my,partial);
             g.fill(Math.round(previewX),Math.round(previewY),Math.round(previewX+screenW()*factor),Math.round(previewY+safeH()*factor),0xff111711);
             g.renderOutline(Math.round(previewX),Math.round(previewY),Math.round(screenW()*factor),Math.round(safeH()*factor),0xff716751);
             g.enableScissor(Math.round(previewX),Math.round(previewY),Math.round(previewX+screenW()*factor),Math.round(previewY+safeH()*factor));
             try{for(Panel p:Panel.values())if(p!=selected)sample(g,p);sample(g,selected);}finally{g.disableScissor();}
-            super.render(g,mx,my,partial);
             g.drawCenteredString(font,"HUD de raid · réglages indépendants",width/2,4,0xffe5ce88);
             g.drawCenteredString(font,"Glisse un panneau à la souris · F8 pour afficher",width/2,64,0xffc8d0bf);
         }
