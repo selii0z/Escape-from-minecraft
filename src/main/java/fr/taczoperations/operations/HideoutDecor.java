@@ -47,9 +47,17 @@ final class HideoutDecor {
             int x=-10+(i%4)*6,z=i<4?-11:11;
             for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)
                 set(level,center.offset(x+dx,-1,z+dz),Blocks.POLISHED_BLACKSTONE);
-            int tier=Hideout.tier(p,Hideout.Station.values()[i]);
+            var station=Hideout.Station.values()[i];
+            int tier=Hideout.tier(p,station);
             for(int j=0;j<3;j++){
                 set(level,center.offset(x+j-1,2,z+(i<4?-1:1)),j<tier?Blocks.LIME_CONCRETE:Blocks.GRAY_CONCRETE);
+            }
+            var pos=center.offset(x,2,z);
+            var sign=Blocks.SPRUCE_WALL_SIGN.defaultBlockState().setValue(net.minecraft.world.level.block.WallSignBlock.FACING,i<4?net.minecraft.core.Direction.SOUTH:net.minecraft.core.Direction.NORTH);
+            if(!level.getBlockState(pos).equals(sign))level.setBlock(pos,sign,3);
+            if(level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.SignBlockEntity entity){
+                var signText=entity.getFrontText().setMessage(0,net.minecraft.network.chat.Component.literal(station==Hideout.Station.EAU?"Collecteur":station.label)).setMessage(1,net.minecraft.network.chat.Component.literal(station==Hideout.Station.EAU?"d'eau":"Niveau "+tier+"/3")).setMessage(2,net.minecraft.network.chat.Component.literal(station==Hideout.Station.EAU?"Niveau "+tier+"/3":"Clic droit")).setMessage(3,net.minecraft.network.chat.Component.literal(station==Hideout.Station.EAU?"Clic droit":""));
+                entity.setText(signText,true);
             }
         }
     }
