@@ -1413,6 +1413,7 @@ public final class ForestRaid extends SavedData {
             return;
         }
         GuardRole role = GuardRole.get(guard);
+        RaidAudio.voice(guard,"death");
         if (event.getSource().getEntity() instanceof ServerPlayer killer
             && raid.owns(killer)&& !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
@@ -1461,6 +1462,7 @@ public final class ForestRaid extends SavedData {
             corpse.put(21,BossLoot.bonus(guard));
         }
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
+        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<7)corpse.put(24,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","tactical_headset"))));
         if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
         if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,new ItemStack(industrialKey()));
         if (level.addFreshEntity(corpse)) {
