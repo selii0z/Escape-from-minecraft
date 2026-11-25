@@ -31,10 +31,10 @@ final class HideoutMenu {
             else icons.setItem(19+i,tile(Items.LIME_DYE,"Niveau maximum",ChatFormatting.GREEN));
         }
         icons.setItem(28,tile(Items.CHEST,"Ouvrir la réserve",ChatFormatting.AQUA));
-        icons.setItem(29,tile(Items.PAPER,"Bandages ×2 · 25 Cr.",ChatFormatting.WHITE));
-        icons.setItem(30,tile(Items.GOLDEN_APPLE,"Salewa ×1 · 50 Cr.",ChatFormatting.WHITE));
-        icons.setItem(31,tile(Items.COOKED_BEEF,"Rations ×3 · 20 Cr.",ChatFormatting.WHITE));
-        icons.setItem(32,tile(Items.GLASS_BOTTLE,"Eau ×4 · 40 Cr.",ChatFormatting.WHITE));
+        icons.setItem(29,recipe(p,Items.PAPER,HideoutServices.Recipe.BANDAGE,"Bandages ×2"));
+        icons.setItem(30,recipe(p,Items.GOLDEN_APPLE,HideoutServices.Recipe.SALEWA,"Salewa ×1"));
+        icons.setItem(31,recipe(p,Items.COOKED_BEEF,HideoutServices.Recipe.RATION,"Rations ×3"));
+        icons.setItem(32,recipe(p,Items.GLASS_BOTTLE,HideoutServices.Recipe.WATER,"Eau ×4"));
         icons.setItem(33,tile(Items.COAL,"Ajouter un bidon de carburant",ChatFormatting.GOLD));
         icons.setItem(34,tile(Items.ANVIL,"Réparer l'arme en main",ChatFormatting.GOLD));
         icons.setItem(35,tile(Items.GREEN_BED,"Préparer le bonus de repos",ChatFormatting.GREEN));
@@ -72,6 +72,22 @@ final class HideoutMenu {
             }
             @Override public ItemStack quickMoveStack(Player player,int slot){return ItemStack.EMPTY;}
         },Component.literal("EFM · Gestion de la planque")));
+    }
+    private static ItemStack recipe(ServerPlayer p,Item item,HideoutServices.Recipe r,String label){
+        var material=r.material.stack().getItem();
+        int owned=CarriedStorage.of(p).count(s->s.is(material));
+        boolean tier=Hideout.tier(p,r.station)>=r.tier,power=HideoutPower.available(p),money=SupplyContract.balance(p)>=r.price;
+        var stack=tile(item,label+" · "+r.price+" Cr.",tier&&power&&money&&owned>=r.amount?ChatFormatting.GREEN:ChatFormatting.GRAY);
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(java.util.List.<Component>of(
+            requirement(r.station.label+" niveau "+r.tier,tier),
+            requirement(r.material.title+" : "+owned+"/"+r.amount,owned>=r.amount),
+            requirement("Énergie : 1 unité",power),
+            requirement("Crédits : "+r.price,money),
+            Component.literal("Capacité vérifiée à la fabrication.").withStyle(ChatFormatting.GRAY))));
+        return stack;
+    }
+    private static Component requirement(String label,boolean ok){
+        return Component.literal(label).withStyle(ok?ChatFormatting.GREEN:ChatFormatting.RED);
     }
     private static ItemStack tile(Item item,String label,ChatFormatting color){
         var stack=new ItemStack(item);
