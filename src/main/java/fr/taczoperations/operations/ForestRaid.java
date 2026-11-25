@@ -868,7 +868,7 @@ public final class ForestRaid extends SavedData {
                 raid.setDirty();
                 continue;
             }
-            BlockPos place = findFloor(level, center, 2, false);
+            BlockPos place = findLootFloor(level, center, 2);
             if (place != null && raid.putCrate(level, place, "Caisse de ravitaillement", new Random(raid.seed ^ i), i)) {
                 raid.crates.set(i);
                 raid.setDirty();
@@ -1044,6 +1044,31 @@ public final class ForestRaid extends SavedData {
 
     private static boolean near(ServerPlayer player, BlockPos pos) {
         return pos.distToCenterSqr(player.position()) <= 60 * 60;
+    }
+
+    // Prefer furniture against a wall with at least one accessible side.
+    // Keep the search radius unchanged so cleanup and persisted anchor lookup agree.
+    private static BlockPos findLootFloor(ServerLevel level,BlockPos center,int radius){
+        BlockPos best=null;int score=Integer.MIN_VALUE;
+        for(BlockPos pos:BlockPos.withinManhattan(center,radius,0,radius)){
+            if(!level.hasChunkAt(pos)||(!ForestPlan.inside(pos.getX(),pos.getZ())&&!IndustrialZone.inside(pos.getX(),pos.getZ())))continue;
+            if(!level.getBlockState(pos).isAir()||!level.getBlockState(pos.above()).isAir())continue;
+            var floor=level.getBlockState(pos.below());
+            if(!floor.isFaceSturdy(level,pos.below(),Direction.UP)||floor.is(Blocks.GOLD_BLOCK)||floor.is(Blocks.MOSSY_STONE_BRICKS)||floor.is(Blocks.COPPER_BLOCK))continue;
+            int walls=0,access=0;boolean adjacentLoot=false,door=false;
+            for(Direction dir:Direction.Plane.HORIZONTAL){
+                BlockPos side=pos.relative(dir);
+                var state=level.getBlockState(side);
+                if(state.getBlock() instanceof RaidFurnitureBlock)adjacentLoot=true;
+                if(state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock)door=true;
+                if(state.isAir()&&level.getBlockState(side.above()).isAir()&&level.getBlockState(side.below()).isFaceSturdy(level,side.below(),Direction.UP))access++;
+                else if(state.isFaceSturdy(level,side,dir.getOpposite()))walls++;
+            }
+            if(adjacentLoot||door||access<2)continue;
+            int candidate=(walls==1?12:walls==2?15:0)-Math.abs(pos.getX()-center.getX())-Math.abs(pos.getZ()-center.getZ());
+            if(candidate>score){score=candidate;best=pos.immutable();}
+        }
+        return best;
     }
 
     private static BlockPos findFloor(ServerLevel level, BlockPos center, int radius, boolean headroom) {
