@@ -36,11 +36,13 @@ public final class PlayerMarket extends SavedData {
     public record Page(List<Offer> offers,long pending,int ownCount,boolean ownOnly,ItemStack held,int category){
         public static Page empty(){return new Page(List.of(),0,0,false,ItemStack.EMPTY,0);}
         public void write(RegistryFriendlyByteBuf b){
-            b.writeCollection(offers,(buf,offer)->offer.write(buf));b.writeVarLong(pending);
+            b.writeVarInt(offers.size());for(var offer:offers)offer.write(b);b.writeVarLong(pending);
             b.writeVarInt(ownCount);b.writeBoolean(ownOnly);ItemStack.OPTIONAL_STREAM_CODEC.encode(b,held);b.writeVarInt(category);
         }
         public static Page read(RegistryFriendlyByteBuf b){
-            return new Page(b.readList(Offer::read),b.readVarLong(),b.readVarInt(),b.readBoolean(),ItemStack.OPTIONAL_STREAM_CODEC.decode(b),b.readVarInt());
+            int n=b.readVarInt();if(n<0||n>PAGE_SIZE)throw new IllegalArgumentException("Invalid market page size");
+            var offers=new ArrayList<Offer>(n);for(int i=0;i<n;i++)offers.add(Offer.read(b));
+            return new Page(List.copyOf(offers),b.readVarLong(),b.readVarInt(),b.readBoolean(),ItemStack.OPTIONAL_STREAM_CODEC.decode(b),b.readVarInt());
         }
     }
     static PlayerMarket of(ServerPlayer p){
