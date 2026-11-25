@@ -16,6 +16,7 @@ public final class FieldMedicine extends Item {
         if(level.isClientSide())return InteractionResultHolder.success(stack);
         if(player instanceof ServerPlayer p&&RaidInjuries.treat(p,kind)){
             if(!p.getAbilities().instabuild)stack.shrink(1);
+            RaidAudio.medicine(p,kind);
             return InteractionResultHolder.consume(stack);
         }
         return InteractionResultHolder.fail(stack);

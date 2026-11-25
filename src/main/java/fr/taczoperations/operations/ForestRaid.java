@@ -262,7 +262,7 @@ public final class ForestRaid extends SavedData {
             reinforcementPending=reinforcementLimit==1?2:3;
             reinforcementDue=now+600;
             reinforcementExpiry=reinforcementDue+900;
-            for(var p:players)p.sendSystemMessage(Component.literal("ALERTE · Des renforts ennemis approchent. Reste sur tes gardes."));
+            for(var p:players){RaidAudio.alert(p);p.sendSystemMessage(Component.literal("ALERTE · Des renforts ennemis approchent. Reste sur tes gardes."));}
             setDirty();
             return;
         }
@@ -1150,6 +1150,7 @@ public final class ForestRaid extends SavedData {
             tracking.put("taczoperations_xp_crates", opened);
             tracking.putInt("taczoperations_run_crates",
                 tracking.getInt("taczoperations_run_crates") + 1);
+            RaidAudio.search(player);
             SupplyContract.activityXp(player, 3, false, "Coffre fouillé");
             SupplyContract.chestOpened(player);
         }
