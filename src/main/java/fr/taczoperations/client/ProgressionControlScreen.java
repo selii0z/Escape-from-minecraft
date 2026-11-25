@@ -116,6 +116,13 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         text(g,fit(BENEFITS[selected],290),444,297,1,WHITE,false);
         text(g,"Progression automatique · aucun achat de niveau",444,337,.85F,SOFT,false);
     }
+    private void missionArt(GuiGraphics g,int mission,int x,int y,int w,int h){
+        var texture=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"textures/gui/campaign/mission_"+(mission+1)+".png");
+        minecraft.getTextureManager().bindForSetup(texture);
+        minecraft.getTextureManager().getTexture(texture).setFilter(true,false);
+        g.blit(texture,x,y,0,0,w,h,w,h);
+        g.renderOutline(x,y,w,h,0xff69765f);
+    }
     private void drawCampaign(GuiGraphics g,double mx,double my){
         int done=0;for(int i=0;i<12;i++)if(line(missionSlot(i),0).startsWith("Terminée"))done++;
         text(g,"OPÉRATIONS · "+done+"/12",23,78,1.35F,GOLD,true);
@@ -125,19 +132,20 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
             String status=line(slot,0);
             int color=status.startsWith("Terminée")?LIME:status.startsWith("Verrouillée")||status.startsWith("Niveau insuffisant")?SOFT:GOLD;
             tile(g,x,y,190,37,selected==i,hit(mx,my,x,y,190,37));
-            text(g,String.format(java.util.Locale.ROOT,"%02d",i+1),x+6,y+6,1.2F,color,true);
-            text(g,fit(name(slot),152),x+32,y+5,1,WHITE,true);
-            text(g,fit(status,152),x+32,y+20,.92F,color,false);
+            missionArt(g,i,x+4,y+4,51,29);
+            text(g,fit(name(slot),127),x+60,y+5,1,WHITE,true);
+            text(g,fit(status,127),x+60,y+20,.92F,color,false);
         }
         int slot=missionSlot(selected);
-        text(g,fit(name(slot).toUpperCase(java.util.Locale.ROOT),210),444,80,1.35F,GOLD,true);
-        text(g,line(slot,0),444,104,1.05F,WHITE,true);
-        text(g,fit(line(slot,1),290),444,122,1,SOFT,false);
-        g.fill(444,140,736,141,FRAME);
-        text(g,"OBJECTIFS",444,151,1.1F,GOLD,true);
-        for(int j=2;j<=5;j++)text(g,fit(line(slot,j),290),444,174+(j-2)*19,1,WHITE,false);
-        text(g,"RÉCOMPENSES",444,255,1.1F,GOLD,true);
-        text(g,line(slot,6),444,275,1.1F,LIME,true);
+        text(g,fit(name(slot).toUpperCase(java.util.Locale.ROOT),225),444,80,1.25F,GOLD,true);
+        missionArt(g,selected,444,101,144,81);
+        text(g,fit(line(slot,0),140),598,112,.95F,WHITE,true);
+        text(g,fit(line(slot,1),140),598,131,.95F,SOFT,false);
+        g.fill(444,191,736,192,FRAME);
+        text(g,"OBJECTIFS",444,199,1.05F,GOLD,true);
+        for(int j=2;j<=5;j++)text(g,fit(line(slot,j),290),444,215+(j-2)*15,.95F,WHITE,false);
+        text(g,"RÉCOMPENSES",444,278,1.0F,GOLD,true);
+        text(g,line(slot,6),444,292,1.0F,LIME,true);
         String status=line(slot,0);
         String caption=acceptable()?"Accepter l'opération":status.startsWith("Terminée")?"Opération terminée":status.startsWith("Acceptée")?"Opération en cours":status.startsWith("Niveau insuffisant")?"Niveau militaire insuffisant":"Opération verrouillée";
         button(g,caption,444,310,292,27,mx,my,acceptable());
