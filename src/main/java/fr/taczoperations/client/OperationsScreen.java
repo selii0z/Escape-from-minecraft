@@ -294,6 +294,38 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     @Override
+    public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
+        super.render(g,mouseX,mouseY,partial);
+        if(scale<=0||minecraft==null||minecraft.player==null)return;
+        double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
+        ItemStack hovered=ItemStack.EMPTY;
+        int tab=menu.view().tab();
+        if(tab==OperationsMenu.SHOP){
+            if(x>=169&&x<545&&y>=169&&y<313){
+                int col=(int)(x-169)/47,row=(int)(y-169)/48;
+                if((x-169)%47<45&&(y-169)%48<45){
+                    var offer=shopOffer(row*8+col);
+                    if(offer!=null)hovered=offer.stack().get();
+                }
+            }else if(x>=581&&x<815&&y>=265&&y<369){
+                int k=((int)(y-265)/26)*9+(int)(x-581)/26;
+                if(k>=0&&k<36)hovered=minecraft.player.getInventory().getItem(k<27?k+9:k-27);
+            }
+        }else if(tab==OperationsMenu.PLAYER_MARKET&&x>=169&&x<545&&y>=171&&y<330){
+            int index=((int)(y-171)/53)*4+(int)(x-169)/94;
+            var rows=menu.view().playerMarket().offers();
+            if(index>=0&&index<rows.size()&&(x-169)%94<90&&(y-171)%53<50)hovered=rows.get(index).item();
+        }else if(tab==OperationsMenu.BLACK_MARKET&&x>=173&&x<617&&y>=142&&y<212){
+            int index=(int)(x-173)/74;
+            if((x-173)%74<70)hovered=fr.taczoperations.operations.BlackMarket.preview(Long.parseLong(menu.view().market().getFirst()),index);
+        }
+        if(!hovered.isEmpty()){
+            if(DiscoveryClient.unknown(hovered))g.renderTooltip(font,Component.literal("Objet non identifié · examiner"),mouseX,mouseY);
+            else g.renderTooltip(font,hovered,mouseX,mouseY);
+        }
+    }
+
+    @Override
     protected void renderBg(GuiGraphics g, float tick, int mouseX, int mouseY) {
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
