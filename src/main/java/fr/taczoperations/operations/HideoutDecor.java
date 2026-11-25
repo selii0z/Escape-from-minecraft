@@ -52,7 +52,8 @@ final class HideoutDecor {
             for(int j=0;j<3;j++){
                 set(level,center.offset(x+j-1,2,z+(i<4?-1:1)),j<tier?Blocks.LIME_CONCRETE:Blocks.GRAY_CONCRETE);
             }
-            var pos=center.offset(x,2,z);
+            set(level,center.offset(x,3,z+(i<4?-1:1)),theme.wall);
+            var pos=center.offset(x,3,z);
             var sign=Blocks.SPRUCE_WALL_SIGN.defaultBlockState().setValue(net.minecraft.world.level.block.WallSignBlock.FACING,i<4?net.minecraft.core.Direction.SOUTH:net.minecraft.core.Direction.NORTH);
             if(!level.getBlockState(pos).equals(sign))level.setBlock(pos,sign,3);
             if(level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.SignBlockEntity entity){
