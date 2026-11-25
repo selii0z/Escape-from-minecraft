@@ -47,7 +47,7 @@ public final class HideoutRange {
         p.getPersistentData().putInt(SHOTS,0);p.getPersistentData().putInt(HITS,0);p.getPersistentData().putInt(HEADS,0);
         for(int distance:DISTANCES)p.getPersistentData().remove(HITS+"_"+distance);
         p.teleportTo(level,o.getX()+.5,o.getY(),o.getZ()+.5,Set.of(),-90,0);
-        Hideout.say(p,"Stand privé · munitions réelles, pas d'usure EFM ni d'XP. /efm planque tir pour revenir.");
+        Hideout.say(p,"Stand privé · munitions réelles, pas d'usure EFM ni d'XP. /efm planque mobile pour les cibles, /efm planque tir pour revenir.");
     }
     private static void build(ServerLevel level,BlockPos o,int tier){
         if(level.getBlockState(o.below(2)).is(Blocks.OBSIDIAN)&&level.getBlockState(o.offset(length(tier),0,0)).is(Blocks.STONE_BRICKS))return;
@@ -66,7 +66,7 @@ public final class HideoutRange {
     }
     private static void target(ServerLevel level,ServerPlayer p,BlockPos o,int i){
         var pos=o.offset(DISTANCES[i],0,LANES[i]);level.getChunkAt(pos);
-        for(var stand:level.getEntitiesOfClass(ArmorStand.class,new AABB(pos).inflate(2),
+        for(var stand:level.getEntitiesOfClass(ArmorStand.class,new AABB(pos).inflate(8),
             e->e.getPersistentData().hasUUID(OWNER)&&e.getPersistentData().getUUID(OWNER).equals(p.getUUID())&&e.getPersistentData().getInt(DIST)==DISTANCES[i]))stand.discard();
         var stand=EntityType.ARMOR_STAND.create(level);if(stand==null)return;
         stand.moveTo(pos.getX()+.5,pos.getY(),pos.getZ()+.5,90,0);
@@ -91,7 +91,7 @@ public final class HideoutRange {
             var base=o.offset(DISTANCES[i],0,LANES[i]);
             if(!level.hasChunkAt(base))continue;
             final int distance=DISTANCES[i];
-            for(var stand:level.getEntitiesOfClass(ArmorStand.class,new AABB(base).inflate(5),
+            for(var stand:level.getEntitiesOfClass(ArmorStand.class,new AABB(base).inflate(8),
                 e->e.getPersistentData().hasUUID(OWNER)&&e.getPersistentData().getUUID(OWNER).equals(p.getUUID())&&e.getPersistentData().getInt(DIST)==distance)){
                 double z=mobile?o.getZ()+.5+Math.sin((level.getGameTime()%2000)/(distance==100?13.0:21.0))*3.3:base.getZ()+.5;
                 stand.moveTo(base.getX()+.5,base.getY(),z,90,0);
