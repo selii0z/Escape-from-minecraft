@@ -97,20 +97,37 @@ public final class PlayerMarket extends SavedData {
         p.getInventory().setChanged();setDirty();
         return "Annonce publiée · "+price+" crédits le lot.";
     }
-    private static boolean hasSpace(ServerPlayer p,ItemStack item){
-        long capacity=p.getInventory().items.stream().mapToLong(s->s.isEmpty()?item.getMaxStackSize():
-            ItemStack.isSameItemSameComponents(s,item)?Math.max(0,s.getMaxStackSize()-s.getCount()):0).sum();
-        return capacity>=item.getCount();
+    private record Delivery(int slot,ItemStack replacement){}
+    /** Calculate a complete delivery before changing money or escrow.
+     * Direct replacement avoids partial insertions and preserves item components. */
+    private static List<Delivery> deliveryPlan(ServerPlayer p,ItemStack item){
+        var items=p.getInventory().items;
+        var plan=new ArrayList<Delivery>();
+        int remaining=item.getCount();
+        for(int i=0;i<items.size()&&remaining>0;i++){
+            var current=items.get(i);
+            if(current.isEmpty()||!ItemStack.isSameItemSameComponents(current,item))continue;
+            int n=Math.min(remaining,Math.max(0,current.getMaxStackSize()-current.getCount()));
+            if(n==0)continue;
+            plan.add(new Delivery(i,current.copyWithCount(current.getCount()+n)));remaining-=n;
+        }
+        for(int i=0;i<items.size()&&remaining>0;i++){
+            if(!items.get(i).isEmpty())continue;
+            int n=Math.min(remaining,item.getMaxStackSize());
+            plan.add(new Delivery(i,item.copyWithCount(n)));remaining-=n;
+        }
+        return remaining==0?List.copyOf(plan):List.of();
     }
     String buyOrCancel(ServerPlayer p,Offer quote){
         if(!available(p))return "Marché disponible hors raid, en survie.";
         var l=listings.get(quote.id);
-        if(l==null||l.price!=quote.price)return "Annonce indisponible. Catalogue actualisé.";
+        if(l==null||l.price!=quote.price||!ItemStack.matches(l.item,quote.item))return "Annonce indisponible. Catalogue actualisé.";
         boolean own=l.owner.equals(p.getUUID());
         var delivered=l.item.copy();
         // Cancelling preserves the original insurance; a change of owner does not.
         if(!own)RaidSecurity.removeInsuranceForTrade(delivered);
-        if(!hasSpace(p,delivered))return "Inventaire Minecraft plein.";
+        var delivery=deliveryPlan(p,delivered);
+        if(delivery.isEmpty())return "Inventaire Minecraft plein.";
         var account=SupplyContract.account(p);
         int balance=SupplyContract.balance(p);
         if(!own&&balance<l.price)return "Crédits insuffisants.";
@@ -123,7 +140,8 @@ public final class PlayerMarket extends SavedData {
             account.putInt("credits",balance-l.price);
             proceeds.put(l.owner,pending+net);
         }
-        p.getInventory().add(delivered);p.getInventory().setChanged();setDirty();
+        for(var change:delivery)p.getInventory().setItem(change.slot,change.replacement);
+        p.getInventory().setChanged();setDirty();
         if(own)return "Annonce annulée · objet récupéré.";
         TradeJournal.record(p,"Achat","Marché joueurs",l.item.getHoverName().getString(),l.item.getCount(),-l.price);
         var seller=p.server.getPlayerList().getPlayer(l.owner);
