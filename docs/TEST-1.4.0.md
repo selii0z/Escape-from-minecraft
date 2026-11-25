@@ -14,3 +14,11 @@ Base figée : 1.3.0 RC1 build 547. Branche indépendante, aucun changement au JA
 2. Stand de tir privé, cibles fixes/mobiles, protections factices, munitions et usure isolées ; pas de génération d'objets exportables ni de progression farmable. Tester sortie et déconnexion.
 3. Missions scénarisées à étapes, objectifs d'exploration/collecte/élimination/extraction, état serveur persistant, récompenses uniques et absence de conflit avec les contrats.
 4. Huit compétences passives, 50 niveaux chacune ; XP plafonnée, activités réelles et bonus modestes. Aucun bonus de commerce, médecine, tir, etc. encore codé.
+
+## Lots 2–4 — services et menu de gestion
+- Réserve privée (18/36/54 cases), persistante avec les composants d'objets. Recettes bandages, Salewa, rations et eau ; validation de la place, des matériaux et du solde avant consommation.
+- Générateur : 24/48/72 unités max, un bidon +12/24/36, une unité par fabrication ou réparation réussie. Pas de perte hors connexion. Atelier : réduction de 10/20/30 % sur réparation de l'arme tenue. Repos : protection de l'énergie durant les 120/180/240 premières secondes du prochain raid, consommée au départ.
+- Menu de gestion provisoire de 54 cases (écran coffre vanilla) : huit installations, état des niveaux, coût et matériaux pour l'amélioration, actions de réserve/fabrication/carburant/réparation/repos, solde et énergie. Clic gauche sur les tuiles d'action uniquement ; aucun transfert, shift-clic ou dépôt possible dans ce menu. La réserve est un écran distinct qui accepte les vrais objets.
+- Clic droit sur l'un des huit blocs d'installation ou /efm planque menu ; accès contrôlé par UUID, dimension, position et état du joueur. Les interactions vanilla avec les blocs décoratifs sont bloquées. Vérifier fermeture/réouverture du menu, clics rapides et paquets périmés, maintien des quantités, menu ouvert lors d'un déplacement forcé ou d'une déconnexion.
+- Stand de tir non implémenté ; interface finale personnalisée, décoration, compétences et missions toujours à faire.
+- Builds 555, 559, 566 échoués, logs indisponibles (BlobNotFound). Ajout de capture Gradle et artefact build-diagnostics même en cas d'échec de compilation ; si le job ne démarre pas cet artefact ne sera pas produit. Ne pas utiliser en production avant compilation et tests.
