@@ -111,7 +111,16 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("15");
+        var registrar = event.registrar("16");
+        registrar.playToServer(fr.taczoperations.operations.InspectItem.TYPE,fr.taczoperations.operations.InspectItem.CODEC,
+            (message,context)->context.enqueueWork(()->{
+                if(context.player() instanceof net.minecraft.server.level.ServerPlayer p)
+                    fr.taczoperations.operations.ItemDiscovery.request(p,message);
+            }));
+        registrar.playToClient(fr.taczoperations.operations.DiscoveryState.TYPE,fr.taczoperations.operations.DiscoveryState.CODEC,
+            (message,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())fr.taczoperations.client.DiscoveryClient.handle(message,context);
+            });
         registrar.playToServer(fr.taczoperations.operations.ListPlayerItem.TYPE,fr.taczoperations.operations.ListPlayerItem.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p
@@ -164,6 +173,8 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::commands);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogout);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogin);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ItemDiscovery::login);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ItemDiscovery::respawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onServerTick);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::cloneCases);
