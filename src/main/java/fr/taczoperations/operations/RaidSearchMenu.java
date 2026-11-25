@@ -18,7 +18,7 @@ import java.util.function.Predicate;
  * cursor belong to the loot source, not to a particular viewer.
  */
 public final class RaidSearchMenu extends ChestMenu {
-    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next", LAST_ACTIVE="efm_search_last_active";
+    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next", LAST_ACTIVE="efm_search_last_active", DURATION="efm_search_duration";
     private static final int ITEM_TICKS=10; // half a second per occupied slot at 20 TPS
     private final SearchView view;
     private final Player viewer;
@@ -58,7 +58,9 @@ public final class RaidSearchMenu extends ChestMenu {
                 if(now>=view.state.getLong(NEXT)){
                     view.state.putInt(REVEALED,view.revealed()+1);
                     view.skipEmpty();
-                    view.state.putLong(NEXT,now+searchTicks(p));
+                    int duration=searchTicks(p);
+                    view.state.putLong(NEXT,now+duration);
+                    view.state.putInt(DURATION,duration);
                     PassiveSkills.search(p);
                     view.backing.setChanged();
                 }
@@ -71,7 +73,8 @@ public final class RaidSearchMenu extends ChestMenu {
     private void syncProgress(long now){
         int count=view.revealed();
         revealedSync.set(count);
-        progressSync.set(count==27?100:(int)Math.clamp(100L*(ITEM_TICKS-(view.state.getLong(NEXT)-now))/ITEM_TICKS,0,100));
+        int duration=view.state.contains(DURATION)?Math.clamp(view.state.getInt(DURATION),8,ITEM_TICKS):ITEM_TICKS;
+        progressSync.set(count==27?100:(int)Math.clamp(100L*(duration-(view.state.getLong(NEXT)-now))/duration,0,100));
     }
     @Override protected Slot addSlot(Slot slot){
         if(slots.size()<27)return super.addSlot(new Slot(slot.container,slot.getContainerSlot(),slot.x,slot.y){
@@ -127,6 +130,7 @@ public final class RaidSearchMenu extends ChestMenu {
             // discovered items, but cannot fast-forward the next item.
             if(!state.contains(NEXT)||!state.contains(LAST_ACTIVE)||now<last||now-last>1){
                 state.putLong(NEXT,now+ticks);
+                state.putInt(DURATION,ticks);
                 backing.setChanged();
             }
             state.putLong(LAST_ACTIVE,now);
