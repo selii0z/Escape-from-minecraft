@@ -61,9 +61,13 @@ public final class PassiveSkills {
         long now=java.time.LocalDate.now(java.time.ZoneOffset.UTC).toEpochDay();
         if(day.getLong("day")!=now){day=new CompoundTag();day.putLong("day",now);}
         int used=Math.clamp(day.getInt("xp"),0,Skill.TRADE.cap);
-        int grant=Math.min(Skill.TRADE.cap-used,(int)Math.min(12,1+Math.abs(delta)/250));
-        if(grant<=0)return;
-        day.putInt("xp",used+grant);a.put(DAY,day);award(p,Skill.TRADE,grant);
+        if(used>=Skill.TRADE.cap)return;
+        long volume=Math.min((long)Skill.TRADE.cap*250,Math.abs(delta))+Math.clamp(day.getInt("remainder"),0,249);
+        int grant=Math.min(Skill.TRADE.cap-used,(int)(volume/250));
+        day.putInt("xp",used+grant);
+        day.putInt("remainder",used+grant>=Skill.TRADE.cap?0:(int)(volume%250));
+        a.put(DAY,day);
+        if(grant>0)award(p,Skill.TRADE,grant);
     }
     static int reduce(ServerPlayer p,Skill skill,int units){
         if(units<=0)return 0;int percent=bonus(p,skill);
