@@ -456,7 +456,7 @@ public enum SupplyContract {
                 || contract.objective == Objective.BOSS_INTEL && player.getPersistentData().getBoolean("taczoperations_raid_boss"))
                 && baseline.contains(contract.relic.id)
                 && count(player, contract.relic.item()) - baseline.getInt(contract.relic.id) >= contract.amount
-                && consume(player, contract.relic.item(), contract.amount)) {
+                && consumeRaidOrigin(player, contract.relic.item(), contract.amount)) {
                 contract.finish(player);
             }
         }
@@ -486,6 +486,20 @@ public enum SupplyContract {
         player.getPersistentData().remove("taczoperations_raid_kills");
         player.getPersistentData().remove("taczoperations_raid_boss");
         player.getPersistentData().remove("taczoperations_relic_baseline");
+    }
+
+    private static boolean consumeRaidOrigin(ServerPlayer player, Item item,int amount){
+        var inventory=player.getInventory();
+        var eligible=inventory.items.stream().filter(s->s.is(item)&&RaidOrigin.found(s)).toList();
+        if(eligible.stream().mapToInt(ItemStack::getCount).sum()<amount)return false;
+        int remaining=amount;
+        for(var stack:eligible){
+            int used=Math.min(remaining,stack.getCount());
+            stack.shrink(used);remaining-=used;
+            if(remaining==0)break;
+        }
+        inventory.setChanged();
+        return true;
     }
 
     static boolean consume(ServerPlayer player, Item item, int amount) {
