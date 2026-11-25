@@ -34,7 +34,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int FILES = 22;
     public static final int SETTINGS = 23;
     public static final int TOGGLE_EXTRACTION = 24;
-    public static final int SECURE_POUCH = 140, INSURE_GEAR = 141, CLAIM_INSURANCE = 142, TIMED_CONTRACTS = 143;
+    public static final int SECURE_POUCH = 140, INSURE_GEAR = 141, CLAIM_INSURANCE = 142, TIMED_CONTRACTS = 143, BLACK_MARKET = 144, MARKET_FIRST = 150;
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
     private static final int PAGE_SIZE = 4;
@@ -50,7 +50,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -73,6 +73,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeCollection(reputation, (buf, points) -> buf.writeVarInt(points));
             buffer.writeCollection(raidTotals, (buf, amount) -> buf.writeVarLong(amount));
             buffer.writeCollection(timedContracts,(buf,amount)->buf.writeVarInt(amount));
+            buffer.writeCollection(market,(buf,line)->buf.writeUtf(line));
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -80,7 +81,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()));
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()));
         }
     }
 
@@ -171,7 +172,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             lastRaidSummary(player), raidHistory(player), category, difficulty, statusFilter, merchantFilter, filtered, SupplyContract.cyclesCompleted(player),
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills")
-                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player));
+                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player));
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -237,7 +238,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int page = view.page();
         String notice = "";
         if (button == CONTRACTS || button == GROUP || button == FOREST
-            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS) {
+            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET) {
             tab = button;
             page = 0;
         } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
@@ -250,6 +251,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             if (notice.isEmpty()) {
                 return true;
             }
+        } else if (tab==BLACK_MARKET && button>=MARKET_FIRST && button<MARKET_FIRST+BlackMarket.SIZE) {
+            notice=BlackMarket.buy(serverPlayer,button-MARKET_FIRST,Long.parseLong(view.market().getFirst()));
         } else if (tab == SETTINGS && button == SECURE_POUCH) {
             notice = "Clic droit avec le coffre sécurisé en main pour ouvrir ses 5 places.";
         } else if (tab == SETTINGS && button == INSURE_GEAR) {

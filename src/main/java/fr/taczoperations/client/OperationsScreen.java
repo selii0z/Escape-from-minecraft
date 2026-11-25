@@ -155,6 +155,17 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         () -> send(OperationsMenu.VENDOR_FIRST + merchant.ordinal()), () -> merchant == vendor, () -> true);
                 }
                 pager(page, (offers.size() + OperationsMenu.LIST_ROWS - 1) / OperationsMenu.LIST_ROWS);
+                simple(584,358,225,28,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
+            }
+            case OperationsMenu.BLACK_MARKET -> {
+                simple(690,79,125,29,"Marchands",()->send(OperationsMenu.SHOP));
+                for(int i=0;i<6;i++){
+                    String[] offer=view.market().get(i+1).split("\\|",-1);
+                    final int action=OperationsMenu.MARKET_FIRST+i;
+                    simple(700,135+i*41,110,25,offer[2].equals("0")?"Épuisé":"Acheter",()->send(action),()->false,
+                        ()->!offer[2].equals("0")&&offer[3].equals("1")&&view.credits()>=Integer.parseInt(offer[1]));
+                }
+                simple(700,386,110,22,"Actualiser",()->send(OperationsMenu.REFRESH));
             }
             case OperationsMenu.GROUP -> groupWidgets();
             case OperationsMenu.SETTINGS -> {
@@ -165,7 +176,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -297,7 +308,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
         panel(g, 3, 74, 149, 337, 0xc0111713);
-        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS) {
+        if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET) {
             panel(g, 157, 74, 674, 339, 0xf0111612);
         } else {
             panel(g, 157, 74, 401, 339, 0xd8111612);
@@ -472,6 +483,20 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                         181, y + 23, .95F, GOLD, false);
                 }
             }
+            case OperationsMenu.BLACK_MARKET -> {
+                text(g,"MARCHÉ NOIR",173,82,1.55F,GOLD,true);
+                text(g,"6 offres limitées · renouvellement à minuit UTC",173,109,.92F,SOFT,false);
+                for(int i=0;i<6;i++){
+                    String[] o=view.market().get(i+1).split("\\|",-1);
+                    int y=128+i*41;
+                    panel(g,169,y,650,37,DARK);
+                    text(g,fit(o[0],280),185,y+5,1.1F,WHITE,true);
+                    text(g,fit(o[4],300),185,y+22,.85F,o[3].equals("1")?SOFT:0xffdf9c94,false);
+                    text(g,o[1]+" crédits",510,y+5,1.05F,GOLD,true);
+                    text(g,"Stock : "+o[2],510,y+22,.88F,SOFT,false);
+                }
+                text(g,"Stocks personnels · accès des marchands conservés",173,391,.85F,SOFT,false);
+            }
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
                 panel(g, 169, 130, 379, 91, DARK);
@@ -561,7 +586,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             }
             default -> { }
         }
-        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS) return;
+        if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET) return;
         if (view.tab() == OperationsMenu.SHOP) {
             var vendor = vendor();
             panel(g, 578, 88, 239, 115, DARK);

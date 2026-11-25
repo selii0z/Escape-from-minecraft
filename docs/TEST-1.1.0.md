@@ -19,3 +19,5 @@ Les fonctionnalités restantes du roadmap ne sont pas terminées.
 - Statistiques cumulées : vérifier victoire/défaite, taux de survie, éliminations, K/D, record, coffres, contrats, durée, XP. Migrer seulement les dix rapports historiques existants, conserver les totaux au-delà de dix raids et après reconnexion.
 
 - Défis périodiques : 3 quotidiens, 3 hebdomadaires, automatique et indépendant des 3 contrats actifs. Vérifier gains sur bilan, extraction uniquement pour défi extraction, limites et renouvellement minuit UTC / lundi, sauvegarde, crédits/XP/réputation attribués une seule fois.
+
+- Marché noir : six offres quotidiennes, stock par joueur, conservation des prérequis des marchands, prix réduits, refus inventaire plein, renouvellement UTC, aucun équipement de classe 5 en vente. Pas de planque personnelle.

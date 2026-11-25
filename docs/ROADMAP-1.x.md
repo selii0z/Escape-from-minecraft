@@ -1,6 +1,6 @@
 # Escape from Minecraft — feuille de route 1.x
 
-Décisions validées après la 1.0.3 : toutes les fonctionnalités proposées sont retenues sauf la collection de trophées. Livraison groupée en 1.1.0 demandée par le joueur. Les lots ci-dessous sont des étapes de développement internes, pas des versions publiques séparées. La version 1.0.3 reste sur sa branche d'origine.
+Décisions validées après la 1.0.3 : toutes les fonctionnalités proposées sont retenues sauf la collection de trophées et la planque personnelle (retirée à la demande du joueur le 25 novembre). Livraison groupée en 1.1.0 demandée par le joueur. Les lots ci-dessous sont des étapes de développement internes, pas des versions publiques séparées. La version 1.0.3 reste sur sa branche d'origine.
 
 ## Lot — Zone industrielle
 - Refonte détaillée : usines, entrepôts, garages, voies ferrées, bureaux, souterrains.
@@ -9,16 +9,15 @@ Décisions validées après la 1.0.3 : toutes les fonctionnalités proposées so
 - Boss spécifique à la carte, équipement exclusif.
 
 ## Lot — Équipement et survie
-- Assurance facultative de l'équipement, règles de retour et pertes à définir.
-- Coffre sécurisé de capacité limitée ; contenu conservé à la mort.
+- Assurance facultative de l'équipement, 100 crédits par équipement, 95 % de retour dans un espace de récupération après 30 minutes.
+- Coffre sécurisé physique ouvrable, cinq emplacements ; objet et contenu conservés à la mort.
 - Blessures localisées, fractures et saignements ; traitements adaptés.
 - Usure, enrayement et entretien des armes, selon possibilités de l'API TaCZ.
 - Réserves de munitions et rechargement des ennemis.
 
-## Lot — Planque
-- Base personnelle améliorable avec matériaux de raid.
-- Stockage personnel et atelier d'armement.
-- Modification et réparation des armes, installations et coûts à équilibrer.
+## Entretien du matériel (sans planque)
+- Pas de base personnelle, ni stockage ou atelier propre au mod : Minecraft fournit déjà ces fonctionnalités.
+- Entretien et réparation des armes chez l'Armurier ; modification via les outils existants de TaCZ.
 
 ## Lot — IA et raids dynamiques
 - Couvert, contournement, coopération et déplacements en escouade.
