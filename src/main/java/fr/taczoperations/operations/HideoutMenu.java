@@ -27,7 +27,7 @@ final class HideoutMenu {
             var station=Hideout.Station.values()[i];int tier=Hideout.tier(p,station);
             String label=station.label+" · "+tier+"/3";
             icons.setItem(10+i,tile(ICONS[i],label,tier==0?ChatFormatting.GRAY:ChatFormatting.GREEN));
-            if(tier<3)icons.setItem(19+i,tile(Items.EXPERIENCE_BOTTLE,"Améliorer · "+(station.price*(tier+1))+" Cr. · "+(tier+1)+" × "+station.material.title+" · Niv. "+(station.unlock+tier*10),ChatFormatting.GOLD));
+            if(tier<3)icons.setItem(19+i,upgradeTile(p,station,tier));
             else icons.setItem(19+i,tile(Items.LIME_DYE,"Niveau maximum",ChatFormatting.GREEN));
         }
         icons.setItem(28,tile(Items.CHEST,"Ouvrir la réserve",ChatFormatting.AQUA));
@@ -72,6 +72,31 @@ final class HideoutMenu {
             }
             @Override public ItemStack quickMoveStack(Player player,int slot){return ItemStack.EMPTY;}
         },Component.literal("EFM · Gestion de la planque")));
+    }
+    private static ItemStack upgradeTile(ServerPlayer p,Hideout.Station station,int tier){
+        int amount=tier+1,cost=station.price*amount,required=station.unlock+tier*10;
+        int rank=MilitaryProgression.level(SupplyContract.experienceEarned(p)),balance=SupplyContract.balance(p);
+        var material=station.material.stack().getItem();
+        int found=CarriedStorage.of(p).count(s->s.is(material)&&RaidOrigin.found(s));
+        boolean ready=rank>=required&&balance>=cost&&found>=amount;
+        var stack=tile(ready?Items.EXPERIENCE_BOTTLE:Items.GRAY_DYE,
+            station.label+" · niveau "+amount,ready?ChatFormatting.GREEN:ChatFormatting.GRAY);
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(java.util.List.<Component>of(
+            requirement("Niveau militaire : "+rank+"/"+required,rank>=required),
+            requirement("Crédits : "+balance+"/"+cost,balance>=cost),
+            requirement(station.material.title+" : "+found+"/"+amount,found>=amount),
+            Component.literal("Matériaux trouvés en raid uniquement.").withStyle(ChatFormatting.GRAY),
+            Component.literal(switch(station){
+                case RESERVE->"Réserve : "+(amount*18)+" cases";
+                case GENERATEUR->"Capacité : "+(amount*24)+" unités";
+                case ATELIER->"Réparation : -"+(amount*10)+" %";
+                case INFIRMERIE->amount==1?"Bandages disponibles":amount==2?"Salewa disponible":"Infirmerie niveau maximum";
+                case CUISINE->"Fabrication de rations";
+                case EAU->"Production de bouteilles d'eau";
+                case REPOS->"Repos : "+(60+amount*60)+" secondes";
+                case TIR->"Cibles jusqu'à "+(amount==1?25:amount==2?50:100)+" m";
+            }).withStyle(ChatFormatting.AQUA))));
+        return stack;
     }
     private static ItemStack recipe(ServerPlayer p,Item item,HideoutServices.Recipe r,String label){
         var material=r.material.stack().getItem();
