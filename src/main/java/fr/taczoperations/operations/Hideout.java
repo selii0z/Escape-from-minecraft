@@ -66,6 +66,7 @@ public final class Hideout {
         block(l,c.below(2),Blocks.OBSIDIAN);
     }
     private static void go(ServerPlayer p){
+        if(ownsPlot(p)){HideoutMenu.open(p);return;}
         if(!survival(p)||!p.level().dimension().equals(Level.OVERWORLD)||ForestRaid.isParticipant(p)){say(p,"Accès à la planque depuis le monde principal, hors raid.");return;}
         var level=p.server.getLevel(DIMENSION);if(level==null){say(p,"Dimension planque indisponible.");return;}
         int id=HideoutPlots.of(level).allocate(p.getUUID());
@@ -75,9 +76,9 @@ public final class Hideout {
         SupplyContract.account(p).put(RETURN,back);
         p.closeContainer();
         p.teleportTo(level,c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);
-        say(p,"Bienvenue dans ta planque personnelle. /efm planque installations · /efm planque sortir");
+        say(p,"Bienvenue dans ta planque personnelle. Clique sur une installation ou utilise /efm planque menu.");
     }
-    private static void leave(ServerPlayer p){
+    static void leave(ServerPlayer p){
         if(!here(p))return;
         var level=p.server.overworld();var account=SupplyContract.account(p);var back=account.getCompound(RETURN);
         double x=back.getDouble("x"),y=back.getDouble("y"),z=back.getDouble("z");
@@ -108,7 +109,7 @@ public final class Hideout {
             say(p,s.label+" : "+t+"/3"+(t==3?" · maximum":" · prochain niveau : "+s.price*(t+1)+" Cr., "+(t+1)+" × "+s.material.title+", niv. militaire "+(s.unlock+t*10)));
         }
     }
-    private static void upgrade(ServerPlayer p,String id){
+    static void upgrade(ServerPlayer p,String id){
         if(!ownsPlot(p)||p.containerMenu!=p.inventoryMenu){say(p,"Amélioration uniquement dans ta planque, menu fermé.");return;}
         var level=p.serverLevel();int plot=HideoutPlots.of(level).find(p.getUUID());
         if(plot<0||!inside(p,center(plot)))return;
@@ -126,6 +127,7 @@ public final class Hideout {
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
             .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
+            .then(Commands.literal("menu").executes(ctx->{HideoutMenu.open(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("sortir").executes(ctx->{leave(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("carburant").executes(ctx->{HideoutPower.refuel(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("reparer").executes(ctx->{HideoutPower.repair(ctx.getSource().getPlayerOrException());return 1;}))
@@ -144,6 +146,19 @@ public final class Hideout {
         int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
         if(id<0){leave(p);return;}
         if(!inside(p,center(id))){var c=center(id);p.teleportTo(p.serverLevel(),c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);}
+    }
+    public static void interact(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e){
+        if(!(e.getEntity() instanceof ServerPlayer p)||!here(p))return;
+        e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);e.setCanceled(true);
+        if(e.getHand()!=net.minecraft.world.InteractionHand.MAIN_HAND||!ownsPlot(p))return;
+        int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
+        BlockPos c=center(id);
+        for(int i=0;i<Station.values().length;i++){
+            int x=-10+(i%4)*6,z=i<4?-11:11;
+            if(e.getPos().equals(c.offset(x,0,z))){
+                HideoutMenu.open(p);return;
+            }
+        }
     }
     // First lot is read-only to avoid free construction resources or cross-plot damage.
     public static void protectBreak(BlockEvent.BreakEvent e){if(e.getLevel() instanceof ServerLevel l&&l.dimension().equals(DIMENSION))e.setCanceled(true);}
