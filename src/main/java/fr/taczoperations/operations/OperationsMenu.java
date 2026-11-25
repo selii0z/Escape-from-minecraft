@@ -38,6 +38,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int PLAYER_MARKET=145, PLAYER_OFFER_FIRST=235, PLAYER_CLAIM=247, PLAYER_OWN=248, PLAYER_FILTER_FIRST=249;
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
+    public static final int ENTER_HIDEOUT = 27;
     private static final int PAGE_SIZE = 4;
     public static final int LIST_ROWS = 6;
     public static final int CONTRACT_ROWS = 5;
@@ -332,6 +333,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         if (!(player instanceof ServerPlayer serverPlayer) || player.containerMenu!=this || !stillValid(player)) {
             return false;
         }
+        if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
         int tab = view.tab();
         int page = view.page();
         String notice = "";
