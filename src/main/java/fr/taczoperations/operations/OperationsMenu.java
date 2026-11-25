@@ -35,6 +35,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int SETTINGS = 23;
     public static final int TOGGLE_EXTRACTION = 24;
     public static final int SECURE_POUCH = 140, INSURE_GEAR = 141, CLAIM_INSURANCE = 142, TIMED_CONTRACTS = 143, BLACK_MARKET = 144, MARKET_FIRST = 150;
+    public static final int PLAYER_MARKET=145, PLAYER_OFFER_FIRST=235, PLAYER_CLAIM=247, PLAYER_OWN=248, PLAYER_FILTER_FIRST=249;
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
     private static final int PAGE_SIZE = 4;
@@ -52,7 +53,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals,List<String> orders,boolean shopAccessories) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals,List<String> orders,boolean shopAccessories,PlayerMarket.Page playerMarket) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -85,6 +86,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeCollection(journalTotals,(buf,value)->buf.writeVarLong(value));
             buffer.writeCollection(orders,(buf,line)->buf.writeUtf(line));
             buffer.writeBoolean(shopAccessories);
+            playerMarket.write(buffer);
         }
 
         private static View read(RegistryFriendlyByteBuf buffer) {
@@ -92,7 +94,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()),buffer.readList(buf->buf.readUtf()),buffer.readBoolean());
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()),buffer.readList(buf->buf.readUtf()),buffer.readBoolean(),PlayerMarket.Page.read(buffer));
         }
     }
 
@@ -167,7 +169,10 @@ public final class OperationsMenu extends AbstractContainerMenu {
             .filter(c -> statusFilter == 0 ? c.status(player) != SupplyContract.COMPLETED : selected(statusFilter, c.status(player) + 1))
             .filter(c -> selected(merchantFilter, c.merchant().ordinal() + 1))
             .map(Enum::ordinal).toList();
+        boolean marketOwn=account.getBoolean("player_market_own");
+        int marketCategory=Math.clamp(account.getInt("player_market_category"),0,6);
         int pages = switch (tab) {
+            case PLAYER_MARKET -> PlayerMarket.of(player).pages(player,marketOwn,marketCategory);
             case CONTRACTS -> Math.max(1, (filtered.size() + CONTRACT_ROWS - 1) / CONTRACT_ROWS);
             case SHOP -> OperationsShop.values().length * VENDOR_PAGES;
             case TRADE_JOURNAL -> Math.max(1,(TradeJournal.size(player)+LIST_ROWS-1)/LIST_ROWS);
@@ -224,7 +229,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
                 "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
-                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of(),shopAccessories);
+                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of(),shopAccessories,tab==PLAYER_MARKET?PlayerMarket.of(player).view(player,page,marketOwn,marketCategory):PlayerMarket.Page.empty());
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -281,6 +286,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
         return ItemStack.EMPTY;
     }
 
+    public void listPlayerItem(ServerPlayer player,int price){
+        if(player.containerMenu!=this||view.tab()!=PLAYER_MARKET||!stillValid(player))return;
+        String notice=PlayerMarket.of(player).list(player,view.playerMarket().held(),price);
+        open(player,position,PLAYER_MARKET,view.page(),notice);
+    }
+
     @Override
     public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer serverPlayer) || !stillValid(player)) {
@@ -290,7 +301,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int page = view.page();
         String notice = "";
         if (button == CONTRACTS || button == GROUP || button == FOREST
-            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS) {
+            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET) {
             tab = button;
             page = 0;
         } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
@@ -303,6 +314,16 @@ public final class OperationsMenu extends AbstractContainerMenu {
             if (notice.isEmpty()) {
                 return true;
             }
+        } else if(tab==PLAYER_MARKET&&button>=PLAYER_OFFER_FIRST&&button<PLAYER_OFFER_FIRST+PlayerMarket.PAGE_SIZE){
+            int row=button-PLAYER_OFFER_FIRST;
+            if(row>=view.playerMarket().offers().size())return false;
+            notice=PlayerMarket.of(serverPlayer).buyOrCancel(serverPlayer,view.playerMarket().offers().get(row));
+        } else if(tab==PLAYER_MARKET&&button==PLAYER_CLAIM){
+            notice=PlayerMarket.of(serverPlayer).claim(serverPlayer);
+        } else if(tab==PLAYER_MARKET&&button==PLAYER_OWN){
+            SupplyContract.account(serverPlayer).putBoolean("player_market_own",!view.playerMarket().ownOnly());page=0;
+        } else if(tab==PLAYER_MARKET&&button>=PLAYER_FILTER_FIRST&&button<PLAYER_FILTER_FIRST+7){
+            SupplyContract.account(serverPlayer).putInt("player_market_category",button-PLAYER_FILTER_FIRST);page=0;
         } else if(tab==MERCHANT_ORDERS&&button>=ORDER_FIRST&&button<ORDER_FIRST+MerchantOrders.SIZE){
             notice=MerchantOrders.deliver(serverPlayer,button-ORDER_FIRST,Long.parseLong(view.orders().getFirst()));
         } else if (tab==BLACK_MARKET && button>=MARKET_FIRST && button<MARKET_FIRST+BlackMarket.SIZE) {
@@ -359,7 +380,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             toggleFilter(serverPlayer, "filter_status_mask", button - FILTER_STATUS); page = 0;
         } else if (tab == CONTRACTS && button >= FILTER_MERCHANT && button <= FILTER_MERCHANT + 4) {
             toggleFilter(serverPlayer, "filter_merchant_mask", button - FILTER_MERCHANT); page = 0;
-        } else if ((tab == CONTRACTS||tab==TRADE_JOURNAL) && (button == PREVIOUS || button == NEXT)) {
+        } else if ((tab == CONTRACTS||tab==TRADE_JOURNAL||tab==PLAYER_MARKET) && (button == PREVIOUS || button == NEXT)) {
             page += button == NEXT ? 1 : -1;
         } else if (button != REFRESH) {
             int row = button - FIRST_ROW;
