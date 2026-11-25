@@ -21,6 +21,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT)
 public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInventoryMenu>{
+    private static final net.minecraft.client.KeyMapping TACTICAL=new net.minecraft.client.KeyMapping(
+        "key.taczoperations.field_inventory",org.lwjgl.glfw.GLFW.GLFW_KEY_I,"key.categories.taczoperations");
     private static final int TEXT=0xffd3dac7, GOLD=0xffd8c783;
     public FieldInventoryScreen(FieldInventoryMenu menu,Inventory inv,Component title){
         super(menu,inv,title);imageWidth=FieldInventoryMenu.WIDTH;imageHeight=FieldInventoryMenu.HEIGHT;
@@ -28,16 +30,28 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
     @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
     public static class Registration{
         @SubscribeEvent public static void register(RegisterMenuScreensEvent e){e.register(OperationsMod.FIELD_INVENTORY.get(),FieldInventoryScreen::new);}
+        @SubscribeEvent public static void keys(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent e){e.register(TACTICAL);}
     }
-    // Shift+E and the Classic button retain the original crafting/recipe screen.
+    private static boolean canOpen(Minecraft mc){
+        if(mc.player==null||mc.level==null||!mc.player.isAlive()||mc.player.isCreative()||mc.player.isSpectator()
+            ||!ModList.get().isLoaded("curios"))return false;
+        return fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.BAG)!=null
+            &&fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.RIG)!=null
+            &&fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.GOGGLES)!=null;
+    }
+    @SubscribeEvent public static void tick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event){
+        Minecraft mc=Minecraft.getInstance();
+        boolean requested=false;
+        while(TACTICAL.consumeClick())requested=true;
+        if(requested&&mc.screen==null&&canOpen(mc))PacketDistributor.sendToServer(new OpenFieldInventory());
+    }
+    // E opens the tactical inventory only in the raid dimension. Shift+E stays classic.
     @SubscribeEvent public static void opening(ScreenEvent.Opening event){
         Minecraft mc=Minecraft.getInstance();
         if(openingClassic||event.getCurrentScreen()!=null||!(event.getNewScreen() instanceof InventoryScreen)
             ||mc.player==null||mc.player.isCreative()||mc.player.isSpectator()||Screen.hasShiftDown()
-            ||!ModList.get().isLoaded("curios"))return;
-        if(fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.BAG)==null
-            ||fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.RIG)==null
-            ||fr.taczoperations.compat.FieldCurios.handler(mc.player,FieldInventoryMenu.GOGGLES)==null)return;
+            ||mc.level==null||!mc.level.dimension().equals(fr.taczoperations.operations.ForestExpedition.FOREST)
+            ||!canOpen(mc))return;
         event.setCanceled(true);
         PacketDistributor.sendToServer(new OpenFieldInventory());
     }
@@ -77,7 +91,7 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         g.drawString(font,"BARRE RAPIDE",10,182,GOLD,false);
         g.drawString(font,"SAC À DOS · "+menu.bagSize(),194,17,GOLD,false);
         g.drawString(font,"GILET · "+menu.rigSize(),194,182,GOLD,false);
-        g.drawString(font,"E : fermer · Maj+E : inventaire classique",10,229,TEXT,false);
+        g.drawString(font,"E / "+TACTICAL.getTranslatedKeyMessage().getString()+" : fermer · Molette : examiner",10,229,TEXT,false);
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         super.render(g,mx,my,partial);
@@ -85,7 +99,10 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         renderTooltip(g,mx,my);
     }
     @Override public boolean keyPressed(int key,int scan,int mods){
-        if(key==org.lwjgl.glfw.GLFW.GLFW_KEY_I&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        if(TACTICAL.matches(key,scan)){
+            if(DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+            onClose();return true;
+        }
         return super.keyPressed(key,scan,mods);
     }
     @Override public boolean mouseClicked(double x,double y,int button){
