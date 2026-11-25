@@ -97,6 +97,13 @@ public final class ForestCombat {
                     .toList();
                 if (!guns.isEmpty()) {
                     var selected = guns.get((int) ((roll / 4) % guns.size()));
+                    // Most operators have a specialty loadout; keep 30% of the
+                    // unrestricted catalogue so installed gun packs still appear.
+                    var rng=new java.util.Random(enemy.getUUID().getMostSignificantBits());
+                    if(rng.nextInt(100)<70){
+                        var preferred=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("tacz",PmcSpecialty.get(enemy).preferredGun(rng));
+                        selected=guns.stream().filter(e->e.getKey().equals(preferred)).findFirst().orElse(selected);
+                    }
                     gunId = selected.getKey().toString();
                 }
             }

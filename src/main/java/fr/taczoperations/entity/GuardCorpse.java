@@ -65,7 +65,7 @@ public final class GuardCorpse extends Entity {
         if (player instanceof ServerPlayer server && items.stillValid(server)) {
             server.openMenu(new SimpleMenuProvider(
                 (id, inventory, viewer) -> new CorpseMenu(id, inventory, items),
-                Component.translatable("container.taczoperations.guard_corpse")));
+                hasCustomName()?getCustomName():Component.translatable("container.taczoperations.guard_corpse")));
         }
         return InteractionResult.sidedSuccess(level().isClientSide);
     }

@@ -23,7 +23,9 @@ final class GuardPouch {
             return items;
         }
         var random = new Random(guard.getUUID().getLeastSignificantBits());
-        int quantity = 9 + random.nextInt(16);
+        GuardRole role=GuardRole.get(guard);
+        PmcSpecialty specialty=role==GuardRole.PMC?PmcSpecialty.get(guard):null;
+        int quantity=specialty==null?9+random.nextInt(16):specialty.reserve(random);
         if (guard.getMainHandItem().getItem() instanceof IGun gun) {
             var ammoId = TimelessAPI.getCommonGunIndex(gun.getGunId(guard.getMainHandItem()))
                 .map(index -> index.getGunData().getAmmoId()).orElse(null);
@@ -60,6 +62,15 @@ final class GuardPouch {
         if (GuardRole.get(guard).elite() && random.nextInt(10) == 0) {
             items.set(7, OperationsShop.attachment(
                 random.nextBoolean() ? "sight_552" : "extended_mag_1"));
+        }
+        // Slot eight is separate from ammo, relics and existing attachments.
+        // Medical specialists always carry a useful treatment, others 40%.
+        if(specialty!=null&&(specialty==PmcSpecialty.MEDIC||random.nextInt(100)<40)){
+            items.set(8,specialty.fieldLoot(random));
+        }else if(role.boss()){
+            items.set(8,PmcSpecialty.medicine(random.nextBoolean()?"salewa":"hemostat",1));
+        }else if(specialty==null&&random.nextInt(100)<12){
+            items.set(8,PmcSpecialty.medicine("bandage",1));
         }
         save(guard, items);
         return items;

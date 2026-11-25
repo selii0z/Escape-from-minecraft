@@ -1096,6 +1096,7 @@ public final class ForestRaid extends SavedData {
             case PMC->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
             default->"";
         });
+        if(role==GuardRole.PMC)corpse.setCustomName(Component.literal("PMC · "+PmcSpecialty.get(guard).title));
         corpse.moveTo(guard.getX(), guard.getY(), guard.getZ(), guard.getYRot(), 0);
         corpse.getPersistentData().putUUID(CORPSE, raid.id);
         EquipmentSlot[] equipment = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD,
