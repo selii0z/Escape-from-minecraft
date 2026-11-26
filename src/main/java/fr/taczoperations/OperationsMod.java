@@ -71,6 +71,8 @@ public final class OperationsMod {
         "hideout_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.HideoutControlMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.ProgressionControlMenu>> PROGRESSION_MENU=MENUS.register(
         "progression_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.ProgressionControlMenu::new));
+    public static final Supplier<MenuType<fr.taczoperations.operations.CampaignMenu>> CAMPAIGN_MENU=MENUS.register(
+        "campaign_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.CampaignMenu::new));
     public static final Supplier<MenuType<OperationsMenu>> MENU = MENUS.register(
         "operations_board", () -> IMenuTypeExtension.create(OperationsMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(

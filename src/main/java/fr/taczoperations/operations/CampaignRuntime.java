@@ -811,6 +811,57 @@ final class CampaignRuntime {
     }
     private static void say(ServerPlayer p,String text){p.sendSystemMessage(net.minecraft.network.chat.Component.literal(text));}
     record QuestView(String id,String name,String trader,State state,int level,List<String> lines,boolean claimable){}
+
+    // Presentation only: expose existing catalogue data without touching progression or rewards.
+    static int objectiveCount(String id){
+        var q=CATALOG==null?null:CATALOG.graph().quests().get(id);
+        return q==null||!q.implemented()?0:q.objectives().size();
+    }
+    static List<String> requirementLines(String id){
+        var q=CATALOG==null?null:CATALOG.graph().quests().get(id);
+        if(q==null||!q.implemented())return List.of();
+        var result=new ArrayList<String>();
+        for(var group:q.prerequisites()){
+            result.add("Prérequis : "+group.stream().map(r->label(r.quest())+" ("+
+                r.outcomes().stream().map(o->switch(o){case ACTIVE->"acceptée";case COMPLETED->"terminée";case FAILED->"échouée";}).sorted().collect(java.util.stream.Collectors.joining(" ou "))+")").collect(java.util.stream.Collectors.joining(" OU ")));
+        }
+        for(var requirement:CATALOG.meta().get(id).traderRequirements()){
+            String op=switch(requirement.operator()){case GE->"≥";case LE->"≤";case LT->"<";case GT->">";case EQ->"=";};
+            String value=requirement.kind()==TraderRequirement.Kind.LEVEL?Integer.toString(requirement.value()):Double.toString(requirement.value()/1000d);
+            result.add(CampaignTrader.byId(requirement.trader()).title+" · "+(requirement.kind()==TraderRequirement.Kind.LEVEL?"fidélité ":"réputation ")+op+" "+value);
+        }
+        for(var conflict:q.conflicts().stream().sorted().toList())result.add("Incompatible avec : "+label(conflict));
+        return List.copyOf(result);
+    }
+    static List<net.minecraft.world.item.ItemStack> rewardIcons(String id){
+        var q=CATALOG==null?null:CATALOG.graph().quests().get(id);
+        if(q==null||!q.implemented())return List.of();
+        var items=new ArrayList<net.minecraft.world.item.ItemStack>();
+        var r=reward(id);
+        for(var entry:new TreeMap<>(r.items()).entrySet()){
+            var stack=CampaignSupplies.rewardStack(entry.getKey());
+            if(stack.isEmpty())continue;
+            stack=stack.copyWithCount(1);
+            stack.set(net.minecraft.core.component.DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(
+                List.of(net.minecraft.network.chat.Component.literal(Integer.toString(entry.getValue())))));
+            items.add(stack);
+        }
+        return List.copyOf(items);
+    }
+    static String questArt(String id){
+        var q=CATALOG==null?null:CATALOG.graph().quests().get(id);
+        if(q==null||!q.implemented())return "military";
+        for(var o:q.objectives()){
+            String type=o.type();
+            if(type.contains(":woods:"))return "forest";
+            if(type.contains(":customs:"))return "industrial";
+            if(type.contains(":factory:"))return "underground";
+            if(type.contains(":interchange:"))return "industrial";
+            if(type.contains(":streets:"))return "quarantine";
+            if(type.contains(":village:"))return "village";
+        }
+        return "military";
+    }
     static Set<String> completedQuests(ServerPlayer p){
         if(!accessible(p))return Set.of();
         try{

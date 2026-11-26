@@ -1,100 +1,128 @@
 package fr.taczoperations.operations;
 
+import fr.taczoperations.OperationsMod;
 import fr.taczoperations.campaign.CampaignTrader;
 import fr.taczoperations.campaign.CampaignGraph.State;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.ItemContainerContents;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.IntConsumer;
 
-/** Server-owned, read-only catalogue. Click actions recheck live campaign state. */
-final class CampaignMenu {
-    private static final int PAGE_SIZE=27;
-    static void open(ServerPlayer p){open(p,null,0);}
+/** Server-owned snapshot for the custom quest screen. No inventory slots are exposed. */
+public final class CampaignMenu extends AbstractContainerMenu {
+    public static final int TRADERS=CampaignTrader.values().length, INBOX=TRADERS, FIRST=TRADERS+1;
+    public static final int COLLECT=100, LEGACY=101, BACK=102, SHOP=103, REFRESH=104;
+    public static final int ACCEPT=1000, CLAIM=2000, FOLLOW=3000;
+    private static final String TRACKED="campaign_followed_quest";
+    private final Player owner;
+    private final int trader,selected,count;
+    private final List<CampaignRuntime.QuestView> serverQuests;
+
+    public CampaignMenu(int id,Inventory inv,RegistryFriendlyByteBuf buf){
+        this(id,inv,buf.readVarInt(),buf.readVarInt(),buf.readVarInt());
+    }
+    private CampaignMenu(int id,Inventory inv,int trader,int selected,int count){
+        this(id,inv,trader,selected,count,new SimpleContainer(FIRST+count),List.of());
+    }
+    private CampaignMenu(int id,Inventory inv,int trader,int selected,int count,SimpleContainer data,List<CampaignRuntime.QuestView> quests){
+        super(OperationsMod.CAMPAIGN_MENU.get(),id);
+        this.owner=inv.player;this.trader=trader;this.selected=selected;this.count=count;this.serverQuests=List.copyOf(quests);
+        for(int i=0;i<data.getContainerSize();i++)addSlot(new Slot(data,i,-10000,-10000){
+            @Override public boolean mayPlace(ItemStack stack){return false;}
+            @Override public boolean mayPickup(Player player){return false;}
+        });
+    }
+    public int trader(){return trader;}
+    public int selected(){return selected;}
+    public int count(){return count;}
+    public ItemStack traderStack(int index){return slots.get(index).getItem();}
+    public ItemStack questStack(int index){return slots.get(FIRST+index).getItem();}
+    public ItemStack inboxStack(){return slots.get(INBOX).getItem();}
+    static void open(ServerPlayer p){open(p,CampaignTrader.PRAPOR,0);}
     private static void open(ServerPlayer p,CampaignTrader trader,int requested){
         if(!ProgressionMenus.available(p)||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty())return;
         var live=CampaignRuntime.views(p);
         var all=CampaignPreview.merge(live);
         var liveIds=live.stream().map(CampaignRuntime.QuestView::id).collect(java.util.stream.Collectors.toSet());
-        var c=new SimpleContainer(54);
-        var actions=new java.util.HashMap<Integer,Runnable>();
-        if(trader==null){
-            c.setItem(4,tile(Items.WRITTEN_BOOK,"Campagne Tarkov",ChatFormatting.GOLD,List.of(
-                live.size()+" quêtes jouables · "+all.size()+" recensées","Sélectionne un marchand")));
-            var traders=CampaignTrader.values();
-            for(int i=0;i<traders.length;i++){
-                var t=traders[i];
-                var list=all.stream().filter(q->q.trader().equals(t.id)).toList();
-                int completed=(int)list.stream().filter(q->q.state()==State.COMPLETED).count();
-                boolean unlocked=CampaignTraderAccount.unlocked(p,t);
-                int slot=10+i/7*9+i%7;
-                c.setItem(slot,tile(unlocked?icon(t):Items.GRAY_DYE,t.title,unlocked?ChatFormatting.GOLD:ChatFormatting.GRAY,
-                    List.of(unlocked?"Fidélité "+CampaignTraderAccount.loyalty(p,t):"Marchand verrouillé",completed+"/"+list.stream().filter(q->liveIds.contains(q.id())).count()+" quêtes jouables terminées",t.questCount+" quêtes dans le catalogue de référence")));
-                actions.put(slot,()->open(p,t,0));
-            }
-            c.setItem(48,tile(Items.MAP,"Anciennes opérations",ChatFormatting.YELLOW,List.of("Campagne militaire originale")));
-            actions.put(48,()->ProgressionMenus.missions(p));
-        }else{
-            var list=all.stream().filter(q->q.trader().equals(trader.id)).toList();
-            int pages=Math.max(1,(list.size()+PAGE_SIZE-1)/PAGE_SIZE);
-            int page=Math.max(0,Math.min(requested,pages-1));
-            c.setItem(4,tile(icon(trader),trader.title+" · "+(page+1)+"/"+pages,ChatFormatting.GOLD,List.of(
-                CampaignTraderAccount.unlocked(p,trader)?"Fidélité "+CampaignTraderAccount.loyalty(p,trader):"Marchand verrouillé",
-                list.stream().filter(q->liveIds.contains(q.id())).count()+" jouables · "+list.size()+" affichées")));
-            for(int i=page*PAGE_SIZE;i<Math.min(list.size(),(page+1)*PAGE_SIZE);i++){
-                var q=list.get(i);int slot=9+i-page*PAGE_SIZE;
-                var lines=new ArrayList<>(q.lines());
-                Item item;ChatFormatting color;
-                if(q.claimable()){item=Items.EMERALD;color=ChatFormatting.GREEN;lines.add("Clic : valider et récupérer les récompenses");}
-                else if(q.state()==State.AVAILABLE){item=Items.WRITABLE_BOOK;color=ChatFormatting.GOLD;lines.add("Clic : accepter");}
-                else if(q.state()==State.COMPLETED){item=Items.LIME_DYE;color=ChatFormatting.GREEN;}
-                else if(q.state()==State.ACTIVE){item=Items.PAPER;color=ChatFormatting.AQUA;}
-                else{item=Items.GRAY_DYE;color=ChatFormatting.GRAY;}
-                c.setItem(slot,tile(item,q.name(),color,lines));
-                if(q.claimable()||q.state()==State.AVAILABLE)actions.put(slot,()->{
-                    if(q.claimable())CampaignRuntime.claimNamed(p,q.id());else CampaignRuntime.acceptNamed(p,q.id());
-                    open(p,trader,page);
-                });
-            }
-            c.setItem(51,tile(Items.GOLD_INGOT,"Offres débloquées par les quêtes",ChatFormatting.GOLD,List.of("Quêtes terminées et fidélité requises")));
-            actions.put(51,()->CampaignUnlockShop.open(p,trader,0,()->open(p,trader,page)));
-            if(page>0){c.setItem(45,tile(Items.ARROW,"Page précédente",ChatFormatting.YELLOW,List.of()));actions.put(45,()->open(p,trader,page-1));}
-            if(page+1<pages){c.setItem(53,tile(Items.ARROW,"Page suivante",ChatFormatting.YELLOW,List.of()));actions.put(53,()->open(p,trader,page+1));}
-            c.setItem(48,tile(Items.COMPASS,"Tous les marchands",ChatFormatting.AQUA,List.of()));actions.put(48,()->open(p));
+        var list=all.stream().filter(q->q.trader().equals(trader.id)).toList();
+        var c=new SimpleContainer(FIRST+list.size());
+        for(var t:CampaignTrader.values()){
+            var quests=all.stream().filter(q->q.trader().equals(t.id)).toList();
+            long done=quests.stream().filter(q->q.state()==State.COMPLETED).count();
+            long playable=quests.stream().filter(q->liveIds.contains(q.id())).count();
+            c.setItem(t.ordinal(),tile(icon(t),t.title,List.of(
+                CampaignTraderAccount.unlocked(p,t)?"Fidélité "+CampaignTraderAccount.loyalty(p,t):"Verrouillé",
+                done+"/"+playable+" terminées",playable+"/"+quests.size()+" jouables")));
         }
-        long pending=CampaignRewardInbox.pending(p);
-        c.setItem(46,tile(Items.CHEST,"Récompenses à récupérer",ChatFormatting.GOLD,List.of(
-            pending+" objet(s) en réserve","Clic : récupérer les objets disponibles","Les objets sans place restent en réserve")));
-        actions.put(46,()->{
-            int moved=CampaignRewardInbox.collect(p);
-            p.sendSystemMessage(Component.literal(moved+" objet(s) récupéré(s) · "+CampaignRewardInbox.pending(p)+" en réserve"));
-            open(p,trader,requested);
-        });
-        c.setItem(49,tile(Items.BARRIER,"Fermer",ChatFormatting.RED,List.of()));
-        actions.put(49,()->{if(Hideout.ownsPlot(p))HideoutMenu.open(p);});
-        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new ChestMenu(MenuType.GENERIC_9x6,id,inv,c,6){
-            @Override public boolean stillValid(Player player){return player==p&&ProgressionMenus.available(p);}
-            @Override public ItemStack quickMoveStack(Player player,int index){return ItemStack.EMPTY;}
-            @Override public void clicked(int slot,int button,ClickType type,Player player){
-                if(player!=p||p.containerMenu!=this||!stillValid(player)||!getCarried().isEmpty()||type!=ClickType.PICKUP||button!=0)return;
-                Runnable action=actions.get(slot);
-                if(action==null)return;
-                p.closeContainer();action.run();
+        c.setItem(INBOX,tile(Items.CHEST,"Réserve",List.of(CampaignRewardInbox.pending(p)+" objet(s) en réserve")));
+        String tracked=SupplyContract.account(p).getString(TRACKED);
+        for(int i=0;i<list.size();i++){
+            var q=list.get(i);boolean playable=liveIds.contains(q.id());
+            String status=q.claimable()?"À valider":CampaignRuntime.stateLabel(q.state());
+            if(!playable)status="Non jouable";
+            var lines=new ArrayList<String>();
+            lines.add(status);
+            lines.add(playable?"1":"0");
+            lines.add(Integer.toString(playable?CampaignRuntime.objectiveCount(q.id()):0));
+            lines.add(q.id().equals(tracked)?"1":"0");
+            lines.add(playable?CampaignRuntime.questArt(q.id()):"military");
+            lines.addAll(q.lines());
+            if(playable)lines.addAll(CampaignRuntime.requirementLines(q.id()));
+            Item item=switch(q.state()){
+                case COMPLETED->Items.LIME_DYE;case READY->Items.EMERALD;case ACTIVE->Items.PAPER;
+                case AVAILABLE->Items.WRITABLE_BOOK;case FAILED->Items.BARRIER;default->Items.GRAY_DYE;
+            };
+            var stack=tile(q.claimable()?Items.EMERALD:item,q.name(),lines);
+            if(playable){
+                var rewards=CampaignRuntime.rewardIcons(q.id());
+                if(!rewards.isEmpty())stack.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(rewards));
             }
-        },Component.literal(trader==null?"EFM · Marchands":"EFM · "+trader.title)));
+            c.setItem(FIRST+i,stack);
+        }
+        int selection=Math.max(0,Math.min(requested,list.size()-1));
+        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new CampaignMenu(id,inv,trader.ordinal(),selection,list.size(),c,list),
+            Component.literal("EFM · "+trader.title)),buf->{buf.writeVarInt(trader.ordinal());buf.writeVarInt(selection);buf.writeVarInt(list.size());});
+    }
+    @Override public boolean stillValid(Player p){return p==owner&&p.isAlive()&&!p.isSpectator()&&(!(p instanceof ServerPlayer server)||ProgressionMenus.available(server));}
+    @Override public ItemStack quickMoveStack(Player p,int index){return ItemStack.EMPTY;}
+    @Override public void clicked(int slot,int button,ClickType type,Player p){}
+    @Override public boolean clickMenuButton(Player player,int action){
+        if(!(player instanceof ServerPlayer p)||p.containerMenu!=this||!stillValid(p)||!getCarried().isEmpty())return false;
+        var t=CampaignTrader.values()[trader];
+        if(action>=0&&action<TRADERS){p.closeContainer();open(p,CampaignTrader.values()[action],0);return true;}
+        if(action==BACK){p.closeContainer();if(Hideout.ownsPlot(p))HideoutMenu.open(p);return true;}
+        if(action==LEGACY){p.closeContainer();ProgressionMenus.missions(p);return true;}
+        if(action==SHOP){p.closeContainer();CampaignUnlockShop.open(p,t,0,()->open(p,t,selected));return true;}
+        if(action==COLLECT){p.closeContainer();int moved=CampaignRewardInbox.collect(p);p.sendSystemMessage(Component.literal(moved+" objet(s) récupéré(s) · "+CampaignRewardInbox.pending(p)+" en réserve"));open(p,t,selected);return true;}
+        if(action==REFRESH){p.closeContainer();open(p,t,selected);return true;}
+        int kind=action/1000,index=action%1000;
+        if(kind<1||kind>3||index<0||index>=serverQuests.size())return false;
+        var q=serverQuests.get(index);
+        if(kind==1&&q.state()!=State.AVAILABLE||kind==2&&!q.claimable())return false;
+        if(kind==3&&q.state()!=State.ACTIVE&&q.state()!=State.READY)return false;
+        p.closeContainer();
+        if(kind==1)CampaignRuntime.acceptNamed(p,q.id());
+        else if(kind==2)CampaignRuntime.claimNamed(p,q.id());
+        else{
+            var account=SupplyContract.account(p);
+            if(account.getString(TRACKED).equals(q.id()))account.remove(TRACKED);
+            else account.putString(TRACKED,q.id());
+        }
+        open(p,t,index);return true;
     }
     private static Item icon(CampaignTrader t){return switch(t){
         case PRAPOR->Items.CROSSBOW;case THERAPIST->Items.GOLDEN_APPLE;case SKIER->Items.IRON_NUGGET;
@@ -102,10 +130,9 @@ final class CampaignMenu {
         case JAEGER->Items.COMPASS;case FENCE->Items.ENDER_CHEST;case REF->Items.TARGET;
         case LIGHTKEEPER->Items.LANTERN;case BTR_DRIVER->Items.MINECART;
     };}
-    private static ItemStack tile(Item item,String name,ChatFormatting color,List<String> lines){
-        var stack=new ItemStack(item);stack.set(DataComponents.CUSTOM_NAME,Component.literal(name).withStyle(color));
-        stack.set(DataComponents.LORE,new ItemLore(lines.stream().map(line->(Component)Component.literal(line).withStyle(ChatFormatting.GRAY)).toList()));
+    private static ItemStack tile(Item item,String name,List<String> lines){
+        var stack=new ItemStack(item);stack.set(DataComponents.CUSTOM_NAME,Component.literal(name));
+        stack.set(DataComponents.LORE,new ItemLore(lines.stream().map(line->(Component)Component.literal(line)).toList()));
         return stack;
     }
-    private CampaignMenu(){}
 }
