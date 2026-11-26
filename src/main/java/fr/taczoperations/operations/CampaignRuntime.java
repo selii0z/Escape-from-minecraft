@@ -18,11 +18,15 @@ final class CampaignRuntime {
     private static final String RESOURCE="/data/taczoperations/campaign/quests.json";
     private static final String DEBUT="5936d90786f7742b1420ba5b";
     private static final String FUEL="5a0327ba86f77456b9154236";
+    private static final String REVEALED="669fa39ee749756c920d02c8";
+    private static final String SAMPLE_FIND="669fb6c859bdae826f7325d4";
+    private static final String SAMPLE_GIVE="66a7eebed6bac3ecc16f7d6b";
     private record Catalog(CampaignGraph graph,String revision){}
     private record Reward(int credits,int xp,int reputation){}
     private static Reward reward(String id){
         return switch(id){
             case DEBUT->new Reward(DEBUT_CREDITS,DEBUT_XP,DEBUT_REP);
+            case REVEALED->new Reward(1650,100,250);
             case FUEL->new Reward(550,30,100); // provisional: one reference USD per credit
             default->throw new IllegalArgumentException("Unreviewed reward");
         };
@@ -77,6 +81,12 @@ final class CampaignRuntime {
                     reviewed=a.id().equals("5a03289686f7745dbc6c5063")&&b.id().equals("5a0328cb86f77456b91543b8")
                         &&a.amount()==5&&b.amount()==3&&a.scope()==Scope.CAMPAIGN&&b.scope()==Scope.CAMPAIGN
                         &&!a.optional()&&!b.optional()&&turnInRefs(a).size()==18&&turnInRefs(b).size()==17;
+                }
+                if(id.equals(REVEALED)&&q.has("implemented")&&q.get("implemented").getAsBoolean()
+                    &&trader.equals("therapist")&&q.get("level").getAsInt()==5&&prereqs.isEmpty()&&conflicts.isEmpty()){
+                    reviewed=objectives.equals(List.of(
+                        new Objective(SAMPLE_FIND,"quest-find:factory:chemical-sample",1,Scope.SURVIVING_RAID,false),
+                        new Objective(SAMPLE_GIVE,"quest-give:chemical-sample",1,Scope.CAMPAIGN,false)));
                 }
                 quests.add(new Quest(id,trader,q.get("level").getAsInt(),prereqs,objectives,conflicts,reviewed));
             }
@@ -155,7 +165,31 @@ final class CampaignRuntime {
         }
         return Set.copyOf(refs);
     }
-    private static String label(String id){return id.equals(DEBUT)?"Debut":id.equals(FUEL)?"Fuel Shortage":id;}
+    private static String label(String id){return id.equals(DEBUT)?"Debut":id.equals(FUEL)?"Fuel Shortage":id.equals(REVEALED)?"All Is Revealed":id;}
+    private static boolean eligible(ServerPlayer p,String id){
+        return !id.equals(REVEALED)||CampaignTraderAccount.loyalty(p,CampaignTrader.THERAPIST)>=2;
+    }
+    static int search(ServerPlayer p,UUID raidId,String map){
+        if(CATALOG==null||raidId==null||!p.isAlive()||p.isCreative()||p.isSpectator()
+            ||!ForestRaid.canContinue(p)||!map.equals("factory"))return 0;
+        var pos=ExpressZone.BUNKER.pos(new fr.taczoperations.worldgen.ForestPlan.Point(52,54));
+        if(pos.distToCenterSqr(p.position())>9){say(p,"Aucun objet de mission à cet endroit.");return 0;}
+        try{
+            var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
+            if(!raidId.equals(s.raidId())||s.player().state(REVEALED,level(p))!=State.ACTIVE)return 0;
+            var progress=s.player().snapshot().get(REVEALED);
+            if(progress.counters().getOrDefault(SAMPLE_FIND,0)>0
+                ||s.player().checkpoint().pending().getOrDefault(REVEALED,Map.of()).getOrDefault(SAMPLE_FIND,0)>0){
+                say(p,"Échantillon déjà récupéré.");return 0;
+            }
+            if(!s.player().record(REVEALED,SAMPLE_FIND,1))return 0;
+            CampaignStorage.save(p,CATALOG.revision(),s);
+            say(p,"Échantillon chimique récupéré dans les objets de mission. Extrais-toi vivant.");
+            return 1;
+        }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign search failed",e);return 0;}
+    }
+    static int acceptRevealed(ServerPlayer p){return accept(p,REVEALED);}
+    static int claimRevealed(ServerPlayer p){return claim(p,REVEALED);}
     private static int level(ServerPlayer p){return MilitaryProgression.level(SupplyContract.experienceEarned(p));}
     private static boolean accessible(ServerPlayer p){
         return CATALOG!=null&&PlayerMarket.available(p)&&!ForestExpedition.hasReturnPoint(p)&&!p.isCreative()&&!p.isSpectator();
@@ -168,6 +202,7 @@ final class CampaignRuntime {
             for(var q:CATALOG.graph().quests().values()){
                 if(!q.implemented())continue;
                 var state=s.player().state(q.id(),level(p));
+                if(state==State.AVAILABLE&&!eligible(p,q.id()))state=State.LOCKED;
                 var progress=s.player().snapshot().get(q.id());
                 var r=reward(q.id());
                 say(p,CampaignTrader.byId(q.trader()).title+" · "+label(q.id())+" · "+state);
@@ -176,9 +211,10 @@ final class CampaignRuntime {
                     var refs=turnInRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)
                         count=CarriedStorage.of(p).count(stack->RaidOrigin.found(stack)&&CampaignSupplies.reference(stack).filter(refs::contains).isPresent());
-                    String title=refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
+                    String title=o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
                     say(p,title+" : "+Math.min(count,o.amount())+"/"+o.amount());
                 }
+                if(q.id().equals(REVEALED))say(p,"Bunker · salle nord-ouest · fidélité Therapist 2 · /efm campagne fouiller à proximité.");
                 say(p,"Récompenses : "+r.credits()+" crédits · "+r.xp()+" XP · +"+r.reputation()/1000d+" réputation.");
             }
             return 1;
@@ -190,6 +226,7 @@ final class CampaignRuntime {
         if(!accessible(p))return 0;
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
+            if(!eligible(p,id)){say(p,"Fidélité 2 auprès de Therapist requise.");return 0;}
             if(!s.player().accept(id,level(p))){say(p,"Quête indisponible ou déjà acceptée.");return 0;}
             CampaignStorage.save(p,CATALOG.revision(),s);
             say(p,label(id)+" acceptée.");
@@ -222,6 +259,13 @@ final class CampaignRuntime {
             var plan=TurnInPlanner.plan(stock,demands);
             if(plan==null){say(p,"Objets trouvés en raid insuffisants. Aucun objet remis.");return 0;}
             for(var o:q.objectives())if(!turnInRefs(o).isEmpty())s.player().record(id,o.id(),o.amount());
+            if(id.equals(REVEALED)){
+                var progress=s.player().snapshot().get(id);
+                if(progress==null||progress.counters().getOrDefault(SAMPLE_FIND,0)<1){
+                    say(p,"Récupère l'échantillon et extrais-toi vivant.");return 0;
+                }
+                s.player().record(id,SAMPLE_GIVE,1);
+            }
             if(!s.player().complete(id,level(p))){say(p,"Objectifs incomplets.");return 0;}
             // No mutation until the entire allocation and reward have been validated on the server thread.
             for(var entry:plan.entrySet())
