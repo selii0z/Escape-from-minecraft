@@ -313,8 +313,56 @@ def test_combat_adapter():
     assert "specific-extraction-condition" in combat_objective(dict(e,exitName="gate"))[1]
     assert "unsupported-extraction-status" in combat_objective(dict(e,exitStatus=["marathon Name"]))[1]
 
-def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None):
+def offer_plan(tasks,items,mapped,out):
+    """Preserve every reference unlock; sell only exact, simple mapped trade supplies.
+    Prices use reference base price converted to EFM credits, not live flea prices."""
+    rows=[]
+    supported={}
+    for qid,q in sorted(tasks.items()):
+        entries=(q.get("finishRewards") or {}).get("offerUnlock") or []
+        approved=True
+        for offer in entries:
+            ref=offer.get("item")
+            item=items.get(ref,{})
+            price=item.get("basePrice")
+            reasons=[]
+            if ref not in mapped:reasons.append("item-not-mapped")
+            if offer.get("contains") or offer.get("attributes"):reasons.append("preset-or-attributes")
+            if not isinstance(offer.get("count"),int) or not 1<=offer["count"]<=64:reasons.append("quantity")
+            if not isinstance(offer.get("level"),int) or not 1<=offer["level"]<=4:reasons.append("loyalty")
+            if offer.get("trader") not in TRADERS:reasons.append("trader")
+            if not isinstance(price,int) or price<=0:reasons.append("price")
+            if not isinstance(ref,str) or len(ref)!=24:reasons.append("item-id")
+            # Only inert barter/provision/medical supplies already mapped in EFM.
+            if not set(item.get("types",[])) & {"barter","provisions","meds","injectors","keys"}:
+                reasons.append("functional-equipment-adapter-required")
+            row={"id":offer["id"],"quest":qid,"questName":display_name(q),
+                 "item":ref,"name":item.get("normalizedName",ref),"trader":TRADERS.get(offer.get("trader")),
+                 "loyalty":offer.get("level"),"count":offer.get("count"),
+                 "price":max(1,(price*offer["count"]+99)//100) if not reasons else None,
+                 "supported":not reasons,"blockers":reasons}
+            rows.append(row)
+            if reasons:approved=False
+        if entries and approved:supported[qid]=True
+    write(out/"campaign-unlock-offers.json",{"schema":1,"offers":rows})
+    return supported,len(rows),sum(r["supported"] for r in rows)
+
+def test_offer_plan():
+    from tempfile import TemporaryDirectory
+    ref="a"*24
+    qid="b"*24
+    base={"id":"c"*24,"item":ref,"level":2,"count":2,"trader":"54cb50c76803fa8b248b4571","attributes":[],"contains":[]}
+    tasks={qid:{"normalizedName":"test-quest","finishRewards":{"offerUnlock":[base]}}}
+    with TemporaryDirectory() as tmp:
+        approved,n,s=offer_plan(tasks,{ref:{"types":["barter"],"basePrice":151}}, {ref},Path(tmp))
+        assert approved=={qid:True} and n==s==1
+        assert read(Path(tmp)/"campaign-unlock-offers.json")["offers"][0]["price"]==4
+        base["contains"]=[{"item":ref}]
+        assert offer_plan(tasks,{ref:{"types":["barter"],"basePrice":151}}, {ref},Path(tmp))[2]==0
+
+def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,approved_offers=None):
     item_names=item_names or {}
+    approved_offers=approved_offers or {}
     """Build a separate development catalogue; never alter checked-in quests.
     Only exact, supported handovers with all gates and rewards represented qualify."""
     import re
@@ -332,6 +380,8 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None):
         for qid,q in sorted(pending.items()):
             kinds={o["type"] for o in q["objectives"]}
             d=stock_draft(q,mapped,ready) if kinds<=STOCK else combat_draft(q,mapped,ready)
+            if approved_offers.get(qid) and set(d["reward"]["additionalRewards"])=={"offerUnlock"}:
+                d["blockers"]=[b for b in d["blockers"] if b!="additional-rewards"]
             dep=dependencies["quests"][qid]
             if d["blockers"] or dep["errors"] or d["prerequisites"]!=dep["groups"]:
                 continue
@@ -503,7 +553,11 @@ def build(snapshot,out,resources):
             if line.strip():
                 ref,name,_=line.split("|")
                 item_names[ref]=name
-    summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names)
+    # Collector and boss trophies remain raid-only, not merchant supplies.
+    supply_ids=ids(resources/"supplies.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf"}
+    approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids,out)
+    summary.update({"questOfferUnlocks":total_offers,"supportedQuestOfferUnlocks":supported_offers})
+    summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names,approved_offers)
     write(out/"bulk-summary.json",summary)
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
@@ -512,6 +566,7 @@ if __name__=="__main__":
     test_dialogue_free_gates()
     test_combat_adapter()
     test_material_rewards()
+    test_offer_plan()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
