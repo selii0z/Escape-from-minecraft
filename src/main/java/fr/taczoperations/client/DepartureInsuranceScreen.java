@@ -40,9 +40,9 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
     private void icon(GuiGraphics g,ItemStack s,int x,int y){
         g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(2,2,1);g.renderItem(s,0,0);g.pose().popPose();
     }
-    private String map(){return menu.industrial()?"Zone industrielle":"Forêt Noire";}
+    private String map(){return menu.express()!=null?menu.express().title:menu.industrial()?"Zone industrielle":"Forêt Noire";}
     private String time(){return menu.night()?"22 h 00 · Nuit":"09 h 30 · Jour";}
-    private String duration(){return menu.industrial()?"30 minutes":"45 minutes";}
+    private String duration(){return menu.express()!=null?"15 minutes":menu.industrial()?"30 minutes":"45 minutes";}
     private int cost(){return menu.selected()*DepartureInsuranceMenu.FEE;}
     private boolean affordable(){return cost()<=menu.balance();}
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
