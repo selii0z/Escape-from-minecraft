@@ -162,14 +162,17 @@ final class CampaignRuntime {
                 }
                 String dialogue=q.has("dialogueTrader")&&!q.get("dialogueTrader").isJsonNull()?CampaignTrader.byId(q.get("dialogueTrader").getAsString()).id:null;
                 QuestSite site=null;
-                if(q.has("adapter")&&q.get("adapter").getAsString().equals("quest-item-v1")){
+                if(q.has("adapter")&&Set.of("quest-item-v1","quest-item-city-v1").contains(q.get("adapter").getAsString())){
                     var adapted=q.getAsJsonObject("adaptation");
                     String map=adapted.get("map").getAsString();
                     int x=adapted.get("localX").getAsInt(),z=adapted.get("localZ").getAsInt(),radius=adapted.get("radius").getAsInt();
                     var finds=objectives.stream().filter(o->o.type().startsWith("quest-find:")).toList();
                     var gives=objectives.stream().filter(o->o.type().startsWith("quest-give:")).toList();
-                    boolean valid=finds.size()==1&&gives.size()==1&&Set.of("woods","customs","factory").contains(map)
-                        &&radius>=1&&radius<=8&&x>=0&&z>=0&&x<(map.equals("factory")?224:map.equals("customs")?650:850)&&z<(map.equals("factory")?224:map.equals("customs")?650:850);
+                    boolean city=q.get("adapter").getAsString().equals("quest-item-city-v1");
+                    boolean coordinates=city?map.equals("streets")&&x>=0&&x<2&&z==0:
+                        Set.of("woods","customs","factory").contains(map)&&x>=0&&z>=0
+                        &&x<(map.equals("factory")?224:map.equals("customs")?650:850)&&z<(map.equals("factory")?224:map.equals("customs")?650:850);
+                    boolean valid=finds.size()==1&&gives.size()==1&&coordinates&&radius>=1&&radius<=8;
                     if(valid){
                         var find=finds.getFirst();var give=gives.getFirst();
                         valid=find.type().matches("quest-find:"+map+":[0-9a-f]{24}")&&give.type().equals("quest-give:"+find.type().substring(find.type().lastIndexOf(':')+1))
@@ -178,8 +181,13 @@ final class CampaignRuntime {
                         if(valid)site=new QuestSite(map,x,z,radius,adapted.get("site").getAsString(),find.id(),give.id());
                     }
                     reviewed=valid&&q.get("implemented").getAsBoolean()&&reward!=null&&prereqs.isEmpty()&&conflicts.isEmpty()
-                        &&Set.of("596a0e1686f7741ddf17dbee","669fa399033a3ce9870338a8","675c1570526ff496850895d9").contains(id)
+                        &&(city?Set.of("639135d89444fb141f4e6eea","638fcd23dc65553116701d33").contains(id):Set.of("596a0e1686f7741ddf17dbee","669fa399033a3ce9870338a8","675c1570526ff496850895d9").contains(id))
                         &&(dialogue==null||dialogue.equals(trader));
+                }
+                if(id.equals("66b38e144f2ab7cc530c3fe7")&&trader.equals("jaeger")&&prereqs.isEmpty()&&conflicts.isEmpty()){
+                    reviewed=q.get("implemented").getAsBoolean()&&reward!=null&&objectives.equals(List.of(
+                        new Objective("66b38e144f2ab7cc530c3fe8","visit:factory:mine-check",1,Scope.CAMPAIGN,false),
+                        new Objective("66b38e144f2ab7cc530c3fea","visit:customs:mine-check",1,Scope.CAMPAIGN,false)));
                 }
                 var traderRequirements=new ArrayList<TraderRequirement>();
                 if(q.has("traderRequirements"))for(var valueReq:q.getAsJsonArray("traderRequirements")){
@@ -325,7 +333,23 @@ final class CampaignRuntime {
         return pos.distToCenterSqr(p.position())<=radius*radius;
     }
     static void visit(ServerPlayer p,UUID raidId,String map){
-        if(CATALOG==null||!map.equals("woods")||!ForestRaid.canContinue(p)||!p.isAlive())return;
+        if(CATALOG==null||!ForestRaid.canContinue(p)||!p.isAlive())return;
+        if(map.equals("factory")||map.equals("customs")){
+            String id="66b38e144f2ab7cc530c3fe7";
+            if(!CATALOG.graph().quests().containsKey(id))return;
+            String objective=map.equals("factory")?"66b38e144f2ab7cc530c3fe8":"66b38e144f2ab7cc530c3fea";
+            var point=map.equals("factory")?ExpressZone.BUNKER.pos(new fr.taczoperations.worldgen.ForestPlan.Point(112,177)):
+                new net.minecraft.core.BlockPos(fr.taczoperations.worldgen.IndustrialZone.ORIGIN+350,fr.taczoperations.worldgen.IndustrialZone.FLOOR+1,fr.taczoperations.worldgen.IndustrialZone.ORIGIN+520);
+            if(!near(p,point,8))return;
+            change(p,raidId,s->{
+                if(!raidId.equals(s.raidId())||s.player().state(id,level(p))!=State.ACTIVE)return null;
+                if(s.player().snapshot().get(id).counters().getOrDefault(objective,0)>0)return null;
+                if(!s.player().record(id,objective,1))return null;
+                say(p,"Every Hunter Knows This · secteur inspecté.");return s;
+            });
+            return;
+        }
+        if(!map.equals("woods"))return;
         String objective=near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(484,570)),12)?CONVOY:
             near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(645,225)),20)?CAMP:null;
         boolean cabin=near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(130,513)),8);
@@ -416,6 +440,8 @@ final class CampaignRuntime {
     private static boolean eligible(ServerPlayer p,String id){
         var q=CATALOG.graph().quests().get(id);
         if(q==null)return false;
+        var questSite=CATALOG.meta().get(id).site();
+        if(questSite!=null&&questSite.map().equals("streets")&&sitePos(questSite)==null)return false;
         var owner=CampaignTrader.byId(q.trader());
         if(!CampaignTraderAccount.unlocked(p,owner)||CampaignTraderAccount.loyalty(p,owner)<CATALOG.meta().get(id).loyalty())return false;
         for(var req:CATALOG.meta().get(id).traderRequirements()){
@@ -426,6 +452,14 @@ final class CampaignRuntime {
         return !id.equals(REVEALED)||CampaignTraderAccount.loyalty(p,CampaignTrader.THERAPIST)>=2;
     }
     private static net.minecraft.core.BlockPos sitePos(QuestSite site){
+        if(site.map().equals("streets")){
+            var anchors=ExpressZone.CITY.encounters().stream().filter(ExpressZone.CITY::valid)
+                .distinct().sorted(Comparator.comparingInt(fr.taczoperations.worldgen.ForestPlan.Point::x)
+                    .thenComparingInt(fr.taczoperations.worldgen.ForestPlan.Point::z)).toList();
+            if(anchors.size()<2)return null;
+            var anchor=anchors.get(site.x()==0?0:anchors.size()-1);
+            return ExpressZone.CITY.pos(anchor);
+        }
         var point=new fr.taczoperations.worldgen.ForestPlan.Point(site.x(),site.z());
         return switch(site.map()){
             case "woods"->ForestLandmarks.position(point);
@@ -444,7 +478,9 @@ final class CampaignRuntime {
                 QuestSite site=CATALOG.meta().get(q.id()).site();
                 if(q.id().equals(REVEALED))site=new QuestSite("factory",52,54,3,"Échantillon chimique",SAMPLE_FIND,SAMPLE_GIVE);
                 if(q.id().equals(INTRO))site=new QuestSite("woods",130,513,5,"Message de Jaeger",HUNT_FIND,HUNT_GIVE);
-                if(site==null||!site.map().equals(map)||!near(p,sitePos(site),site.radius()))continue;
+                if(site==null||!site.map().equals(map))continue;
+                var position=sitePos(site);
+                if(position==null||!near(p,position,site.radius()))continue;
                 String find=site.find();var progress=s.player().snapshot().get(q.id());
                 if(progress.counters().getOrDefault(find,0)>0||s.player().checkpoint().pending().getOrDefault(q.id(),Map.of()).getOrDefault(find,0)>0)continue;
                 if(q.id().equals(INTRO))s.player().record(q.id(),HUNT_VISIT,1);
@@ -512,7 +548,14 @@ final class CampaignRuntime {
                 if(q.id().equals(SEARCH))lines.add("Forêt Noire · convoi et camp");
                 if(q.id().equals(CHEMICAL))lines.add("Zone industrielle · dépôt logistique ouest");
                 if(q.id().equals(ULTRA))lines.add("Entrepôt");
-                var site=CATALOG.meta().get(q.id()).site();if(site!=null)lines.add(site.title()+" · fouiller puis extraire");
+                var site=CATALOG.meta().get(q.id()).site();if(site!=null){
+                    lines.add(site.title()+" · fouiller puis extraire");
+                    if(site.map().equals("streets")){
+                        var position=sitePos(site);
+                        if(position!=null)lines.add("Coordonnées de raid : "+position.getX()+", "+position.getY()+", "+position.getZ());
+                        else lines.add("Zombiepolis indisponible");
+                    }
+                }
                 lines.add(r.credits()+" crédits · "+r.xp()+" XP · "+(r.reputation()>=0?"+":"")+r.reputation()/1000d+" réputation");
                 if(!r.items().isEmpty())lines.add(r.items().values().stream().mapToLong(Integer::longValue).sum()+" objet(s) en récompense");
                 for(var standing:r.otherStanding().entrySet())lines.add(CampaignTrader.byId(standing.getKey()).title+" : "+(standing.getValue()>=0?"+":"")+standing.getValue()/1000d+" réputation");
