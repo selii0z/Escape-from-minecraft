@@ -68,3 +68,8 @@
 5d403f9186f7743cac3f229b|Whisky Dan Jackiel|glass_bottle
 5d1b33a686f7742523398398|Eau purifiée|water_bucket
 62a09f32621468534a797acb|Bière Pevko|glass_bottle
+5c0e874186f7745dc7616606|Casque Maska-1Sch de Killa (trophée)|iron_helmet
+6759af0f9c8a538dd70bfae6|Casque Maska-1Sch de Noël (trophée)|golden_helmet
+60a7acf20c5cb24b01346648|Casquette de Tagilla (trophée)|leather_helmet
+675aae1c26dc64e17800fee6|Chapeau à bois de renne (trophée)|leather_helmet
+6540d2162ae6d96b540afcaf|Matraque PR-Taran de Kollontay (trophée)|stick
