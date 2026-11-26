@@ -803,7 +803,7 @@ def supply_catalog(tasks,item_catalog,resources,out):
         # Consumable drinks/food are represented as sealed mission provisions,
         # not as medicines or simulated survival effects.
         provision="provisions" in types and not types&{"gun","weapon","ammo","armor","helmet","rig","backpack","mods","quest","currency","meds","injectors","grenade"}
-        civilian=ref in {"5aa2b9ede5b5b000137b758b","59e7708286f7742cbd762753","6937f02dfd6488bb27024839","6937efd50543dcc2560a2c81","59e7715586f7742ee5789605"}
+        civilian=ref in {"5aa2b9ede5b5b000137b758b","59e7708286f7742cbd762753","6937f02dfd6488bb27024839","6937efd50543dcc2560a2c81","59e7715586f7742ee5789605","572b7f1624597762ae139822","5b432be65acfc433000ed01f"}
         sample="injectors" in types
         plate="armorPlate" in types
         wallet=ref in {"5783c43d2459774bbe137486","60b0f6c058e0b0481a09ad11"}
@@ -915,6 +915,10 @@ def select_efm_campaign(reference):
         for req in original:
             for prior in expand(req,{qid}):
                 if prior not in replacement:replacement.append(prior)
+        if qid=="5bc4893c86f774626f5ebf3e" and original==[{"task":"5bc4856986f77454c317bea7","status":["complete"]}]:
+            # Part 6 requires unavailable attachments. Part 7 must follow the
+            # completed previous compatible challenge, not merely its acceptance.
+            replacement=[dict(req,status=["complete"]) if req["task"]=="5bc4836986f7740c0152911c" and set(req["status"])=={"active","complete"} else req for req in replacement]
         q["taskRequirements"]=replacement
         if original!=replacement:changes.append({"id":qid,"before":original,"after":replacement})
         # A kill/extraction allowed on multiple maps can be satisfied on the available subset.
@@ -1059,11 +1063,25 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
-                    if all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-bear","double-dogtag-bear")) for ref in original):
+                    if qid=="5c112d7e86f7740d6f647486":
+                        # Preserve five distinct categories and all 75 FIR handovers.
+                        scavenger={
+                          "6a57553be11c6adb225f69b3":("b3d57bcdce5ab4406cd6679f040c060775fc76da139c9ecbb68cd2f6cadf0f79",["572b7f1624597762ae139822","59e7715586f7742ee5789605"]),
+                          "6a575543bb648e3e317d5bbf":("908f1c4f4ca5e36370cfc741ee802d15f5e8b1181e117334fe22779778f90f3f",["5aa7d03ae5b5b00016327db5"]),
+                          "6a57554a8715a99f675a8191":("035719ef0783b681d2ffd9437382702ddf3f7b7fe8a982864bfb0866ba12c6ad",["5645bcc04bdc2d363b8b4572"]),
+                          "6a5755579da173f9a707240f":("abb45150ae2967d7aeeaba587a9032eb660ad5a6a3e846152bfcb3835afe8a7f",["5b432be65acfc433000ed01f"]),
+                          "6a575575a7263e4961397d13":("6e23c750fac6d1fcf977a299c21920465efc94da494baf9a461861ab04b9d6f0",["59e7635f86f7742cbf2c1095","5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","545cdb794bdc2d3a198b456a"]),
+                        }
+                        expected,alternatives=scavenger.get(o["id"],("",[]))
+                        if expected==hashlib.sha256(",".join(sorted(original)).encode()).hexdigest():
+                            o["items"]=alternatives
+                            changes.append({"type":"scavenger-equipment-category","objective":o["id"],"before":original,"after":alternatives})
+                            original=o["items"]
+                    if all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-bear","double-dogtag-bear","marked-dogtag-bear")) for ref in original):
                         o["items"]=["59f32bb586f774757e1e8442"]
                         changes.append({"type":"real-pmc-dogtag","objective":o["id"],"before":original,"after":o["items"]})
                         original=o["items"]
-                    elif all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-usec","double-dogtag-usec")) for ref in original):
+                    elif all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-usec","double-dogtag-usec","marked-dogtag-usec")) for ref in original):
                         o["items"]=["59f32c3b86f77472a31742f0"]
                         changes.append({"type":"real-pmc-dogtag","objective":o["id"],"before":original,"after":o["items"]})
                         original=o["items"]
@@ -1213,7 +1231,8 @@ def build(snapshot,out,resources):
     mapped.update({"59e7635f86f7742cbf2c1095","5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","5a38e6bac4a2826c6e06d79b"})
     auto_names.update({"59e7635f86f7742cbf2c1095":"Tunique PMC classe 2","5c0e655586f774045612eeb2":"Tunique PMC classe 4","5ab8e79e86f7742d8b372e78":"Tunique PMC classe 5","5a38e6bac4a2826c6e06d79b":"Fusil M870 EFM"})
     mapped.update({"59f32bb586f774757e1e8442","59f32c3b86f77472a31742f0"})
-    mapped.add("5aa7d03ae5b5b00016327db5")
+    mapped.update({"5aa7d03ae5b5b00016327db5","5645bcc04bdc2d363b8b4572"})
+    auto_names.update({"5aa7d03ae5b5b00016327db5":"Casque PMC classe 2","5645bcc04bdc2d363b8b4572":"Casque audio tactique"})
     mapped.update(WEAPON_HANDOVERS.values())
     mapped.add("545cdb794bdc2d3a198b456a")
     auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
