@@ -14,5 +14,17 @@ public final class FieldCurios {
     public static ItemStack equipped(LivingEntity player,String id){
         var h=handler(player,id);return h==null?ItemStack.EMPTY:h.getStackInSlot(0);
     }
+    public static void registerRaidDropRules(){
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+            net.neoforged.bus.api.EventPriority.LOWEST,FieldCurios::raidDropRules);
+    }
+    private static void raidDropRules(top.theillusivec4.curios.api.event.DropRulesEvent event){
+        if(!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer p)
+            ||!fr.taczoperations.operations.RaidSecurity.raidCurioLoss(p))return;
+        // Curios emits its real item entities into LivingDropsEvent before EFM's
+        // insurance handler. Do not clone or manually empty Curios inventories.
+        event.addOverride(fr.taczoperations.operations.RaidSecurity::isRaidCurio,
+            top.theillusivec4.curios.api.type.capability.ICurio.DropRule.ALWAYS_DROP);
+    }
     private FieldCurios(){}
 }

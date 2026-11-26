@@ -126,7 +126,7 @@ public final class ForestPlan {
                         last = h;
                     }
                     double preferred = noise(p.x, p.z, 26, 932) * 8;
-                    double value = cost[s - 1][k] + run + rise * rise * 2.0 + steep * 8.0
+                    double value = cost[s - 1][k] + run + rise * rise * 4.0 + steep * 16.0
                         + (water ? 12 : 0) + Math.abs((j - middle) * 3.0 - preferred) * .22
                         + Math.abs(j - k) * 1.8;
                     if (value < cost[s][j]) {

@@ -25,7 +25,8 @@ import net.neoforged.neoforge.items.SlotItemHandler;
 
 /** Dedicated server-backed inventory view; does not resize vanilla Inventory.items. */
 public final class FieldInventoryMenu extends AbstractContainerMenu {
-    public static final String GOGGLES="efm_goggles", BAG="efm_backpack", RIG="efm_rig";
+    public static final String GOGGLES="efm_goggles", BAG="efm_backpack", RIG="efm_rig", HEADSET="efm_headset";
+    public static final int INVENTORY_START=9, HOTBAR_START=36, STORAGE_START=45;
     public static final int WIDTH=368, HEIGHT=242;
     private static final java.util.Map<ServerPlayer,FieldInventoryMenu> REFRESH=new java.util.WeakHashMap<>();
     private final Player owner;
@@ -48,19 +49,19 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     public static void open(ServerPlayer p){
         if(!allowed(p)||p.isCreative()||!ModList.get().isLoaded("curios"))return;
         if(p.containerMenu!=p.inventoryMenu)return;
-        var g=handler(p,GOGGLES);var b=handler(p,BAG);var r=handler(p,RIG);
-        if(g==null||b==null||r==null){
+        var g=handler(p,GOGGLES);var b=handler(p,BAG);var r=handler(p,RIG);var h=handler(p,HEADSET);
+        if(g==null||b==null||r==null||h==null){
             p.sendSystemMessage(Component.literal("Emplacements EFM indisponibles : vérifie Curios et les datapacks."));
             return;
         }
         int bs=FieldPack.capacity(current(b),false),rs=FieldPack.capacity(current(r),true);
-        p.openMenu(new SimpleMenuProvider((id,inv,viewer)->new FieldInventoryMenu(id,inv,g,b,r,bs,rs,true),
+        p.openMenu(new SimpleMenuProvider((id,inv,viewer)->new FieldInventoryMenu(id,inv,g,b,r,h,bs,rs,true),
             Component.literal("Inventaire tactique")),buf->{buf.writeVarInt(bs);buf.writeVarInt(rs);});
     }
     public FieldInventoryMenu(int id,Inventory inv,RegistryFriendlyByteBuf buf){
-        this(id,inv,new ItemStackHandler(1),new ItemStackHandler(1),new ItemStackHandler(1),buf.readVarInt(),buf.readVarInt(),false);
+        this(id,inv,new ItemStackHandler(1),new ItemStackHandler(1),new ItemStackHandler(1),new ItemStackHandler(1),buf.readVarInt(),buf.readVarInt(),false);
     }
-    private FieldInventoryMenu(int id,Inventory inv,IItemHandlerModifiable goggles,IItemHandlerModifiable bag,IItemHandlerModifiable rig,int bs,int rs,boolean server){
+    private FieldInventoryMenu(int id,Inventory inv,IItemHandlerModifiable goggles,IItemHandlerModifiable bag,IItemHandlerModifiable rig,IItemHandlerModifiable headset,int bs,int rs,boolean server){
         super(OperationsMod.FIELD_INVENTORY.get(),id);
         this.owner=inv.player;this.dimension=owner.level().dimension();this.server=server;bagHandler=bag;rigHandler=rig;
         bagCarrier=current(bag);rigCarrier=current(rig);
@@ -77,7 +78,7 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
         }
         addSlot(new Slot(inv,40,10,96));
         // Actual Curios equipment slots, right of the character.
-        addGear(goggles,0,91,18);addGear(bag,1,91,40);addGear(rig,2,91,62);
+        addGear(goggles,0,91,18);addGear(bag,1,91,62);addGear(rig,2,91,40);addGear(headset,3,91,84);
         for(int row=0;row<3;row++)for(int col=0;col<9;col++)addSlot(new Slot(inv,9+row*9+col,10+col*18,132+row*18));
         for(int col=0;col<9;col++)addSlot(new Slot(inv,col,10+col*18,195));
         var bags=server?new PackStorage(bagCarrier,bagSize):new SimpleContainer(bagSize);
@@ -90,11 +91,12 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
         addSlot(new SlotItemHandler(handler,0,x,y){
             @Override public int getMaxStackSize(){return 1;}
             @Override public boolean mayPlace(ItemStack s){
-                boolean matches=type==0?isGoggle(s):FieldPack.capacity(s,type==2)>0;
+                boolean matches=type==0?isGoggle(s):type==3?isHeadset(s):FieldPack.capacity(s,type==2)>0;
                 return matches&&super.mayPlace(s);
             }
         });
     }
+    public static boolean isHeadset(ItemStack s){return BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals("taczoperations:tactical_headset");}
     private static boolean isGoggle(ItemStack s){
         var id=BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
         return id.equals("taczoperations:night_vision_goggles")||id.equals("taczoperations:thermal_goggles");
@@ -113,8 +115,8 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
     @Override public void clicked(int slot,int button,ClickType type,Player p){
         if(!stillValid(p)||type==ClickType.CLONE)return;
         // Avoid multi-slot gestures across a carrier that can change the menu shape.
-        if(slot>=5&&slot<8&&type!=ClickType.PICKUP)return;
-        if(type==ClickType.PICKUP_ALL||type==ClickType.QUICK_CRAFT)return;
+        if(slot>=5&&slot<INVENTORY_START&&type!=ClickType.PICKUP)return;
+        // Vanilla drag and double-click are safe on storage slots, never carriers.
         super.clicked(slot,button,type,p);
         if(server&&p instanceof ServerPlayer sp&&slot>=6&&slot<8&&!stillValid(p))REFRESH.put(sp,this);
     }
@@ -127,22 +129,24 @@ public final class FieldInventoryMenu extends AbstractContainerMenu {
         if(p.containerMenu==old)p.closeContainer();
         if(p.containerMenu==p.inventoryMenu)open(p);
     }
+    @Override public boolean canDragTo(Slot slot){return slot.index>=INVENTORY_START&&super.canDragTo(slot);}
+    @Override public boolean canTakeItemForPickAll(ItemStack stack,Slot slot){return slot.index>=INVENTORY_START&&super.canTakeItemForPickAll(stack,slot);}
     @Override public ItemStack quickMoveStack(Player p,int index){
-        if(!stillValid(p)||index<0||index>=slots.size()||index>=5&&index<8)return ItemStack.EMPTY;
+        if(!stillValid(p)||index<0||index>=slots.size()||index>=5&&index<INVENTORY_START)return ItemStack.EMPTY;
         Slot slot=slots.get(index);
         if(!slot.hasItem()||!slot.mayPickup(p))return ItemStack.EMPTY;
         ItemStack source=slot.getItem(),original=source.copy();
-        if(index>=44||index<5){
-            if(!moveItemStackTo(source,8,44,false))return ItemStack.EMPTY;
+        if(index>=STORAGE_START||index<5){
+            if(!moveItemStackTo(source,INVENTORY_START,STORAGE_START,false))return ItemStack.EMPTY;
         }else{
             boolean moved=false;
             if(FieldPack.accepts(source,true)&&rigSize>0)
-                moved=moveItemStackTo(source,44+bagSize,slots.size(),false);
+                moved=moveItemStackTo(source,STORAGE_START+bagSize,slots.size(),false);
             if(!source.isEmpty()&&FieldPack.accepts(source,false)&&bagSize>0)
-                moved=moveItemStackTo(source,44,44+bagSize,false)||moved;
+                moved=moveItemStackTo(source,STORAGE_START,STORAGE_START+bagSize,false)||moved;
             if(!moved){
-                if(index<35)moved=moveItemStackTo(source,35,44,false);
-                else moved=moveItemStackTo(source,8,35,false);
+                if(index<HOTBAR_START)moved=moveItemStackTo(source,HOTBAR_START,STORAGE_START,false);
+                else moved=moveItemStackTo(source,INVENTORY_START,HOTBAR_START,false);
             }
             if(!moved)return ItemStack.EMPTY;
         }

@@ -148,6 +148,7 @@ public enum OperationsShop {
                 offers.add(new Offer("Reprise · pomme dorée", 45, Action.SELL, () -> new ItemStack(Items.GOLDEN_APPLE), null, 0));
             }
             case SALVAGER -> {
+                offers.add(new Offer("Plaque nominative PMC",RaidRelic.PLAQUE.price,Action.SELL,()->medical("military_tag"),null,0));
                 int[] bagPrices={500,1200,3000,6000,12000},bagRanks={0,20,20,65,180};
                 String[] bags={"Petit sac","Sac de patrouille","Sac tactique","Sac militaire","Sac d'expédition"};
                 for(int i=0;i<bags.length;i++){
@@ -303,6 +304,10 @@ public enum OperationsShop {
         ItemStack sample=offer.stack().get();
         return CarriedStorage.of(player).count(s->matchesSale(sample,s));
     }
+    public static int purchasePrice(Offer offer,int discount){
+        if(offer.action()!=Action.BUY||offer.price()<=0)return offer.price();
+        return (int)Math.max(1,((long)offer.price()*(100-Math.clamp(discount,0,10))+99)/100);
+    }
     String trade(ServerPlayer player,int index,long quotedDay){
         return trade(player,index,quotedDay,1,false);
     }
@@ -312,6 +317,11 @@ public enum OperationsShop {
         if (index < 0 || index >= offers.size()) return "Offre indisponible.";
         Offer offer = offers.get(index);
         if(bulk&&offer.action!=Action.SELL)return "Cette offre ne permet pas la vente en lot.";
+        if(offer.action!=Action.SELL){
+            int experience=SupplyContract.experienceEarned(player),loyalty=offer.loyaltyLevel();
+            if(reputationLevel(reputation(player),experience)<loyalty)
+                return "Fidélité "+loyalty+" requise.";
+        }
         var account = SupplyContract.account(player);
         if (offer.action == Action.UNLOCK) {
             String key = "unlock_" + offer.key.id;
@@ -354,6 +364,7 @@ public enum OperationsShop {
             if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
+            PassiveSkills.trade(player,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
         int experience = SupplyContract.experienceEarned(player);
@@ -365,16 +376,17 @@ public enum OperationsShop {
         if (offer.key != null && !account.getBoolean("unlock_" + offer.key.id))
             return "Accès permanent requis.";
         if(quantity<1||quantity>64)return "Quantité invalide.";
-        long total=(long)offer.price*quantity;
+        long total=(long)purchasePrice(offer,PassiveSkills.bonus(player,PassiveSkills.Skill.TRADE))*quantity;
         if(total>balance||total<0)return "Crédits insuffisants.";
         var inventory = player.getInventory();
-        int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? stack.getMaxStackSize()
-            : ItemStack.isSameItemSameComponents(slot, stack) ? slot.getMaxStackSize() - slot.getCount() : 0).sum();
+        int capacity = inventory.items.stream().mapToInt(slot -> slot.isEmpty() ? Math.min(inventory.getMaxStackSize(),stack.getMaxStackSize())
+            : ItemStack.isSameItemSameComponents(slot, stack) ? Math.max(0,Math.min(inventory.getMaxStackSize(),slot.getMaxStackSize()) - slot.getCount()) : 0).sum();
         int purchased=stack.getCount()*quantity;
         if(capacity<purchased)return "Inventaire plein : libère des cases pour le lot complet.";
         for(int i=0;i<quantity;i++)inventory.add(stack.copy());
         account.putInt("credits",balance-(int)total);
         TradeJournal.record(player,"Achat",title,offer.title(),purchased,-total);
+        PassiveSkills.trade(player,-total);
         return "Achat · "+purchased+" objet(s) · -"+total+" crédits.";
     }
 }

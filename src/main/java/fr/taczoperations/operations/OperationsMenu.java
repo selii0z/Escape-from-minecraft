@@ -38,22 +38,23 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int PLAYER_MARKET=145, PLAYER_OFFER_FIRST=235, PLAYER_CLAIM=247, PLAYER_OWN=248, PLAYER_FILTER_FIRST=249;
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
+    public static final int ENTER_HIDEOUT = 27;
     private static final int PAGE_SIZE = 4;
     public static final int LIST_ROWS = 6;
     public static final int CONTRACT_ROWS = 5;
     public static final int VENDOR_FIRST = 35;
-    public static final int VENDOR_PAGES = 128;
-    public static final int SHOP_ROWS = 24;
-    public static final int TRADE_FIRST = 180, SHOP_CATEGORY_FIRST=228;
-    public static final int SELL_ALL_FIRST=204, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
+    public static final int VENDOR_PAGES = 4096;
+    public static final int SHOP_COLUMNS = 10, SHOP_VISIBLE_ROWS = 4, SHOP_ROWS = SHOP_COLUMNS * SHOP_VISIBLE_ROWS;
+    public static final int TRADE_FIRST = 55, SHOP_CATEGORY_FIRST=228;
+    public static final int SELL_ALL_FIRST=100, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
-    public static final int INDUSTRIAL_FIRST = 65;
+    public static final int INDUSTRIAL_FIRST = 65, EXPRESS_FIRST=300;
 
     public static final int FILTER_CATEGORY = 100, FILTER_DIFFICULTY = 110, FILTER_STATUS = 120, FILTER_MERCHANT = 130;
 
     public record View(int tab, int page, int pages, int credits, int experience, boolean showExtraction, int unlocks, List<Integer> contracts, List<Integer> progress,
                        String partner, String inviter, List<String> candidates, String notice, String raidReport,
-                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals,List<String> orders,boolean shopAccessories,PlayerMarket.Page playerMarket) {
+                       List<String> raidHistory, int category, int difficulty, int statusFilter, int merchantFilter, List<Integer> filtered, int cycles, List<Integer> reputation, List<Long> raidTotals, List<Integer> timedContracts, List<String> market,List<Integer> saleCounts,List<Integer> shopRows,boolean shopOwned,int shopPages,long shopValue,List<String> journal,List<Long> journalTotals,List<String> orders,boolean shopAccessories,int commerceDiscount,PlayerMarket.Page playerMarket) {
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(tab);
             buffer.writeVarInt(page);
@@ -86,6 +87,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             buffer.writeCollection(journalTotals,(buf,value)->buf.writeVarLong(value));
             buffer.writeCollection(orders,(buf,line)->buf.writeUtf(line));
             buffer.writeBoolean(shopAccessories);
+            buffer.writeVarInt(commerceDiscount);
             playerMarket.write(buffer);
         }
 
@@ -94,10 +96,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()),
                 buffer.readList(buf -> buf.readVarInt()), buffer.readUtf(),
                 buffer.readUtf(), buffer.readList(buf -> buf.readUtf()), buffer.readUtf(), buffer.readUtf(),
-                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()),buffer.readList(buf->buf.readUtf()),buffer.readBoolean(),PlayerMarket.Page.read(buffer));
+                buffer.readList(buf -> buf.readUtf()), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readVarInt(), buffer.readList(buf -> buf.readVarInt()), buffer.readList(buf -> buf.readVarLong()),buffer.readList(buf -> buf.readVarInt()),buffer.readList(buf -> buf.readUtf()),buffer.readList(buf->buf.readVarInt()),buffer.readList(buf->buf.readVarInt()),buffer.readBoolean(),buffer.readVarInt(),buffer.readVarLong(),buffer.readList(buf->buf.readUtf()),buffer.readList(buf->buf.readVarLong()),buffer.readList(buf->buf.readUtf()),buffer.readBoolean(),Math.clamp(buffer.readVarInt(),0,10),PlayerMarket.Page.read(buffer));
         }
     }
 
+    public static final int ARM_WIPE=270, DETAILED_STATS=271;
+    private long wipeUntil=-1;
     private final View view;
     private final BlockPos position;
     private final ServerLevel level;
@@ -123,6 +127,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
         if (!report.contains("final_xp")) return "";
         long seconds = report.getLong("duration_seconds");
         return (report.getBoolean("success") ? "EXTRACTION RÉUSSIE" : "RAID ÉCHOUÉ")
+            + (report.contains("industrial")?(report.getBoolean("industrial")?" | Industrie":" | Forêt"):"")
             + " | " + (seconds / 60) + "m " + (seconds % 60) + "s"
             + " | " + report.getInt("kills") + " kills"
             + " | " + report.getInt("crates") + " coffres"
@@ -136,6 +141,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             var report = reports.getCompound(i);
             long seconds = report.getLong("duration_seconds");
             history.add((report.getBoolean("success") ? "OK" : "KO")
+                + (report.contains("industrial")?(report.getBoolean("industrial")?" IND":" FOR"):" ---")
                 + " " + (seconds / 60) + ":" + String.format("%02d", seconds % 60)
                 + " | " + report.getInt("kills") + "K"
                 + " | " + report.getInt("crates") + "C"
@@ -193,6 +199,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             int vendorIndex=page/VENDOR_PAGES;
             var merchant=OperationsShop.values()[vendorIndex];
             var offers=merchant.offers();
+            int loyalty=OperationsShop.reputationLevel(merchant.reputation(player),SupplyContract.experienceEarned(player));
             var indices=new java.util.ArrayList<Integer>();
             var counts=new java.util.ArrayList<Integer>();
             long day=ResaleMarket.day();
@@ -200,7 +207,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
                 int count=OperationsShop.saleCount(player,offer);
-                if((shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
+                if(!offer.stack().get().isEmpty()&&(shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL&&offer.loyaltyLevel()<=loyalty)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
@@ -211,10 +218,10 @@ public final class OperationsMenu extends AbstractContainerMenu {
                 }
             }
             for(long value:valued.values())shopValue+=value;
-            shopPages=Math.max(1,Math.min(VENDOR_PAGES,(indices.size()+SHOP_ROWS-1)/SHOP_ROWS));
+            shopPages=Math.max(1,Math.min(VENDOR_PAGES,(indices.size()+SHOP_COLUMNS-1)/SHOP_COLUMNS-SHOP_VISIBLE_ROWS+1));
             int local=Math.clamp(page%VENDOR_PAGES,0,shopPages-1);
             page=vendorIndex*VENDOR_PAGES+local;
-            int first=local*SHOP_ROWS;
+            int first=local*SHOP_COLUMNS;
             for(int i=first;i<Math.min(first+SHOP_ROWS,indices.size());i++){
                 shopRows.add(indices.get(i));saleCounts.add(counts.get(i));
             }
@@ -228,8 +235,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             lastRaidSummary(player), raidHistory(player), tab==SHOP?shopCategory:category, difficulty, statusFilter, merchantFilter, filtered, SupplyContract.cyclesCompleted(player),
             java.util.Arrays.stream(OperationsShop.values()).map(m -> m.reputation(player)).toList(),
             java.util.stream.Stream.of("raids","wins","losses","kills","crates","contracts","seconds","xp","best_kills",
-                "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total")
-                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of(),shopAccessories,tab==PLAYER_MARKET?PlayerMarket.of(player).view(player,page,marketOwn,marketCategory):PlayerMarket.Page.empty());
+                "best_loot","loot_total","current_streak","best_streak","best_xp","best_crates","valued_raids","loot_count_total","shots","impacts","headshots","pmc_kills","scav_kills","boss_kills","distance_cm")
+                .map(key -> SupplyContract.raidTotals(player).getLong(key)).toList(),TimedContracts.view(player),BlackMarket.view(player),List.copyOf(saleCounts),List.copyOf(shopRows),shopOwned,shopPages,shopValue,tab==TRADE_JOURNAL?TradeJournal.page(player,page):List.of(),TradeJournal.totals(player),tab==MERCHANT_ORDERS?MerchantOrders.view(player):List.of(),shopAccessories,PassiveSkills.bonus(player,PassiveSkills.Skill.TRADE),tab==PLAYER_MARKET?PlayerMarket.of(player).view(player,page,marketOwn,marketCategory):PlayerMarket.Page.empty());
         ServerLevel currentLevel = player.serverLevel();
         boolean refreshing = player.containerMenu instanceof OperationsMenu current
             && current.level == currentLevel && position.equals(current.position);
@@ -310,6 +317,9 @@ public final class OperationsMenu extends AbstractContainerMenu {
         int index=view.shopRows().get(row);
         var offers=merchant.offers();
         if(index<0||index>=offers.size()||offers.get(index).action()!=OperationsShop.Action.BUY)return;
+        if(view.commerceDiscount()!=PassiveSkills.bonus(player,PassiveSkills.Skill.TRADE)){
+            open(player,position,SHOP,view.page(),"Tarifs modifiés : vérifie le nouveau montant.");return;
+        }
         String notice=merchant.trade(player,index,Long.parseLong(view.market().getFirst()),lots,false);
         open(player,position,SHOP,view.page(),notice);
     }
@@ -320,28 +330,45 @@ public final class OperationsMenu extends AbstractContainerMenu {
         open(player,position,PLAYER_MARKET,view.page(),notice);
     }
 
+    void confirmWipe(ServerPlayer p){
+        if(p.containerMenu!=this||view.tab()!=SETTINGS||!stillValid(p)||wipeUntil<0||p.level().getGameTime()>wipeUntil)return;
+        wipeUntil=-1;
+        String notice=WipeAccount.reset(p);
+        open(p,position,SETTINGS,0,notice);
+    }
     @Override
     public boolean clickMenuButton(Player player, int button) {
-        if (!(player instanceof ServerPlayer serverPlayer) || !stillValid(player)) {
+        if (!(player instanceof ServerPlayer serverPlayer) || player.containerMenu!=this || !stillValid(player)) {
             return false;
         }
+        if(button==ARM_WIPE&&view.tab()==SETTINGS){
+            String problem=WipeAccount.problem(serverPlayer);
+            if(problem.isEmpty())wipeUntil=serverPlayer.level().getGameTime()+20*60;
+            else {wipeUntil=-1;serverPlayer.sendSystemMessage(Component.literal(problem));}
+            return true;
+        }
+        if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
         int tab = view.tab();
         int page = view.page();
         String notice = "";
         if (button == CONTRACTS || button == GROUP || button == FOREST
-            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET) {
+            || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET || button==DETAILED_STATS) {
             tab = button;
             page = 0;
+        } else if(tab==FOREST&&button>=EXPRESS_FIRST&&button<EXPRESS_FIRST+16){
+            int mode=button-EXPRESS_FIRST;
+            var map=fr.taczoperations.worldgen.ExpressZone.byId(1+mode/4);
+            if(map==null)return false;
+            DepartureInsuranceMenu.open(serverPlayer,position,(mode&1)!=0,(mode&2)!=0,false,map);
+            return true;
         } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
             || button == DEPART_DUO_NIGHT || (button >= INDUSTRIAL_FIRST && button < INDUSTRIAL_FIRST + 4))) {
             boolean industrial = button >= INDUSTRIAL_FIRST;
             int mode = industrial ? button - INDUSTRIAL_FIRST : -1;
-            notice = ForestExpedition.depart(serverPlayer, position,
+            DepartureInsuranceMenu.open(serverPlayer,position,
                 industrial ? (mode & 1) != 0 : button == DEPART_NIGHT || button == DEPART_DUO_NIGHT,
-                industrial ? (mode & 2) != 0 : button == DEPART_DUO || button == DEPART_DUO_NIGHT, industrial);
-            if (notice.isEmpty()) {
-                return true;
-            }
+                industrial ? (mode & 2) != 0 : button == DEPART_DUO || button == DEPART_DUO_NIGHT,industrial);
+            return true;
         } else if(tab==PLAYER_MARKET&&button>=PLAYER_OFFER_FIRST&&button<PLAYER_OFFER_FIRST+PlayerMarket.PAGE_SIZE){
             int row=button-PLAYER_OFFER_FIRST;
             if(row>=view.playerMarket().offers().size())return false;
@@ -395,7 +422,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             if (serverPlayer.level().dimension().equals(ForestExpedition.FOREST)) return false;
             int row=button-TRADE_FIRST;
             if(row>=view.shopRows().size())return false;
-            notice = vendor.trade(serverPlayer,view.shopRows().get(row),Long.parseLong(view.market().getFirst()));
+            if(view.commerceDiscount()!=PassiveSkills.bonus(serverPlayer,PassiveSkills.Skill.TRADE))notice="Tarifs modifiés : vérifie le nouveau montant.";
+            else notice = vendor.trade(serverPlayer,view.shopRows().get(row),Long.parseLong(view.market().getFirst()));
         } else if (tab == SHOP && (button == PREVIOUS || button == NEXT)) {
             int vendor = page / VENDOR_PAGES;
             int max = view.shopPages()-1;

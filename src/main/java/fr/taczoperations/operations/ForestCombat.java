@@ -28,6 +28,7 @@ public final class ForestCombat {
     // Balance NPC damage only; player-fired TaCZ weapons keep their original stats.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
         if (event.getLogicalSide().isClient()) return;
+        DetailedStats.hit(event);
         // Apply localized ballistic protection to both players and guards.
         if (!(event.getAttacker() instanceof Pillager guard)
             || !(event.getHurtEntity() instanceof ServerPlayer player)
@@ -160,6 +161,7 @@ public final class ForestCombat {
             }
             boolean hit=aim.previousHealth>=0&&guard.getHealth()<aim.previousHealth;
             aim.previousHealth=guard.getHealth();
+            if(hit)RaidAudio.voice(guard,"hurt");
             net.minecraft.world.entity.LivingEntity target = null;
             double range = (role.range + 12) * (role.range + 12);
             for (ServerPlayer candidate : level.players()) {
@@ -174,6 +176,7 @@ public final class ForestCombat {
                     if (candidate.isCrouching() && !goggles) detection *= .75;
                     if (candidate.getUUID().equals(aim.visibleTarget)) detection *= 1.25;
                 }
+                if(candidate.isCrouching())detection*=1.0-PassiveSkills.bonus(candidate,PassiveSkills.Skill.STEALTH)/100.0;
                 if (distance < range && distance < detection * detection
                     && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
                     && ForestRaid.sameSession(level,guard,candidate) && guard.hasLineOfSight(candidate)) {
@@ -242,6 +245,7 @@ public final class ForestCombat {
             guard.getNavigation().stop();
             operator.aim(true);
             if (!target.getUUID().equals(aim.visibleTarget)) {
+                RaidAudio.voice(guard,"attack");
                 aim.visibleTarget = target.getUUID();
                 // Give players a reaction window when first spotted or spotted again.
                 aim.nextShot = Math.max(aim.nextShot, guard.tickCount + 16 + guard.getRandom().nextInt(13));

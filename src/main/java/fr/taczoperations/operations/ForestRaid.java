@@ -5,6 +5,7 @@ import fr.taczoperations.entity.GuardCorpse;
 import fr.taczoperations.worldgen.ForestPlan;
 import fr.taczoperations.worldgen.ForestRaidAnchors;
 import fr.taczoperations.worldgen.IndustrialZone;
+import fr.taczoperations.worldgen.ExpressZone;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -53,10 +54,17 @@ public final class ForestRaid extends SavedData {
 
     private static final long RECONNECT_GRACE_MS = 10 * 60 * 1000L;
     private final Set<UUID> participants = new HashSet<>();
-    private long offlineSince;
+    private final java.util.Map<UUID,Long> reconnectDeadlines=new java.util.HashMap<>();
     private UUID id;
+    private long endsAt;
+    private int warningMask;
     private long seed;
     private boolean industrial;
+    private ExpressZone express;
+    private int origin(){return express!=null?express.origin:industrial?IndustrialZone.ORIGIN:ForestPlan.ORIGIN;}
+    private BlockPos position(ForestPlan.Point p){return express!=null?express.pos(p):industrial?ForestExpedition.industrialPosition(p):ForestLandmarks.position(p);}
+    private boolean validPosition(BlockPos p){return express!=null?express.valid(new ForestPlan.Point(p.getX()-express.origin,p.getZ()-express.origin)):validEncounterPosition(industrial,p);}
+    private static List<ForestRaid> sessions(ServerLevel level){var list=new ArrayList<ForestRaid>();list.add(get(level,false));list.add(get(level,true));for(var map:ExpressZone.values())list.add(get(level,false,map));return list;}
     private long dropDue, dropLanding;
     private int dropAttempts;
     private int reinforcementKills,reinforcementWaves,reinforcementLimit,reinforcementPending;
@@ -73,6 +81,12 @@ public final class ForestRaid extends SavedData {
     private BlockPos fieldEventPos;
     private UUID dropVisual;
     private boolean dropLanded;
+    private record VaultAccess(String title,BlockPos door){}
+    private List<VaultAccess> vaults(){
+        if(express!=null)return List.of();
+        if(industrial)return IndustrialZone.VAULTS.stream().map(v->new VaultAccess(v.title(),v.door())).toList();
+        return fr.taczoperations.worldgen.ForestVaults.VAULTS.stream().map(v->new VaultAccess(v.title(),v.door())).toList();
+    }
     private final BitSet vaultPrepared = new BitSet(), vaultOpened = new BitSet();
     private BitSet crates = new BitSet();
     private final Set<BlockPos> spawnedContainers=new HashSet<>();
@@ -81,19 +95,19 @@ public final class ForestRaid extends SavedData {
     private List<ForestPlan.Point> encounterPoints = List.of();
     private List<ForestRaidAnchors.Mark> locations = List.of();
 
-    private static ForestRaid get(ServerLevel level,boolean industrial) {
-        var raid=level.getDataStorage().computeIfAbsent(FACTORY,industrial?"taczoperations_raid_industrial":"taczoperations_raid");
-        raid.industrial=industrial;
+    private static ForestRaid get(ServerLevel level,boolean industrial){return get(level,industrial,null);}
+    private static ForestRaid get(ServerLevel level,boolean industrial,ExpressZone express) {
+        var raid=level.getDataStorage().computeIfAbsent(FACTORY,express!=null?"taczoperations_express_"+express.id:industrial?"taczoperations_raid_industrial":"taczoperations_raid");
+        raid.industrial=industrial;raid.express=express;
         return raid;
     }
     private static ForestRaid at(ServerLevel level,BlockPos pos){
-        return get(level,IndustrialZone.inside(pos.getX(),pos.getZ()));
+        return get(level,IndustrialZone.inside(pos.getX(),pos.getZ()),ExpressZone.at(pos.getX(),pos.getZ()));
     }
     private static ForestRaid forPlayer(ServerPlayer p){
         var level=p.server.getLevel(ForestExpedition.FOREST);
         if(level==null)return null;
-        for(boolean industrial:new boolean[]{false,true}){
-            var raid=get(level,industrial);
+        for(var raid:sessions(level)){
             if(raid.participants.contains(p.getUUID())&&raid.matches(p.getPersistentData(),PLAYER))return raid;
         }
         return null;
@@ -103,7 +117,7 @@ public final class ForestRaid extends SavedData {
             &&p.level().dimension().equals(ForestExpedition.FOREST)&&ForestExpedition.hasReturnPoint(p);
     }
     private boolean inArea(BlockPos pos){
-        return industrial?IndustrialZone.inside(pos.getX(),pos.getZ()):ForestPlan.inside(pos.getX(),pos.getZ());
+        return express!=null?express.inside(pos.getX(),pos.getZ()):industrial?IndustrialZone.inside(pos.getX(),pos.getZ()):ForestPlan.inside(pos.getX(),pos.getZ());
     }
     private boolean ownsEntity(net.minecraft.world.entity.Entity e){
         var data=e.getPersistentData();
@@ -114,8 +128,9 @@ public final class ForestRaid extends SavedData {
             ||e instanceof Pillager guard&&guard.getPersistentData().hasUUID(ENEMY);
     }
 
-    static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner, boolean industrial) {
-        ForestRaid raid = get(level,industrial);
+    static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner, boolean industrial){begin(level,player,partner,industrial,null);}
+    static void begin(ServerLevel level, ServerPlayer player, ServerPlayer partner, boolean industrial,ExpressZone express) {
+        ForestRaid raid = get(level,industrial,express);
         // A previous raid may have left corpses in loaded chunks. Remove them
         // before assigning a new session ID, so their inventories cannot be looted.
         java.util.List<net.minecraft.world.entity.Entity> expired = new java.util.ArrayList<>();
@@ -127,12 +142,14 @@ public final class ForestRaid extends SavedData {
         raid.participants.clear();
         raid.participants.add(player.getUUID());
         if (partner != null) raid.participants.add(partner.getUUID());
-        raid.offlineSince = 0;
+        raid.reconnectDeadlines.clear();
+        raid.endsAt=level.getGameTime()+20L*60*(express!=null?express.minutes():industrial?30:45);
+        raid.warningMask=0;
         raid.seed = level.getRandom().nextLong();
-        int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
-        raid.bossConvergence=bossRoll<5;
-        raid.selectedBosses=raid.bossConvergence?BossRoster.all():bossRoll<15?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,true)
-            :bossRoll<80?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,false):List.of();
+        boolean urbanRoster=industrial||express==ExpressZone.BUNKER||express==ExpressZone.WAREHOUSE||express==ExpressZone.CITY;
+        var bossSelection=BossRoster.select(urbanRoster,ForestExpedition.isNightRaid(player),raid.seed);
+        raid.bossConvergence=bossSelection.convergence();
+        raid.selectedBosses=bossSelection.bosses();
         if(raid.bossConvergence){
             var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
             player.sendSystemMessage(warning);
@@ -147,7 +164,7 @@ public final class ForestRaid extends SavedData {
         raid.vaultPrepared.clear();
         raid.vaultOpened.clear();
         raid.enemies.clear();
-        raid.encounterPoints = chooseEncounterPoints(industrial, raid.seed);
+        raid.encounterPoints = express!=null?express.encounters():chooseEncounterPoints(industrial, raid.seed);
         var bossSites=new ArrayList<>(raid.encounterPoints);
         if(bossSites.isEmpty())bossSites.addAll(industrial?IndustrialZone.BOSSES:ForestRaidAnchors.TRACKER);
         java.util.Collections.shuffle(bossSites,new Random(raid.seed^0x7ff330L));
@@ -170,15 +187,25 @@ public final class ForestRaid extends SavedData {
         raid.dropPos = null;
         raid.dropVisual = null;
         raid.dropLanded = false;
-        raid.locations = raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
+        raid.locations = express!=null?express.loot(raid.seed):raid.industrial ? IndustrialZone.loot(raid.seed) : ForestRaidAnchors.pickLoot(raid.seed);
+        if(!industrial&&express==null){
+            var marks=new ArrayList<>(raid.locations);
+            for(int i=0;i<fr.taczoperations.worldgen.ForestVaults.VAULTS.size();i++)
+                marks.add(fr.taczoperations.worldgen.ForestVaults.VAULTS.get(i).loot(i));
+            raid.locations=List.copyOf(marks);
+        }
         player.getPersistentData().putUUID(PLAYER, raid.id);
         RaidSurvival.begin(player);
         SupplyContract.departure(player);
+        StoryMissions.begin(player,industrial);
+        PassiveSkills.begin(player);
         raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
             RaidSurvival.begin(partner);
             SupplyContract.departure(partner);
+            StoryMissions.begin(partner,industrial);
+            PassiveSkills.begin(partner);
             raid.announceExits(partner);
         }
         // Clear stale containers in the chunks around the spawn immediately,
@@ -199,21 +226,22 @@ public final class ForestRaid extends SavedData {
         return raid!=null&&raid.owns(player)&&raid.exitOpen(index);
     }
     private void announceExits(ServerPlayer p){
-        String exits=industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
+        String exits=express!=null?express.title+" · deux sorties gratuites, "+express.minutes()+" minutes.":industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
             :"Sortie principale ouverte · relais : "+(exitOpen(0)?"activable":"indisponible pour ce raid");
         p.sendSystemMessage(Component.literal(exits));
+        if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
     static void finishParticipant(ServerPlayer player) {
         ForestRaid raid=forPlayer(player);
         if(raid==null)return;
         raid.participants.remove(player.getUUID());
+        raid.reconnectDeadlines.remove(player.getUUID());
         raid.setDirty();
     }
 
     static void cleanupWhenEmpty(ServerLevel level) {
-        for(boolean industrial:new boolean[]{false,true}){
-            ForestRaid raid=get(level,industrial);
+        for(var raid:sessions(level)){
             if(raid.id!=null&&raid.participants.isEmpty())raid.closeSession(level);
         }
     }
@@ -228,7 +256,7 @@ public final class ForestRaid extends SavedData {
         // tagged containers remain inaccessible and are removed on later visits.
         for(BlockPos pos:spawnedContainers)if(level.hasChunkAt(pos))removeTaggedContainer(level,pos,true);
         spawnedContainers.clear();
-        if(industrial)for(var vault:IndustrialZone.VAULTS){
+        for(var vault:vaults()){
             BlockPos door=vault.door();
             if(level.hasChunkAt(door)){
                 ForestProtection.setVaultDoor(level,door,true);
@@ -236,17 +264,25 @@ public final class ForestRaid extends SavedData {
             }
         }
         id = null;
+        endsAt=0;warningMask=0;
         atmosphere=null;
         participants.clear();
-        offlineSince = 0;
+        reconnectDeadlines.clear();
         setDirty();
     }
 
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
+        var prior=forPlayer(player);
+        if(prior!=null){
+            prior.expireDisconnected(player.serverLevel(),System.currentTimeMillis());
+            if(prior.id!=null&&prior.timeExpired(player.serverLevel()))prior.expireRaid(player.serverLevel());
+            if(prior.participants.isEmpty()&&prior.id!=null)prior.closeSession(player.serverLevel());
+        }
         if (isParticipant(player)) {
             var session=forPlayer(player);
+            if(session!=null)session.reconnectDeadlines.remove(player.getUUID());
             if(session!=null)session.announceExits(player);
             if(session!=null&&session.bossConvergence)player.sendSystemMessage(Component.literal("ALERTE · Convergence des boss en cours."));
             player.sendSystemMessage(Component.literal(
@@ -262,13 +298,8 @@ public final class ForestRaid extends SavedData {
             || !player.serverLevel().dimension().equals(ForestExpedition.FOREST)) return;
         ForestRaid raid=forPlayer(player);
         if(raid==null)return;
-        // Exclude the disconnecting player, which can still appear in level.players().
-        boolean othersOnline = player.serverLevel().players().stream().anyMatch(other ->
-            other != player && raid.owns(other));
-        if (!othersOnline) {
-            raid.offlineSince = System.currentTimeMillis();
-            raid.setDirty();
-        }
+        raid.reconnectDeadlines.put(player.getUUID(),System.currentTimeMillis()+RECONNECT_GRACE_MS);
+        raid.setDirty();
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
@@ -277,12 +308,14 @@ public final class ForestRaid extends SavedData {
         if (event.getServer().getTickCount() % 20 != 0) return;
         ServerLevel level = event.getServer().getLevel(ForestExpedition.FOREST);
         if (level == null) return;
-        for(boolean industrial:new boolean[]{false,true})get(level,industrial).maintain(level);
+        for(var raid:sessions(level))raid.maintain(level);
     }
 
     private void maintain(ServerLevel level){
         ForestRaid raid=this;
         if(raid.id==null)return;
+        if(raid.timeExpired(level)){raid.expireRaid(level);return;}
+        raid.expireDisconnected(level,System.currentTimeMillis());
         if(raid.participants.removeIf(uuid->{
             ServerPlayer p=level.getServer().getPlayerList().getPlayer(uuid);
             return p!=null&&p.isAlive()&&!raid.owns(p);
@@ -290,9 +323,9 @@ public final class ForestRaid extends SavedData {
         if(raid.participants.isEmpty()){raid.closeSession(level);return;}
         boolean online=level.players().stream().anyMatch(raid::owns);
         if (online) {
-            raid.tickAirdrop(level);
-            raid.tickReinforcements(level);
-            raid.tickFieldEvent(level);
+            raid.syncTimer(level);
+            raid.warnRemaining(level);
+            if(raid.express==null){raid.tickAirdrop(level);raid.tickReinforcements(level);raid.tickFieldEvent(level);}
             if(raid.atmosphere!=null)raid.atmosphere.tick(level,level.players().stream().filter(raid::owns).toList());
             long now=level.getGameTime();
             if(now>=raid.ambientDue){
@@ -301,16 +334,57 @@ public final class ForestRaid extends SavedData {
                 RaidAudio.ambient(level,level.players().stream().filter(p->raid.owns(p)&&p.isAlive()&&!p.isSpectator()).toList(),
                     raid.industrial,raid.atmosphere,audioRandom);
             }
-            if (raid.offlineSince != 0) {
-                raid.offlineSince = 0;
-                raid.setDirty();
-            }
-        } else if (raid.offlineSince == 0) {
-            raid.offlineSince = System.currentTimeMillis();
-            raid.setDirty();
-        } else if (System.currentTimeMillis() - raid.offlineSince >= RECONNECT_GRACE_MS) {
-            raid.closeSession(level);
         }
+    }
+
+    private boolean timeExpired(ServerLevel level){return endsAt>0&&level.getGameTime()>=endsAt;}
+    private long remainingSeconds(ServerLevel level){return Math.max(0,(endsAt-level.getGameTime()+19)/20);}
+    private void syncTimer(ServerLevel level){
+        int seconds=(int)Math.min(2700,remainingSeconds(level));
+        RaidTimerPayload payload=new RaidTimerPayload(seconds,industrial);
+        for(ServerPlayer p:level.players())if(p.isAlive()&&owns(p))
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,payload);
+    }
+    private void announceRemaining(ServerPlayer p){
+        long seconds=remainingSeconds(p.serverLevel());
+        p.sendSystemMessage(Component.literal("Temps restant : "+seconds/60+" min "+seconds%60+" s."));
+    }
+    private void warnRemaining(ServerLevel level){
+        long seconds=remainingSeconds(level);
+        int[] thresholds={600,300,60};
+        for(int i=0;i<thresholds.length;i++){
+            int bit=1<<i;
+            if(seconds<=thresholds[i]&&(warningMask&bit)==0){
+                warningMask|=bit;
+                for(ServerPlayer p:level.players())if(owns(p))p.sendSystemMessage(
+                    Component.literal("Extraction avant expiration : "+thresholds[i]/60+" min restantes."));
+            }
+        }
+    }
+    private void expireRaid(ServerLevel level){
+        for(ServerPlayer p:level.players())if(owns(p))p.sendSystemMessage(
+            Component.literal("Temps écoulé · raid échoué. Retour au départ."));
+        // Closing invalidates the raid token. ForestExpedition returns each
+        // surviving player and records the interrupted result once on next tick.
+        closeSession(level);
+    }
+
+    private void expireDisconnected(ServerLevel level,long now){
+        boolean changed=false;
+        for(var iterator=participants.iterator();iterator.hasNext();){
+            UUID uuid=iterator.next();
+            Long deadline=reconnectDeadlines.get(uuid);
+            if(deadline==null){
+                if(level.getServer().getPlayerList().getPlayer(uuid)==null){
+                    reconnectDeadlines.put(uuid,now+RECONNECT_GRACE_MS);
+                    changed=true;
+                }
+            }else if(now>=deadline){
+                iterator.remove();reconnectDeadlines.remove(uuid);changed=true;
+            }
+        }
+        reconnectDeadlines.keySet().retainAll(participants);
+        if(changed)setDirty();
     }
 
     private void tickFieldEvent(ServerLevel level){
@@ -354,6 +428,7 @@ public final class ForestRaid extends SavedData {
         };
     }
     private boolean createFieldCache(ServerLevel level,BlockPos pos,Random rng){
+        if(ExtractionRenovation.allowed(pos))return false;
         if(!level.getBlockState(pos).isAir())return false;
         int furniture=fieldEvent==1?0:fieldEvent==2?1:5;
         if(!ForestProtection.setRaidContainer(level,pos,OperationsMod.FURNITURE.get(furniture).get().defaultBlockState()))return false;
@@ -457,7 +532,7 @@ public final class ForestRaid extends SavedData {
                     !(industrial ? IndustrialZone.inside(x,z) : ForestPlan.inside(x,z))) continue;
                 int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x,z);
                 BlockPos p = new BlockPos(x,y,z);
-                if (y <= ForestPlan.WATER || !level.getBlockState(p).isAir()
+                if (ExtractionRenovation.allowed(p)||y <= ForestPlan.WATER || !level.getBlockState(p).isAir()
                     || !level.getBlockState(p.above()).isAir() || !level.canSeeSky(p)
                     || !level.getBlockState(p.below()).isFaceSturdy(level,p.below(),Direction.UP)
                     || level.getBlockState(p.below()).is(Blocks.GOLD_BLOCK)
@@ -544,7 +619,7 @@ public final class ForestRaid extends SavedData {
         barrel.setItem(13,RaidRelic.values()[5+rng.nextInt(4)].stack());
         barrel.setItem(14,RaidRelic.roll(rng).stack());
         if (rng.nextInt(100)<5) barrel.setItem(15,RaidRelic.OMEGA.stack());
-        if (rng.nextInt(100)<8) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+        if (rng.nextInt(1000)<5) barrel.setItem(16,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
             net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))));
         RaidOrigin.markContainer(barrel);
         return true;
@@ -558,8 +633,8 @@ public final class ForestRaid extends SavedData {
         }
         // Raid deaths must not affect the vanilla Minecraft death statistic.
         // The vanilla death has already been counted when the clone event fires.
-        boolean raidDeath=forPlayer(original)!=null;
-        if (raidDeath) {
+        ForestRaid deathRaid=forPlayer(original);
+        if (deathRaid!=null) {
             // Explicitly transfer Escape progression before applying the penalty:
             // a respawned player may not yet have the original persistent account.
             CompoundTag oldRoot = original.getPersistentData();
@@ -587,7 +662,8 @@ public final class ForestRaid extends SavedData {
                 oldRoot.getInt("taczoperations_run_kill_xp"),
                 oldRoot.getInt("taczoperations_run_search_xp"),
                 oldRoot.getInt("taczoperations_run_contract_xp"), adjustment,
-                oldRoot.contains("taczoperations_run_xp_before") ? oldRoot.getInt("taczoperations_run_xp_before") : -1);
+                oldRoot.contains("taczoperations_run_xp_before") ? oldRoot.getInt("taczoperations_run_xp_before") : -1,
+                new RaidLootValue.Estimate(-1,0),deathRaid.industrial);
             // Deliver the UI only after the new player has fully respawned.
             respawned.getPersistentData().putBoolean("taczoperations_pending_failed_report", true);
             respawned.sendSystemMessage(Component.literal(
@@ -648,7 +724,7 @@ public final class ForestRaid extends SavedData {
                     report.contains("xp_before") ? report.getInt("xp_before") : -1,
                     report.contains("xp_after") ? report.getInt("xp_after") : -1,
                     report.contains("loot_value")?report.getLong("loot_value"):-1,
-                    report.getInt("loot_count")));
+                    report.getInt("loot_count"),report.getBoolean("industrial")));
             account.remove("pending_raid_report");
             REPORT_READY.remove(player);
         } catch (RuntimeException exception) {
@@ -657,15 +733,28 @@ public final class ForestRaid extends SavedData {
         }
     }
 
-    static boolean hasActiveSession(ServerLevel level,boolean industrial) {
-        ForestRaid raid=get(level,industrial);
+    static boolean hasActiveSession(ServerLevel level,boolean industrial){return hasActiveSession(level,industrial,null);}
+    static boolean hasActiveSession(ServerLevel level,boolean industrial,ExpressZone express) {
+        ForestRaid raid=get(level,industrial,express);
         if (raid.id == null) return false;
+        if(raid.timeExpired(level)){raid.expireRaid(level);return false;}
+        raid.expireDisconnected(level,System.currentTimeMillis());
         if (raid.participants.removeIf(uuid -> {
             ServerPlayer online = level.getServer().getPlayerList().getPlayer(uuid);
             return online != null && !raid.owns(online);
         })) raid.setDirty();
         if (raid.participants.isEmpty()) raid.closeSession(level);
         return raid.id != null;
+    }
+
+    // Check the exact deadline on the player tick, not only the once-per-second
+    // maintenance pass. An extraction on or after the deadline is a failure.
+    static boolean canContinue(ServerPlayer player){
+        if(!player.level().dimension().equals(ForestExpedition.FOREST))return false;
+        var raid=forPlayer(player);
+        if(raid==null||!raid.owns(player)||raid.timeExpired(player.serverLevel()))return false;
+        Long reconnect=raid.reconnectDeadlines.get(player.getUUID());
+        return reconnect==null||System.currentTimeMillis()<reconnect;
     }
 
     static boolean isParticipant(ServerPlayer player) {
@@ -683,7 +772,7 @@ public final class ForestRaid extends SavedData {
     static boolean patrolPosition(ServerLevel level,Pillager guard,BlockPos pos){
         ForestRaid raid=at(level,guard.blockPosition());
         return raid.matches(guard.getPersistentData(),ENEMY)&&raid.inArea(pos)
-            &&level.hasChunkAt(pos)&&validEncounterPosition(raid.industrial,pos);
+            &&level.hasChunkAt(pos)&&raid.validPosition(pos);
     }
 
     static BlockPos patrolAnchor(ServerLevel level,Pillager guard){
@@ -691,7 +780,7 @@ public final class ForestRaid extends SavedData {
         int squad=guard.getPersistentData().getInt("taczoperations_squad");
         if(squad>=0&&squad<raid.encounterPoints.size()){
             var point=raid.encounterPoints.get(squad);
-            return raid.industrial?ForestExpedition.industrialPosition(point):ForestLandmarks.position(point);
+            return raid.position(point);
         }
         var data=guard.getPersistentData();
         return new BlockPos(data.getInt("guard_home_x"),data.getInt("guard_home_y"),data.getInt("guard_home_z"));
@@ -727,7 +816,7 @@ public final class ForestRaid extends SavedData {
             visited.add(current);
         }
         if(visited.size()<2)return List.of();
-        return visited.stream().map(points::get).map(p->raid.industrial?ForestExpedition.industrialPosition(p):ForestLandmarks.position(p)).toList();
+        return visited.stream().map(points::get).map(p->raid.position(p)).toList();
     }
 
     static boolean sameGuardSession(ServerLevel level,Pillager first,Pillager second){
@@ -775,8 +864,8 @@ public final class ForestRaid extends SavedData {
         ForestRaid raid=forPlayer(player);
         if(raid==null)return;
         raid.removeOldCrates(level,player);
-        if(raid.industrial)for(int i=0;i<IndustrialZone.VAULTS.size();i++){
-            var door=IndustrialZone.VAULTS.get(i).door();
+        for(int i=0;i<raid.vaults().size();i++){
+            var door=raid.vaults().get(i).door();
             if(door.distToCenterSqr(player.position())<=80*80&&level.hasChunkAt(door))raid.prepareVault(level,i);
         }
         int budget = 5;
@@ -786,7 +875,7 @@ public final class ForestRaid extends SavedData {
             }
             var mark = raid.locations.get(i);
             if(mark.kind()>=4&&!raid.vaultOpened.get(mark.kind()-4))continue;
-            int origin = raid.industrial ? IndustrialZone.ORIGIN : ForestPlan.ORIGIN;
+            int origin = raid.origin();
             BlockPos center = new BlockPos(origin + mark.x(), mark.y(), origin + mark.z());
             if (!near(player, center) || !level.hasChunkAt(center)) {
                 continue;
@@ -797,7 +886,7 @@ public final class ForestRaid extends SavedData {
                 raid.setDirty();
                 continue;
             }
-            BlockPos place = findFloor(level, center, 2, false);
+            BlockPos place = findLootFloor(level, center, 2);
             if (place != null && raid.putCrate(level, place, "Caisse de ravitaillement", new Random(raid.seed ^ i), i)) {
                 raid.crates.set(i);
                 raid.setDirty();
@@ -811,17 +900,17 @@ public final class ForestRaid extends SavedData {
         for (int i = 0; i < guards.size(); i++) ordered.add(i);
         ordered.sort(java.util.Comparator.comparingDouble(i -> {
             var p = guards.get(i);
-            BlockPos pos = raid.industrial ? ForestExpedition.industrialPosition(p) : ForestLandmarks.position(p);
+            BlockPos pos = raid.position(p);
             return pos.distToCenterSqr(player.position());
         }));
         for (int group : ordered) {
             if (budget <= 0) break;
             var point = guards.get(group);
-            BlockPos center = raid.industrial ? ForestExpedition.industrialPosition(point) : ForestLandmarks.position(point);
+            BlockPos center = raid.position(point);
             if (center.distToCenterSqr(player.position()) > 160.0 * 160.0 || !level.hasChunkAt(center)) continue;
             boolean pmc = raid.pmcGroups.get(group);
             Random squadRandom = new Random(raid.seed ^ (0x632BE59BD9B4E019L * (group + 1)));
-            int members = 2 + squadRandom.nextInt(2);
+            int members = raid.express!=null?2+(group==0?0:squadRandom.nextInt(2)):2 + squadRandom.nextInt(2);
             for (int member = 0; member < members && budget > 0; member++) {
                 int slot = group * 3 + member;
                 if (raid.enemies.get(slot)) continue;
@@ -832,9 +921,9 @@ public final class ForestRaid extends SavedData {
                 for (int attempt = 0; attempt < 6; attempt++) {
                     int dx = positions.nextInt(17) - 8, dz = positions.nextInt(17) - 8;
                     var local = new ForestPlan.Point(point.x() + dx, point.z() + dz);
-                    BlockPos around = raid.industrial ? ForestExpedition.industrialPosition(local) : ForestLandmarks.position(local);
+                    BlockPos around = raid.position(local);
                     BlockPos place = findFloor(level, around, 4, true);
-                    if (place == null || !validEncounterPosition(raid.industrial, place)
+                    if (place == null || !raid.validPosition( place)
                         || level.players().stream().anyMatch(p -> isParticipant(p) && place.distToCenterSqr(p.position()) < 20*20)
                         || !level.getEntitiesOfClass(Pillager.class,
                         new net.minecraft.world.phys.AABB(place).inflate(1.5),
@@ -859,10 +948,10 @@ public final class ForestRaid extends SavedData {
             if(boss==GuardRole.BIG_PIPE||boss==GuardRole.BIRDEYE)anchorIndex=bosses.indexOf(GuardRole.KNIGHT);
             if(boss==GuardRole.VENGEFUL_KILLA)anchorIndex=bosses.indexOf(GuardRole.SHADOW_TAGILLA);
             var point=raid.bossAnchors.get(Math.floorMod(anchorIndex,raid.bossAnchors.size()));
-            BlockPos center=raid.industrial?ForestExpedition.industrialPosition(point):ForestLandmarks.position(point);
+            BlockPos center=raid.position(point);
             if(center.distToCenterSqr(player.position())>160.0*160.0||!level.hasChunkAt(center))continue;
             int squad=guards.size()+Math.max(0,anchorIndex);
-            for(int member=0;member<=BossRoster.escorts(boss)&&bossBudget>0;member++){
+            for(int member=0;member<=(raid.express!=null&&raid.express!=ExpressZone.CITY?0:BossRoster.escorts(boss))&&bossBudget>0;member++){
                 int slot=guards.size()*3+i*12+member;
                 if(raid.enemies.get(slot))continue;
                 var role=member==0?boss:BossRoster.escort(boss,member-1);
@@ -871,7 +960,7 @@ public final class ForestRaid extends SavedData {
                     BlockPos near=center.offset(rng.nextInt(21)-10,0,rng.nextInt(21)-10);
                     if(!level.hasChunkAt(near))continue;
                     BlockPos place=findFloor(level,near,4,true);
-                    if(place==null||!validEncounterPosition(raid.industrial,place)
+                    if(place==null||!raid.validPosition(place)
                         ||level.players().stream().anyMatch(p->raid.owns(p)&&place.distToCenterSqr(p.position())<20*20)
                         ||!level.getEntitiesOfClass(Pillager.class,new net.minecraft.world.phys.AABB(place).inflate(2),e->e.isAlive()&&currentGuard(level,e)).isEmpty())continue;
                     if(raid.spawnGuard(level,place,role,squad)){
@@ -975,9 +1064,36 @@ public final class ForestRaid extends SavedData {
         return pos.distToCenterSqr(player.position()) <= 60 * 60;
     }
 
+    // Prefer furniture against a wall with at least one accessible side.
+    // Keep the search radius unchanged so cleanup and persisted anchor lookup agree.
+    private static BlockPos findLootFloor(ServerLevel level,BlockPos center,int radius){
+        BlockPos best=null;int score=Integer.MIN_VALUE;
+        for(BlockPos pos:BlockPos.withinManhattan(center,radius,0,radius)){
+            var express=ExpressZone.at(pos.getX(),pos.getZ());
+            if(ExtractionRenovation.allowed(pos)||express!=null&&express.checkpoint(pos))continue;
+            if(!level.hasChunkAt(pos)||(!ForestPlan.inside(pos.getX(),pos.getZ())&&!IndustrialZone.inside(pos.getX(),pos.getZ())&&ExpressZone.at(pos.getX(),pos.getZ())==null))continue;
+            if(!level.getBlockState(pos).isAir()||!level.getBlockState(pos.above()).isAir())continue;
+            var floor=level.getBlockState(pos.below());
+            if(!floor.isFaceSturdy(level,pos.below(),Direction.UP)||floor.is(Blocks.GOLD_BLOCK)||floor.is(Blocks.MOSSY_STONE_BRICKS)||floor.is(Blocks.COPPER_BLOCK))continue;
+            int walls=0,access=0;boolean adjacentLoot=false,door=false;
+            for(Direction dir:Direction.Plane.HORIZONTAL){
+                BlockPos side=pos.relative(dir);
+                var state=level.getBlockState(side);
+                if(state.getBlock() instanceof RaidFurnitureBlock)adjacentLoot=true;
+                if(state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock)door=true;
+                if(state.isAir()&&level.getBlockState(side.above()).isAir()&&level.getBlockState(side.below()).isFaceSturdy(level,side.below(),Direction.UP))access++;
+                else if(state.isFaceSturdy(level,side,dir.getOpposite()))walls++;
+            }
+            if(adjacentLoot||door||access<2)continue;
+            int candidate=(walls==1?12:walls==2?15:0)-Math.abs(pos.getX()-center.getX())-Math.abs(pos.getZ()-center.getZ());
+            if(candidate>score){score=candidate;best=pos.immutable();}
+        }
+        return best;
+    }
+
     private static BlockPos findFloor(ServerLevel level, BlockPos center, int radius, boolean headroom) {
         for (BlockPos pos : BlockPos.withinManhattan(center, radius, headroom ? 3 : 0, radius)) {
-            if ((!ForestPlan.inside(pos.getX(), pos.getZ()) && !IndustrialZone.inside(pos.getX(), pos.getZ())) || !level.hasChunkAt(pos)
+            if ((!ForestPlan.inside(pos.getX(), pos.getZ()) && !IndustrialZone.inside(pos.getX(), pos.getZ()) && ExpressZone.at(pos.getX(),pos.getZ())==null) || !level.hasChunkAt(pos)
                 || !level.getBlockState(pos).isAir() || (headroom && !level.getBlockState(pos.above()).isAir())) {
                 continue;
             }
@@ -1041,14 +1157,25 @@ public final class ForestRaid extends SavedData {
             guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(role == GuardRole.TRACKER ? Items.DIAMOND_HELMET : Items.IRON_HELMET));
         }
         if (role == GuardRole.PMC) {
-            for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.LEGS,EquipmentSlot.FEET})
-                guard.setItemSlot(slot, BallisticVest.roll(slot,new Random(guard.getRandom().nextLong()),false));
+            // A PMC never has more than one class-5 piece. Secondary slots may be empty.
+            boolean rare=BallisticVest.tier(guard.getItemBySlot(EquipmentSlot.CHEST),EquipmentSlot.CHEST)>=5;
+            for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.LEGS,EquipmentSlot.FEET}){
+                if(guard.getRandom().nextInt(100)>=(slot==EquipmentSlot.HEAD?65:45)){
+                    guard.setItemSlot(slot,ItemStack.EMPTY);continue;
+                }
+                ItemStack piece=BallisticVest.roll(slot,new Random(guard.getRandom().nextLong()),false);
+                if(BallisticVest.tier(piece,slot)>=5){
+                    if(rare)piece=BallisticVest.create(slot,3,BallisticVest.classColor(3));
+                    else rare=true;
+                }
+                guard.setItemSlot(slot,piece);
+            }
         }
         if (role == GuardRole.PMC) {
             // Mutually exclusive headgear rolls, independent of armor rarity.
-            int optics = guard.getRandom().nextInt(100);
-            if (optics < 6) {
-                String id = optics < 3 ? "night_vision_goggles" : "thermal_goggles";
+            int optics = guard.getRandom().nextInt(1000);
+            if (optics < 7) {
+                String id = optics < 5 ? "night_vision_goggles" : "thermal_goggles";
                 guard.setItemSlot(EquipmentSlot.HEAD, new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations", id))));
             }
         }
@@ -1091,7 +1218,7 @@ public final class ForestRaid extends SavedData {
         barrel.getPersistentData().putInt(CRATE_INDEX, index);
         spawnedContainers.add(pos.immutable());
         if(kind>=4){
-            var vault=IndustrialZone.VAULTS.get(kind-4);
+            var vault=vaults().get(kind-4);
             ItemStack label=new ItemStack(Items.BARREL);
             label.set(DataComponents.CUSTOM_NAME,Component.literal(vault.title()+" · réserve sécurisée"));
             barrel.applyComponentsFromItemStack(label);
@@ -1100,7 +1227,7 @@ public final class ForestRaid extends SavedData {
             TradeLoot bonus=TradeLoot.roll(random,kind==5?0:1,2);
             if(bonus!=null)barrel.setItem(7,bonus.stack());
             var slot=BallisticVest.SLOTS[random.nextInt(BallisticVest.SLOTS.length)];
-            int tier=random.nextInt(100)<12?5:4;
+            int tier=random.nextInt(100)<2?5:4;
             barrel.setItem(12,BallisticVest.create(slot,tier,BallisticVest.classColor(tier)));
             barrel.setItem(18,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","salewa")),2));
             barrel.setItem(24,new ItemStack(Items.GOLD_INGOT,4+random.nextInt(5)));
@@ -1161,7 +1288,7 @@ public final class ForestRaid extends SavedData {
             TradeLoot loot=TradeLoot.roll(random,kind==2?1:kind,0);
             if(loot!=null)barrel.setItem(20,loot.stack());
         }
-        if(industrial&&random.nextInt(100)<8)barrel.setItem(23,new ItemStack(industrialKey()));
+        if(express==null&&random.nextInt(100)<8)barrel.setItem(23,randomVaultKey(random));
         if(kind==0){
             // All injury treatments are obtainable through exploration, not just shops.
             int roll=random.nextInt(100);
@@ -1183,9 +1310,29 @@ public final class ForestRaid extends SavedData {
         return net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","industrial_key"));
     }
 
+    private ItemStack randomVaultKey(java.util.Random random){
+        ItemStack stack=new ItemStack(vaultKey());
+        if(vaults().isEmpty())return stack;
+        int roll=random.nextInt(100);
+        int index=Math.min(vaults().size()-1,roll<60?0:roll<90?1:2);
+        var data=new CompoundTag();data.putInt("efm_vault_index",index);
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,net.minecraft.world.item.component.CustomData.of(data));
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,Component.literal("Clé · "+vaults().get(index).title()));
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(List.of(
+            Component.literal(index==0?"Commune":index==1?"Rare":"Très rare"),Component.literal("1 utilisation"))));
+        return stack;
+    }
+    private net.minecraft.world.item.Item vaultKey(){return industrial?industrialKey():net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","forest_key"));}
+    private boolean matchesVault(ItemStack stack,int index){
+        if(!stack.is(vaultKey()))return false;
+        var data=stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+        if(data==null)return true; // old master keys retain compatibility
+        var tag=data.copyTag();
+        return !tag.contains("efm_vault_index")||tag.getInt("efm_vault_index")==index;
+    }
     private boolean prepareVault(ServerLevel level,int index){
         if(vaultPrepared.get(index))return true;
-        var door=IndustrialZone.VAULTS.get(index).door();
+        var door=vaults().get(index).door();
         if(!level.hasChunkAt(door))return false;
         boolean closed=!vaultOpened.get(index);
         if(!ForestProtection.setVaultDoor(level,door,closed)||!ForestProtection.setVaultDoor(level,door.above(),closed))return false;
@@ -1196,17 +1343,18 @@ public final class ForestRaid extends SavedData {
     private static boolean handleVault(PlayerInteractEvent.RightClickBlock event,ServerPlayer p){
         if(!isParticipant(p))return false;
         ForestRaid raid=forPlayer(p);
-        if(!raid.industrial)return false;
-        for(int i=0;i<IndustrialZone.VAULTS.size();i++){
-            var v=IndustrialZone.VAULTS.get(i);
+        if(raid==null)return false;
+        for(int i=0;i<raid.vaults().size();i++){
+            var v=raid.vaults().get(i);
             if(!event.getPos().equals(v.door())&&!event.getPos().equals(v.door().above()))continue;
             event.setCancellationResult(InteractionResult.SUCCESS);event.setCanceled(true);
             if(event.getHand()!=net.minecraft.world.InteractionHand.MAIN_HAND)return true;
             if(raid.vaultOpened.get(i))return true;
             if(!raid.prepareVault(p.serverLevel(),i))return true;
-            var inventory=p.getInventory();
-            if(inventory.items.stream().noneMatch(s->s.is(industrialKey()))){
-                p.displayClientMessage(Component.literal(v.title()+" · clé industrielle requise"),true);
+            final int vaultIndex=i;
+            java.util.function.Predicate<ItemStack> match=s->raid.matchesVault(s,vaultIndex);
+            if(!KeyRingItem.has(p,match)){
+                p.displayClientMessage(Component.literal(v.title()+" · clé correspondante requise"),true);
                 return true;
             }
             var level=p.serverLevel();var door=v.door();
@@ -1214,7 +1362,7 @@ public final class ForestRaid extends SavedData {
                 ForestProtection.setVaultDoor(level,door,true);ForestProtection.setVaultDoor(level,door.above(),true);
                 return true;
             }
-            if(!SupplyContract.consume(p,industrialKey(),1)){
+            if(!KeyRingItem.consume(p,match)){
                 ForestProtection.setVaultDoor(level,door,true);ForestProtection.setVaultDoor(level,door.above(),true);
                 return true;
             }
@@ -1306,10 +1454,14 @@ public final class ForestRaid extends SavedData {
             return;
         }
         GuardRole role = GuardRole.get(guard);
+        RaidAudio.voice(guard,"death");
         if (event.getSource().getEntity() instanceof ServerPlayer killer
             && raid.owns(killer)&& !guard.getPersistentData().getBoolean("taczoperations_kill_rewarded")) {
             guard.getPersistentData().putBoolean("taczoperations_kill_rewarded", true);
-            SupplyContract.kill(killer, role.elite(), role == GuardRole.TRACKER);
+            SupplyContract.kill(killer, role.elite(), role.boss());
+            DetailedStats.kill(killer,role);
+            StoryMissions.kill(killer,role);
+            PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
             SupplyContract.activityXp(killer, xp, true, role.title + " éliminé");
@@ -1318,12 +1470,12 @@ public final class ForestRaid extends SavedData {
         if (corpse == null) {
             return;
         }
-        corpse.setAppearance(switch(role){
+        corpse.setAppearance(EnemyAppearance.choose(switch(role){
             case FOREMAN->"tagilla";
             case TRACKER->"shturman";
             case PMC->(guard.getUUID().getLeastSignificantBits()&1)==0?"pmc_usec":"pmc_bird_eye";
-            default->role.boss()?role.name().toLowerCase(java.util.Locale.ROOT):"";
-        });
+            default->role.name().toLowerCase(java.util.Locale.ROOT);
+        },guard.getUUID()));
         if(role.boss())corpse.setCustomName(Component.literal(role.title));
         if(role==GuardRole.PMC)corpse.setCustomName(Component.literal("PMC · "+PmcSpecialty.get(guard).title));
         corpse.moveTo(guard.getX(), guard.getY(), guard.getZ(), guard.getYRot(), 0);
@@ -1341,7 +1493,7 @@ public final class ForestRaid extends SavedData {
             corpse.put(18, RaidRelic.CHIP.stack());
         } else if (role == GuardRole.FOREMAN) {
             corpse.put(18, RaidRelic.CIRCUIT.stack());
-            corpse.put(19,new ItemStack(industrialKey()));
+            if(raid.express==null)corpse.put(19,raid.randomVaultKey(new Random(guard.getRandom().nextLong())));
         }
         if(role.boss()){
             int packRoll=guard.getRandom().nextInt(100);
@@ -1351,9 +1503,11 @@ public final class ForestRaid extends SavedData {
             corpse.put(20,BossLoot.spare(guard));
             corpse.put(21,BossLoot.bonus(guard));
         }
+        if(role==GuardRole.PMC)corpse.put(25,MilitaryTag.create(guard,event.getSource().getEntity() instanceof ServerPlayer p&&raid.owns(p)?p:null));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
-        if(raid.industrial&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,new ItemStack(industrialKey()));
-        if (raid.industrial && !role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,new ItemStack(industrialKey()));
+        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<7)corpse.put(24,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","tactical_headset"))));
+        if(raid.express==null&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,raid.randomVaultKey(new Random(guard.getRandom().nextLong())));
+        if (raid.express==null&&!role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,raid.randomVaultKey(new Random(guard.getRandom().nextLong())));
         if (level.addFreshEntity(corpse)) {
             for (EquipmentSlot slot : equipment) {
                 guard.setItemSlot(slot, ItemStack.EMPTY);

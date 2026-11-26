@@ -59,6 +59,8 @@ public final class BallisticVest {
         piece.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         piece.set(DataComponents.DYED_COLOR, new DyedItemColor(classColor(tier), false));
         piece.set(DataComponents.CUSTOM_NAME, Component.literal(name(slot) + " · Classe " + tier));
+        applyProtection(piece,slot,tier,100);
+        applyIcon(piece,slot,tier);
         updateLore(piece, slot, tier, 100);
         return piece;
     }
@@ -69,13 +71,26 @@ public final class BallisticVest {
 
     public static ItemStack roll(EquipmentSlot slot, java.util.Random random, boolean premium) {
         int n = random.nextInt(100);
-        int tier = premium ? (n < 15 ? 2 : n < 60 ? 3 : n < 98 ? 4 : 5)
-            : (n < 50 ? 2 : n < 80 ? 3 : n < 95 ? 4 : 5);
+        int tier = premium ? (n < 20 ? 2 : n < 65 ? 3 : n < 99 ? 4 : 5)
+            : (n < 65 ? 2 : n < 95 ? 3 : n < 99 ? 4 : 5);
         return create(slot, tier, classColor(tier));
     }
 
-    private static float multiplier(int tier) {
-        return switch (tier) { case 2 -> .85F; case 3 -> .70F; case 4 -> .55F; case 5 -> .35F; case 6 -> .20F; default -> 1F; };
+    // Copy the installed game's armor attributes, not the reference item's abilities.
+    private static Item reference(EquipmentSlot slot,int tier){
+        String material=switch(tier){case 3->"golden";case 4->"diamond";case 5->"netherite";case 6->"vibranium";default->"leather";};
+        String part=switch(slot){case HEAD->"helmet";case LEGS->"leggings";case FEET->"boots";default->"chestplate";};
+        var registry=net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var id=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(tier==6?"allthemodium":"minecraft",material+"_"+part);
+        return registry.containsKey(id)?registry.get(id):registry.get(net.minecraft.resources.ResourceLocation.withDefaultNamespace("netherite_"+part));
+    }
+    private static boolean applyProtection(ItemStack stack,EquipmentSlot slot,int tier,int condition){
+        var template=new ItemStack(reference(slot,tier));
+        var attrs=condition<=0?net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY:
+            template.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY);
+        if(java.util.Objects.equals(stack.get(DataComponents.ATTRIBUTE_MODIFIERS),attrs))return false;
+        stack.set(DataComponents.ATTRIBUTE_MODIFIERS,attrs);
+        return true;
     }
 
     public static int tier(ItemStack stack, EquipmentSlot slot) {
@@ -93,6 +108,12 @@ public final class BallisticVest {
         return tag.contains(CONDITION) ? Math.clamp(tag.getInt(CONDITION), 0, 100) : 100;
     }
 
+    private static void applyIcon(ItemStack stack,EquipmentSlot slot,int tier){
+        if(slot!=EquipmentSlot.HEAD&&slot!=EquipmentSlot.CHEST)return;
+        var icon=new net.minecraft.world.item.component.CustomModelData(12000+tier);
+        if(!icon.equals(stack.get(DataComponents.CUSTOM_MODEL_DATA)))stack.set(DataComponents.CUSTOM_MODEL_DATA,icon);
+    }
+
     // Restore the canonical appearance of older pieces and prevent vanilla dyes
     // from disguising the ballistic class. This never changes the tier or wear.
     private static void normalizeColor(ItemStack stack) {
@@ -100,7 +121,9 @@ public final class BallisticVest {
             int tier = tier(stack,slot);
             if (tier == 0) continue;
             var expected = new DyedItemColor(classColor(tier), false);
-            if (!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
+            applyIcon(stack,slot,tier);
+            boolean attributesChanged=applyProtection(stack,slot,tier,condition(stack));
+            if (attributesChanged||!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
                 stack.set(DataComponents.DYED_COLOR, expected);
                 updateLore(stack,slot,tier,condition(stack));
             }
@@ -123,9 +146,9 @@ public final class BallisticVest {
             case FEET -> "Pieds";
             default -> "Torse et bras";
         };
-        int effective = Math.round((1F-multiplier(tier))*condition);
+        String equivalent=reference(slot,tier).getDescription().getString();
         stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-            Component.literal("Protection balistique : " + effective + " %"),
+            Component.literal("Protection : " + equivalent),
             Component.literal("État balistique : " + condition + " / 100"),
             Component.literal("Zone protégée : " + zone))));
     }
@@ -136,6 +159,7 @@ public final class BallisticVest {
         tag.putInt(CONDITION, value);
         stack.set(DataComponents.DYED_COLOR,new DyedItemColor(classColor(tier),false));
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        applyProtection(stack,slot,tier,value);
         updateLore(stack,slot,tier,value);
     }
 
@@ -168,12 +192,12 @@ public final class BallisticVest {
         int tier = tier(piece,slot);
         if (tier == 0 || !Float.isFinite(damage) || damage <= 0) return 1F;
         int condition = condition(piece);
-        float resistance = (1F-multiplier(tier))*condition/100F;
         if (condition > 0) {
-            int wear = Math.clamp((int)Math.ceil(damage*resistance/3F),1,12);
+            int wear = Math.clamp((int)Math.ceil(damage/6F),1,12);
             setCondition(piece,slot,tier,Math.max(0,condition-wear));
         }
-        return 1F-resistance;
+        // Native armor calculation handles mitigation; no second custom reduction.
+        return 1F;
     }
     private BallisticVest() {}
 }

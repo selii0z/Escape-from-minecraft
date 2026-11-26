@@ -1,0 +1,105 @@
+import java.awt.Color
+import java.awt.GradientPaint
+import java.awt.BasicStroke
+import java.awt.RenderingHints
+import java.awt.RadialGradientPaint
+import java.awt.geom.Path2D
+import java.awt.image.BufferedImage
+import java.util.List
+import javax.imageio.ImageIO
+
+// Original campaign dossier scenes. Ordinals match StoryMissions.Mission.
+def campaignArt=layout.buildDirectory.dir('generated/campaignArt')
+tasks.register('generateCampaignArt'){
+    inputs.file('gradle/campaign-art.gradle')
+    outputs.dir(campaignArt)
+    doLast{
+        for(int index=0;index<12;index++){
+            boolean factory=index%2==1
+            boolean night=index in [4,6,10]
+            Random random=new Random(3701L+index*193L)
+            BufferedImage im=new BufferedImage(768,432,BufferedImage.TYPE_INT_RGB)
+            def g=im.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON)
+            g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY)
+            Color ink=new Color(0x15211e),dark=new Color(0x293b35),mid=new Color(0x61736b),light=new Color(0xa9b5a2)
+            Color gold=new Color(night?0x8eaaa7:0xc4b481)
+            def rect={Color c,int x,int y,int w,int h -> g.setColor(c);g.fillRect(x,y,w,h)}
+            def oval={Color c,int x,int y,int w,int h -> g.setColor(c);g.fillOval(x,y,w,h)}
+            def line={Color c,float w,int x,int y,int xx,int yy -> g.setColor(c);g.setStroke(new BasicStroke(w,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));g.drawLine(x,y,xx,yy)}
+            def poly={Color c,List pts ->
+                def p=new Path2D.Double();p.moveTo(pts[0][0] as double,pts[0][1] as double)
+                pts.drop(1).each{ q -> p.lineTo(q[0] as double,q[1] as double) }
+                p.closePath();g.setColor(c);g.fill(p)
+            }
+            def box={int x,int y,int w,int h ->
+                poly(mid,[[x,y],[x+20,y-15],[x+w+20,y-15],[x+w,y]])
+                poly(dark,[[x+w,y],[x+w+20,y-15],[x+w+20,y+h-15],[x+w,y+h]])
+                rect(ink,x,y,w,h);rect(mid,x+4,y+4,w-8,h-8)
+                for(int j=12;j<h;j+=16)line(dark,2f,x+5,y+j,x+w-5,y+j)
+                rect(dark,x+10,y+2,9,h-4);rect(dark,x+w-19,y+2,9,h-4)
+                rect(gold,x+w.intdiv(2)-13,y+9,26,12)
+            }
+            def tower={int x,int y ->
+                line(ink,9f,x-48,365,x,y);line(ink,9f,x+48,365,x,y)
+                for(int j=0;j<5;j++){int yy=y+22+j*42;int spread=8+j*8;line(mid,3f,x-spread,yy,x+spread,yy);line(mid,3f,x-spread,yy,x+spread+8,yy+42)}
+                rect(ink,x-37,y+9,74,12);line(ink,5f,x,y,x,y-45)
+                for(int j=0;j<3;j++)line(gold,3f,x-20-j*7,y-30-j*9,x+20+j*7,y-30-j*9)
+            }
+            def pine={int x,int base,int h,Color c ->
+                line(c,4f,x,base,x,base-h)
+                for(int k=0;k<6;k++){int yy=base-h+12+k*h.intdiv(7),w=8+k*h.intdiv(16);poly(c,[[x,yy-20],[x-w,yy+20],[x+w,yy+20]])}
+            }
+            def cabin={int x,int y,int w,int h ->
+                rect(dark,x,y,w,h);poly(ink,[[x-12,y],[x+w.intdiv(2),y-45],[x+w+12,y]])
+                rect(ink,x+12,y+18,26,42);rect(gold,x+w-42,y+14,25,23)
+                line(mid,2f,x+w-30,y+14,x+w-30,y+37)
+            }
+            g.setPaint(new GradientPaint(0f,0f,new Color(night?0x18272f:0x546c69),0f,350f,new Color(night?0x48605e:0xc1ad83)));g.fillRect(0,0,768,432)
+            oval(new Color(night?0xb9c7c3:0xe2d6ab),570,37,56,56)
+            for(int k=0;k<3;k++){
+                int base=190+k*35;List pts=[[0,432],[0,base]]
+                for(int x=0;x<=768;x+=24)pts.add([x,base+(int)(Math.sin(x/90.0+k)*25)+random.nextInt(16)])
+                pts.add([768,432]);poly(new Color([0x657b71,0x465e52,0x354c40][k] as int),pts)
+            }
+            if(factory){
+                for(int k=0;k<5;k++){
+                    int x=k*173-28,y=151+random.nextInt(50)
+                    rect(dark,x,y,158,160);poly(ink,[[x-8,y],[x+79,y-32],[x+166,y]])
+                    for(int j=0;j<4;j++){rect(ink,x+9+j*36,y+24,25,40);rect(mid,x+12+j*36,y+28,19,30)}
+                    rect(ink,x+53,y+96,55,64)
+                    if(k%2==0){rect(dark,x+24,y-72,22,70);rect(ink,x+21,y-76,28,8)}
+                }
+                poly(mid,[[265,432],[650,432],[510,305],[370,305]])
+            }else{
+                for(int k=0;k<52;k++){int x=random.nextInt(768),h=60+random.nextInt(135);pine(x,270+random.nextInt(70),h,k%3==0?mid:dark)}
+                poly(mid,[[150,432],[625,432],[440,290],[365,290]])
+            }
+            rect(ink,0,400,768,32)
+            switch(index){
+                case 0: tower(270,83);cabin(440,231,125,100);break
+                case 1: box(245,230,200,120);rect(dark,470,146,85,197);for(int j=0;j<4;j++)rect(gold,483,164+j*35,58,10);break
+                case 2: tower(330,70);line(gold,5f,339,90,395,125);box(464,272,112,65);break
+                case 3: box(150,230,175,130);box(355,255,205,105);box(370,185,140,67);break
+                case 4: tower(385,67);cabin(120,256,125,90);line(new Color(190,215,210,80),25f,398,110,630,205);break
+                case 5:
+                    for(int j=0;j<9;j++){int yy=270+j*j*2;line(dark,8f,120-j*9,yy,640+j*9,yy)}
+                    line(ink,8f,160,432,360,260);line(ink,8f,610,432,440,260)
+                    box(500,185,170,120);break
+                case 6: cabin(440,238,140,115);for(int j=0;j<3;j++)pine(200+j*60,390,240-j*30,ink);break
+                case 7: for(int j=0;j<3;j++){rect(ink,150+j*155,133,125,229);for(int k=0;k<5;k++){rect(mid,159+j*155,146+k*40,107,31);rect(gold,198+j*155,156+k*40,28,4)}};break
+                case 8: tower(450,55);cabin(120,254,150,95);break
+                case 9: rect(ink,238,103,292,250);rect(mid,252,119,264,215);rect(dark,300,170,167,164);for(int j=0;j<6;j++)line(gold,3f,310+j*28,180,310+j*28,325);break
+                case 10: cabin(250,206,200,137);line(gold,7f,260,355,480,355);pine(600,395,250,ink);break
+                case 11: rect(ink,231,110,310,255);rect(dark,245,124,282,225);oval(mid,292,143,188,188);oval(ink,320,171,132,132);oval(gold,359,210,54,54);break
+            }
+            g.setPaint(new RadialGradientPaint(384f,216f,480f,[0f,0.65f,1f] as float[],[new Color(0,0,0,0),new Color(0,0,0,0),new Color(0,0,0,190)] as Color[]));g.fillRect(0,0,768,432)
+            rect(gold,16,408,736,4)
+            g.dispose()
+            File out=new File(campaignArt.get().asFile,'assets/taczoperations/textures/gui/campaign/mission_'+(index+1)+'.png')
+            out.parentFile.mkdirs();ImageIO.write(im,'png',out)
+        }
+    }
+}
+sourceSets.main.resources.srcDir(campaignArt)
+tasks.named('processResources'){dependsOn tasks.named('generateCampaignArt')}

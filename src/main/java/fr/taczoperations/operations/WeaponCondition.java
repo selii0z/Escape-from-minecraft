@@ -63,9 +63,10 @@ public final class WeaponCondition {
         int value=condition(stack);
         // A burst must not bypass a jam or fire after reaching zero condition.
         if(value==0||jammed(stack)){event.setCanceled(true);return;}
-        var data=tag(stack);data.putInt(CONDITION,Math.max(0,value-WEAR));write(stack,data);
+        int wear=PassiveSkills.reduce(p,PassiveSkills.Skill.WEAPONS,WEAR);
+        var data=tag(stack);data.putInt(CONDITION,Math.max(0,value-wear));write(stack,data);
         p.getInventory().setChanged();
-        if(value>2000&&value-WEAR<=2000)p.sendSystemMessage(Component.literal("Attention : état de l'arme inférieur ou égal à 20 %."));
+        if(value>2000&&value-wear<=2000)p.sendSystemMessage(Component.literal("Attention : état de l'arme inférieur ou égal à 20 %."));
     }
     public static void reload(GunReloadEvent event){
         if(event.getLogicalSide().isClient()||event.isCanceled()||!(event.getEntity() instanceof ServerPlayer p))return;
@@ -74,17 +75,25 @@ public final class WeaponCondition {
         var data=tag(stack);data.remove(JAM);write(stack,data);p.getInventory().setChanged();
         notice(p,"Enrayement résolu.");
     }
-    static String repair(ServerPlayer p){
+    static int repairCost(ItemStack stack,int discount){
+        if(!(stack.getItem() instanceof IGun))return 0;
+        int value=condition(stack);
+        if(value==FULL&&!jammed(stack))return 0;
+        int cost=Math.max(50,(int)Math.ceil((FULL-value)*8.0/100));
+        return Math.max(1,(cost*(100-Math.clamp(discount,0,30))+99)/100);
+    }
+    static String repair(ServerPlayer p){return repair(p,0);}
+    static String repair(ServerPlayer p,int discount){
         var stack=p.getMainHandItem();
         if(!(stack.getItem() instanceof IGun))return "Tiens l'arme TaCZ à réparer en main.";
         int value=condition(stack);
         if(value==FULL&&!jammed(stack))return "Arme déjà en parfait état.";
-        int cost=Math.max(50,(int)Math.ceil((FULL-value)*8.0/100));
+        int cost=repairCost(stack,discount);
         int balance=SupplyContract.balance(p);
         if(balance<cost)return "Crédits insuffisants · réparation : "+cost+" crédits.";
         var data=tag(stack);data.putInt(CONDITION,FULL);data.remove(JAM);write(stack,data);
         SupplyContract.account(p).putInt("credits",balance-cost);
-        TradeJournal.record(p,"Réparation",OperationsShop.ARMORER.title,stack.getHoverName().getString(),1,-cost);
+        TradeJournal.record(p,"Réparation",discount>0?"Atelier":OperationsShop.ARMORER.title,stack.getHoverName().getString(),1,-cost);
         p.getInventory().setChanged();
         return "Arme réparée · 100 % · -"+cost+" crédits.";
     }

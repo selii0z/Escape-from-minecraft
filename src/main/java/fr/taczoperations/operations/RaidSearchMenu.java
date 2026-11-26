@@ -18,7 +18,7 @@ import java.util.function.Predicate;
  * cursor belong to the loot source, not to a particular viewer.
  */
 public final class RaidSearchMenu extends ChestMenu {
-    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next", LAST_ACTIVE="efm_search_last_active";
+    private static final String REVEALED="efm_search_revealed", NEXT="efm_search_next", LAST_ACTIVE="efm_search_last_active", DURATION="efm_search_duration";
     private static final int ITEM_TICKS=10; // half a second per occupied slot at 20 TPS
     private final SearchView view;
     private final Player viewer;
@@ -45,7 +45,7 @@ public final class RaidSearchMenu extends ChestMenu {
         addDataSlot(progressSync);
         if(viewer instanceof ServerPlayer p){
             view.skipEmpty();
-            if(view.revealed()<27)view.resume(p.level().getGameTime());
+            if(view.revealed()<27)view.resume(p.level().getGameTime(),searchTicks(p));
             syncProgress(p.level().getGameTime());
         }
     }
@@ -54,11 +54,14 @@ public final class RaidSearchMenu extends ChestMenu {
             view.skipEmpty();
             long now=p.level().getGameTime();
             if(view.revealed()<27){
-                view.resume(now);
+                view.resume(now,searchTicks(p));
                 if(now>=view.state.getLong(NEXT)){
                     view.state.putInt(REVEALED,view.revealed()+1);
                     view.skipEmpty();
-                    view.state.putLong(NEXT,now+ITEM_TICKS);
+                    int duration=searchTicks(p);
+                    view.state.putLong(NEXT,now+duration);
+                    view.state.putInt(DURATION,duration);
+                    PassiveSkills.search(p);
                     view.backing.setChanged();
                 }
             }
@@ -66,10 +69,12 @@ public final class RaidSearchMenu extends ChestMenu {
         }
         super.broadcastChanges();
     }
+    private static int searchTicks(ServerPlayer p){return Math.max(8,ITEM_TICKS-PassiveSkills.bonus(p,PassiveSkills.Skill.SEARCH)/10);}
     private void syncProgress(long now){
         int count=view.revealed();
         revealedSync.set(count);
-        progressSync.set(count==27?100:(int)Math.clamp(100L*(ITEM_TICKS-(view.state.getLong(NEXT)-now))/ITEM_TICKS,0,100));
+        int duration=view.state.contains(DURATION)?Math.clamp(view.state.getInt(DURATION),8,ITEM_TICKS):ITEM_TICKS;
+        progressSync.set(count==27?100:(int)Math.clamp(100L*(duration-(view.state.getLong(NEXT)-now))/duration,0,100));
     }
     @Override protected Slot addSlot(Slot slot){
         if(slots.size()<27)return super.addSlot(new Slot(slot.container,slot.getContainerSlot(),slot.x,slot.y){
@@ -119,12 +124,13 @@ public final class RaidSearchMenu extends ChestMenu {
             while(to<27&&backing.getItem(to).isEmpty())to++;
             if(to!=from){state.putInt(REVEALED,to);backing.setChanged();}
         }
-        void resume(long now){
+        void resume(long now,int ticks){
             long last=state.getLong(LAST_ACTIVE);
             // Closing all viewers pauses the search. Reopening preserves
             // discovered items, but cannot fast-forward the next item.
             if(!state.contains(NEXT)||!state.contains(LAST_ACTIVE)||now<last||now-last>1){
-                state.putLong(NEXT,now+ITEM_TICKS);
+                state.putLong(NEXT,now+ticks);
+                state.putInt(DURATION,ticks);
                 backing.setChanged();
             }
             state.putLong(LAST_ACTIVE,now);

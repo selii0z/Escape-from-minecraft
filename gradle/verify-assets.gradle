@@ -1,0 +1,61 @@
+import groovy.json.JsonSlurper
+import javax.imageio.ImageIO
+
+// Check the packaged resources, including those generated at build time.
+tasks.register('verifyEfmAssets') {
+    dependsOn tasks.named('processResources')
+    doLast {
+        File root=layout.buildDirectory.dir('resources/main/assets/taczoperations').get().asFile
+        def missing=[]
+        def checkImage={ String path, int w, int h ->
+            File file=new File(root,path)
+            try {
+                if(!file.isFile()) { missing.add(path+' : absent'); return }
+                def image=ImageIO.read(file)
+                if(image==null || (w>0 && image.width!=w) || (h>0 && image.height!=h))
+                    missing.add(path+' : format ou dimensions invalides')
+            } catch(Exception ex) { missing.add(path+' : '+ex.message) }
+        }
+        def icons=['bandage','hemostat','splint','medkit','salewa','field_ration',
+            'screwdriver','wrench','flat_pliers','measuring_tape','hand_drill','tool_set','fuel_can',
+            'air_filter','water_filter','aramid_fabric','ripstop_fabric','paracord','saline','medical_tools',
+            'surgical_kit','ophthalmoscope','blood_set','defibrillator','ledx','tea_box','bear_plush',
+            'master_tools','metal_scissors','filter_cartridge','secure_case','industrial_key']
+        def parser=new JsonSlurper()
+        icons.each { id ->
+            checkImage('textures/item/'+id+'.png',64,64)
+            File model=new File(root,'models/item/'+id+'.json')
+            try {
+                if(!model.isFile() || parser.parse(model).textures.layer0!='taczoperations:item/'+id)
+                    missing.add('models/item/'+id+'.json : reference incorrecte')
+            } catch(Exception ex) { missing.add(model.name+' : '+ex.message) }
+        }
+        ['forest','industrial'].each { area ->
+            ['success','failure'].each { outcome -> checkImage('textures/gui/raid_'+area+'_'+outcome+'.png',1920,1080) }
+        }
+        ['armorer','medic','salvager','broker'].each { id -> checkImage('textures/gui/merchant_'+id+'.png',0,0) }
+        ['small','patrol','tactical','military','expedition','elite','rig_patrol','rig_tactical','rig_elite','strap','buckle','seam'].each { id ->
+            checkImage('textures/item/field_'+id+'.png',64,64)
+        }
+        ['raid_medbag','raid_toolbox','raid_weaponbox','raid_safe','raid_pc','raid_cabinet'].each { id ->
+            File model=new File(root,'models/block/'+id+'.json')
+            try {
+                if(!model.isFile() || !(parser.parse(model).elements?.size()>1))
+                    missing.add(model.name+' : geometrie detaillee absente')
+            } catch(Exception ex) { missing.add(model.name+' : '+ex.message) }
+        }
+        ['endurance','strength','medicine','search','stealth','survival','weapons','trade'].each { id -> checkImage('textures/gui/skills/'+id+'.png',512,512) }
+        (1..12).each { id -> checkImage('textures/gui/campaign/mission_'+id+'.png',768,432) }
+        ['pmc_usec','pmc_bird_eye','raider','scout','soldier','marksman','heavy','leader','tagilla','shturman','killa','reshala','glukhar','sanitar','kaban','kollontay','partisan','zryachiy','knight','big_pipe','birdeye','cultist_priest','wedge','wedge_labs','shadow_tagilla','vengeful_killa','infected_tagilla','black_division'].each { id ->
+            checkImage('textures/entity/raid/'+id+'.png',128,128)
+            File model=new File(root,'enemy_models/'+id+'.json')
+            try {
+                if(!model.isFile() || parser.parse(model).cubes.size()<6)
+                    missing.add(model.name+' : modele PMC absent')
+            } catch(Exception ex) { missing.add(model.name+' : '+ex.message) }
+        }
+        if(!missing.isEmpty()) throw new GradleException('Ressources EFM invalides :\n'+missing.join('\n'))
+        logger.lifecycle('EFM : 32 icones, 4 illustrations Full HD, 4 portraits, 12 textures textiles et 6 modeles et 8 illustrations de competences et 12 illustrations de campagne verifies.')
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyEfmAssets') }

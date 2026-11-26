@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 
 /** Compact, self-contained end-of-raid report. */
 public final class RaidResultScreen extends Screen {
-    private final boolean success;
+    private final boolean success,industrial;
     private final long duration;
     private final int kills, crates, contracts, combatXp, searchXp, contractXp, adjustment;
 
@@ -17,9 +17,10 @@ public final class RaidResultScreen extends Screen {
     private final long animationStart = System.nanoTime();
 
     public RaidResultScreen(boolean success, long duration, int kills, int crates,
-                            int contracts, int combatXp, int searchXp, int contractXp, int adjustment, int xpBefore, int xpAfter,long lootValue,int lootCount) {
+                            int contracts, int combatXp, int searchXp, int contractXp, int adjustment, int xpBefore, int xpAfter,long lootValue,int lootCount,boolean industrial) {
         super(Component.literal(success ? "EXTRACTION RÉUSSIE" : "RAID ÉCHOUÉ"));
         this.success = success;
+        this.industrial=industrial;
         this.duration = duration;
         this.kills = kills;
         this.crates = crates;
@@ -48,20 +49,21 @@ public final class RaidResultScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        String area=industrial?"industrial":"forest";
         var illustration = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",
-            success ? "textures/gui/raid_success.png" : "textures/gui/raid_failure.png");
-        if (minecraft.getResourceManager().getResource(illustration).isEmpty()) {
-            illustration = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",
-                success ? "textures/gui/forest.png" : "textures/gui/dashboard.png");
-        }
-        if (minecraft.getResourceManager().getResource(illustration).isPresent()) {
-            // The fallback art is rendered using normalized UVs.
-            int imageWidth = Math.max(width, (height * 16 + 8) / 9);
-            int imageHeight = imageWidth * 9 / 16;
-            graphics.blit(illustration, (width - imageWidth) / 2, (height - imageHeight) / 2,
-                imageWidth, imageHeight, 0f, 0f, 1024, 576, 1024, 576);
-        }
-        graphics.fill(0, 0, width, height, 0x55000000);
+            "textures/gui/raid_"+area+"_"+(success?"success":"failure")+".png");
+        boolean hd=minecraft.getResourceManager().getResource(illustration).isPresent();
+        if(!hd) illustration=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/"+area+".png");
+        if(minecraft.getResourceManager().getResource(illustration).isPresent()){
+            int sourceW=hd?1920:380,sourceH=hd?1080:170;
+            double cover=Math.max(width/(double)sourceW,height/(double)sourceH);
+            int imageWidth=(int)Math.ceil(sourceW*cover),imageHeight=(int)Math.ceil(sourceH*cover);
+            var texture=minecraft.getTextureManager().getTexture(illustration);
+            texture.setFilter(true,false);
+            graphics.blit(illustration,(width-imageWidth)/2,(height-imageHeight)/2,imageWidth,imageHeight,
+                0f,0f,sourceW,sourceH,sourceW,sourceH);
+        }else graphics.fill(0,0,width,height,0xff161d19);
+        graphics.fill(0, 0, width, height, 0x44000000);
         graphics.pose().pushPose();
         graphics.pose().translate(width/2F,height/2F,0);
         float scale=reportScale();
@@ -72,7 +74,7 @@ public final class RaidResultScreen extends Screen {
             success ? 0xff72ba87 : 0xffc76862);
         graphics.drawCenteredString(font, title, x, y - 111,
             success ? 0xff91dca1 : 0xffed9288);
-        graphics.drawCenteredString(font, "Durée : " + duration / 60 + " min " + duration % 60 + " s",
+        graphics.drawCenteredString(font, (industrial?"Zone industrielle":"Forêt Noire")+" · "+duration / 60 + " min " + duration % 60 + " s",
             x, y - 91, 0xffdadada);
         graphics.drawCenteredString(font, "Éliminations : " + kills + "   |   Coffres : " + crates,
             x, y - 75, 0xffdadada);

@@ -50,10 +50,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static final Area[] AREAS = {
         new Area("Forêt Noire", "forest", 2, "Forêt, collines et installations"),
         new Area("Zone industrielle", "industrial", 3, "Usines et entrepôts"),
-        new Area("Village abandonné", "village", 3, "Maisons et ruelles"),
-        new Area("Base militaire", "military", 4, "Caserne et postes de garde"),
-        new Area("Ville en quarantaine", "quarantine", 4, "Quartiers urbains"),
-        new Area("Complexe souterrain", "underground", 5, "Galeries et salles techniques")
+        new Area("Village express", "village", 3, "Maisons et ruelles"),
+        new Area("Entrepôt express", "industrial", 3, "Hangars et stockage"),
+        new Area("Zombiepolis", "quarantine", 4, "Ville et îles"),
+        new Area("Bunker express", "underground", 4, "Galeries et salles techniques")
     };
 
     private record Section(int tab, String title, String subtitle) {}
@@ -78,14 +78,30 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private int historyScroll;
     private int shopSelection=0;
     private int shopLots=1;
+    private static ShopBookmark pendingShop;
+    private record ShopBookmark(Object connection,int containerId,int page,int category,boolean owned,boolean accessories,int offer,long time){}
+    private void rememberShop(){
+        var v=menu.view();
+        if(v.tab()==OperationsMenu.SHOP&&shopSelection>=0&&shopSelection<v.shopRows().size())pendingShop=new ShopBookmark(minecraft.getConnection(),menu.containerId,v.page(),v.category(),v.shopOwned(),v.shopAccessories(),v.shopRows().get(shopSelection),System.nanoTime());
+    }
     private int marketSelection=0;
     private net.minecraft.client.gui.components.EditBox marketPrice;
     private java.util.List<OperationsShop.Offer> shopCatalogue=java.util.List.of();
     private static final int HISTORY_ROWS = 4;
+    private static final int SHOP_X=169,SHOP_Y=169,SHOP_DX=37,SHOP_DY=36,SHOP_CELL=35;
+    private int shopRowAt(double x,double y){
+        if(x<SHOP_X||y<SHOP_Y||x>=SHOP_X+OperationsMenu.SHOP_COLUMNS*SHOP_DX||y>=SHOP_Y+OperationsMenu.SHOP_VISIBLE_ROWS*SHOP_DY)return -1;
+        if((x-SHOP_X)%SHOP_DX>=SHOP_CELL||(y-SHOP_Y)%SHOP_DY>=SHOP_CELL)return -1;
+        return (int)((y-SHOP_Y)/SHOP_DY)*OperationsMenu.SHOP_COLUMNS+(int)((x-SHOP_X)/SHOP_DX);
+    }
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         duo = !menu.view().partner().isEmpty();
+        var v=menu.view();var bookmark=pendingShop;pendingShop=null;
+        if(bookmark!=null&&bookmark.connection()==net.minecraft.client.Minecraft.getInstance().getConnection()&&System.nanoTime()-bookmark.time()<15_000_000_000L&&v.tab()==OperationsMenu.SHOP&&v.page()/OperationsMenu.VENDOR_PAGES==bookmark.page()/OperationsMenu.VENDOR_PAGES&&v.category()==bookmark.category()&&v.shopOwned()==bookmark.owned()&&v.shopAccessories()==bookmark.accessories()){
+            int row=v.shopRows().indexOf(bookmark.offer());if(row>=0)shopSelection=row;
+        }
     }
 
     @SubscribeEvent
@@ -114,8 +130,16 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                     text(g, fit(section.subtitle, 105), 52, y + 21, .83F, SOFT, false);
                 });
         }
+        widget(8,360,139,36,"Planque",()->send(OperationsMenu.ENTER_HIDEOUT),()->true,(g,hover)->{
+            key(g,8,360,139,36,false,hover,true);
+            item(g,new ItemStack(Items.IRON_DOOR),20,367,1.35F);
+            text(g,"PLANQUE",52,366,1.15F,WHITE,true);
+            text(g,"Base personnelle",52,381,.83F,SOFT,false);
+        });
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();
+            case OperationsMenu.PROGRESSION -> simple(690,45,125,23,"Statistiques",()->send(OperationsMenu.DETAILED_STATS));
+            case OperationsMenu.DETAILED_STATS -> simple(690,45,125,23,"Progression",()->send(OperationsMenu.PROGRESSION));
             case OperationsMenu.TIMED_CONTRACTS -> {
                 simple(690,79,125,29,"Classiques",()->send(OperationsMenu.CONTRACTS));
                 simple(710,376,105,24,"Actualiser",()->send(OperationsMenu.REFRESH));
@@ -168,16 +192,27 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 simple(420,207,120,29,"Utilisation",()->send(OperationsMenu.SECURE_POUCH));
                 simple(420,269,120,29,"Assurer",()->send(OperationsMenu.INSURE_GEAR));
                 simple(420,331,120,29,"Ouvrir",()->send(OperationsMenu.CLAIM_INSURANCE));
+                simple(581,185,232,29,"Configuration des HUD",()->minecraft.setScreen(new RaidHudSettings.Screen(this)));
+                simple(581,305,232,29,"Réinitialiser mon compte",()->{send(OperationsMenu.ARM_WIPE);minecraft.setScreen(new AccountWipeScreen(this,menu.containerId));});
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET) {
+        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET && view.tab()!=OperationsMenu.DETAILED_STATS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if(menu.view().tab()==OperationsMenu.SHOP&&scale>0&&scrollY!=0){
+            double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
+            if(x>=SHOP_X&&x<=548&&y>=SHOP_Y&&y<313){
+                var v=menu.view();int row=v.page()%OperationsMenu.VENDOR_PAGES;
+                if(scrollY>0&&row>0)send(OperationsMenu.PREVIOUS);
+                else if(scrollY<0&&row+1<v.shopPages())send(OperationsMenu.NEXT);
+                return true;
+            }
+        }
         if (menu.view().tab() == OperationsMenu.PROGRESSION && scale > 0) {
             double x = (mouseX - offsetX) / scale;
             double y = (mouseY - offsetY) / scale;
@@ -231,29 +266,32 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             widget(x, y, 190, 87, AREAS[i].title, () -> selectedArea = index,
                 () -> true, (g, hovered) -> mapCard(g, index, x, y, hovered));
         }
-        simple(582, 321, 54, 27, "☀ Jour", () -> night = false, () -> !night, () -> selectedArea <= 1);
-        simple(643, 321, 53, 27, "☾ Nuit", () -> night = true, () -> night, () -> selectedArea <= 1);
-        simple(711, 321, 40, 27, "Solo", () -> duo = false, () -> !duo, () -> selectedArea <= 1);
+        simple(582, 321, 54, 27, "☀ Jour", () -> night = false, () -> !night, () -> true);
+        simple(643, 321, 53, 27, "☾ Nuit", () -> night = true, () -> night, () -> true);
+        simple(711, 321, 40, 27, "Solo", () -> duo = false, () -> !duo, () -> true);
         simple(756, 321, 63, 27, "Duo", () -> {
             if (menu.view().partner().isEmpty()) {
                 send(OperationsMenu.GROUP);
             } else {
                 duo = true;
             }
-        }, () -> duo, () -> selectedArea <= 1);
+        }, () -> duo, () -> true);
         widget(580, 369, 240, 32, "Lancer l’opération", () -> {
             if (duo && menu.view().partner().isEmpty()) {
                 send(OperationsMenu.GROUP);
                 return;
             }
-            if (selectedArea == 1) {
+            if(selectedArea>=2){
+                int map=selectedArea==4?4:selectedArea==5?1:selectedArea==3?2:3;
+                send(OperationsMenu.EXPRESS_FIRST+(map-1)*4+(night?1:0)+(duo?2:0));
+            }else if (selectedArea == 1) {
                 send(OperationsMenu.INDUSTRIAL_FIRST + (night ? 1 : 0) + (duo ? 2 : 0));
             } else {
                 send(duo ? (night ? OperationsMenu.DEPART_DUO_NIGHT : OperationsMenu.DEPART_DUO)
                     : (night ? OperationsMenu.DEPART_NIGHT : OperationsMenu.DEPART));
             }
-        }, () -> selectedArea <= 1, (g, hovered) -> {
-            boolean enabled = selectedArea <= 1;
+        }, () -> true, (g, hovered) -> {
+            boolean enabled = true;
             key(g, 580, 369, 240, 32, enabled, hovered, enabled);
             centered(g, enabled ? "⊕   LANCER L’OPÉRATION" : "ZONE INDISPONIBLE",
                 700, 378, 1.43F, enabled ? WHITE : SOFT, true);
@@ -301,12 +339,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         ItemStack hovered=ItemStack.EMPTY;
         int tab=menu.view().tab();
         if(tab==OperationsMenu.SHOP){
-            if(x>=169&&x<545&&y>=169&&y<313){
-                int col=(int)(x-169)/47,row=(int)(y-169)/48;
-                if((x-169)%47<45&&(y-169)%48<45){
-                    var offer=shopOffer(row*8+col);
-                    if(offer!=null)hovered=offer.stack().get();
-                }
+            int shopRow=shopRowAt(x,y);
+            if(shopRow>=0){
+                var offer=shopOffer(shopRow);
+                if(offer!=null)hovered=offer.stack().get();
             }else if(x>=581&&x<815&&y>=265&&y<369){
                 int k=((int)(y-265)/26)*9+(int)(x-581)/26;
                 if(k>=0&&k<36)hovered=minecraft.player.getInventory().getItem(k<27?k+9:k-27);
@@ -382,21 +418,21 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     private void operationDetails(GuiGraphics g) {
         Area area = AREAS[selectedArea];
-        boolean open = selectedArea <= 1;
+        boolean open = true;
         panel(g, 569, 85, 258, 83, 0xc5272e20);
         g.blit(area.texture(), 574, 91, 87, 69, 83, 0, 214, 170, 380, 170);
         g.renderOutline(572, 89, 91, 73, 0xffc4b68c);
         icon(g, selectedArea + 6, 668, 100, 16);
         text(g, upper(area.title), 685, 102, area.title.length() > 19 ? 1.00F : 1.25F, WHITE, true);
-        String[] lines = selectedArea == FOREST
+        String[] lines = selectedArea == 0
             ? new String[]{"Zone forestière dense, scierie", "abandonnée et camp militaire.", "Deux voies d’extraction."}
-            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Trois voies d’extraction.", "Or, clé industrielle ou crédits."}
-            : new String[]{area.environment, "Zone de déploiement à venir."};
+            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Trois voies d’extraction.", "Checkpoint, clé ou crédits."}
+            : open?new String[]{area.environment,selectedArea==4?"Raid classique · 45 minutes":"Raid express · 15 minutes","Deux extractions gratuites."}:new String[]{area.environment, "Zone de déploiement à venir."};
         for (int i = 0; i < lines.length; i++) text(g, lines[i], 673, 124 + i * 11, .94F, SOFT, false);
 
         panel(g, 575, 173, 249, 63, DARK);
         detail(g, 179, "✦", "Difficulté", stars(area.difficulty));
-        detail(g, 193, "◷", "Durée", open ? "Exploration libre" : "À venir");
+        detail(g, 193, "◷", "Durée", open ? selectedArea==0||selectedArea==4?"45 minutes":selectedArea==1?"30 minutes":"15 minutes" : "À venir");
         detail(g, 207, "♠", "Environnement", area.environment);
         detail(g, 221, "⊕", "Menace", open ? "Gardes armés" : "À venir");
 
@@ -442,7 +478,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g, upper(area.title), x + 35, y + 58, 1.16F, WHITE, true);
         text(g, "Difficulté", x + 35, y + 73, .84F, SOFT, false);
         text(g, stars(area.difficulty), x + 76, y + 72, .82F, GOLD, false);
-        text(g, index <= 1 ? "◷ Libre" : "À venir", x + 145, y + 73, .78F, WHITE, true);
+        text(g, index<=1||index==4?"Classique":"15 min", x + 145, y + 73, .78F, WHITE, true);
         frame(g, x, y, 190, 87, selected, hovered);
     }
 
@@ -535,6 +571,21 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 centered(g,(view.page()+1)+" / "+view.pages(),495,382,1,SOFT,false);
             }
             case OperationsMenu.BLACK_MARKET -> drawBlackMarket(g);
+            case OperationsMenu.DETAILED_STATS -> {
+                pageTitle(g,"»","STATISTIQUES DÉTAILLÉES","Nouvelles données enregistrées depuis cette version");
+                var t=view.raidTotals();
+                String[] labels={"Tirs enregistrés","Impacts sur ennemis","Impacts à la tête","PMC éliminés","Scavs éliminés","Boss éliminés","Distance parcourue"};
+                for(int i=0;i<labels.length;i++){
+                    int y=126+i*37;panel(g,169,y,379,31,DARK);
+                    text(g,labels[i],185,y+10,.96F,WHITE,false);
+                    text(g,i==6?String.format(java.util.Locale.FRANCE,"%.2f km",t.get(17+i)/100000.0):numberLong(t.get(17+i)),413,y+10,.95F,LIME,true);
+                }
+                panel(g,575,126,249,95,DARK);
+                text(g,"PRÉCISION",585,137,1.10F,GOLD,true);
+                text(g,"Les impacts peuvent être multiples",585,157,.85F,SOFT,false);
+                text(g,"pour un même tir de fusil à pompe.",585,173,.85F,SOFT,false);
+                text(g,"Têtes / impacts : "+(t.get(18)==0?"—":String.format(java.util.Locale.FRANCE,"%.1f %%",100.0*t.get(19)/t.get(18))),585,194,.9F,LIME,true);
+            }
             case OperationsMenu.PROGRESSION -> {
                 pageTitle(g, "»", "PROGRESSION", "Expérience des raids et des contrats");
                 panel(g, 169, 130, 379, 91, DARK);
@@ -558,7 +609,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 }
                 panel(g, 169, 301, 379, 103, DARK);
                 text(g, "HISTORIQUE DES RAIDS", 181, 308, 1.0F, GOLD, true);
-                text(g, "K = éliminations · C = coffres", 181, 321, .76F, SOFT, false);
+                text(g, "FOR = forêt · IND = industrie · K/C = kills/coffres", 181, 321, .76F, SOFT, false);
                 int count = view.raidHistory().size();
                 historyScroll = Math.clamp(historyScroll, 0, Math.max(0, count - HISTORY_ROWS));
                 if (count == 0) {
@@ -587,7 +638,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             case OperationsMenu.FILES -> {
                 pageTitle(g, "▰", "DOSSIERS", "Renseignements sur la Forêt Noire");
                 notes(g, 128, "Gardes armés", "Les gardes défendent les secteurs de ravitaillement.", "Les effets laissés au sol peuvent être fouillés.");
-                notes(g, 207, "Voies de sortie", "Bloc d’or à la sortie principale.", "Activez le relais en cuivre pour ouvrir la seconde sortie.");
+                notes(g, 207, "Voies de sortie", "Restez 5 secondes dans le checkpoint balisé.", "Activez le relais pour ouvrir la seconde sortie.");
             }
             case OperationsMenu.SETTINGS -> {
                 pageTitle(g, "⚙", "PARAMÈTRES", "Options du Tableau des opérations");
@@ -604,6 +655,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 panel(g,169,318,379,54,DARK);
                 text(g,"Espace de récupération",185,330,1.13F,WHITE,true);
                 text(g,"Après 30 min · chance 95 %",185,349,.95F,SOFT,false);
+                text(g,"ZONE DE RÉINITIALISATION",581,251,1.0F,0xffe18979,true);
+                text(g,"Efface uniquement ta progression EFM.",581,272,.9F,SOFT,false);
+                text(g,"Action définitive.",581,288,.9F,SOFT,false);
             }
             case OperationsMenu.GROUP -> {
                 pageTitle(g, "♟", "GROUPE", "Préparez un déploiement à deux");
@@ -625,7 +679,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             default -> { }
         }
         if (view.tab() == OperationsMenu.CONTRACTS || view.tab()==OperationsMenu.TIMED_CONTRACTS || view.tab()==OperationsMenu.BLACK_MARKET || view.tab()==OperationsMenu.TRADE_JOURNAL || view.tab()==OperationsMenu.MERCHANT_ORDERS) return;
-        if (view.tab() == OperationsMenu.SHOP || view.tab()==OperationsMenu.PLAYER_MARKET) return;
+        if (view.tab() == OperationsMenu.SHOP || view.tab()==OperationsMenu.PLAYER_MARKET || view.tab()==OperationsMenu.DETAILED_STATS) return;
         if(view.tab()==OperationsMenu.PROGRESSION) {
             var totals=view.raidTotals();
             panel(g,575,88,249,145,DARK);
@@ -817,7 +871,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         return index>=0&&index<offers.size()?offers.get(index):null;
     }
     private int shopPrice(OperationsShop.Offer o){
-        return o.action()==OperationsShop.Action.SELL?fr.taczoperations.operations.ResaleMarket.price(o,Long.parseLong(menu.view().market().getFirst())):o.price();
+        return o.action()==OperationsShop.Action.SELL?fr.taczoperations.operations.ResaleMarket.price(o,Long.parseLong(menu.view().market().getFirst())):OperationsShop.purchasePrice(o,menu.view().commerceDiscount());
     }
     private boolean shopLocked(OperationsShop.Offer o){
         return o.action()==OperationsShop.Action.BUY&&(OperationsShop.reputationLevel(menu.view().reputation().get(vendor().ordinal()),menu.view().experience())<o.loyaltyLevel()||o.key()!=null&&!unlocked(o.key()));
@@ -831,7 +885,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
         if(all)return false;
         if(o.action()==OperationsShop.Action.UNLOCK)return !unlocked(o.key());
-        return !shopLocked(o)&&v.credits()>=(long)o.price()*(o.action()==OperationsShop.Action.BUY?shopLots:1);
+        return !shopLocked(o)&&v.credits()>=(long)shopPrice(o)*(o.action()==OperationsShop.Action.BUY?shopLots:1);
     }
     private void shopWidgets(){
         var v=menu.view();var merchant=vendor();
@@ -851,33 +905,33 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             final int row=i,index=v.shopRows().get(i);
             if(index<0||index>=offers.size())continue;
             var o=offers.get(index);var stack=o.stack().get();
-            int x=169+(i%8)*47,y=169+(i/8)*48;
-            widget(x,y,45,45,discoveredName(stack,o.title()),()->{shopSelection=row;shopLots=1;},()->true,(g,hover)->{
+            int x=SHOP_X+(i%OperationsMenu.SHOP_COLUMNS)*SHOP_DX,y=SHOP_Y+(i/OperationsMenu.SHOP_COLUMNS)*SHOP_DY;
+            widget(x,y,SHOP_CELL,SHOP_CELL,discoveredName(stack,o.title()),()->{shopSelection=row;shopLots=1;},()->true,(g,hover)->{
                 int tier=o.loyaltyLevel();
                 int top=tier>=4?0xff42374b:tier==3?0xff32434a:0xff354030;
-                g.fillGradient(x,y,x+45,y+45,top,0xff1c211d);
-                frame(g,x,y,45,45,shopSelection==row,hover);
-                discoveryItem(g,stack,x+7,y+9,1.9F);
+                g.fillGradient(x,y,x+SHOP_CELL,y+SHOP_CELL,top,0xff1c211d);
+                frame(g,x,y,SHOP_CELL,SHOP_CELL,shopSelection==row,hover);
+                discoveryItem(g,stack,x+5,y+8,1.5F);
                 String cost=o.action()==OperationsShop.Action.UNLOCK?"Accès":o.action()==OperationsShop.Action.REPAIR?"Répar.":numberLong(shopPrice(o));
-                text(g,fit(cost,54),x+3,y+2,.79F,GOLD,true);
-                if(shopLocked(o))text(g,"F"+tier,x+28,y+34,.82F,0xffe5a9a0,true);
-                else if(o.action()==OperationsShop.Action.SELL)text(g,"x"+v.saleCounts().get(row),x+2,y+35,.79F,LIME,true);
-                else if(stack.getCount()>1)text(g,"x"+stack.getCount(),x+2,y+35,.79F,SOFT,true);
+                text(g,fit(cost,43),x+2,y+2,.72F,GOLD,true);
+                if(shopLocked(o))text(g,"F"+tier,x+21,y+25,.7F,0xffe5a9a0,true);
+                else if(o.action()==OperationsShop.Action.SELL)text(g,"x"+v.saleCounts().get(row),x+2,y+25,.7F,LIME,true);
+                else if(stack.getCount()>1)text(g,"x"+stack.getCount(),x+2,y+25,.7F,SOFT,true);
             });
         }
-        simple(169,317,60,20,"‹",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES>0);
-        simple(485,317,60,20,"›",()->send(OperationsMenu.NEXT),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES+1<v.shopPages());
+        simple(169,317,32,20,"↑",()->send(OperationsMenu.PREVIOUS),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES>0);
+        simple(513,317,32,20,"↓",()->send(OperationsMenu.NEXT),()->false,()->v.page()%OperationsMenu.VENDOR_PAGES+1<v.shopPages());
         simple(169,344,122,25,v.shopOwned()?"Achats":"Mes reventes",()->send(OperationsMenu.SHOP_OWNED_FILTER),()->v.shopOwned(),()->true);
         simple(295,344,122,25,"Marché noir",()->send(OperationsMenu.BLACK_MARKET));
         simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
         simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
         simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
-        widget(581,215,147,26,"Confirmer",()->{if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
+        widget(581,215,147,26,"Confirmer",()->{rememberShop();if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
             var o=shopOffer(shopSelection);boolean unknown=o!=null&&DiscoveryClient.unknown(o.stack().get());boolean ok=unknown||shopCanTrade(false);
             key(g,581,215,147,26,ok,hover,ok);
             centered(g,o==null?"Indisponible":unknown?"Examiner":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":o.action()==OperationsShop.Action.BUY?" x"+shopLots:""),654,223,1,ok?WHITE:SOFT,true);
         });
-        widget(733,215,83,26,"Tout vendre",()->send(OperationsMenu.SELL_ALL_FIRST+shopSelection),()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true),(g,hover)->{
+        widget(733,215,83,26,"Tout vendre",()->{rememberShop();send(OperationsMenu.SELL_ALL_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true),(g,hover)->{
             if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL){
                 boolean enabled=shopCanTrade(true)&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get());
                 key(g,733,215,83,26,false,hover,enabled);centered(g,"Tout vendre",774,223,.9F,enabled?WHITE:SOFT,true);
@@ -900,19 +954,27 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var v=menu.view();var merchant=vendor();
         pageTitle(g,"▱",upper(merchant.title),v.shopOwned()?"Revente · objets en inventaire":fit(merchant.specialty,275));
         for(int i=0;i<OperationsMenu.SHOP_ROWS;i++){
-            int x=169+i%8*47,y=169+i/8*48;
-            g.fill(x,y,x+45,y+45,0xff1b201b);g.renderOutline(x,y,45,45,0xff343d32);
+            int x=SHOP_X+i%OperationsMenu.SHOP_COLUMNS*SHOP_DX,y=SHOP_Y+i/OperationsMenu.SHOP_COLUMNS*SHOP_DY;
+            g.fill(x,y,x+SHOP_CELL,y+SHOP_CELL,0xff1b201b);g.renderOutline(x,y,SHOP_CELL,SHOP_CELL,0xff343d32);
         }
         if(v.shopRows().isEmpty())text(g,"Aucune offre pour ce filtre.",180,308,.9F,SOFT,false);
-        centered(g,"Page "+(v.page()%OperationsMenu.VENDOR_PAGES+1)+" / "+v.shopPages(),357,323,1,SOFT,false);
+        int maxScroll=v.shopPages()-1,scroll=v.page()%OperationsMenu.VENDOR_PAGES;
+        int track=143,thumb=Math.max(10,track*OperationsMenu.SHOP_VISIBLE_ROWS/(maxScroll+OperationsMenu.SHOP_VISIBLE_ROWS));
+        int thumbY=SHOP_Y+(maxScroll==0?0:(track-thumb)*scroll/maxScroll);
+        g.fill(541,SHOP_Y,547,SHOP_Y+track,0xff252a24);
+        g.fill(541,thumbY,547,thumbY+thumb,0xff89976a);
+        centered(g,maxScroll==0?"Catalogue complet":"Défiler avec la molette",357,323,.9F,SOFT,false);
         int rep=v.reputation().get(merchant.ordinal()),loyalty=OperationsShop.reputationLevel(rep,v.experience());
-        text(g,"FIDÉLITÉ DU MARCHAND",581,88,1.04F,GOLD,true);
+        ResourceLocation portrait=texture("merchant_"+merchant.name().toLowerCase(java.util.Locale.ROOT));
+        image(g,portrait,581,84,52,52);
+        g.renderOutline(580,83,54,54,FRAME);
+        text(g,"FIDÉLITÉ DU MARCHAND",642,88,.86F,GOLD,true);
         for(int i=1;i<=4;i++){
-            int x=581+(i-1)*59;
-            key(g,x,104,55,20,i==loyalty,false,i<=loyalty);
-            centered(g,new String[]{"I","II","III","IV"}[i-1],x+27,109,1, i<=loyalty?WHITE:SOFT,true);
+            int x=642+(i-1)*44;
+            key(g,x,104,41,20,i==loyalty,false,i<=loyalty);
+            centered(g,new String[]{"I","II","III","IV"}[i-1],x+20,109,.9F, i<=loyalty?WHITE:SOFT,true);
         }
-        text(g,loyalty==4?"Fidélité maximale":rep+" / "+OperationsShop.nextReputation(rep,v.experience())+" rép. · Niv. "+OperationsShop.requiredPlayerLevel(loyalty+1)+" requis",581,129,.88F,SOFT,false);
+        text(g,loyalty==4?"Fidélité maximale":rep+" / "+OperationsShop.nextReputation(rep,v.experience())+" rép. · Niv. "+OperationsShop.requiredPlayerLevel(loyalty+1)+" requis",642,129,.68F,SOFT,false);
         panel(g,578,143,242,68,0xff20251f);
         var o=shopOffer(shopSelection);
         if(o!=null){
@@ -920,9 +982,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             discoveryItem(g,stack,585,151,3F);
             text(g,fit(discoveredName(stack,o.title()),174),640,149,.91F,WHITE,true);
             text(g,fit(o.requirement(),174),640,163,.83F,SOFT,false);
-            String cost=o.action()==OperationsShop.Action.SELL?numberLong(shopPrice(o))+" cr/u · x"+v.saleCounts().get(shopSelection):o.action()==OperationsShop.Action.BUY?numberLong((long)o.price()*shopLots)+" cr. · x"+(stack.getCount()*shopLots):o.action()==OperationsShop.Action.UNLOCK?"Remettre un objet":merchant==OperationsShop.ARMORER?"8 cr./% · min. 50":numberLong(o.price())+" cr.";
+            String cost=o.action()==OperationsShop.Action.SELL?numberLong(shopPrice(o))+" cr/u · x"+v.saleCounts().get(shopSelection):o.action()==OperationsShop.Action.BUY?numberLong((long)shopPrice(o)*shopLots)+" cr. · x"+(stack.getCount()*shopLots):o.action()==OperationsShop.Action.UNLOCK?"Remettre un objet":merchant==OperationsShop.ARMORER?"8 cr./% · min. 50":numberLong(o.price())+" cr.";
             text(g,fit(cost,174),640,177,.9F,GOLD,true);
-            text(g,shopLocked(o)?"Fidélité ou accès requis":o.action()==OperationsShop.Action.SELL?"Revente au tarif du jour":"Fidélité "+o.loyaltyLevel(),640,191,.82F,shopLocked(o)?0xffe5a9a0:SOFT,false);
+            text(g,shopLocked(o)?"Fidélité ou accès requis":o.action()==OperationsShop.Action.SELL?"Revente au tarif du jour":"Fidélité "+o.loyaltyLevel()+(o.action()==OperationsShop.Action.BUY&&v.commerceDiscount()>0?" · -"+v.commerceDiscount()+" %":""),640,191,.82F,shopLocked(o)?0xffe5a9a0:SOFT,false);
         }else text(g,"Sélectionne un objet",589,169,1,SOFT,false);
         text(g,"INVENTAIRE DU JOUEUR",581,249,1.02F,GOLD,true);
         if(minecraft.player!=null){

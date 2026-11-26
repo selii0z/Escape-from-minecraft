@@ -221,25 +221,16 @@ public final class IndustrialZone {
         serviceTunnel(out);
         for(Vault vault:VAULTS) secureRoom(out,vault);
 
-        extractionPad(out,KEY_EXIT,Blocks.IRON_BLOCK);
-        extractionPad(out,PAID_EXIT,Blocks.EMERALD_BLOCK);
-        out.put(EXIT.x(), FLOOR, EXIT.z(), Blocks.GOLD_BLOCK);
-        out.put(EXIT.x() + 1, FLOOR + 1, EXIT.z(), Blocks.TORCH);
+        extractionPad(out,KEY_EXIT,ExtractionLayout.Style.KEY);
+        extractionPad(out,PAID_EXIT,ExtractionLayout.Style.PAID);
+        extractionPad(out,EXIT,ExtractionLayout.Style.INDUSTRIAL);
         out.put(ENTRY.x(), FLOOR, ENTRY.z(), Blocks.POLISHED_ANDESITE);
     }
 
-    private static void extractionPad(ForestChunkGenerator.Painter out,ForestPlan.Point point,Block marker) {
+    private static void extractionPad(ForestChunkGenerator.Painter out,ForestPlan.Point point,ExtractionLayout.Style style) {
         int x=point.x(),z=point.z();
         if(!out.intersects(x-4,z-4,x+4,z+4))return;
-        for(int dx=-4;dx<=4;dx++)for(int dz=-4;dz<=4;dz++){
-            out.put(x+dx,FLOOR,z+dz,Math.abs(dx)==4||Math.abs(dz)==4?Blocks.YELLOW_CONCRETE:Blocks.POLISHED_ANDESITE);
-            for(int dy=1;dy<=3;dy++)out.put(x+dx,FLOOR+dy,z+dz,Blocks.AIR);
-        }
-        out.put(x,FLOOR,z,marker);
-        for(int dx:new int[]{-4,4})for(int dz:new int[]{-4,4}){
-            for(int dy=1;dy<=3;dy++)out.put(x+dx,FLOOR+dy,z+dz,Blocks.IRON_BARS);
-            out.put(x+dx,FLOOR+4,z+dz,Blocks.SEA_LANTERN);
-        }
+        ExtractionLayout.paint(style,(dx,dy,dz,block)->out.put(x+dx,FLOOR+1+dy,z+dz,block));
     }
 
     private static void secureRoom(ForestChunkGenerator.Painter out,Vault v) {

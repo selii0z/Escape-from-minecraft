@@ -1,0 +1,22 @@
+name: Runner diagnostic
+on: [pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    name: Runner smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: Verify shell without actions or dependencies
+        shell: bash
+        run: |
+          set -eu
+          echo "EFM runner started on $RUNNER_OS"
+          uname -s
+          printf 'ok\n' > runner-proof.txt
+          test "$(cat runner-proof.txt)" = ok

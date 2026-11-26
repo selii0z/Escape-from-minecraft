@@ -18,7 +18,10 @@
     "client.ThermalEntityTintMixin",
     "client.GuardRenderDistanceMixin",
     "client.RaidEnemyTextureMixin",
-    "client.RaidEnemyModelMixin"
+    "client.RaidEnemyModelMixin",
+    "client.CobblemonPartyHudMixin",
+    "client.MenuCursorMixin",
+    "client.ImportedArmorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

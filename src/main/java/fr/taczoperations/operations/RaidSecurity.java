@@ -21,8 +21,8 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 
 public final class RaidSecurity {
     private static final String POUCH="secure_pouch_v1",
-        INSURED="operations_insured_owner", CLAIMS="insurance_claims_v1";
-    private static final int FEE=100;
+        INSURED="operations_insured_owner", EPOCH="operations_insured_epoch", CLAIMS="insurance_claims_v1";
+    static final int FEE=100;
     private static final long DELAY=30L*60*1000;
 
     public static void commands(RegisterCommandsEvent event) {
@@ -31,7 +31,7 @@ public final class RaidSecurity {
             .then(Commands.literal("assurer").executes(ctx->{var p=ctx.getSource().getPlayerOrException();p.sendSystemMessage(Component.literal(insure(p)));return 1;}))
             .then(Commands.literal("recuperer").executes(ctx->{var p=ctx.getSource().getPlayerOrException();p.sendSystemMessage(Component.literal(claim(p)));return 1;})));
     }
-    private static boolean available(ServerPlayer p) {
+    static boolean available(ServerPlayer p) {
         return p.isAlive()&&!p.isSpectator()&&(!p.level().dimension().equals(ForestExpedition.FOREST)||ForestRaid.isParticipant(p));
     }
     public static void open(ServerPlayer p) {
@@ -54,7 +54,7 @@ public final class RaidSecurity {
                     Slot filtered=new Slot(old.container,old.getContainerSlot(),old.x,old.y) {
                         @Override public boolean mayPlace(ItemStack s) {
                             return !locked && !(s.getItem() instanceof SecureCaseItem)
-                                && !s.has(DataComponents.CONTAINER) && !s.has(DataComponents.BUNDLE_CONTENTS);
+                                && (s.getItem() instanceof KeyRingItem || !s.has(DataComponents.CONTAINER)) && !s.has(DataComponents.BUNDLE_CONTENTS);
                         }
                         @Override public boolean mayPickup(Player player) {return !locked;}
                     };
@@ -119,6 +119,7 @@ public final class RaidSecurity {
     }
     public static void returnCases(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!p.isAlive()||p.tickCount%20!=0)return;
+        clearStaleInsurance(p);
         var account=SupplyContract.account(p);ListTag queue=account.getList(PROTECTED,10);
         boolean changed=false;
         while(!queue.isEmpty()) {
@@ -139,11 +140,43 @@ public final class RaidSecurity {
         }
         return result;
     }
+    // Consume a nested key by updating the actual saved secure-case slot, never a detached copy.
+    static boolean secureKey(ServerPlayer p,java.util.function.Predicate<ItemStack> matches,boolean consume){
+        for(var carrier:p.getInventory().items){
+            if(!(carrier.getItem() instanceof SecureCaseItem))continue;
+            CompoundTag data=tag(carrier);ListTag items=data.getList(POUCH,10);
+            for(int i=0;i<items.size();i++){
+                var entry=items.getCompound(i);
+                var ring=ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item"));
+                if(!(ring.getItem() instanceof KeyRingItem))continue;
+                var keys=KeyRingItem.contents(ring);
+                for(var key:keys){
+                    if(key.isEmpty()||!matches.test(key))continue;
+                    if(consume){
+                        key.shrink(1);
+                        ring.set(DataComponents.CONTAINER,net.minecraft.world.item.component.ItemContainerContents.fromItems(keys));
+                        entry.put("item",ring.saveOptional(p.registryAccess()));
+                        data.put(POUCH,items);carrier.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
+                        p.getInventory().setChanged();
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }
-    private static boolean eligible(ItemStack s) {
-        return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s));
+    /** Restrict Curios overrides to EFM raid gear, never unrelated accessories. */
+    public static boolean raidCurioLoss(ServerPlayer p){
+        return p.level().dimension().equals(ForestExpedition.FOREST)&&ForestRaid.isParticipant(p);
+    }
+    public static boolean isRaidCurio(ItemStack stack){
+        return stack.getItem() instanceof FieldPack||isOptics(stack)||FieldInventoryMenu.isHeadset(stack);
+    }
+    static boolean eligible(ItemStack s) {
+        return !s.isEmpty()&&s.getCount()==1&&(s.getItem() instanceof ArmorItem||s.getItem() instanceof com.tacz.guns.api.item.IGun||s.getItem() instanceof FieldPack||isOptics(s)||FieldInventoryMenu.isHeadset(s));
     }
     private static boolean isOptics(ItemStack s){
         var id=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
@@ -151,21 +184,55 @@ public final class RaidSecurity {
     }
     static void removeInsuranceForTrade(ItemStack s){if(tag(s).contains(INSURED))removeInsurance(s);}
     private static void removeInsurance(ItemStack s) {
-        CompoundTag d=tag(s);d.remove(INSURED);
+        CompoundTag d=tag(s);d.remove(INSURED);d.remove(EPOCH);
         if(d.isEmpty())s.remove(DataComponents.CUSTOM_DATA);else s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));
+    }
+    public static void tooltip(net.neoforged.neoforge.event.entity.player.ItemTooltipEvent event){
+        ItemStack stack=event.getItemStack();
+        if(!eligible(stack))return;
+        CompoundTag data=tag(stack);
+        if(data.hasUUID(INSURED)){
+            Player player=event.getEntity();
+            boolean own=player!=null&&player.getUUID().equals(data.getUUID(INSURED));
+            event.getToolTip().add(Component.literal(own?"Assuré · récupération 95 %":"Assurance d'un autre joueur")
+                .withStyle(own?net.minecraft.ChatFormatting.GREEN:net.minecraft.ChatFormatting.YELLOW));
+        }else{
+            event.getToolTip().add(Component.literal("Non assuré · 100 crédits").withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+    }
+    static void clearStaleInsurance(ServerPlayer p){
+        var items=new java.util.ArrayList<ItemStack>();
+        for(int i=0;i<p.getInventory().getContainerSize();i++)items.add(p.getInventory().getItem(i));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG,FieldInventoryMenu.HEADSET})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
+        boolean changed=false;
+        for(var s:items){if(s.isEmpty())continue;var d=tag(s);if(d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&!insuredBy(p,s)){removeInsurance(s);changed=true;}}
+        if(changed)p.getInventory().setChanged();
+    }
+    static boolean insuredBy(ServerPlayer p,ItemStack s){
+        CompoundTag d=tag(s);return d.hasUUID(INSURED)&&p.getUUID().equals(d.getUUID(INSURED))&&d.getLong(EPOCH)==SupplyContract.account(p).getLong("insurance_epoch");
+    }
+    // All stacks must have been resolved from the player's actual equipment by the server.
+    static boolean insureSelection(ServerPlayer p,java.util.List<ItemStack> items){
+        if(!available(p)||p.level().dimension().equals(ForestExpedition.FOREST))return false;
+        var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
+        for(ItemStack s:items)if(!unique.add(s)||!eligible(s)||insuredBy(p,s))return false;
+        var account=SupplyContract.account(p);int cost=items.size()*FEE,balance=account.getInt("credits");
+        if(balance<cost)return false;
+        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());d.putLong(EPOCH,SupplyContract.account(p).getLong("insurance_epoch"));s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
+        account.putInt("credits",balance-cost);p.getInventory().setChanged();return true;
     }
     static String insure(ServerPlayer p) {
         if(!available(p)||p.level().dimension().equals(ForestExpedition.FOREST))return "Assurance disponible uniquement hors raid.";
         var items=new java.util.ArrayList<ItemStack>();
         items.add(p.getMainHandItem());
         for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET})items.add(p.getItemBySlot(slot));
-        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
+        for(String id:new String[]{FieldInventoryMenu.GOGGLES,FieldInventoryMenu.BAG,FieldInventoryMenu.RIG,FieldInventoryMenu.HEADSET})items.add(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,id)));
         var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
-        items.removeIf(s->!unique.add(s)||!eligible(s)||tag(s).hasUUID(INSURED)&&p.getUUID().equals(tag(s).getUUID(INSURED)));
+        items.removeIf(s->!unique.add(s)||!eligible(s)||insuredBy(p,s));
         if(items.isEmpty())return "Aucun équipement porté ou tenu à assurer.";
         var account=SupplyContract.account(p);int cost=items.size()*FEE,balance=account.getInt("credits");
         if(balance<cost)return "Crédits insuffisants : "+cost+" requis.";
-        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
+        for(ItemStack s:items){CompoundTag d=tag(s);d.putUUID(INSURED,p.getUUID());d.putLong(EPOCH,SupplyContract.account(p).getLong("insurance_epoch"));s.set(DataComponents.CUSTOM_DATA,CustomData.of(d));}
         account.putInt("credits",balance-cost);p.getInventory().setChanged();
         return items.size()+" équipement(s) assuré(s) · -"+cost+" crédits.";
     }
@@ -180,13 +247,13 @@ public final class RaidSecurity {
             }
         }
         if(!protectedCases.isEmpty())p.getPersistentData().put(DEATH_CASES,protectedCases);
-        if(!p.level().dimension().equals(ForestExpedition.FOREST)||!ForestRaid.isParticipant(p))return;
+        if(!raidCurioLoss(p))return;
         var account=SupplyContract.account(p);ListTag claims=account.getList(CLAIMS,10);int recovered=0;
         var looseContents=new java.util.ArrayList<ItemEntity>();
         var iterator=event.getDrops().iterator();
         while(iterator.hasNext()) {
             ItemEntity drop=iterator.next();ItemStack s=drop.getItem();CompoundTag d=tag(s);
-            if(!d.hasUUID(INSURED)||!p.getUUID().equals(d.getUUID(INSURED)))continue;
+            if(!insuredBy(p,s))continue;
             removeInsurance(s);
             if(claims.size()>=128||p.getRandom().nextInt(100)>=95)continue;
             // The insured carrier returns empty. Its real contents remain in the raid.
@@ -223,25 +290,35 @@ public final class RaidSecurity {
                 super.clicked(index,button,type,player);
             }
         },Component.literal("Assurance · matériel récupérable")));
-        return container.waiting+" en attente (30 min) · retire les objets disponibles.";
+        return container.summary();
     }
     private static final class Claims extends SimpleContainer {
         private final ServerPlayer owner;
         private final ListTag other=new ListTag();
         private boolean ready;
-        private int waiting;
+        private int waiting,overflow,availableCount;
+        private long nextReady=Long.MAX_VALUE;
         Claims(ServerPlayer p){
             super(54);owner=p;
             ListTag claims=SupplyContract.account(p).getList(CLAIMS,10);
             long now=System.currentTimeMillis();int slot=0;
             for(int i=0;i<claims.size();i++){
                 CompoundTag e=claims.getCompound(i);
-                if(e.getLong("ready")>now){other.add(e.copy());waiting++;continue;}
-                if(slot>=54){other.add(e.copy());continue;}
+                if(e.getLong("ready")>now){other.add(e.copy());waiting++;nextReady=Math.min(nextReady,e.getLong("ready"));continue;}
+                if(slot>=54){other.add(e.copy());overflow++;continue;}
                 ItemStack s=ItemStack.parseOptional(p.registryAccess(),e.getCompound("item"));
-                if(!s.isEmpty())super.setItem(slot++,s);
+                if(!s.isEmpty()){super.setItem(slot++,s);availableCount++;}
             }
             ready=true;
+        }
+        String summary(){
+            String message=availableCount+" équipement(s) disponible(s)";
+            if(overflow>0)message+=" · "+overflow+" autres : libère des cases puis rouvre";
+            if(waiting>0){
+                long seconds=Math.max(0,(nextReady-System.currentTimeMillis()+999)/1000);
+                message+=" · "+waiting+" en attente · prochain retour : "+(seconds/60)+" min "+(seconds%60)+" s";
+            }
+            return message;
         }
         @Override public boolean stillValid(Player p){return p==owner&&available(owner)&&!owner.level().dimension().equals(ForestExpedition.FOREST);}
         @Override public void setChanged(){

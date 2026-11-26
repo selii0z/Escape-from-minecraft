@@ -53,6 +53,15 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     @Override
     public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState random,
                                                        StructureManager structures, ChunkAccess chunk) {
+        for(ExpressZone map:ExpressZone.values()){
+            Painter express=new Painter(chunk,map.origin);
+            if(!express.intersects(0,0,map.size-1,map.size-1))continue;
+            return CompletableFuture.supplyAsync(()->{
+                map.generate(express);
+                Heightmap.primeHeightmaps(chunk,java.util.EnumSet.of(Heightmap.Types.OCEAN_FLOOR_WG,Heightmap.Types.WORLD_SURFACE_WG));
+                return chunk;
+            },Util.backgroundExecutor());
+        }
         Painter industrial = new Painter(chunk, IndustrialZone.ORIGIN);
         if (industrial.intersects(0, 0, IndustrialZone.SIZE - 1, IndustrialZone.SIZE - 1)) {
             return CompletableFuture.supplyAsync(() -> {
@@ -81,8 +90,8 @@ public final class ForestChunkGenerator extends ChunkGenerator {
             for (ForestPlan.Point point : ForestPlan.ENTRIES) {
                 landmark(out, point, Blocks.MOSSY_STONE_BRICKS);
             }
-            landmark(out, ForestPlan.EXTRACTION, Blocks.GOLD_BLOCK);
-            landmark(out, ForestPlan.CONDITIONAL_EXIT, Blocks.GOLD_BLOCK);
+            extraction(out,ForestPlan.EXTRACTION,ExtractionLayout.Style.FOREST);
+            extraction(out,ForestPlan.CONDITIONAL_EXIT,ExtractionLayout.Style.RELAY);
             landmark(out, ForestPlan.RELAY, Blocks.LIGHTNING_ROD);
             roadsideDetails(out);
             Heightmap.primeHeightmaps(chunk, java.util.EnumSet.of(
@@ -162,18 +171,18 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     private static void plantTrees(Painter out) {
         // Each candidate is deterministic across chunk boundaries. The margin
         // covers all crowns and branches even when the trunk is in another chunk.
-        for (int gx = Math.floorDiv(out.minX - 7, 8); gx <= Math.floorDiv(out.minX + 22, 8); gx++) {
-            for (int gz = Math.floorDiv(out.minZ - 7, 8); gz <= Math.floorDiv(out.minZ + 22, 8); gz++) {
+        for (int gx = Math.floorDiv(out.minX - 7, 10); gx <= Math.floorDiv(out.minX + 22, 10); gx++) {
+            for (int gz = Math.floorDiv(out.minZ - 7, 10); gz <= Math.floorDiv(out.minZ + 22, 10); gz++) {
                 long random = ForestPlan.hash(gx, gz, 31);
-                int x = gx * 8 + 1 + Math.floorMod(random, 6);
-                int z = gz * 8 + 1 + Math.floorMod(random >>> 10, 6);
+                int x = gx * 10 + 1 + Math.floorMod(random, 8);
+                int z = gz * 10 + 1 + Math.floorMod(random >>> 10, 8);
                 if (ForestPlan.edge(x, z) < 8 || ForestPlan.clear(x, z)
                     || ForestPlan.nearTrack(x, z, 4) || ForestPlan.ground(x, z) <= ForestPlan.WATER + 1) continue;
                 double density = ForestPlan.noise(x, z, 76, 39);
                 double clusters = ForestPlan.noise(x, z, 27, 315);
                 if (((random >>> 25) & 31) > 17 + density * 10 + clusters * 5) continue;
                 int y = ForestPlan.ground(x, z) + 1;
-                int kind = Math.floorMod(random >>> 33, 12);
+                int kind = Math.floorMod(random >>> 33, 16);
                 if (kind == 0) {
                     // Broken snags: leave open views and irregular silhouettes.
                     int height = 3 + (int) ((random >>> 18) & 3);
@@ -195,8 +204,9 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                     }
                     continue;
                 }
-                boolean broadleaf = kind >= 10;
-                int height = broadleaf ? 7 + (int) ((random >>> 18) & 3) : 9 + (int) ((random >>> 18) & 7);
+                boolean broadleaf = kind >= 13;
+                boolean young = kind >= 9 && kind <= 12;
+                int height = broadleaf ? 8 + (int) ((random >>> 18) & 3) : young ? 5 + (int)((random >>> 18)&3) : 11 + (int) ((random >>> 18) & 7);
                 Block log = broadleaf ? Blocks.DARK_OAK_LOG : Blocks.SPRUCE_LOG;
                 BlockState leaves = (broadleaf ? Blocks.DARK_OAK_LEAVES : Blocks.SPRUCE_LEAVES)
                     .defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
@@ -213,11 +223,11 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 } else {
                     // Conifer branches start high enough to let players move and
                     // see between trunks. Tapered, alternating whorls break symmetry.
-                    int crownStart = 4 + (int) ((random >>> 39) & 1);
+                    int crownStart = Math.max(young?2:5,height/2) + (int) ((random >>> 39) & 1);
                     for (int dy = crownStart; dy <= height + 1; dy++) {
                         int remaining = height + 1 - dy;
-                        int radius = remaining <= 1 ? remaining : Math.min(3, 1 + remaining / 3);
-                        if (remaining > 2 && (dy + (int) random) % 3 == 0) radius = Math.max(1, radius - 1);
+                        int radius = remaining <= 1 ? remaining : Math.min(young?2:3, 1 + remaining / 4);
+                        if (remaining > 2 && Math.floorMod(dy + (int) random, 3) != 0) radius = Math.max(1, radius - 1);
                         int sx = radius > 1 ? (int) ((ForestPlan.hash(x, z, dy) >>> 20) % 3) - 1 : 0;
                         int sz = radius > 1 ? (int) ((ForestPlan.hash(x, z, dy + 71) >>> 20) % 3) - 1 : 0;
                         foliage(out, x + sx, y + dy, z + sz, radius, 0, leaves, random + dy);
@@ -239,7 +249,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 for (int dz = -radius; dz <= radius; dz++) {
                     double distance = (dx * dx + dz * dz) / (double) Math.max(1, radius * radius)
                         + dy * dy / (double) Math.max(1, vertical * vertical);
-                    double roughness = (ForestPlan.hash(x + dx, z + dz, salt + dy) & 7) / 20.0;
+                    double roughness = (ForestPlan.hash(x + dx, z + dz, salt + dy) & 7) / 14.0;
                     if (distance <= 1.15 - roughness || dx == 0 && dz == 0) {
                         out.putIfAir(x + dx, y + dy, z + dz, leaves);
                     }
@@ -260,11 +270,20 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                     out.putIfAir(x, y, z, (roll % 3 == 0 ? Blocks.SHORT_GRASS : Blocks.FERN).defaultBlockState());
                 } else if (roll == 12 && ForestPlan.noise(x, z, 19, 733) > .1) {
                     out.putIfAir(x, y, z, Blocks.MOSSY_COBBLESTONE.defaultBlockState());
-                } else if (roll == 17 && !roadside) {
+                } else if (roll == 17 && !roadside && ForestPlan.noise(x,z,11,912)>.25) {
                     out.putIfAir(x, y, z, Blocks.SPRUCE_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true));
+                } else if(roll==23 && !roadside && ForestPlan.noise(x,z,18,921)>.3){
+                    out.putIfAir(x,y,z,Blocks.BROWN_MUSHROOM.defaultBlockState());
                 }
             }
         }
+    }
+
+    private static void extraction(Painter out,ForestPlan.Point point,ExtractionLayout.Style style){
+        landmark(out,point,Blocks.STONE_BRICKS);
+        if(!out.intersects(point.x()-4,point.z()-4,point.x()+4,point.z()+4))return;
+        int y=ForestPlan.surfaceY(point);
+        ExtractionLayout.paint(style,(dx,dy,dz,block)->out.put(point.x()+dx,y+dy,point.z()+dz,block));
     }
 
     private static void landmark(Painter out, ForestPlan.Point point, Block marker) {
@@ -379,6 +398,8 @@ public final class ForestChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor level, RandomState random) {
+        if (ExpressZone.at(x,z)==ExpressZone.CITY)return ZombiepolisMap.height(x-ZombiepolisMap.ORIGIN,z-ZombiepolisMap.ORIGIN);
+        if (ExpressZone.at(x,z)!=null)return ExpressZone.FLOOR+1;
         if (IndustrialZone.inside(x, z)) return IndustrialZone.FLOOR + 1;
         if (!ForestPlan.inside(x, z)) {
             return level.getMinBuildHeight();
@@ -390,7 +411,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor level, RandomState random) {
         BlockState[] column = new BlockState[level.getHeight()];
         Arrays.fill(column, Blocks.AIR.defaultBlockState());
-        if (ForestPlan.inside(x, z) || IndustrialZone.inside(x, z)) {
+        if (ForestPlan.inside(x, z) || IndustrialZone.inside(x, z) || ExpressZone.at(x,z)!=null) {
             int y = getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
             Arrays.fill(column, FOUNDATION - level.getMinBuildHeight(), y - level.getMinBuildHeight(),
                 Blocks.STONE.defaultBlockState());

@@ -254,12 +254,17 @@ public enum SupplyContract {
     }
     static void saveRaidReport(ServerPlayer player,boolean success,long seconds,
                                int kills,int crates,int contracts,int killXp,int searchXp,int contractXp,int adjustment,int xpBefore,RaidLootValue.Estimate loot) {
+        saveRaidReport(player,success,seconds,kills,crates,contracts,killXp,searchXp,contractXp,adjustment,xpBefore,loot,false);
+    }
+    static void saveRaidReport(ServerPlayer player,boolean success,long seconds,
+                               int kills,int crates,int contracts,int killXp,int searchXp,int contractXp,int adjustment,int xpBefore,RaidLootValue.Estimate loot,boolean industrial) {
         int[] timed=TimedContracts.record(player,success,kills,crates);
         contracts=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contracts)+timed[0]);
         contractXp=(int)Math.min(Integer.MAX_VALUE,(long)Math.max(0,contractXp)+timed[1]);
         rewardLevels(player);
         CompoundTag report = new CompoundTag();
         report.putBoolean("success", success);
+        report.putBoolean("industrial", industrial);
         report.putLong("duration_seconds", Math.max(0, seconds));
         report.putInt("kills", Math.max(0, kills));
         report.putInt("crates", Math.max(0, crates));
@@ -408,6 +413,20 @@ public enum SupplyContract {
 
     // Restored inventory after an interrupted raid must not leave provisional
     // run XP pending indefinitely or grant periodic completion rewards.
+    // Interrupted raids are failures, but only real started sessions receive a report.
+    // Do not synthesize death drops or insurance claims: the surviving gear is retained.
+    static void interrupted(ServerPlayer player,boolean industrial){
+        var run=player.getPersistentData();
+        if(!run.contains("taczoperations_run_started")||run.getBoolean("taczoperations_run_xp_finalized"))return;
+        long seconds=Math.max(0,(player.server.overworld().getGameTime()-run.getLong("taczoperations_run_started"))/20);
+        int adjustment=finalizeRaidXp(player,run,false);
+        saveRaidReport(player,false,seconds,run.getInt("taczoperations_raid_kills"),
+            run.getInt("taczoperations_run_crates"),run.getInt("taczoperations_run_contracts"),
+            run.getInt("taczoperations_run_kill_xp"),run.getInt("taczoperations_run_search_xp"),
+            run.getInt("taczoperations_run_contract_xp"),adjustment,
+            run.contains("taczoperations_run_xp_before")?run.getInt("taczoperations_run_xp_before"):-1,
+            new RaidLootValue.Estimate(-1,0),industrial);
+    }
     static void abortRun(ServerPlayer player){
         var run=player.getPersistentData();
         if(run.contains("taczoperations_run_started")&&!run.getBoolean("taczoperations_run_xp_finalized"))
@@ -433,17 +452,23 @@ public enum SupplyContract {
         player.getPersistentData().putLong("taczoperations_run_started", player.server.overworld().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
-            baseline.putInt(relic.id, count(player, relic.item()));
+            baseline.putInt(relic.id, countRelic(player,relic));
         }
         player.getPersistentData().put("taczoperations_relic_baseline", baseline);
     }
 
+    private static int countRelic(ServerPlayer player,RaidRelic relic){return CarriedStorage.of(player).count(stack->matchesRelic(stack,relic));}
+    private static boolean matchesRelic(ItemStack stack,RaidRelic relic){return stack.is(relic.item())||relic==RaidRelic.PLAQUE&&MilitaryTag.isTag(stack);}
     private static int count(ServerPlayer player, Item item) {
         return CarriedStorage.of(player).count(stack->stack.is(item));
     }
 
     static void extracted(ServerPlayer player, boolean industrial) {
+        var run=player.getPersistentData();
+        if(!player.isAlive()||!run.contains("taczoperations_run_started")||run.getBoolean("taczoperations_run_xp_finalized"))return;
         RaidLootValue.Estimate loot=RaidLootValue.estimate(player);
+        StoryMissions.extracted(player,industrial);
+        if(!player.getPersistentData().getBoolean("taczoperations_run_xp_finalized"))PassiveSkills.extracted(player);
         int kills = player.getPersistentData().getInt("taczoperations_raid_kills");
         CompoundTag baseline = player.getPersistentData().getCompound("taczoperations_relic_baseline");
         for (var contract : values()) {
@@ -455,8 +480,8 @@ public enum SupplyContract {
             if ((contract.objective == Objective.RELIC
                 || contract.objective == Objective.BOSS_INTEL && player.getPersistentData().getBoolean("taczoperations_raid_boss"))
                 && baseline.contains(contract.relic.id)
-                && count(player, contract.relic.item()) - baseline.getInt(contract.relic.id) >= contract.amount
-                && consumeRaidOrigin(player, contract.relic.item(), contract.amount)) {
+                && countRelic(player, contract.relic) - baseline.getInt(contract.relic.id) >= contract.amount
+                && CarriedStorage.of(player).consume(stack->matchesRelic(stack,contract.relic)&&RaidOrigin.found(stack),contract.amount)) {
                 contract.finish(player);
             }
         }
@@ -469,7 +494,7 @@ public enum SupplyContract {
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus,
-            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1,loot);
+            player.getPersistentData().contains("taczoperations_run_xp_before") ? player.getPersistentData().getInt("taczoperations_run_xp_before") : -1,loot,industrial);
         RaidLootValue.clear(player);
         // The persistent report is delivered by the player tick after the dimension transition.
         // The graphical report is authoritative; keep chat concise.
