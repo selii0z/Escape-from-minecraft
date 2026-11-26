@@ -43,6 +43,13 @@ final class HideoutDecor {
                 for(int y=0;y<6;y++)set(level,center.offset(x,y,z),y==1?theme.accent:theme.wall);
             }
         }
+        // Only decorative, protected positions, separate from working station blocks.
+        for(int i=0;i<fr.taczoperations.OperationsMod.DECOR.size();i++){
+            var pos=center.offset(-12+i*6,0,6);
+            var state=level.getBlockState(pos);
+            if(state.isAir()||fr.taczoperations.OperationsMod.DECOR.stream().anyMatch(b->state.is(b.get())))
+                set(level,pos,fr.taczoperations.OperationsMod.DECOR.get(i).get());
+        }
         for(int i=0;i<Hideout.Station.values().length;i++){
             int x=-10+(i%4)*6,z=i<4?-11:11;
             for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)
