@@ -93,7 +93,7 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         g.drawString(font,"BARRE RAPIDE",10,182,GOLD,false);
         g.drawString(font,"SAC À DOS · "+menu.bagSize(),194,17,GOLD,false);
         g.drawString(font,"GILET · "+menu.rigSize(),194,182,GOLD,false);
-        g.drawString(font,"E / "+TACTICAL.getTranslatedKeyMessage().getString()+" : fermer · Molette : examiner",10,229,TEXT,false);
+        g.drawString(font,"E / "+TACTICAL.getTranslatedKeyMessage().getString()+" : fermer · "+DiscoveryClient.keyLabel()+" / molette : examiner",10,229,TEXT,false);
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         super.render(g,mx,my,partial);
@@ -101,14 +101,14 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         renderTooltip(g,mx,my);
     }
     @Override public boolean keyPressed(int key,int scan,int mods){
+        if(DiscoveryClient.inspectKey(key,scan)&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         if(TACTICAL.matches(key,scan)){
-            if(DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
             onClose();return true;
         }
         return super.keyPressed(key,scan,mods);
     }
     @Override public boolean mouseClicked(double x,double y,int button){
-        if(button==2&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        if(DiscoveryClient.inspectMouse(button)&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.mouseClicked(x,y,button);
     }
 }
