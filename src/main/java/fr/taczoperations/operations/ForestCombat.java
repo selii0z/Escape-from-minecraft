@@ -28,6 +28,15 @@ public final class ForestCombat {
     // Raid-only game balance: NPC damage caps and player headshot bonuses.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
         if (event.getLogicalSide().isClient()) return;
+        if(event.getAttacker() instanceof ServerPlayer scav&&event.getHurtEntity() instanceof Pillager target
+            &&target.level() instanceof ServerLevel level&&ForestRaid.currentGuard(level,target)
+            &&ForestRaid.sameSession(level,target,scav)&&!GuardRole.get(target).boss()&&GuardRole.get(target)!=GuardRole.PMC)
+            ScavRun.betray(scav);
+        if(event.getAttacker() instanceof Pillager attacker&&event.getHurtEntity() instanceof ServerPlayer scav
+            &&ScavRun.friendly(scav)&&!GuardRole.get(attacker).boss()&&GuardRole.get(attacker)!=GuardRole.PMC
+            &&attacker.level() instanceof ServerLevel level&&ForestRaid.currentGuard(level,attacker)&&ForestRaid.sameSession(level,attacker,scav)){
+            event.setCanceled(true);return;
+        }
         DetailedStats.hit(event);
         // Only genuine TaCZ headshot events on current non-boss raid NPCs.
         // Protective helmets retain their mitigation; body shots and PvP are unchanged.
@@ -202,6 +211,7 @@ public final class ForestCombat {
                 if(candidate.isCrouching())detection*=1.0-PassiveSkills.bonus(candidate,PassiveSkills.Skill.STEALTH)/100.0;
                 if (distance < range && distance < detection * detection
                     && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
+                    && (!ScavRun.friendly(candidate)||role.boss()||role==GuardRole.PMC)
                     && ForestRaid.sameSession(level,guard,candidate) && guard.hasLineOfSight(candidate)) {
                     target = candidate;
                     range = distance;
