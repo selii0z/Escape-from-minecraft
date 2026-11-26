@@ -48,7 +48,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int TRADE_FIRST = 55, SHOP_CATEGORY_FIRST=228;
     public static final int SELL_ALL_FIRST=100, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
-    public static final int INDUSTRIAL_FIRST = 65;
+    public static final int INDUSTRIAL_FIRST = 65, EXPRESS_FIRST=300;
 
     public static final int FILTER_CATEGORY = 100, FILTER_DIFFICULTY = 110, FILTER_STATUS = 120, FILTER_MERCHANT = 130;
 
@@ -355,6 +355,12 @@ public final class OperationsMenu extends AbstractContainerMenu {
             || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET || button==DETAILED_STATS) {
             tab = button;
             page = 0;
+        } else if(tab==FOREST&&button>=EXPRESS_FIRST&&button<EXPRESS_FIRST+12){
+            int mode=button-EXPRESS_FIRST;
+            var map=fr.taczoperations.worldgen.ExpressZone.byId(1+mode/4);
+            if(map==null)return false;
+            DepartureInsuranceMenu.open(serverPlayer,position,(mode&1)!=0,(mode&2)!=0,false,map);
+            return true;
         } else if (tab == FOREST && (button == DEPART || button == DEPART_NIGHT || button == DEPART_DUO
             || button == DEPART_DUO_NIGHT || (button >= INDUSTRIAL_FIRST && button < INDUSTRIAL_FIRST + 4))) {
             boolean industrial = button >= INDUSTRIAL_FIRST;
