@@ -635,7 +635,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             case OperationsMenu.FILES -> {
                 pageTitle(g, "▰", "DOSSIERS", "Renseignements sur la Forêt Noire");
                 notes(g, 128, "Gardes armés", "Les gardes défendent les secteurs de ravitaillement.", "Les effets laissés au sol peuvent être fouillés.");
-                notes(g, 207, "Voies de sortie", "Bloc d’or à la sortie principale.", "Activez le relais en cuivre pour ouvrir la seconde sortie.");
+                notes(g, 207, "Voies de sortie", "Restez 5 secondes dans le checkpoint balisé.", "Activez le relais pour ouvrir la seconde sortie.");
             }
             case OperationsMenu.SETTINGS -> {
                 pageTitle(g, "⚙", "PARAMÈTRES", "Options du Tableau des opérations");
