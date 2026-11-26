@@ -189,8 +189,10 @@ final class CampaignRuntime {
                             &&objectives.stream().allMatch(o->o==find||o==give||o.type().equals("extract:"+map)&&o.amount()==1&&o.scope()==Scope.SURVIVING_RAID&&!o.optional());
                         if(valid)site=new QuestSite(map,x,z,radius,adapted.get("site").getAsString(),find.id(),give.id());
                     }
-                    reviewed=valid&&q.get("implemented").getAsBoolean()&&reward!=null&&prereqs.isEmpty()&&conflicts.isEmpty()
-                        &&(city?Set.of("639135d89444fb141f4e6eea","638fcd23dc65553116701d33").contains(id):Set.of("596a0e1686f7741ddf17dbee","669fa399033a3ce9870338a8","675c1570526ff496850895d9").contains(id))
+                    boolean reviewedChoice=id.equals("596a0e1686f7741ddf17dbee")&&trader.equals("therapist")&&conflicts.equals(Set.of("596a101f86f7741ddb481582"))
+                        ||id.equals("596a101f86f7741ddb481582")&&trader.equals("skier")&&conflicts.equals(Set.of("596a0e1686f7741ddf17dbee"));
+                    reviewed=valid&&q.get("implemented").getAsBoolean()&&reward!=null&&prereqs.isEmpty()&&(conflicts.isEmpty()||reviewedChoice)
+                        &&(city?Set.of("639135d89444fb141f4e6eea","638fcd23dc65553116701d33").contains(id):Set.of("596a0e1686f7741ddf17dbee","596a101f86f7741ddb481582","669fa399033a3ce9870338a8","675c1570526ff496850895d9").contains(id))
                         &&(dialogue==null||dialogue.equals(trader));
                 }
                 if(id.equals("66b38e144f2ab7cc530c3fe7")&&trader.equals("jaeger")&&prereqs.isEmpty()&&conflicts.isEmpty()){
