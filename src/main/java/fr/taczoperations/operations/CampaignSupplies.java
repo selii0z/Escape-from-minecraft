@@ -34,6 +34,8 @@ public final class CampaignSupplies {
             @Override public Component getName(ItemStack stack){return Component.literal(e.name());}
         },new Item.Properties().stacksTo(16)));
     }
+    static boolean rewardKnown(String id){return ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    static ItemStack rewardStack(String id){var item=ITEMS.get(id);return item==null?CollectorItems.rewardStack(id):new ItemStack(item.get());}
     static Optional<String> reference(ItemStack stack){
         var collector=CollectorItems.reference(stack);
         if(collector.isPresent())return collector;
