@@ -1304,10 +1304,13 @@ public final class ForestRaid extends SavedData {
     private ItemStack randomVaultKey(java.util.Random random){
         ItemStack stack=new ItemStack(vaultKey());
         if(vaults().isEmpty())return stack;
-        int index=random.nextInt(vaults().size());
+        int roll=random.nextInt(100);
+        int index=Math.min(vaults().size()-1,roll<60?0:roll<90?1:2);
         var data=new CompoundTag();data.putInt("efm_vault_index",index);
         stack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,net.minecraft.world.item.component.CustomData.of(data));
         stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,Component.literal("Clé · "+vaults().get(index).title()));
+        stack.set(DataComponents.LORE,new net.minecraft.world.item.component.ItemLore(List.of(
+            Component.literal(index==0?"Commune":index==1?"Rare":"Très rare"),Component.literal("1 utilisation"))));
         return stack;
     }
     private net.minecraft.world.item.Item vaultKey(){return industrial?industrialKey():net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","forest_key"));}
