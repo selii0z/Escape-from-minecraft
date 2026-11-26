@@ -302,6 +302,27 @@ def weapon_group(refs):
     if refs<=BOLT_REFERENCE:return "bolt"
     return WEAPON_GROUPS.get(hashlib.sha256(",".join(sorted(refs)).encode()).hexdigest())
 
+# Exact reference sets with explicitly chosen equivalents in EFM.
+GEAR_REQUIRED={
+    "d6e904eff6f3c50d8d49af80ced1320c6f093e5e5b0f20b0ef957a14304074ed":"uniform2",
+    "4f5a98a4b84772300c3798c2cd847bd4c74528bd166981c04c4e46bddd0167d6":"armor2",
+}
+GEAR_FORBIDDEN={
+    "325256dae9760b0fe3ebc824dc75335bfa694098b05cd29a2ca6adeabffb3df6":"noarmor",
+    "18706061bb3caa06edf3b93e761e910dee5f6aca92f0fb343fda828d3e351d55":"unarmored",
+}
+def gear_requirement(o):
+    required=o.get("wearing") or []
+    forbidden=o.get("notWearing") or []
+    if required and forbidden:return None
+    if required:
+        key=hashlib.sha256(",".join(sorted("+".join(sorted(x["id"] for x in group)) for group in required)).encode()).hexdigest()
+        return GEAR_REQUIRED.get(key)
+    if forbidden:
+        key=hashlib.sha256(",".join(sorted(x["id"] for x in forbidden)).encode()).hexdigest()
+        return GEAR_FORBIDDEN.get(key)
+    return "any"
+
 def combat_objective(o):
     blockers=set()
     maps=o.get("maps") or []
@@ -319,9 +340,12 @@ def combat_objective(o):
         if set(o)-known:blockers.add("unknown-combat-predicate")
         mode=o.get("shotType")
         if mode not in {"kill","hit"}:blockers.add("hit-tracking-required")
-        for key in ("usingWeaponMods","wearing",
-                    "notWearing","enemyHealthEffect","playerHealthEffect","zones","effects"):
+        for key in ("usingWeaponMods","enemyHealthEffect","playerHealthEffect","zones","effects"):
             if o.get(key):blockers.add("combat-"+key)
+        gear=gear_requirement(o)
+        if gear is None:
+            blockers.add("combat-gear-unmapped")
+            gear="any"
         hours=(o.get("timeFromHour") or 0,o.get("timeUntilHour") or 0)
         night=hours in {(21,5),(21,6)}
         if hours!=(0,0) and not night:blockers.add("unsupported-combat-time-window")
@@ -346,9 +370,11 @@ def combat_objective(o):
         event="kill:"+map_value+":"+(role or "unsupported")
         scope="CAMPAIGN"
         label=("Toucher " if mode=="hit" else "Éliminer ")+({"any":"des ennemis","pmc":"des PMC","scav":"des Scavs"}.get(role,role or "cible à adapter"))
-        if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge" or night:
+        if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge" or night or gear!="any":
             event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
-            if night:event+=":night";label+=" · raid de nuit"
+            if night or gear!="any":event+=":"+("night" if night else "anytime")+":"+gear
+            if night:label+=" · raid de nuit"
+            if gear!="any":label+=" · "+{"uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
             if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
             if weapon!="any":label+=" · "+{"bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM","lmg":"mitrailleuse EFM"}[weapon]
             if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
@@ -846,6 +872,7 @@ def select_efm_campaign(reference):
             if o["type"]=="shoot" and o.get("zones"):reasons.add("unavailable-exact-combat-location")
             if o["type"]=="extract" and o.get("exitName"):reasons.add("unavailable-exact-extraction")
             if o["type"]=="visit" and not o.get("maps") and not o.get("zones"):reasons.add("unavailable-location-definition")
+            if o["type"]=="experience" and set(o.get("effects") or [])&{"ChronicStaminaFatigue","Dehydration"}:reasons.add("unavailable-health-effect")
             maps=o.get("maps") or []
             if maps and not set(maps)&MAP_ADAPTERS.keys():reasons.add("map-unavailable")
         if reasons:excluded[qid]=sorted(reasons)
@@ -1081,6 +1108,8 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             # Preserve the usable starter weapon; unsupported separate magazines/packs
             # from these two exact starter kits are not required by the objective.
             starter_adapters={
+                "5c0d4c12d09282029f539173":({"5aa7d03ae5b5b00016327db5","5ab8e4ed86f7742d8e50c7fa","707265736574000000000009","5aaa5dfee5b5b000140293d3"},[{"item":"5aa7d03ae5b5b00016327db5","count":1,"attributes":{}},{"item":"59e7635f86f7742cbf2c1095","count":1,"attributes":{}},{"item":"5447a9cd4bdc2dbd208b4567","count":1,"attributes":{}}]),
+                "68341a0b2f0e2a7eb90b62d4":({"5648a7494bdc2d9d488b4583"},[{"item":"59e7635f86f7742cbf2c1095","count":2,"attributes":{}}]),
                 "671a59e43d73dac1360765cc":({"707265736574000000000051"},[{"item":"5a38e6bac4a2826c6e06d79b","count":1,"attributes":{}}]),
                 "68341846186efa3c5b07f989":({"6398636bb483a550805be5e5","62e7c98b550c8218d602cbb4","65702656c5d7d4cb4d078591"},[{"item":"5447a9cd4bdc2dbd208b4567","count":2,"attributes":{}}])
             }
@@ -1152,6 +1181,7 @@ def build(snapshot,out,resources):
     mapped.update({"59e7635f86f7742cbf2c1095","5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","5a38e6bac4a2826c6e06d79b"})
     auto_names.update({"59e7635f86f7742cbf2c1095":"Tunique PMC classe 2","5c0e655586f774045612eeb2":"Tunique PMC classe 4","5ab8e79e86f7742d8b372e78":"Tunique PMC classe 5","5a38e6bac4a2826c6e06d79b":"Fusil M870 EFM"})
     mapped.update({"59f32bb586f774757e1e8442","59f32c3b86f77472a31742f0"})
+    mapped.add("5aa7d03ae5b5b00016327db5")
     mapped.update(WEAPON_HANDOVERS.values())
     mapped.add("545cdb794bdc2d3a198b456a")
     auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
