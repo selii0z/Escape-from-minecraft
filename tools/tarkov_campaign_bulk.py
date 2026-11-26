@@ -835,7 +835,7 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 changes.append({"type":"unavailable-door-gate-removed","reference":q["neededKeys"]})
                 q["neededKeys"]=[]
             kept=[]
-            for o in q["objectives"]:
+            for o in q.get("objectives") or []:
                 if o.get("optional") and o["type"]=="visit":
                     changes.append({"type":"optional-reconnaissance-omitted","reference":o})
                     continue
