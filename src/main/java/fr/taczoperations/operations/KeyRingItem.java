@@ -33,7 +33,7 @@ public final class KeyRingItem extends Item {
             if(matches.test(stack))return true;
             if(stack.getItem() instanceof KeyRingItem&&contents(stack).stream().anyMatch(matches))return true;
         }
-        return CarriedStorage.of(p).count(matches)>0;
+        return CarriedStorage.of(p).count(matches)>0||RaidSecurity.secureKey(p,matches,false);
     }
     static boolean consume(ServerPlayer p,java.util.function.Predicate<ItemStack> matches){
         for(var ring:p.getInventory().items){
@@ -44,7 +44,7 @@ public final class KeyRingItem extends Item {
                 p.getInventory().setChanged();return true;
             }
         }
-        return CarriedStorage.of(p).consume(matches,1);
+        return CarriedStorage.of(p).consume(matches,1)||RaidSecurity.secureKey(p,matches,true);
     }
     @Override public InteractionResultHolder<ItemStack> use(Level level,Player p,InteractionHand hand){
         ItemStack ring=p.getItemInHand(hand);
