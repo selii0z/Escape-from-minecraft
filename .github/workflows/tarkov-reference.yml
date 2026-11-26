@@ -1,0 +1,24 @@
+name: Tarkov reference audit
+on:
+  push:
+    branches: [feature/tarkov-campaign]
+    paths:
+      - tools/tarkov_campaign_snapshot.py
+      - .github/workflows/tarkov-reference.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and audit reference data
+        run: python3 tools/tarkov_campaign_snapshot.py --mode pve
+      - name: Upload audit manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarkov-reference-manifest
+          path: build/tarkov-reference/manifest.json
+          if-no-files-found: error
