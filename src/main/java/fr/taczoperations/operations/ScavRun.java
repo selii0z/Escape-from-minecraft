@@ -96,6 +96,7 @@ public final class ScavRun {
     static void betray(ServerPlayer p){
         if(!friendly(p))return;
         SupplyContract.account(p).getCompound(ESCROW).putBoolean("hostile",true);
+        CampaignTraderAccount.applyReputation(p,fr.taczoperations.campaign.CampaignTrader.FENCE,-100);
         p.sendSystemMessage(Component.literal("Tu as attaqué un Scav. Les Scavs deviennent hostiles."));
     }
     static void markFinished(ServerPlayer p,boolean survived){
@@ -123,7 +124,12 @@ public final class ScavRun {
             for(var slot:originals)set(p,handlers,slot.handler(),slot.slot(),slot.stack());
             p.getInventory().selected=Math.clamp(saved.getInt("selected"),0,8);
             if(success)account.put(LOOT,queue);
+            boolean trusted=success&&!saved.getBoolean("hostile");
             account.remove(ESCROW);
+            if(trusted){
+                CampaignTraderAccount.applyReputation(p,fr.taczoperations.campaign.CampaignTrader.FENCE,100);
+                p.sendSystemMessage(Component.literal("Fence · +0,10 réputation pour une extraction Scav sans trahison."));
+            }
             p.getInventory().setChanged();
             p.sendSystemMessage(Component.literal(success?"Scav extrait · équipement PMC restauré. Récupère le butin au tableau.":"Scav terminé · équipement PMC restauré."));
             return true;
