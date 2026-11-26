@@ -856,6 +856,143 @@
         "reputationMilli": 100,
         "questItem": "675f80d4fe1b59cf490d3527"
       }
+    },
+    {
+      "id": "639135d89444fb141f4e6eea",
+      "name": "Population Census",
+      "trader": "therapist",
+      "level": 5,
+      "prerequisites": [],
+      "conflicts": [],
+      "implemented": true,
+      "adapter": "quest-item-city-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "639135d89444fb141f4e6eeb",
+          "type": "quest-find:streets:638e0057ab150a5f56238960",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Registre de population récupéré(s)"
+        },
+        {
+          "id": "639135d89444fb141f4e6eec",
+          "type": "quest-give:638e0057ab150a5f56238960",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Registre de population remis"
+        }
+      ],
+      "adaptation": {
+        "map": "streets",
+        "localX": 0,
+        "localZ": 0,
+        "radius": 5,
+        "site": "Zombiepolis · Registre de population"
+      },
+      "reference": {
+        "level": 5,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "questItem": "638e0057ab150a5f56238960",
+        "siteAdaptation": "Existing valid city encounter anchor"
+      }
+    },
+    {
+      "id": "638fcd23dc65553116701d33",
+      "name": "Audit",
+      "trader": "ragman",
+      "level": 12,
+      "prerequisites": [],
+      "conflicts": [],
+      "implemented": true,
+      "adapter": "quest-item-city-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "638fd070202cd55bee01ca11",
+          "type": "quest-find:streets:63a943cead5cc12f22161ff7",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Documents financiers récupéré(s)"
+        },
+        {
+          "id": "638fd0805e5a195d2c443754",
+          "type": "quest-give:63a943cead5cc12f22161ff7",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Documents financiers remis"
+        }
+      ],
+      "adaptation": {
+        "map": "streets",
+        "localX": 1,
+        "localZ": 0,
+        "radius": 5,
+        "site": "Zombiepolis · Documents financiers"
+      },
+      "reference": {
+        "level": 12,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "questItem": "63a943cead5cc12f22161ff7",
+        "siteAdaptation": "Existing valid city encounter anchor"
+      }
+    },
+    {
+      "id": "66b38e144f2ab7cc530c3fe7",
+      "name": "Every Hunter Knows This",
+      "trader": "jaeger",
+      "level": 9,
+      "loyalty": 2,
+      "prerequisites": [],
+      "conflicts": [],
+      "implemented": true,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "66b38e144f2ab7cc530c3fe8",
+          "type": "visit:factory:mine-check",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Bunker · inspecter le secteur (112,177)"
+        },
+        {
+          "id": "66b38e144f2ab7cc530c3fea",
+          "type": "visit:customs:mine-check",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Zone industrielle · inspecter le secteur (350,520)"
+        }
+      ],
+      "reference": {
+        "level": 9,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250
+      }
     }
   ]
 }
