@@ -50,9 +50,17 @@ public final class OperationsMod {
         BLOCKS.registerBlock("raid_pc",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
         BLOCKS.registerBlock("raid_cabinet",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion())
     );
+    // Kept separate from the six raid loot types: these are purely protected hideout props.
+    public static final java.util.List<Supplier<fr.taczoperations.operations.RaidFurnitureBlock>> DECOR=java.util.List.of(
+        BLOCKS.registerBlock("decor_shelf",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("decor_desk",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("decor_chair",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("decor_workbench",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion()),
+        BLOCKS.registerBlock("decor_crate",fr.taczoperations.operations.RaidFurnitureBlock::new,BlockBehaviour.Properties.of().strength(2.0F).noOcclusion())
+    );
     public static final Supplier<net.minecraft.world.level.block.entity.BlockEntityType<fr.taczoperations.operations.RaidFurnitureEntity>> FURNITURE_ENTITY=
         BLOCK_ENTITIES.register("raid_furniture",()->net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(
-            fr.taczoperations.operations.RaidFurnitureEntity::new,FURNITURE.stream().map(Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
+            fr.taczoperations.operations.RaidFurnitureEntity::new,java.util.stream.Stream.concat(FURNITURE.stream(),DECOR.stream()).map(Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
 
     public static final Supplier<OperationsBoardBlock> BOARD = BLOCKS.registerBlock(
         "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F));
