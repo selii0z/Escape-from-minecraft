@@ -327,6 +327,14 @@ final class CampaignRuntime {
             return changed?s:null;
         });
     }
+    static void distractionHit(ServerPlayer p,UUID raidId){
+        if(!"streets".equals(ForestRaid.campaignMap(p)))return;
+        change(p,raidId,s->raidId.equals(s.raidId())&&s.player().resetActive("68341d7d7559f4e6d50bc0db")?s:null);
+    }
+    static void grenadeKill(ServerPlayer p,UUID raidId,String map,GuardRole role,UUID enemy,String escortOf){
+        if(raidId==null||!ForestRaid.isParticipant(p)||ScavRun.active(p)||!p.isAlive())return;
+        change(p,raidId,s->raidId.equals(s.raidId())&&record(s,"grenade",map,role,enemy,escortOf)?s:null);
+    }
     static void recordMerchantSale(ServerPlayer p,String merchant,int quantity,boolean equipment){
         if(quantity<=0||!accessible(p))return;
         change(p,null,s->{
@@ -365,7 +373,7 @@ final class CampaignRuntime {
         var allowed=Arrays.asList(parts[1].split(",",-1));
         if(!MAPS.containsAll(allowed)||!(allowed.contains("*")||allowed.contains(map)))return false;
         if(event.equals("extract"))return parts.length==2;
-        if(!(event.equals("kill")||event.equals("noheal"))||parts.length!=3||role==null)return false;
+        if(!(event.equals("kill")||event.equals("noheal")||event.equals("grenade"))||parts.length!=3||role==null)return false;
         return switch(parts[2]){
             case "any"->true;
             case "pmc"->role==GuardRole.PMC;
@@ -423,7 +431,15 @@ final class CampaignRuntime {
             }
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
-            if(parts[0].equals("noheal")){
+            if(parts[0].equals("grenade")){
+                String expected=switch(o.id()){
+                    case "6a5f44d815430d6a5b5161b1"->"grenade:*:any:10";
+                    case "5c1b760686f77412780211a3"->"grenade:*:any:5";
+                    case "67b45467814ab0ffa000c7ea"->"grenade:*:pmc:20";
+                    default->"";
+                };
+                if(o.scope()!=Scope.CAMPAIGN||!expected.equals(o.type()+":"+o.amount()))return false;
+            }else if(parts[0].equals("noheal")){
                 if(!o.id().equals("5d25d09286f77444001e284c")||!o.type().equals("noheal:woods:scav")||o.scope()!=Scope.CURRENT_RAID||o.amount()!=3)return false;
             }else if(parts[0].equals("gunshot")){
                 if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored","heavyuniform","injured","novision","scavuniform","headset_noarmor","helmet_noheadset","elite_rig").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
