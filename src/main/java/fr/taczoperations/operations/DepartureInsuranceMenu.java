@@ -28,6 +28,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
     private final Level level;
     private final BlockPos board;
     private final boolean night,duo,industrial;
+    private final fr.taczoperations.worldgen.ExpressZone express;
     private final int balance;
     private final String partnerName;
     private final long expiresAt;
@@ -41,10 +42,11 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
         final ServerPlayer leader,partner;
         final BlockPos board;
         final boolean night,industrial;
+        final fr.taczoperations.worldgen.ExpressZone express;
         DepartureInsuranceMenu first,second;
         boolean closed;
-        DuoDeparture(ServerPlayer leader,ServerPlayer partner,BlockPos board,boolean night,boolean industrial){
-            this.leader=leader;this.partner=partner;this.board=board;this.night=night;this.industrial=industrial;
+        DuoDeparture(ServerPlayer leader,ServerPlayer partner,BlockPos board,boolean night,boolean industrial,fr.taczoperations.worldgen.ExpressZone express){
+            this.leader=leader;this.partner=partner;this.board=board;this.night=night;this.industrial=industrial;this.express=express;
         }
         boolean valid(){
             return !closed&&first!=null&&second!=null
@@ -66,7 +68,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
         void tryLaunch(){
             if(!valid()){cancel("Départ duo annulé : équipe ou tableau indisponible. Assurance conservée.");return;}
             if(!first.submitted||!second.submitted)return;
-            String problem=ForestExpedition.departureProblem(leader,board,true,industrial);
+            String problem=ForestExpedition.departureProblem(leader,board,true,industrial,express);
             var a=first.resolveSelection(leader);var b=second.resolveSelection(partner);
             if(!problem.isEmpty()||a==null||b==null){
                 cancel(problem.isEmpty()?"Équipement ou crédits modifiés : départ annulé, aucun nouveau paiement.":problem);return;
@@ -75,7 +77,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
                 cancel("Assurance indisponible : départ annulé. Les assurances déjà validées restent conservées.");return;
             }
             closed=true;
-            String notice=ForestExpedition.depart(leader,board,night,true,industrial);
+            String notice=ForestExpedition.depart(leader,board,night,true,industrial,express);
             if(!notice.isEmpty()){
                 leader.sendSystemMessage(Component.literal(notice+" Assurance conservée."));
                 partner.sendSystemMessage(Component.literal(notice+" Assurance conservée."));
@@ -85,9 +87,10 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
         }
     }
 
-    public static void open(ServerPlayer p,BlockPos board,boolean night,boolean duo,boolean industrial){
+    public static void open(ServerPlayer p,BlockPos board,boolean night,boolean duo,boolean industrial){open(p,board,night,duo,industrial,null);}
+    public static void open(ServerPlayer p,BlockPos board,boolean night,boolean duo,boolean industrial,fr.taczoperations.worldgen.ExpressZone express){
         if(!p.isAlive()||p.isSpectator()||p.level().dimension().equals(ForestExpedition.FOREST))return;
-        String problem=ForestExpedition.departureProblem(p,board,duo,industrial);
+        String problem=ForestExpedition.departureProblem(p,board,duo,industrial,express);
         if(!problem.isEmpty()){OperationsMenu.open(p,board,OperationsMenu.FOREST,0,problem);return;}
         if(duo){
             var partnerId=OperationsGroups.of(p).partner(p);
@@ -97,15 +100,15 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
                 ||partner.containerMenu!=partner.inventoryMenu&&!(partner.containerMenu instanceof OperationsMenu)){
                 OperationsMenu.open(p,board,OperationsMenu.FOREST,0,"Ton équipier doit être disponible près du tableau.");return;
             }
-            var session=new DuoDeparture(p,partner,board.immutable(),night,industrial);
-            openOne(p,board,night,true,industrial,session);
-            openOne(partner,board,night,true,industrial,session);
+            var session=new DuoDeparture(p,partner,board.immutable(),night,industrial,express);
+            openOne(p,board,night,true,industrial,express,session);
+            openOne(partner,board,night,true,industrial,express,session);
             if(!session.valid())session.cancel("Départ duo annulé : impossible d'ouvrir les deux assurances.");
             return;
         }
-        openOne(p,board,night,false,industrial,null);
+        openOne(p,board,night,false,industrial,express,null);
     }
-    private static void openOne(ServerPlayer p,BlockPos board,boolean night,boolean duo,boolean industrial,DuoDeparture session){
+    private static void openOne(ServerPlayer p,BlockPos board,boolean night,boolean duo,boolean industrial,fr.taczoperations.worldgen.ExpressZone express,DuoDeparture session){
         var entries=new ArrayList<Entry>();
         var unique=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ItemStack,Boolean>());
         for(int i=0;i<p.getInventory().getContainerSize();i++){
@@ -116,14 +119,14 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
         int balance=SupplyContract.account(p).getInt("credits");
         String partnerName=session==null?"":(p==session.leader?session.partner:session.leader).getGameProfile().getName();
         p.openMenu(new SimpleMenuProvider((id,inv,viewer)->{
-            var menu=new DepartureInsuranceMenu(id,inv,board,night,duo,industrial,balance,entries,entries.size(),partnerName);
+            var menu=new DepartureInsuranceMenu(id,inv,board,night,duo,industrial,express,balance,entries,entries.size(),partnerName);
             menu.session=session;
             if(session!=null){if(p==session.leader)session.first=menu;else session.second=menu;}
             return menu;
         },
             Component.literal("Assurance avant raid")),buf->{
                 buf.writeVarInt(entries.size());buf.writeVarInt(balance);
-                buf.writeBoolean(night);buf.writeBoolean(duo);buf.writeBoolean(industrial);buf.writeUtf(partnerName);
+                buf.writeBoolean(night);buf.writeBoolean(duo);buf.writeBoolean(industrial);buf.writeVarInt(express==null?0:express.id);buf.writeUtf(partnerName);
             });
     }
     private static void add(List<Entry> entries,java.util.Set<ItemStack> unique,Supplier<ItemStack> source){
@@ -131,12 +134,12 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
         if(RaidSecurity.eligible(s)&&unique.add(s)&&entries.size()<45)entries.add(new Entry(source,s.copy()));
     }
     public DepartureInsuranceMenu(int id,Inventory inv,RegistryFriendlyByteBuf buf){
-        this(id,inv,buf.readVarInt(),buf.readVarInt(),buf.readBoolean(),buf.readBoolean(),buf.readBoolean(),buf.readUtf());
+        this(id,inv,buf.readVarInt(),buf.readVarInt(),buf.readBoolean(),buf.readBoolean(),buf.readBoolean(),fr.taczoperations.worldgen.ExpressZone.byId(buf.readVarInt()),buf.readUtf());
     }
-    private DepartureInsuranceMenu(int id,Inventory inv,int count,int balance,boolean night,boolean duo,boolean industrial,String partnerName){
-        this(id,inv,BlockPos.ZERO,night,duo,industrial,balance,List.of(),Math.clamp(count,0,45),partnerName);
+    private DepartureInsuranceMenu(int id,Inventory inv,int count,int balance,boolean night,boolean duo,boolean industrial,fr.taczoperations.worldgen.ExpressZone express,String partnerName){
+        this(id,inv,BlockPos.ZERO,night,duo,industrial,express,balance,List.of(),Math.clamp(count,0,45),partnerName);
     }
-    private DepartureInsuranceMenu(int id,Inventory inv,BlockPos board,boolean night,boolean duo,boolean industrial,int balance,List<Entry> entries,int count,String partnerName){
+    private DepartureInsuranceMenu(int id,Inventory inv,BlockPos board,boolean night,boolean duo,boolean industrial,fr.taczoperations.worldgen.ExpressZone express,int balance,List<Entry> entries,int count,String partnerName){
         super(OperationsMod.DEPARTURE_INSURANCE.get(),id);
         owner=inv.player;level=owner.level();expiresAt=level.getGameTime()+MAX_WAIT_TICKS;this.board=board.immutable();this.night=night;this.duo=duo;this.industrial=industrial;this.balance=balance;this.entries=List.copyOf(entries);this.partnerName=partnerName;
         addDataSlot(readiness);
@@ -163,6 +166,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
     public String partnerName(){return partnerName;}
     public int insured(){int n=0;for(var s:states)if(s.get()==INSURED)n++;return n;}
     public boolean industrial(){return industrial;}
+    public fr.taczoperations.worldgen.ExpressZone express(){return express;}
     public boolean night(){return night;}
     public boolean duo(){return duo;}
     public int selected(){int n=0;for(var s:states)if(s.get()==SELECTED)n++;return n;}
@@ -212,7 +216,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
             readiness.set(2);broadcastChanges();return true;
         }
         if(button!=LAUNCH)return false;
-        String problem=ForestExpedition.departureProblem(p,board,duo,industrial);
+        String problem=ForestExpedition.departureProblem(p,board,duo,industrial,express);
         if(!problem.isEmpty()){
             if(session!=null)session.cancel(problem);
             else OperationsMenu.open(p,board,OperationsMenu.FOREST,0,problem);
@@ -228,7 +232,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
             p.sendSystemMessage(Component.literal("Assurance : crédits insuffisants ou équipement modifié."));return true;
         }
         submitted=true;
-        String notice=ForestExpedition.depart(p,board,night,false,industrial);
+        String notice=ForestExpedition.depart(p,board,night,false,industrial,express);
         if(!notice.isEmpty()&&stillValid(p))OperationsMenu.open(p,board,OperationsMenu.FOREST,0,notice+(chosen.isEmpty()?"":" Assurance conservée."));
         return true;
     }
