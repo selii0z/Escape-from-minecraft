@@ -72,5 +72,11 @@
   "item.taczoperations.tactical_headset": "Casque audio tactique",
   "curios.identifier.efm_headset": "Casque audio",
   "item.taczoperations.military_tag": "Plaque militaire",
-  "item.taczoperations.key_ring": "Trousseau de clés"
+  "item.taczoperations.key_ring": "Trousseau de clés",
+  "item.taczoperations.forest_key": "Clé de la Forêt Noire",
+  "block.taczoperations.decor_shelf": "Étagère",
+  "block.taczoperations.decor_desk": "Bureau",
+  "block.taczoperations.decor_chair": "Chaise",
+  "block.taczoperations.decor_workbench": "Établi",
+  "block.taczoperations.decor_crate": "Caisse en bois"
 }
