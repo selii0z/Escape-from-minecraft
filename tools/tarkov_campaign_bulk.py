@@ -808,6 +808,86 @@ def test_scope_selection():
     assert selected[c]["taskRequirements"]==[complete(a)] and ref[c]["taskRequirements"]==[complete(b)]
     assert len(changes)==1
 
+def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
+    """Explicit gameplay adaptations for mechanics that do not exist in EFM.
+    Never change objective predicates or replace the Collector/Kappa reward."""
+    rubles="5449016a4bdc2d6f028b456f"
+    audit=[]
+    for qid,q in sorted(tasks.items()):
+        changes=[]
+        old_level=q.get("minPlayerLevel") or 0
+        level=old_level
+        gates=[]
+        for req in q.get("otherRequirements") or []:
+            if req.get("type")=="globalVariable" and req.get("compareMethod")==">=" and isinstance(req.get("value"),int) and 1<=req["value"]<=5:
+                target=req["value"]*2
+                level=max(level,target)
+                changes.append({"type":"global-counter-to-player-level","reference":req,"minimumLevel":target})
+            else:gates.append(req)
+        q["otherRequirements"]=gates
+        if level!=old_level:q["minPlayerLevel"]=level
+        if qid!="5c51aac186f77432ea65c552":
+            reward=q.get("finishRewards") or {}
+            items=[]
+            converted=0
+            for row in reward.get("items") or []:
+                ref,count=row.get("item"),row.get("count")
+                if ref in CURRENCY or ref in mapped and not row.get("attributes") and not row.get("contains"):
+                    items.append(row);continue
+                price=item_catalog.get(ref,{}).get("basePrice")
+                if isinstance(price,int) and price>0 and isinstance(count,int) and count>0:
+                    value=price*count
+                    if converted+value<=2147483647:
+                        converted+=value
+                        changes.append({"type":"unavailable-reward-to-credits","reference":row,"referenceRubles":value})
+                        continue
+                items.append(row)
+            if converted:items.append({"item":rubles,"count":converted,"attributes":{}})
+            reward["items"]=items
+            # Cosmetics, recipes and unsupported shop unlocks do not have an equivalent.
+            # Keep each compatible shop unlock and preserve every removed reward in the audit.
+            for key in ("craftUnlock","customization","achievement"):
+                if reward.get(key):
+                    changes.append({"type":"unsupported-finish-bonus-omitted","key":key,"reference":reward[key]})
+                    reward[key]=[]
+            offers=[]
+            for offer in reward.get("offerUnlock") or []:
+                ref=offer.get("item");item=item_catalog.get(ref,{})
+                if (ref in mapped and not offer.get("contains") and not offer.get("attributes")
+                    and isinstance(offer.get("count"),int) and 1<=offer["count"]<=64
+                    and isinstance(offer.get("level"),int) and 1<=offer["level"]<=4
+                    and offer.get("trader") in TRADERS and isinstance(item.get("basePrice"),int) and item["basePrice"]>0
+                    and set(item.get("types",[])) & {"barter","provisions","meds","injectors","keys"}):
+                    offers.append(offer)
+                else:changes.append({"type":"unsupported-offer-omitted","reference":offer})
+            reward["offerUnlock"]=offers
+            q["finishRewards"]=reward
+            start=q.get("startRewards") or {}
+            for key in ("craftUnlock","offerUnlock"):
+                if start.get(key):
+                    changes.append({"type":"unsupported-start-bonus-omitted","key":key,"reference":start[key]})
+                    start[key]=[]
+            q["startRewards"]=start
+        if changes:audit.append({"id":qid,"name":display_name(q),"changes":changes})
+    write(out/"campaign-adaptation-review.json",{"schema":1,"quests":audit,
+        "counts":dict(Counter(c["type"] for row in audit for c in row["changes"]))})
+    return len(audit)
+
+def test_efm_adaptations():
+    from tempfile import TemporaryDirectory
+    ref="a"*24
+    qid="b"*24
+    q={"id":qid,"normalizedName":"test","minPlayerLevel":1,
+       "otherRequirements":[{"type":"globalVariable","compareMethod":">=","value":3,"variableId":"test"}],
+       "finishRewards":{"items":[{"item":ref,"count":2,"attributes":{}}],"customization":[{"id":"test"}]}}
+    with TemporaryDirectory() as tmp:
+        folder=Path(tmp)
+        assert adapt_efm_rewards_and_gates({qid:q},set(),{ref:{"basePrice":5000}},folder)==1
+        assert q["minPlayerLevel"]==6 and not q["otherRequirements"]
+        assert q["finishRewards"]["items"]==[{"item":"5449016a4bdc2d6f028b456f","count":10000,"attributes":{}}]
+        assert not q["finishRewards"]["customization"]
+        assert len(read(folder/"campaign-adaptation-review.json")["quests"][0]["changes"])==3
+
 def build(snapshot,out,resources):
     manifest=read(snapshot/"manifest.json")
     for n,info in manifest["files"].items():
@@ -825,7 +905,8 @@ def build(snapshot,out,resources):
           "rewired":rewired})
     print(json.dumps({"scopeOriginal":len(original_tasks),"scopeRetained":len(tasks),"scopeExcluded":len(excluded),"rewiredChains":len(rewired)},indent=2))
     item_catalog=read(snapshot/"items.json")["data"]["items"]
-    mapped,auto_names,auto_count=supply_catalog(tasks,item_catalog,resources,out)
+    mapped,auto_names,auto_count=supply_catalog(original_tasks,item_catalog,resources,out)
+    adaptation_count=adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
     dependencies=dependency_audit(tasks,current)
     staged=[]
@@ -837,7 +918,7 @@ def build(snapshot,out,resources):
         bucket="stock" if kinds<=STOCK else "combat-extract" if kinds<=CORE else "field" if kinds<=FIELD else "special"
         gates,gate_blockers=normalize_gates(q,current)
         staged.append({"id":qid,"slug":q["normalizedName"],"trader":TRADERS[q["trader"]],"batch":bucket,
-                       "routed":qid in current,"reference":q,"normalizedGates":gates,"gateBlockers":sorted(gate_blockers)})
+                       "routed":qid in current,"reference":original_tasks[qid],"adaptedReference":q,"normalizedGates":gates,"gateBlockers":sorted(gate_blockers)})
         if kinds<=STOCK:
             draft=stock_draft(q,mapped,current)
             for o in q["objectives"]:
@@ -878,7 +959,7 @@ def build(snapshot,out,resources):
         "types":item_catalog.get(id,{}).get("types",[]),"quests":sorted(qids),"mapping":None}
         for id,qids in sorted(missing_items.items())])
     write(out/"routed-quest-review.json",discrepancies)
-    summary={"generatedBarterSupplies":auto_count,"referenceQuests":len(original_tasks),"retainedQuests":len(tasks),"excludedQuests":len(excluded),"rewiredChains":len(rewired),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
+    summary={"generatedBarterSupplies":auto_count,"referenceQuests":len(original_tasks),"retainedQuests":len(tasks),"rewardOrGateAdaptations":adaptation_count,"excludedQuests":len(excluded),"rewiredChains":len(rewired),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
              "stockDrafts":len(stock),"unmappedStockItemIDs":len(missing_items),"stockDraftsWithoutBlockers":sum(not q["blockers"] and not q["alreadyRouted"] for q in stock),
              "stockBlockers":dict(Counter(b for q in stock for b in q["blockers"])),
              "routedQuestsWithReviewNotes":len(discrepancies)}
@@ -914,6 +995,7 @@ if __name__=="__main__":
     test_quest_item_adapter()
     test_milestones()
     test_scope_selection()
+    test_efm_adaptations()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
