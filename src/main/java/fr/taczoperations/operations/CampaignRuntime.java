@@ -387,6 +387,14 @@ final class CampaignRuntime {
     private static Set<String> stockRefs(Objective o){return StockObjectives.refs(o);}
     private static Set<String> turnInRefs(Objective o){return StockObjectives.give(o)?StockObjectives.refs(o):Set.of();}
     /** Both the menu and the actual claim use the same physical stock allocation. */
+    private static boolean stockCondition(Quest q,net.minecraft.world.item.ItemStack stack){
+        if(!q.id().equals("60e71ccb5688f6424c7bfec4"))return true;
+        if(!MilitaryTag.isTag(stack))return false;
+        var custom=stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+        if(custom==null)return false;
+        var data=custom.copyTag();
+        return data.hasUUID("operator")&&data.getInt("rank")>=20&&data.getInt("rank")<=50;
+    }
     private static Map<String,Integer> planTurnIns(Quest q,CarriedStorage storage){
         var demands=new ArrayList<TurnInPlanner.Demand>();
         var stock=new TreeMap<String,Integer>();
@@ -395,8 +403,8 @@ final class CampaignRuntime {
             demands.add(StockObjectives.demand(o));refs.addAll(StockObjectives.refs(o));
         }
         for(var ref:refs){
-            int found=storage.count(stack->RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,ref));
-            int ordinary=storage.count(stack->!RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,ref));
+            int found=storage.count(stack->stockCondition(q,stack)&&RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,ref));
+            int ordinary=storage.count(stack->stockCondition(q,stack)&&!RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,ref));
             stock.put(StockObjectives.key(ref,true),found);
             stock.put(StockObjectives.key(ref,false),ordinary);
         }
@@ -745,7 +753,7 @@ final class CampaignRuntime {
                     if(state==State.ACTIVE&&o.type().startsWith("milestone:"))count=milestoneReached(p,s.player(),o)?1:0;
                     if(state==State.ACTIVE&&o.type().equals("pay-credits"))count=Math.max(0,SupplyContract.account(p).getInt("credits"));
                     var refs=stockRefs(o);
-                    if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->itemEligible(stack,o));
+                    if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->stockCondition(q,stack)&&itemEligible(stack,o));
                     String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
                     title=CATALOG.meta().get(q.id()).labels().getOrDefault(o.id(),title);
                     lines.add(title+" : "+Math.min(count,o.amount())+"/"+o.amount());
@@ -899,7 +907,7 @@ final class CampaignRuntime {
             for(var entry:plan.entrySet()){
                 String reference=StockObjectives.reference(entry.getKey());
                 boolean found=StockObjectives.foundBucket(entry.getKey());
-                if(!storage.consume(stack->RaidOrigin.found(stack)==found&&CampaignSupplies.matches(stack,reference),entry.getValue()))
+                if(!storage.consume(stack->stockCondition(q,stack)&&RaidOrigin.found(stack)==found&&CampaignSupplies.matches(stack,reference),entry.getValue()))
                     throw new IllegalStateException("Inventory changed during turn-in");
             }
             CampaignStorage.save(p,CATALOG.revision(),s);
