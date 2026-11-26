@@ -133,3 +133,4 @@
 59e36c6f86f774176c10a2a7|Câble d'alimentation|string
 5991b51486f77447b112d44f|Balise MS2000|redstone
 675a0288c3102563bd01c9c3|Affiche publicitaire Arena|paper
+5ab8f20c86f7745cdb629fb2|Cagoule civile de récupération|leather_helmet
