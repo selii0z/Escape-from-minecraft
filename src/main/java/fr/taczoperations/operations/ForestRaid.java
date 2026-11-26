@@ -198,6 +198,7 @@ public final class ForestRaid extends SavedData {
         RaidSurvival.begin(player);
         SupplyContract.departure(player);
         StoryMissions.begin(player,industrial);
+        CampaignRuntime.begin(player,raid.id);
         PassiveSkills.begin(player);
         raid.announceExits(player);
         if (partner != null) {
@@ -205,6 +206,7 @@ public final class ForestRaid extends SavedData {
             RaidSurvival.begin(partner);
             SupplyContract.departure(partner);
             StoryMissions.begin(partner,industrial);
+            CampaignRuntime.begin(partner,raid.id);
             PassiveSkills.begin(partner);
             raid.announceExits(partner);
         }
@@ -232,6 +234,10 @@ public final class ForestRaid extends SavedData {
         if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
+    static void campaignEnd(ServerPlayer player,boolean survived){
+        var raid=forPlayer(player);
+        if(raid!=null)CampaignRuntime.end(player,raid.id,CampaignRuntime.map(raid.industrial,raid.express),survived);
+    }
     static void finishParticipant(ServerPlayer player) {
         ForestRaid raid=forPlayer(player);
         if(raid==null)return;
@@ -650,6 +656,7 @@ public final class ForestRaid extends SavedData {
             statistics.setValue(respawned, deaths,
                 Math.max(0, statistics.getValue(deaths) - 1));
 
+            CampaignRuntime.end(respawned,deathRaid.id,CampaignRuntime.map(deathRaid.industrial,deathRaid.express),false);
             int adjustment = SupplyContract.finalizeRaidXp(respawned, oldRoot, false);
             long base = (long) Math.max(0, oldRoot.getInt("taczoperations_run_kill_xp"))
                 + Math.max(0, oldRoot.getInt("taczoperations_run_search_xp"));
@@ -1461,6 +1468,7 @@ public final class ForestRaid extends SavedData {
             SupplyContract.kill(killer, role.elite(), role.boss());
             DetailedStats.kill(killer,role);
             StoryMissions.kill(killer,role);
+            CampaignRuntime.kill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role);
             PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
