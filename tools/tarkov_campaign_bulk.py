@@ -138,6 +138,37 @@ def test_dialogue_free_gates():
     q["otherRequirements"].append({"type":"globalVariable"})
     assert "unsupported-globalVariable-requirement" in normalize_gates(q,{})[1]
 
+def material_reward_plan(reward,mapped):
+    items={}
+    other={}
+    blockers=set()
+    for row in reward["unmappedItems"]:
+        ref=row.get("item")
+        count=row.get("count")
+        if ref not in mapped or not isinstance(count,int) or count<=0 or row.get("attributes") or row.get("contains"):
+            blockers.add("item-rewards")
+            continue
+        items[ref]=items.get(ref,0)+count
+        if items[ref]>2147483647:blockers.add("item-rewards")
+    for row in reward["otherStanding"]:
+        trader=TRADERS.get(row.get("trader"))
+        standing=row.get("standing")
+        if not trader or not isinstance(standing,(int,float)):
+            blockers.add("cross-trader-reputation");continue
+        other[trader]=other.get(trader,0)+round(1000*standing)
+        if abs(other[trader])>100000:blockers.add("cross-trader-reputation")
+    return {"items":items,"otherStanding":other},blockers
+
+def test_material_rewards():
+    ref="a"*24
+    reward={"unmappedItems":[{"item":ref,"count":3,"attributes":{}},{"item":ref,"count":2,"attributes":{}}],
+            "otherStanding":[{"trader":"54cb57776803fa99248b456e","standing":-.02}]}
+    plan,blockers=material_reward_plan(reward,{ref})
+    assert not blockers and plan=={"items":{ref:5},"otherStanding":{"therapist":-20}}
+    assert "item-rewards" in material_reward_plan(reward,set())[1]
+    reward["unmappedItems"][0]["attributes"]={"durability":50}
+    assert "item-rewards" in material_reward_plan(reward,{ref})[1]
+
 def stock_draft(q, mapped, current):
     blockers=set()
     translated=[]
@@ -175,9 +206,9 @@ def stock_draft(q, mapped, current):
     # Keep every original condition and reward alongside the adapter draft.
     reward=reward_plan(q)
     if reward["xp"] is None:blockers.add("unknown-experience")
-    if reward["unmappedItems"]:blockers.add("item-rewards")
+    _,material_blockers=material_reward_plan(reward,mapped)
+    blockers.update(material_blockers)
     if reward["additionalRewards"]:blockers.add("additional-rewards")
-    if reward["otherStanding"]:blockers.add("cross-trader-reputation")
     if any((q.get("startRewards") or {}).values()):blockers.add("start-rewards")
     if any((q.get("failureOutcome") or {}).values()) or q.get("failConditions"):blockers.add("failure-handling")
     gates,gate_blockers=normalize_gates(q,current)
@@ -315,8 +346,12 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None):
                 for ref in o["type"].split(":",1)[1].split(",")):
                 continue
             reward={k:d["reward"][k] for k in ("credits","xp","reputation")}
-            if any(not isinstance(v,int) or not 0<=v<=2147483647 for v in reward.values()):
+            if any(not isinstance(reward[k],int) or not 0<=reward[k]<=2147483647 for k in ("credits","xp")):
                 continue
+            if not isinstance(reward["reputation"],int) or abs(reward["reputation"])>100000:continue
+            material,errors=material_reward_plan(d["reward"],mapped)
+            if errors:continue
+            reward.update(material)
             name=display_name(q)
             if not slug(name) or slug(name) in names:
                 continue
@@ -476,6 +511,7 @@ if __name__=="__main__":
     test_stock_activation()
     test_dialogue_free_gates()
     test_combat_adapter()
+    test_material_rewards()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
