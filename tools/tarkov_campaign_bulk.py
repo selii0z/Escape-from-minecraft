@@ -382,6 +382,20 @@ def combat_objective(o):
         return {"id":o["id"],"type":"sale:field-equipment","amount":o["count"],"scope":"CAMPAIGN","optional":o.get("optional",False),
                 "label":"Vendre sacs, gilets et protections EFM au Récupérateur"},blockers
     if o["type"]=="shoot":
+        grenade={
+          "6a5f44d815430d6a5b5161b1":("f68b0fb39d5bf105e58699181f4b845f8bdc3be61ab7bd03970eb75e86cad776",10,"Any","any"),
+          "5c1b760686f77412780211a3":("c775f110e745444efbe85c21b286b8e4810e3dda075d227bc0a65ffad5690785",5,"Any","any"),
+          "67b45467814ab0ffa000c7ea":("40ae6b9dfb882a8d0890a476c2078c2fa921717f3bd12c88b13c1bf1b93f9a14",20,"AnyPmc","pmc")
+        }
+        if o["id"] in grenade:
+            digest,amount,target,role=grenade[o["id"]]
+            if (hashlib.sha256(",".join(sorted(o.get("usingWeapon") or [])).encode()).hexdigest()!=digest
+                or o.get("count")!=amount or o.get("targetNames")!=[target] or o.get("shotType")!="kill"
+                or any(o.get(k) for k in ("bodyParts","usingWeaponMods","wearing","notWearing","enemyHealthEffect","playerHealthEffect","zones","maps","timeFromHour","timeUntilHour","effects"))
+                or o.get("distance")!={"value":0,"compareMethod":">="}):
+                blockers.add("unreviewed-grenade-objective")
+            return {"id":o["id"],"type":"grenade:*:"+role,"amount":amount,"scope":"CAMPAIGN","optional":o.get("optional",False),
+                    "label":"Éliminer "+("des PMC" if role=="pmc" else "des ennemis")+" avec une grenade EFM"},blockers
         known=basic|{"shotType","bodyParts","usingWeapon","usingWeaponMods","distance","timeFromHour","timeUntilHour",
                       "wearing","notWearing","enemyHealthEffect","targetNames","playerHealthEffect","zones","effects"}
         if set(o)-known:blockers.add("unknown-combat-predicate")
@@ -499,7 +513,7 @@ def test_field_adapter():
     assert "field-item-mapping" in field_objective(dict(o,type="mark",markerItem=ref,count=1),set())[1]
 
 # EFM consolidates Tarkov's individual skills into eight passive categories.
-SKILL_ADAPTERS={"Intellect":"SEARCH","LightVests":"SURVIVAL","HeavyVests":"SURVIVAL","Endurance":"ENDURANCE","Strength":"STRENGTH","Attention":"SEARCH","Search":"SEARCH",
+SKILL_ADAPTERS={"Launcher":"WEAPONS","AttachedLauncher":"WEAPONS","Intellect":"SEARCH","LightVests":"SURVIVAL","HeavyVests":"SURVIVAL","Endurance":"ENDURANCE","Strength":"STRENGTH","Attention":"SEARCH","Search":"SEARCH",
     "Perception":"SEARCH","Surgery":"MEDICINE","Vitality":"SURVIVAL","Health":"SURVIVAL",
     "StressResistance":"SURVIVAL","Immunity":"SURVIVAL","Metabolism":"SURVIVAL",
     "CovertMovement":"STEALTH","Charisma":"TRADE","AimDrills":"WEAPONS","TroubleShooting":"WEAPONS",
@@ -1260,6 +1274,10 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
+                    if qid=="59ca1a6286f774509a270942" and o["id"]=="59ca1b4f86f774509a270943" and hashlib.sha256(",".join(sorted(original)).encode()).hexdigest()=="9b5e5d779ad3017a9e7d977efb3aafca29127e2e742fe8b09723e916ff7ebd04":
+                        o["items"]=["5448be9a4bdc2dfd2f8b456a"]
+                        changes.append({"type":"efm-grenade-equivalent","before":original,"after":o["items"]})
+                        original=o["items"]
                     if qid=="6613f307fca4f2f386029409" and o["id"]=="661681edabe376e7d6eab98f" and o["count"]==50 and len(original)==12 and "628baf0b967de16aab5a4f36" in original:
                         o["items"]=["5648a69d4bdc2ded0b8b457b"]
                         changes.append({"type":"elite-rig-equivalent","before":original,"after":o["items"]})
@@ -1371,6 +1389,7 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             # Preserve the usable starter weapon; unsupported separate magazines/packs
             # from these two exact starter kits are not required by the objective.
             starter_adapters={
+                "5c0d190cd09282029f5390d8":({"5e340dcdcb6d5863cc5e5efb","5e32f56fcb6d5863cc5e5ee4","617fd91e5539a84ec44ce155"},[{"item":"5448be9a4bdc2dfd2f8b456a","count":9,"attributes":{}}]),
                 "666314a31cd52e3d040a2e76":({"628baf0b967de16aab5a4f36"},[{"item":"5648a69d4bdc2ded0b8b457b","count":1,"attributes":{}}]),
                 "6740a2c17e3818d5bb0648b6":({"66d9f1abb16d9aacf5068468"},[]),
                 "666314b2a9290f9e0806cca3":({"707265736574000000000047"},[{"item":"5a38e6bac4a2826c6e06d79b","count":1,"attributes":{}}]),
@@ -1455,6 +1474,8 @@ def build(snapshot,out,resources):
     auto_names.update({"5a1eaa87fcdbcb001865f75e":"Lunettes thermiques EFM","5ca20ee186f774799474abc2":"Casque PMC classe 5","60194943740c5d77f6705eea":"Munitions TaCZ 5,56"})
     mapped.update({"59db794186f77448bc595262","5645bc214bdc2d363b8b4571"})
     auto_names["59db794186f77448bc595262"]="Conteneur sécurisé Epsilon (vide)"
+    mapped.add("5448be9a4bdc2dfd2f8b456a")
+    auto_names["5448be9a4bdc2dfd2f8b456a"]="Grenade de raid EFM"
     mapped.update(WEAPON_HANDOVERS.values())
     mapped.add("545cdb794bdc2d3a198b456a")
     auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
