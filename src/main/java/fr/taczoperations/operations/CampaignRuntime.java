@@ -260,6 +260,12 @@ final class CampaignRuntime {
             return record(s,"kill",map,role,enemy)?s:null;
         });
     }
+    static boolean resetFailedRaidChallenges(CampaignGraph.Player player){
+        boolean reset=false;
+        for(String id:List.of("5bc4893c86f774626f5ebf3e","5c0be13186f7746f016734aa"))
+            reset|=player.resetActive(id);
+        return reset;
+    }
     static void end(ServerPlayer p,UUID raidId,String map,boolean success){
         ACTIONS.remove(p.getUUID());
         if(raidId==null)return;
@@ -267,6 +273,7 @@ final class CampaignRuntime {
             if(!raidId.equals(s.raidId()))return null;
             if(success)record(s,"extract",map,null,null);
             s.player().endRaid(success);
+            if(!success&&resetFailedRaidChallenges(s.player()))say(p,"Défis de survie : progression remise à zéro après un raid échoué.");
             return new CampaignStorage.Session(s.player(),null);
         });
     }
