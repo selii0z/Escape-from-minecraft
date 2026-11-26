@@ -525,6 +525,7 @@ public final class ForestExpedition {
             RaidInjuries.clear(player);
             RaidAudio.clear(player);
             if(extracted)RaidAudio.extract(player);
+            ForestRaid.campaignEnd(player,extracted);
             ForestRaid.finishParticipant(player);
         }
         if (!extracted) {
