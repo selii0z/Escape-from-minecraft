@@ -552,7 +552,7 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
     ready={qid for qid,q in current.items() if q.get("implemented") is True}
     names={slug(q["name"]) for q in current.values()}
     pending={qid:q for qid,q in tasks.items() if qid not in current and
-             qid!="5c51aac186f77432ea65c552" and q["objectives"] and
+             q["objectives"] and
              {o["type"] for o in q["objectives"]}<=FIELD_CORE}
     installed=[]
     while True:
@@ -622,7 +622,7 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
             elif "additional-rewards" in blockers:
                 blockers.remove("additional-rewards")
                 blockers.extend("reward:"+key for key in sorted(additional))
-            if qid=="5c51aac186f77432ea65c552":blockers.append("collector-kappa-adapter")
+            if qid=="5c51aac186f77432ea65c552" and "5c093ca986f7740a1867ab12" not in mapped:blockers.append("collector-kappa-adapter")
             if not blockers:blockers.append("dependency-or-final-validation")
         remaining.append({"id":qid,"name":display_name(q),"trader":TRADERS[q["trader"]],
                           "kappa":qid in dependencies["kappa"]["dependencyClosure"],"blockers":sorted(set(blockers))})
@@ -868,6 +868,24 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     changes.append({"type":"unsupported-start-bonus-omitted","key":key,"reference":start[key]})
                     start[key]=[]
             q["startRewards"]=start
+        else:
+            # Collector is an explicitly reviewed exception: preserve all 44 FIR
+            # handovers and the actual secure container. Only the cosmetic armband
+            # (not supported in EFM) is converted to credits.
+            refs={ref for o in q["objectives"] for ref in o.get("items",[])}
+            if len(q["objectives"])!=44 or len(refs)!=44 or not refs<=mapped or any(
+                o["type"]!="giveItem" or o["count"]!=1 or not o.get("foundInRaid") or o.get("optional")
+                for o in q["objectives"]):
+                raise ValueError("Collector requirements changed: manual review required")
+            reward=q["finishRewards"]
+            kappa="5c093ca986f7740a1867ab12"
+            armband="619bddc6c9546643a67df6ee"
+            if {r["item"] for r in reward["items"]}!={kappa,armband} or any(r["count"]!=1 for r in reward["items"]):
+                raise ValueError("Collector rewards changed: manual review required")
+            price=item_catalog[armband]["basePrice"]
+            if not isinstance(price,int) or price<=0:raise ValueError("Invalid Collector armband value")
+            reward["items"]=[r for r in reward["items"] if r["item"]==kappa]+[{"item":rubles,"count":price,"attributes":{}}]
+            changes.append({"type":"collector-kappa-real-reward","reference":kappa,"capacity":12,"cosmeticCredits":price//100})
         if changes:audit.append({"id":qid,"name":display_name(q),"changes":changes})
     write(out/"campaign-adaptation-review.json",{"schema":1,"quests":audit,
         "counts":dict(Counter(c["type"] for row in audit for c in row["changes"]))})
@@ -906,6 +924,7 @@ def build(snapshot,out,resources):
     print(json.dumps({"scopeOriginal":len(original_tasks),"scopeRetained":len(tasks),"scopeExcluded":len(excluded),"rewiredChains":len(rewired)},indent=2))
     item_catalog=read(snapshot/"items.json")["data"]["items"]
     mapped,auto_names,auto_count=supply_catalog(original_tasks,item_catalog,resources,out)
+    mapped.add("5c093ca986f7740a1867ab12")
     adaptation_count=adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
     dependencies=dependency_audit(tasks,current)
