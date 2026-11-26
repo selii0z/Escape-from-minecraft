@@ -1238,6 +1238,7 @@ public final class ForestRaid extends SavedData {
             barrel.setItem(12,BallisticVest.create(slot,tier,BallisticVest.classColor(tier)));
             barrel.setItem(18,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","salewa")),2));
             barrel.setItem(24,new ItemStack(Items.GOLD_INGOT,4+random.nextInt(5)));
+            CollectorItems.addLoot(barrel,random,35);
             RaidOrigin.markContainer(barrel);
             return true;
         }
@@ -1305,6 +1306,7 @@ public final class ForestRaid extends SavedData {
             if(random.nextInt(100)<30)barrel.setItem(25,medicalLoot("field_ration",1+random.nextInt(2)));
             if(random.nextInt(100)<45)barrel.setItem(24,net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,net.minecraft.world.item.alchemy.Potions.WATER));
         }
+        CollectorItems.addLoot(barrel,random,10);
         RaidOrigin.markContainer(barrel);
         return true;
     }
