@@ -15,6 +15,7 @@
   "item.taczoperations.thermal_goggles": "Thermal goggles",
   "key.taczoperations.goggles": "Toggle goggles",
   "key.taczoperations.field_inventory": "Open EFM tactical inventory",
+  "key.taczoperations.inspect": "Inspect EFM item",
   "key.categories.taczoperations": "Escape from Minecraft",
   "message.taczoperations.goggles.off": "Goggles disabled",
   "message.taczoperations.goggles.nvg": "Night vision enabled",
