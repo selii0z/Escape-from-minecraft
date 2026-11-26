@@ -89,6 +89,7 @@ public final class OperationsMod {
         RaidRelic.register(ITEMS);
         fr.taczoperations.operations.TradeLoot.register(ITEMS);
         fr.taczoperations.operations.CollectorItems.register(ITEMS);
+        ITEMS.registerItem("raid_grenade",fr.taczoperations.operations.RaidGrenade::new,new net.minecraft.world.item.Item.Properties().stacksTo(8));
         fr.taczoperations.operations.CampaignSupplies.register(ITEMS);
         ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
@@ -241,6 +242,7 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onDrops);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidGrenade::impact);
         if(net.neoforged.fml.ModList.get().isLoaded("curios"))
             fr.taczoperations.compat.FieldCurios.registerRaidDropRules();
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::onDeathDrops);
