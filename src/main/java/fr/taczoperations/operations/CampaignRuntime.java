@@ -125,7 +125,7 @@ final class CampaignRuntime {
                     if(reward.credits()<0||reward.xp()<0||reward.reputation()<0)throw new IllegalArgumentException("Invalid reward");
                 }
                 int loyalty=q.has("loyalty")?q.get("loyalty").getAsInt():1;
-                if(loyalty<1||loyalty>4)throw new IllegalArgumentException("Invalid loyalty");
+                if(loyalty<0||loyalty>4)throw new IllegalArgumentException("Invalid loyalty");
                 var labels=new HashMap<String,String>();
                 for(var valueLabel:q.getAsJsonArray("objectives")){
                     var o=valueLabel.getAsJsonObject();
@@ -136,6 +136,10 @@ final class CampaignRuntime {
                         &&Set.of("59c9392986f7742f6923add2","5ac346a886f7744e1b083d67","5d25e4b786f77408251c4bfc",
                             "5969f90786f77420d2328015","60e71dc67fcf9c556f325056","69ce1de03e15cd80bd06f6c9").contains(id)
                         &&pairedStockValid(objectives);
+                }
+                if(q.has("adapter")&&q.get("adapter").getAsString().equals("bulk-stock-v2")){
+                    reviewed=q.get("implemented").getAsBoolean()&&q.has("review")&&q.get("review").getAsString().equals("approved")
+                        &&q.has("blockers")&&q.getAsJsonArray("blockers").isEmpty()&&reward!=null&&StockObjectives.valid(objectives);
                 }
                 String dialogue=q.has("dialogueTrader")&&!q.get("dialogueTrader").isJsonNull()?CampaignTrader.byId(q.get("dialogueTrader").getAsString()).id:null;
                 QuestSite site=null;
@@ -369,7 +373,9 @@ final class CampaignRuntime {
     static int claimChemical(ServerPlayer p){return claim(p,CHEMICAL);}
     private static boolean eligible(ServerPlayer p,String id){
         var q=CATALOG.graph().quests().get(id);
-        if(q==null||CampaignTraderAccount.loyalty(p,CampaignTrader.byId(q.trader()))<CATALOG.meta().get(id).loyalty())return false;
+        if(q==null)return false;
+        var owner=CampaignTrader.byId(q.trader());
+        if(!CampaignTraderAccount.unlocked(p,owner)||CampaignTraderAccount.loyalty(p,owner)<CATALOG.meta().get(id).loyalty())return false;
         for(var req:CATALOG.meta().get(id).traderRequirements()){
             var trader=CampaignTrader.byId(req.trader());
             if(!req.matches(CampaignTraderAccount.loyalty(p,trader),CampaignTraderAccount.reputation(p,trader)))return false;
