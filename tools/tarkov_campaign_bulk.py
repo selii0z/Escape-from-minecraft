@@ -230,6 +230,34 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out):
           "added":installed,"total":len(result),"remainingStock":len(pending)})
     return len(installed)
 
+def test_stock_activation():
+    from tempfile import TemporaryDirectory
+    trader="54cb50c76803fa8b248b4571"
+    item="a"*24
+    first="f"*24
+    second="1"*24
+    unsupported="2"*24
+    def task(qid,name,prereq=None):
+        return {"id":qid,"name":name,"normalizedName":name.lower(),"trader":trader,
+                "minPlayerLevel":1,"experience":500,"factionName":"Any",
+                "taskRequirements":[{"task":prereq,"status":["complete"]}] if prereq else [],
+                "objectives":[{"id":qid+":give","type":"giveItem","items":[item],
+                               "count":2,"optional":False,"foundInRaid":True}],
+                "finishRewards":{"items":[],"traderStanding":[]}}
+    tasks={first:task(first,"First"),second:task(second,"Second",first),
+           unsupported:task(unsupported,"Unsupported")}
+    tasks[unsupported]["objectives"][0]["minDurability"]=50
+    dependencies=dependency_audit(tasks,{})
+    with TemporaryDirectory() as tmp:
+        folder=Path(tmp)
+        assert activate_stock_batch(tasks,{}, {item},dependencies,folder)==2
+        rows=read(folder/"quests-development.json")["quests"]
+        assert [q["id"] for q in rows]==[first,second]
+        assert rows[1]["prerequisites"]==[[{"quest":first,"outcomes":["COMPLETED"]}]]
+        assert all(q["implemented"] and q["review"]=="approved" for q in rows)
+        assert rows[0]["objectives"][0]["type"]=="turnin-fir:"+item
+        assert read(folder/"stock-activation-report.json")["remainingStock"]==1
+
 def export_install_catalog(tasks,current,stock,dependencies,manifest,out):
     """Minimal runtime preview, separate from the playable graph and its save revision."""
     rows=[]
@@ -328,6 +356,7 @@ def build(snapshot,out,resources):
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
     test_dependencies()
+    test_stock_activation()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
