@@ -186,6 +186,14 @@ public final class CampaignGraph {
             }
             return true;
         }
+        /** Server-verified unsuccessful attempt; remain accepted, clear all progress. */
+        public boolean resetActive(String id){
+            var p=saved.get(id);
+            if(p==null||p.state()!=State.ACTIVE||!require(id).implemented())return false;
+            saved.put(id,new Progress(State.ACTIVE,Map.of()));
+            raid.remove(id);
+            return true;
+        }
         public boolean fail(String id){
             var p=saved.get(id);if(p==null||p.state()!=State.ACTIVE)return false;
             saved.put(id,new Progress(State.FAILED,p.counters()));raid.remove(id);return true;
