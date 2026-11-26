@@ -33,6 +33,10 @@ public enum ExpressZone {
         java.util.Collections.shuffle(marks,new Random(seed));
         return List.copyOf(marks.subList(0,Math.min(14,marks.size())));
     }
+    public boolean checkpoint(BlockPos p){
+        for(var q:List.of(entry(),exitA(),exitB())){var c=pos(q);if(Math.abs(p.getX()-c.getX())<=4&&Math.abs(p.getZ()-c.getZ())<=4)return true;}
+        return false;
+    }
     public boolean valid(ForestPlan.Point p){
         if(p.x()<12||p.z()<12||p.x()>=size-12||p.z()>=size-12)return false;
         for(var q:List.of(entry(),exitA(),exitB()))if(Math.hypot(p.x()-q.x(),p.z()-q.z())<24)return false;
