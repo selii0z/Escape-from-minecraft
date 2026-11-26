@@ -918,17 +918,25 @@ final class CampaignRuntime {
             return Set.copyOf(done);
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign offer unlock check failed",e);return Set.of();}
     }
-    static List<QuestView> views(ServerPlayer p){
+    static boolean belongsToTrader(String id,String trader){
+        var q=CATALOG==null?null:CATALOG.graph().quests().get(id);
+        return q!=null&&q.implemented()&&q.trader().equals(trader);
+    }
+    static List<QuestView> views(ServerPlayer p){return views(p,null);}
+    static List<QuestView> views(ServerPlayer p,String trader){
         if(!accessible(p))return List.of();
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
             var result=new ArrayList<QuestView>();
             var storage=CarriedStorage.of(p);
+            var saved=s.player().snapshot();
+            int playerLevel=level(p);
+            var sites=allSites().stream().collect(java.util.stream.Collectors.groupingBy(Site::quest));
             for(var q:CATALOG.graph().quests().values()){
-                if(!q.implemented())continue;
-                var state=s.player().state(q.id(),level(p));
+                if(!q.implemented()||trader!=null&&!trader.equals(q.trader()))continue;
+                var state=s.player().state(q.id(),playerLevel);
                 if(state==State.AVAILABLE&&!eligible(p,q.id()))state=State.LOCKED;
-                var progress=s.player().snapshot().get(q.id());
+                var progress=saved.get(q.id());
                 var r=reward(q.id());
                 var lines=new ArrayList<String>();
                 lines.add("Niveau "+q.level()+" · Fidélité "+CATALOG.meta().get(q.id()).loyalty()+" · "+stateLabel(state));
@@ -954,7 +962,7 @@ final class CampaignRuntime {
                     var parts=o.type().split(":");var point=fieldAnchor(parts[1],parts[2]);
                     if(point!=null)lines.add("Secteur à reconnaître · "+parts[1]+" · X "+point.getX()+" Z "+point.getZ());
                 }
-                for(var field:allSites())if(field.quest().equals(q.id())&&!q.id().equals(CHEMICAL)){
+                for(var field:sites.getOrDefault(q.id(),List.of()))if(!q.id().equals(CHEMICAL)){
                     lines.add((field.item().equals(MARKER)?"Baliser":"Déposer")+" : "+supplyTitle(field.item())+" · "+field.map());
                     lines.add("Coordonnées de raid : "+field.pos().getX()+", "+field.pos().getY()+", "+field.pos().getZ());
                 }

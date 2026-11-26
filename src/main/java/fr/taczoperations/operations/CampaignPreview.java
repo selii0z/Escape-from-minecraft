@@ -51,11 +51,12 @@ final class CampaignPreview {
             default->"Objectif spécial";
         };
     }
-    static List<CampaignRuntime.QuestView> merge(List<CampaignRuntime.QuestView> live){
+    static List<CampaignRuntime.QuestView> merge(List<CampaignRuntime.QuestView> live){return merge(live,null);}
+    static List<CampaignRuntime.QuestView> merge(List<CampaignRuntime.QuestView> live,String trader){
         var ids=new HashSet<String>();
         var result=new ArrayList<CampaignRuntime.QuestView>();
         for(var q:live){ids.add(q.id());result.add(q);}
-        for(var q:INDEX)if(ids.add(q.id()))result.add(q);
+        for(var q:INDEX)if((trader==null||trader.equals(q.trader()))&&ids.add(q.id()))result.add(q);
         return List.copyOf(result);
     }
     private CampaignPreview(){}

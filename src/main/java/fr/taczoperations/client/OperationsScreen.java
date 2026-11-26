@@ -72,6 +72,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private int offsetY;
     private float scale;
     private int selectedArea;
+    private final CampaignDashboard campaign;
+    private boolean questMode;
+    private boolean enterCampaignOnTick;
     private boolean night;
     private boolean duo;
     private RaidLoadout loadout;
@@ -98,6 +101,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     public OperationsScreen(OperationsMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
+        campaign=new CampaignDashboard(menu.containerId);
+        questMode=menu.view().tab()==OperationsMenu.QUESTS;
+        enterCampaignOnTick=questMode;
         duo = !menu.view().partner().isEmpty();
         var v=menu.view();var bookmark=pendingShop;pendingShop=null;
         if(bookmark!=null&&bookmark.connection()==net.minecraft.client.Minecraft.getInstance().getConnection()&&System.nanoTime()-bookmark.time()<15_000_000_000L&&v.tab()==OperationsMenu.SHOP&&v.page()/OperationsMenu.VENDOR_PAGES==bookmark.page()/OperationsMenu.VENDOR_PAGES&&v.category()==bookmark.category()&&v.shopOwned()==bookmark.owned()&&v.shopAccessories()==bookmark.accessories()){
@@ -137,6 +143,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             text(g,"PLANQUE",52,369,1.15F,WHITE,true);
             text(g,"Base personnelle",52,384,.83F,SOFT,false);
         });
+        if(questMode)return;
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();
             case OperationsMenu.PROGRESSION -> simple(690,45,125,23,"Statistiques",()->send(OperationsMenu.DETAILED_STATS));
@@ -205,6 +212,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if(questMode)return campaign.scroll((mouseX-offsetX)/scale,(mouseY-offsetY)/scale,scrollY);
         if(menu.view().tab()==OperationsMenu.SHOP&&scale>0&&scrollY!=0){
             double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
             if(x>=SHOP_X&&x<=548&&y>=SHOP_Y&&y<313){
@@ -326,13 +334,27 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         simple(581, 282, 232, 28, "Revenir aux opérations", () -> send(OperationsMenu.FOREST));
     }
 
+    void receiveCampaign(fr.taczoperations.operations.CampaignTabData data){campaign.receive(data);}
+    @Override protected void containerTick(){
+        super.containerTick();
+        if(enterCampaignOnTick){enterCampaignOnTick=false;campaign.enter();}
+    }
     private void send(int action) {
+        if(action==OperationsMenu.QUESTS){
+            if(!questMode){questMode=true;rebuildWidgets();campaign.enter();}
+            return;
+        }
+        if(questMode){
+            if(action==menu.view().tab()&&!campaign.changed()){questMode=false;rebuildWidgets();return;}
+            questMode=false;rebuildWidgets();
+        }
         if (minecraft.gameMode != null) {
             minecraft.gameMode.handleInventoryButtonClick(menu.containerId, action);
         }
     }
 
     private boolean active(int tab) {
+        if(questMode)return tab==OperationsMenu.QUESTS;
         return tab == menu.view().tab() || (tab == OperationsMenu.FOREST && menu.view().tab() == OperationsMenu.GROUP)
             ||(tab==OperationsMenu.SHOP&&menu.view().tab()==OperationsMenu.PLAYER_MARKET);
     }
@@ -340,7 +362,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     @Override
     public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
         super.render(g,mouseX,mouseY,partial);
-        if(scale<=0||minecraft==null||minecraft.player==null)return;
+        if(questMode||scale<=0||minecraft==null||minecraft.player==null)return;
         double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
         ItemStack hovered=ItemStack.EMPTY;
         int tab=menu.view().tab();
@@ -372,6 +394,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         canvas(g);
         image(g, DESK, 0, 0, WIDTH, HEIGHT);
         panel(g, 3, 74, 149, 337, 0xc0111713);
+        if(questMode){
+            panel(g,157,74,674,367,0xf0111612);header(g);
+            campaign.draw(g,(mouseX-offsetX)/scale,(mouseY-offsetY)/scale);
+            g.pose().popPose();return;
+        }
         if (menu.view().tab() == OperationsMenu.CONTRACTS || menu.view().tab()==OperationsMenu.TIMED_CONTRACTS || menu.view().tab()==OperationsMenu.BLACK_MARKET || menu.view().tab()==OperationsMenu.TRADE_JOURNAL || menu.view().tab()==OperationsMenu.MERCHANT_ORDERS) {
             panel(g, 157, 74, 674, 339, 0xf0111612);
         } else {
@@ -409,7 +436,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             PlayerFaceRenderer.draw(g, minecraft.player.getSkin(), 539, 16, 30);
             text(g, fit(minecraft.player.getGameProfile().getName(), 124), 580, 12, 1.25F, WHITE, true);
         }
-        int xp = menu.view().experience();
+        int xp = questMode&&campaign.latest()!=null?campaign.latest().experience():menu.view().experience();
         text(g, "Rang · " + rank(xp), 601, 27, .91F, WHITE, false);
         icon(g, 3, 575, 29, 20);
         progress(g, 601, 39, 108, 8, xp);
@@ -418,7 +445,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         panel(g, 730, 7, 98, 49, 0xec0f1311);
         item(g, new ItemStack(Items.GOLD_INGOT), 740, 19, 1.25F);
         text(g, "Crédits", 766, 16, 1.04F, SOFT, false);
-        text(g, Integer.toString(menu.view().credits()), 766, 29, 1.40F, WHITE, true);
+        text(g, Integer.toString(questMode&&campaign.latest()!=null?campaign.latest().credits():menu.view().credits()), 766, 29, 1.40F, WHITE, true);
         g.fillGradient(3, 66, 833, 73, 0xff6e6454, 0xff1c201a);
     }
 
@@ -1172,7 +1199,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static String stars(int n) { return "★".repeat(n) + "☆".repeat(5 - n); }
     private static ResourceLocation asset(String name) { return ResourceLocation.fromNamespaceAndPath(OperationsMod.ID, name); }
     private static ResourceLocation texture(String name) { return asset("textures/gui/" + name + ".png"); }
+    @Override public boolean mouseDragged(double mx,double my,int button,double dx,double dy){if(questMode&&campaign.drag((my-offsetY)/scale))return true;return super.mouseDragged(mx,my,button,dx,dy);}
+    @Override public boolean mouseReleased(double mx,double my,int button){if(questMode&&campaign.release())return true;return super.mouseReleased(mx,my,button);}
     @Override public boolean mouseClicked(double mouseX,double mouseY,int button){
+        if(questMode&&button==0&&campaign.click((mouseX-offsetX)/scale,(mouseY-offsetY)/scale))return true;
+        if(questMode&&button!=0)return false;
         if(button==2&&menu.view().tab()==OperationsMenu.SHOP&&scale>0&&minecraft.player!=null){
             double x=(mouseX-offsetX)/scale,y=(mouseY-offsetY)/scale;
             if(x>=581&&x<815&&y>=265&&y<369){

@@ -103,6 +103,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public static final int ARM_WIPE=270, DETAILED_STATS=271;
     private long wipeUntil=-1;
+    private long lastCampaignRequest=-1;
     private final View view;
     private final BlockPos position;
     private final ServerLevel level;
@@ -337,6 +338,21 @@ public final class OperationsMenu extends AbstractContainerMenu {
         String notice=WipeAccount.reset(p);
         open(p,position,SETTINGS,0,notice);
     }
+    public void campaignRequest(ServerPlayer p,CampaignTabRequest request){
+        if(p.containerMenu!=this||request.menuId()!=containerId||!stillValid(p)||!getCarried().isEmpty()||!ProgressionMenus.available(p))return;
+        var traders=fr.taczoperations.campaign.CampaignTrader.values();
+        if(request.trader()<0||request.trader()>=traders.length||request.action()<0||request.action()>6)return;
+        long tick=p.level().getGameTime();
+        if(tick==lastCampaignRequest)return;
+        lastCampaignRequest=tick;
+        var trader=traders[request.trader()];
+        if(request.action()==5){
+            p.closeContainer();CampaignUnlockShop.open(p,trader,0,()->open(p,position,QUESTS,0,""));return;
+        }
+        if(request.action()==6){p.closeContainer();ProgressionMenus.missions(p);return;}
+        String notice=CampaignTab.act(p,trader,request.action(),request.quest());
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,CampaignTab.snapshot(p,containerId,trader,notice));
+    }
     @Override
     public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer serverPlayer) || player.containerMenu!=this || !stillValid(player)) {
@@ -348,7 +364,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             else {wipeUntil=-1;serverPlayer.sendSystemMessage(Component.literal(problem));}
             return true;
         }
-        if(button==QUESTS){if(!ProgressionMenus.available(serverPlayer)||!getCarried().isEmpty())return false;serverPlayer.closeContainer();CampaignMenu.openFromBoard(serverPlayer,position);return true;}
+        if(button==QUESTS){if(!ProgressionMenus.available(serverPlayer)||!getCarried().isEmpty())return false;open(serverPlayer,position,QUESTS,0,"");return true;}
         if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
         int tab = view.tab();
         int page = view.page();
