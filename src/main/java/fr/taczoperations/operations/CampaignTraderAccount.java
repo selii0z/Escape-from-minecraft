@@ -12,7 +12,10 @@ final class CampaignTraderAccount {
         return switch(trader){
             case REF->SupplyContract.account(p).getBoolean(UNLOCK+trader.id)
                 ||CampaignStorage.retired("6834145ebc1f443d7603c8a7")&&MilitaryProgression.level(SupplyContract.experienceEarned(p))>=10;
-            case JAEGER,LIGHTKEEPER,BTR_DRIVER->SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
+            // No BTR vehicle is required for the retained scouting and hunting missions.
+            case BTR_DRIVER->MilitaryProgression.level(SupplyContract.experienceEarned(p))>=10
+                ||SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
+            case JAEGER,LIGHTKEEPER->SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
             default->true;
         };
     }
