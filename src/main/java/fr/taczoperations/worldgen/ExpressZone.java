@@ -11,7 +11,8 @@ import java.util.Random;
 public enum ExpressZone {
     BUNKER(1,49152,224,"Le Bunker"),
     WAREHOUSE(2,53248,256,"L'Entrepôt"),
-    VILLAGE(3,57344,256,"Village abandonné");
+    VILLAGE(3,57344,256,"Village abandonné"),
+    CITY(4,ZombiepolisMap.ORIGIN,ZombiepolisMap.SIZE,"Zombiepolis");
     public final int id,origin,size;
     public final String title;
     public static final int FLOOR=69, MINUTES=15;
@@ -19,16 +20,20 @@ public enum ExpressZone {
     public static ExpressZone byId(int id){for(var z:values())if(z.id==id)return z;return null;}
     public static ExpressZone at(int x,int z){for(var m:values())if(m.inside(x,z))return m;return null;}
     public boolean inside(int x,int z){return x>=origin&&z>=origin&&x<origin+size&&z<origin+size;}
-    public ForestPlan.Point entry(){return new ForestPlan.Point(size/2,16);}
-    public ForestPlan.Point exitA(){return new ForestPlan.Point(18,size-19);}
-    public ForestPlan.Point exitB(){return new ForestPlan.Point(size-19,size-19);}
-    public BlockPos pos(ForestPlan.Point p){return new BlockPos(origin+p.x(),FLOOR+1,origin+p.z());}
+    public int minutes(){return this==CITY?ZombiepolisMap.MINUTES:MINUTES;}
+    public boolean available(){return this!=CITY||ZombiepolisMap.available();}
+    public ForestPlan.Point entry(){return this==CITY?ZombiepolisMap.entry():new ForestPlan.Point(size/2,16);}
+    public ForestPlan.Point exitA(){return this==CITY?ZombiepolisMap.exitA():new ForestPlan.Point(18,size-19);}
+    public ForestPlan.Point exitB(){return this==CITY?ZombiepolisMap.exitB():new ForestPlan.Point(size-19,size-19);}
+    public BlockPos pos(ForestPlan.Point p){return this==CITY?ZombiepolisMap.position(p):new BlockPos(origin+p.x(),FLOOR+1,origin+p.z());}
     public List<ForestPlan.Point> encounters(){
+        if(this==CITY)return ZombiepolisMap.encounters();
         return List.of(new ForestPlan.Point(size/4,55),new ForestPlan.Point(3*size/4,55),new ForestPlan.Point(size/2,size/2),new ForestPlan.Point(size/4,size-62),new ForestPlan.Point(3*size/4,size-62));
     }
     private record Site(int x,int z,int w,int d,int h,int theme){}
     private List<Site> sites(){
         return switch(this){
+            case CITY -> List.of();
             case BUNKER -> List.of(new Site(24,35,56,38,6,0),new Site(144,35,56,38,6,1),
                 new Site(24,92,56,40,7,2),new Site(144,92,56,40,7,3),
                 new Site(24,154,56,36,6,3),new Site(144,154,56,36,6,0),
@@ -45,6 +50,7 @@ public enum ExpressZone {
         };
     }
     public List<ForestRaidAnchors.Mark> loot(long seed){
+        if(this==CITY)return ZombiepolisMap.loot(seed);
         var marks=new ArrayList<ForestRaidAnchors.Mark>();
         for(Site site:sites()){
             marks.add(new ForestRaidAnchors.Mark(site.x()+6,FLOOR+1,site.z()+3,site.theme()));
@@ -58,11 +64,13 @@ public enum ExpressZone {
         return false;
     }
     public boolean valid(ForestPlan.Point p){
+        if(this==CITY)return ZombiepolisMap.valid(p);
         if(p.x()<12||p.z()<12||p.x()>=size-12||p.z()>=size-12)return false;
         for(var q:List.of(entry(),exitA(),exitB()))if(Math.hypot(p.x()-q.x(),p.z()-q.z())<24)return false;
         return true;
     }
     void generate(ForestChunkGenerator.Painter out){
+        if(this==CITY){ZombiepolisMap.generate(out);return;}
         for(int x=Math.max(0,out.minX);x<Math.min(size,out.minX+16);x++)for(int z=Math.max(0,out.minZ);z<Math.min(size,out.minZ+16);z++){
             boolean edge=x<3||z<3||x>=size-3||z>=size-3;
             out.put(x,FLOOR-5,z,Blocks.BEDROCK);
