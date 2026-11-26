@@ -253,11 +253,11 @@ final class CampaignRuntime {
             return new CampaignStorage.Session(s.player(),raidId);
         });
     }
-    static void kill(ServerPlayer p,UUID raidId,String map,GuardRole role){
+    static void kill(ServerPlayer p,UUID raidId,String map,GuardRole role,UUID enemy){
         if(!ForestRaid.isParticipant(p)||!p.isAlive())return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId()))return null;
-            return record(s,"kill",map,role)?s:null;
+            return record(s,"kill",map,role,enemy)?s:null;
         });
     }
     static void end(ServerPlayer p,UUID raidId,String map,boolean success){
@@ -265,12 +265,12 @@ final class CampaignRuntime {
         if(raidId==null)return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId()))return null;
-            if(success)record(s,"extract",map,null);
+            if(success)record(s,"extract",map,null,null);
             s.player().endRaid(success);
             return new CampaignStorage.Session(s.player(),null);
         });
     }
-    static void gunEvent(ServerPlayer p,UUID raidId,String map,GuardRole role,String mode,String part,net.minecraft.resources.ResourceLocation weapon,double distance){
+    static void gunEvent(ServerPlayer p,UUID raidId,String map,GuardRole role,String mode,String part,net.minecraft.resources.ResourceLocation weapon,double distance,UUID enemy){
         if(raidId==null||!Double.isFinite(distance)||distance<0)return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId()))return null;
@@ -281,7 +281,7 @@ final class CampaignRuntime {
                 for(var o:q.objectives()){
                     if(!o.type().startsWith("gunshot:")||progress.counters().getOrDefault(o.id(),0)>=o.amount())continue;
                     var a=o.type().split(":",-1);
-                    if((a.length!=8&&a.length!=9)||a.length==9&&(!a[8].equals("night")||!ForestExpedition.isNightRaid(p))||!matches("kill:"+a[1]+":"+a[2],"kill",map,role)||!a[3].equals(mode)
+                    if((a.length!=8&&a.length!=9)||a.length==9&&(!a[8].equals("night")||!ForestExpedition.isNightRaid(p))||!matches("kill:"+a[1]+":"+a[2],"kill",map,role,enemy)||!a[3].equals(mode)
                         ||!a[4].equals("any")&&!a[4].equals(part)||!CampaignGunEvents.matchesWeapon(a[5],weapon))continue;
                     int target=Integer.parseInt(a[7]);
                     boolean range=switch(a[6]){
@@ -294,14 +294,14 @@ final class CampaignRuntime {
             return changed?s:null;
         });
     }
-    private static boolean record(CampaignStorage.Session s,String event,String map,GuardRole role){
+    private static boolean record(CampaignStorage.Session s,String event,String map,GuardRole role,UUID enemy){
         boolean changed=false;
         for(var q:CATALOG.graph().quests().values()){
             if(!q.implemented())continue;
             var progress=s.player().snapshot().get(q.id());
             if(progress==null||progress.state()!=State.ACTIVE)continue;
             for(var objective:q.objectives()){
-                if(matches(objective.type(),event,map,role))changed|=s.player().record(q.id(),objective.id(),1);
+                if(matches(objective.type(),event,map,role,enemy))changed|=s.player().record(q.id(),objective.id(),1);
             }
         }
         return changed;
@@ -309,6 +309,9 @@ final class CampaignRuntime {
     // Normalized explicit rules: kill:<map>:<role> or extract:<map>.
     // Unrecognized predicates are never treated as unrestricted objectives.
     static boolean matches(String type,String event,String map,GuardRole role){
+        return matches(type,event,map,role,null);
+    }
+    static boolean matches(String type,String event,String map,GuardRole role,UUID enemy){
         var parts=type.split(":",-1);
         if(parts.length<2||!parts[0].equals(event))return false;
         var allowed=Arrays.asList(parts[1].split(",",-1));
@@ -318,6 +321,8 @@ final class CampaignRuntime {
         return switch(parts[2]){
             case "any"->true;
             case "pmc"->role==GuardRole.PMC;
+            case "usec"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==0;
+            case "bear"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==1;
             case "boss"->role.boss();
             case "scav"->role==GuardRole.RAIDER||role==GuardRole.SCOUT||role==GuardRole.SOLDIER||role==GuardRole.MARKSMAN;
             default->parts[2].equals(role.name().toLowerCase(Locale.ROOT));
@@ -354,7 +359,7 @@ final class CampaignRuntime {
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else if(parts[0].equals("quest-find-adapted")){
                 if(parts.length!=4||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")||
@@ -370,7 +375,7 @@ final class CampaignRuntime {
             }else if(parts[0].equals("kill")){
                 if(parts.length!=3||o.scope()!=Scope.CAMPAIGN)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else return false;
             combat++;
