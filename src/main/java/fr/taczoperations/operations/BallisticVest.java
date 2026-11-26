@@ -60,6 +60,7 @@ public final class BallisticVest {
         piece.set(DataComponents.DYED_COLOR, new DyedItemColor(classColor(tier), false));
         piece.set(DataComponents.CUSTOM_NAME, Component.literal(name(slot) + " · Classe " + tier));
         applyProtection(piece,slot,tier,100);
+        applyIcon(piece,slot,tier);
         updateLore(piece, slot, tier, 100);
         return piece;
     }
@@ -107,6 +108,12 @@ public final class BallisticVest {
         return tag.contains(CONDITION) ? Math.clamp(tag.getInt(CONDITION), 0, 100) : 100;
     }
 
+    private static void applyIcon(ItemStack stack,EquipmentSlot slot,int tier){
+        if(slot!=EquipmentSlot.HEAD&&slot!=EquipmentSlot.CHEST)return;
+        var icon=new net.minecraft.world.item.component.CustomModelData(12000+tier);
+        if(!icon.equals(stack.get(DataComponents.CUSTOM_MODEL_DATA)))stack.set(DataComponents.CUSTOM_MODEL_DATA,icon);
+    }
+
     // Restore the canonical appearance of older pieces and prevent vanilla dyes
     // from disguising the ballistic class. This never changes the tier or wear.
     private static void normalizeColor(ItemStack stack) {
@@ -114,6 +121,7 @@ public final class BallisticVest {
             int tier = tier(stack,slot);
             if (tier == 0) continue;
             var expected = new DyedItemColor(classColor(tier), false);
+            applyIcon(stack,slot,tier);
             boolean attributesChanged=applyProtection(stack,slot,tier,condition(stack));
             if (attributesChanged||!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
                 stack.set(DataComponents.DYED_COLOR, expected);
