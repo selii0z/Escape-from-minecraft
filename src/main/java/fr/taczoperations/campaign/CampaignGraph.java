@@ -63,6 +63,31 @@ public final class CampaignGraph {
         visiting.remove(id);visited.add(id);
     }
     public Map<String,Quest> quests(){return quests;}
+    /** Stable per-quest compatibility signature; adding another quest does not invalidate this one. */
+    public String definitionFingerprint(String id){
+        var q=require(id);
+        var parts=new ArrayList<String>();
+        parts.addAll(List.of(q.id(),q.trader(),Integer.toString(q.level()),Boolean.toString(q.implemented())));
+        var groups=new ArrayList<String>();
+        for(var group:q.prerequisites()){
+            var requirements=new ArrayList<String>();
+            for(var req:group)requirements.add(req.quest()+":"+req.outcomes().stream().map(Enum::name).sorted().toList());
+            Collections.sort(requirements);groups.add(requirements.toString());
+        }
+        Collections.sort(groups);parts.add(groups.toString());
+        parts.add(q.conflicts().stream().sorted().toList().toString());
+        q.objectives().stream().sorted(Comparator.comparing(Objective::id)).forEach(o->
+            parts.add(o.id()+"|"+o.type()+"|"+o.amount()+"|"+o.scope()+"|"+o.optional()));
+        try{
+            var digest=java.security.MessageDigest.getInstance("SHA-256");
+            for(var part:parts){
+                byte[] bytes=part.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                digest.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.length).array());
+                digest.update(bytes);
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        }catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}
+    }
     public Player newPlayer(){return new Player(Map.of());}
     public Player restore(Map<String,Progress> saved){return new Player(saved);}
     public Player restore(Checkpoint checkpoint){
@@ -97,6 +122,7 @@ public final class CampaignGraph {
                 saved.put(q.id(),p);
             }
         }
+        public String definitionFingerprint(String id){return CampaignGraph.this.definitionFingerprint(id);}
         public Map<String,Progress> snapshot(){return Map.copyOf(saved);}
         public Checkpoint checkpoint(){return new Checkpoint(saved,inRaid,raid);}
         private boolean satisfies(Requirement r){
