@@ -1,6 +1,7 @@
 package fr.taczoperations.operations;
 
 import com.google.gson.*;
+import fr.taczoperations.worldgen.ExpressZone;
 import fr.taczoperations.campaign.CampaignGraph;
 import fr.taczoperations.campaign.CampaignGraph.*;
 import fr.taczoperations.campaign.CampaignTrader;
