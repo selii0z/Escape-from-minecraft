@@ -38,6 +38,9 @@ public final class CampaignGunEvents {
         var head=p.getItemBySlot(EquipmentSlot.HEAD);
         boolean rig=FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)>0;
         return switch(gear){
+            case "headset_noarmor"->!FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.HEADSET)).isEmpty()&&chest.isEmpty()&&!rig;
+            case "helmet_noheadset"->BallisticVest.tier(head,EquipmentSlot.HEAD)==2&&FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.HEADSET)).isEmpty();
+            case "elite_rig"->FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)==12;
             case "injured"->RaidInjuries.wounded(p);
             case "novision"->FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.GOGGLES)).isEmpty();
             case "scavuniform"->head.is(net.minecraft.world.item.Items.LEATHER_HELMET)&&FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)==4;
