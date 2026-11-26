@@ -398,6 +398,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor level, RandomState random) {
+        if (ExpressZone.at(x,z)==ExpressZone.CITY)return ZombiepolisMap.height(x-ZombiepolisMap.ORIGIN,z-ZombiepolisMap.ORIGIN);
         if (ExpressZone.at(x,z)!=null)return ExpressZone.FLOOR+1;
         if (IndustrialZone.inside(x, z)) return IndustrialZone.FLOOR + 1;
         if (!ForestPlan.inside(x, z)) {
