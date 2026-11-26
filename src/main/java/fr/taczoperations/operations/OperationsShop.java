@@ -148,6 +148,7 @@ public enum OperationsShop {
                 offers.add(new Offer("Reprise · pomme dorée", 45, Action.SELL, () -> new ItemStack(Items.GOLDEN_APPLE), null, 0));
             }
             case SALVAGER -> {
+                offers.add(new Offer("Plaque nominative PMC",RaidRelic.PLAQUE.price,Action.SELL,()->medical("military_tag"),null,0));
                 int[] bagPrices={500,1200,3000,6000,12000},bagRanks={0,20,20,65,180};
                 String[] bags={"Petit sac","Sac de patrouille","Sac tactique","Sac militaire","Sac d'expédition"};
                 for(int i=0;i<bags.length;i++){
