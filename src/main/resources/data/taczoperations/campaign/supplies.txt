@@ -130,3 +130,4 @@
 6389c6c7dbfd5e4b95197e68|Pastilles Aquapeps|paper
 6389c70ca33d8c4cdf4932c6|Composants électroniques|green_dye
 6389c8c5dbfd5e4b95197e6b|Dossiers bleus TerraGroup|paper
+59e36c6f86f774176c10a2a7|Câble d'alimentation|string
