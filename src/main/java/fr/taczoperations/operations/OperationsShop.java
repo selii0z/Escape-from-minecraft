@@ -154,11 +154,13 @@ public enum OperationsShop {
                 for(int i=0;i<bags.length;i++){
                     final int tier=i;
                     offers.add(buy(bags[i]+" · "+FieldPack.CAPACITY[i]+" cases",bagPrices[i],()->FieldPack.create(false,tier),null,bagRanks[i]));
+                    offers.add(new Offer("Reprise · "+bags[i],bagPrices[i]*30/100,Action.SELL,()->FieldPack.create(false,tier),null,0));
                 }
                 int[] rigPrices={700,1800},rigRanks={0,20};
                 for(int i=0;i<rigPrices.length;i++){
                     final int tier=i;
                     offers.add(buy("Gilet tactique · "+FieldPack.RIG_CAPACITY[i]+" cases",rigPrices[i],()->FieldPack.create(true,tier),null,rigRanks[i]));
+                    offers.add(new Offer("Reprise · Gilet "+FieldPack.RIG_CAPACITY[i]+" cases",rigPrices[i]*30/100,Action.SELL,()->FieldPack.create(true,tier),null,0));
                 }
                 offers.add(buy("Lot de torches", 45, () -> new ItemStack(Items.TORCH, 24), RaidRelic.PLAQUE, 0));
                 offers.add(buy("Lot de flèches", 65, () -> new ItemStack(Items.ARROW, 24), RaidRelic.RADIO, 0));
@@ -174,6 +176,12 @@ public enum OperationsShop {
                     offers.add(new Offer("Réparation · "+BallisticVest.name(slot)+" portée", 300*percent/100,
                         Action.REPAIR, () -> new ItemStack(BallisticVest.item(slot)),null,0));
                 }
+                for(int tier=2;tier<=6;tier++){
+                    final int t=tier;
+                    offers.add(new Offer("Reprise · Tunique classe "+t,150*t,Action.SELL,()->BallisticVest.create(t,BallisticVest.classColor(t)),null,0));
+                }
+                offers.add(new Offer("Reprise · Sac de raid",4500,Action.SELL,()->FieldPack.create(false,5),null,0));
+                offers.add(new Offer("Reprise · Gilet élite",900,Action.SELL,()->FieldPack.create(true,2),null,0));
                 // Class 5 is raid loot only.
                 offers.add(buy("Lunettes de vision nocturne", 15000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:night_vision_goggles"))), null, 180));
                 offers.add(buy("Lunettes thermiques", 60000, () -> new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("taczoperations:thermal_goggles"))), null, 180));
@@ -290,6 +298,8 @@ public enum OperationsShop {
         if(sample.isEmpty()||candidate.isEmpty())return false;
         // Never destroy contents by reselling an equipped storage item as an empty bag.
         if(candidate.getItem() instanceof FieldPack&&FieldPack.contents(candidate).stream().anyMatch(item->!item.isEmpty()))return false;
+        int armorTier=BallisticVest.tier(sample,net.minecraft.world.entity.EquipmentSlot.CHEST);
+        if(armorTier>0)return BallisticVest.tier(candidate,net.minecraft.world.entity.EquipmentSlot.CHEST)==armorTier&&candidate.is(sample.getItem());
         if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
             return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
                 &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
@@ -364,6 +374,7 @@ public enum OperationsShop {
             if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
+            if(this==SALVAGER&&(stack.getItem() instanceof FieldPack||BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.CHEST)>0))CampaignRuntime.recordEquipmentSale(player,quantity);
             PassiveSkills.trade(player,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
