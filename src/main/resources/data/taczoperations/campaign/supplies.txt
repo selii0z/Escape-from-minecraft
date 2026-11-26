@@ -30,3 +30,4 @@
 5b43575a86f77424f443fe62|Fuel conditioner|glass_bottle
 5d1b36a186f7742523398433|Metal fuel tank|iron_ingot
 5d1b371186f774253763a656|Expeditionary fuel tank|iron_ingot
+59e35cbb86f7741778269d83|Tuyau annelé|string
