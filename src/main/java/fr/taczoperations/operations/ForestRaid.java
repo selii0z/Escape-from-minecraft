@@ -1024,7 +1024,7 @@ public final class ForestRaid extends SavedData {
                     if(place==null||!raid.validPosition(place)
                         ||level.players().stream().anyMatch(p->raid.owns(p)&&place.distToCenterSqr(p.position())<20*20)
                         ||!level.getEntitiesOfClass(Pillager.class,new net.minecraft.world.phys.AABB(place).inflate(2),e->e.isAlive()&&currentGuard(level,e)).isEmpty())continue;
-                    if(raid.spawnGuard(level,place,role,squad)){
+                    if(raid.spawnGuard(level,place,role,squad,member==0?null:boss)){
                         raid.enemies.set(slot);raid.setDirty();bossBudget--;break;
                     }
                 }
@@ -1193,6 +1193,9 @@ public final class ForestRaid extends SavedData {
     }
 
     private boolean spawnGuard(ServerLevel level, BlockPos pos, GuardRole role, int squad) {
+        return spawnGuard(level,pos,role,squad,null);
+    }
+    private boolean spawnGuard(ServerLevel level, BlockPos pos, GuardRole role, int squad,GuardRole escortOf) {
         Pillager guard = EntityType.PILLAGER.create(level);
         if (guard == null) {
             return false;
@@ -1204,6 +1207,7 @@ public final class ForestRaid extends SavedData {
         guard.getPersistentData().putUUID(ENEMY, id);
         guard.setPersistenceRequired();
         role.assign(guard);
+        if(escortOf!=null)guard.getPersistentData().putString("efm_campaign_escort_of",escortOf.name());
         guard.getPersistentData().putInt("taczoperations_squad", squad);
         guard.getPersistentData().putInt("guard_home_x", pos.getX());
         guard.getPersistentData().putInt("guard_home_y", pos.getY());
@@ -1549,7 +1553,7 @@ public final class ForestRaid extends SavedData {
             SupplyContract.kill(killer, role.elite(), role.boss());
             DetailedStats.kill(killer,role);
             StoryMissions.kill(killer,role);
-            CampaignRuntime.kill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role,guard.getUUID());
+            CampaignRuntime.kill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role,guard.getUUID(),guard.getPersistentData().getString("efm_campaign_escort_of"));
             PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
