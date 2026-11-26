@@ -180,6 +180,11 @@ public final class OperationsMod {
                 if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
                     fr.taczoperations.client.RaidInjuryHud.handle(injury,context);
             });
+        registrar.playToClient(fr.taczoperations.operations.RaidPartnerPayload.TYPE,
+            fr.taczoperations.operations.RaidPartnerPayload.STREAM_CODEC,(partner,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.RaidPartnerHud.handle(partner,context);
+            });
         registrar.playToClient(fr.taczoperations.operations.RaidExitPayload.TYPE,
             fr.taczoperations.operations.RaidExitPayload.STREAM_CODEC,(exits,context)->{
                 if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
