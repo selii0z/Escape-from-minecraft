@@ -310,6 +310,7 @@ def weapon_group(refs):
 
 # Exact reference sets with explicitly chosen equivalents in EFM.
 GEAR_REQUIRED={
+    "dcb1ada0a20d04ab3a0f1c6cdeb2cfec1e60dcd93e18cd43ed5e721992db7a4b":"heavyuniform",
     "d6e904eff6f3c50d8d49af80ced1320c6f093e5e5b0f20b0ef957a14304074ed":"uniform2",
     "4f5a98a4b84772300c3798c2cd847bd4c74528bd166981c04c4e46bddd0167d6":"armor2",
 }
@@ -381,7 +382,7 @@ def combat_objective(o):
             event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
             if night or gear!="any":event+=":"+("night" if night else "anytime")+":"+gear
             if night:label+=" · raid de nuit"
-            if gear!="any":label+=" · "+{"uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
+            if gear!="any":label+=" · "+{"heavyuniform":"tunique classe 6 et casque classe 3","uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
             if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
             if weapon!="any":label+=" · "+{"bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM","lmg":"mitrailleuse EFM"}[weapon]
             if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
@@ -1184,6 +1185,7 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             # Preserve the usable starter weapon; unsupported separate magazines/packs
             # from these two exact starter kits are not required by the objective.
             starter_adapters={
+                "666314b4d7f171c4c20226c3":({"65766adc234b9f6e050a431a","5645bc214bdc2d363b8b4571"},[{"item":"545cdb794bdc2d3a198b456a","count":1,"attributes":{}},{"item":"5645bc214bdc2d363b8b4571","count":1,"attributes":{}}]),
                 "5c0d4c12d09282029f539173":({"5aa7d03ae5b5b00016327db5","5ab8e4ed86f7742d8e50c7fa","707265736574000000000009","5aaa5dfee5b5b000140293d3"},[{"item":"5aa7d03ae5b5b00016327db5","count":1,"attributes":{}},{"item":"59e7635f86f7742cbf2c1095","count":1,"attributes":{}},{"item":"5447a9cd4bdc2dbd208b4567","count":1,"attributes":{}}]),
                 "68341a0b2f0e2a7eb90b62d4":({"5648a7494bdc2d9d488b4583"},[{"item":"59e7635f86f7742cbf2c1095","count":2,"attributes":{}}]),
                 "671a59e43d73dac1360765cc":({"707265736574000000000051"},[{"item":"5a38e6bac4a2826c6e06d79b","count":1,"attributes":{}}]),
@@ -1261,6 +1263,8 @@ def build(snapshot,out,resources):
     auto_names.update({"5aa7d03ae5b5b00016327db5":"Casque PMC classe 2","5645bcc04bdc2d363b8b4572":"Casque audio tactique"})
     mapped.update({"5a1eaa87fcdbcb001865f75e","5ca20ee186f774799474abc2","60194943740c5d77f6705eea"})
     auto_names.update({"5a1eaa87fcdbcb001865f75e":"Lunettes thermiques EFM","5ca20ee186f774799474abc2":"Casque PMC classe 5","60194943740c5d77f6705eea":"Munitions TaCZ 5,56"})
+    mapped.update({"59db794186f77448bc595262","5645bc214bdc2d363b8b4571"})
+    auto_names["59db794186f77448bc595262"]="Conteneur sécurisé Epsilon (vide)"
     mapped.update(WEAPON_HANDOVERS.values())
     mapped.add("545cdb794bdc2d3a198b456a")
     auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
