@@ -72,6 +72,28 @@ public final class CampaignGraphTest {
         check(action.tick(actionRaid,false)==null);
         check(action.tick(java.util.UUID.randomUUID(),true)==null);
         check(action.tick(actionRaid,true).finished());
+        var activeGraph=new CampaignGraph(List.of(q("parent",List.of(),List.of(kills),Set.of(),true),
+            q("child",List.of(List.of(new Requirement("parent",Set.of(Outcome.ACTIVE)))),List.of(kills),Set.of(),true)));
+        var activePlayer=activeGraph.newPlayer();
+        check(activePlayer.state("child",1)==State.LOCKED);
+        check(activePlayer.accept("parent",1));check(activePlayer.state("child",1)==State.AVAILABLE);
+        activePlayer.record("parent","kills",Integer.MAX_VALUE);
+        check(activePlayer.state("child",1)==State.AVAILABLE);
+        check(activePlayer.complete("parent",1));check(activePlayer.state("child",1)==State.LOCKED);
+        var ll=new TraderRequirement("therapist",TraderRequirement.Kind.LEVEL,TraderRequirement.Operator.GE,2);
+        check(!ll.matches(1,1000));check(ll.matches(2,0));
+        var rep=new TraderRequirement("fence",TraderRequirement.Kind.REPUTATION,TraderRequirement.Operator.LT,-1000);
+        check(rep.matches(1,-1001));check(!rep.matches(1,-1000));
+        String refA="aaaaaaaaaaaaaaaaaaaaaaaa",refB="bbbbbbbbbbbbbbbbbbbbbbbb";
+        var first=new Objective("find","find-stock-fir:"+refA+","+refB,1,Scope.CAMPAIGN,false);
+        var firGive=new Objective("fir","turnin-fir:"+refB+","+refA,1,Scope.CAMPAIGN,false);
+        var anyGive=new Objective("any","turnin-any:"+refA,1,Scope.CAMPAIGN,false);
+        check(StockObjectives.valid(List.of(first,anyGive,firGive)));
+        check(!StockObjectives.valid(List.of(first,anyGive)));
+        var mixed=List.of(StockObjectives.demand(firGive),StockObjectives.demand(anyGive));
+        check(TurnInPlanner.plan(Map.of(StockObjectives.key(refA,true),1),mixed)==null);
+        check(TurnInPlanner.plan(Map.of(StockObjectives.key(refA,true),1,StockObjectives.key(refA,false),1),mixed)
+            .equals(Map.of(StockObjectives.key(refA,true),1,StockObjectives.key(refA,false),1)));
         System.out.println("Campaign graph, turn-in and quest-item checks passed");
     }
 }
