@@ -121,8 +121,9 @@ def normalize_gates(q, current):
                                     "operator":operations[r["compareMethod"]],"value":int(value)})
     dialogue=None
     for r in q.get("otherRequirements") or []:
-        if r["type"]=="dialogue" and r.get("traders")==[q["trader"]]:
-            dialogue=TRADERS[q["trader"]]
+        if r["type"]=="dialogue":
+            # Intentional EFM adaptation: direct merchant interaction, no dialogue gate.
+            continue
         else:
             blockers.add("unsupported-"+r["type"]+"-requirement")
     return {"prerequisites":prerequisites,"traderRequirements":trader_requirements,"dialogueTrader":dialogue},blockers
