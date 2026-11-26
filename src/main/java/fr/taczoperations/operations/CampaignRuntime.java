@@ -257,7 +257,12 @@ final class CampaignRuntime {
         if(!ForestRaid.isParticipant(p)||!p.isAlive())return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId()))return null;
-            return record(s,"kill",map,role,enemy,escortOf)?s:null;
+            boolean reset=false;
+            if(role!=GuardRole.PMC&&role!=GuardRole.KNIGHT&&role!=GuardRole.BIG_PIPE&&role!=GuardRole.BIRDEYE)
+                reset|=s.player().resetActive("66631489acf8442f8b05319f");
+            if(role.boss())reset|=s.player().resetActive("6663149196a9349baa021baa");
+            if(reset)say(p,"Défi de chasse : progression remise à zéro après une élimination interdite.");
+            return (record(s,"kill",map,role,enemy,escortOf)|reset)?s:null;
         });
     }
     static boolean resetFailedRaidChallenges(CampaignGraph.Player player){
@@ -332,6 +337,7 @@ final class CampaignRuntime {
             case "bear"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==1;
             case "boss"->role.boss();
             case "reshala_escort"->"RESHALA".equals(escortOf)&&!role.boss();
+            case "boss_escort"->!role.boss()&&Set.of("RESHALA","GLUKHAR","TRACKER","KABAN","KOLLONTAY","SANITAR").contains(escortOf);
             case "goons"->role==GuardRole.KNIGHT||role==GuardRole.BIG_PIPE||role==GuardRole.BIRDEYE;
             case "scav"->role==GuardRole.RAIDER||role==GuardRole.SCOUT||role==GuardRole.SOLDIER||role==GuardRole.MARKSMAN;
             default->parts[2].equals(role.name().toLowerCase(Locale.ROOT));
@@ -368,7 +374,7 @@ final class CampaignRuntime {
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else if(parts[0].equals("quest-find-adapted")){
                 if(parts.length!=4||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")||
@@ -384,7 +390,7 @@ final class CampaignRuntime {
             }else if(parts[0].equals("kill")){
                 if(parts.length!=3||o.scope()!=Scope.CAMPAIGN)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else return false;
             combat++;
