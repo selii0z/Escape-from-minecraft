@@ -98,3 +98,12 @@ apply from: 'gradle/skill-art.gradle'
 apply from: 'gradle/campaign-art.gradle'
 apply from: 'gradle/enemy-art.gradle'
 apply from: 'gradle/verify-assets.gradle'
+
+// Standalone campaign regression suite, executed by check without JUnit discovery.
+tasks.named('test') { failOnNoDiscoveredTests = false }
+tasks.register('campaignGraphTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'fr.taczoperations.campaign.CampaignGraphTest'
+}
+tasks.named('check') { dependsOn tasks.named('campaignGraphTest') }
