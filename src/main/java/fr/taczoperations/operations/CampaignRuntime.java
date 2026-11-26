@@ -380,10 +380,7 @@ final class CampaignRuntime {
             var trader=CampaignTrader.byId(req.trader());
             if(!req.matches(CampaignTraderAccount.loyalty(p,trader),CampaignTraderAccount.reputation(p,trader)))return false;
         }
-        String dialogue=CATALOG.meta().get(id).dialogue();
-        if(dialogue!=null&&!SupplyContract.account(p).getBoolean("campaign_dialogue_"+dialogue))return false;
-        if(id.equals(INTRO)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_mechanic"))return false;
-        if(id.equals(ULTRA)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_ragman"))return false;
+        // EFM uses direct quest acceptance; dialogue is not a progression requirement.
         return !id.equals(REVEALED)||CampaignTraderAccount.loyalty(p,CampaignTrader.THERAPIST)>=2;
     }
     private static net.minecraft.core.BlockPos sitePos(QuestSite site){
@@ -491,7 +488,7 @@ final class CampaignRuntime {
         if(!accessible(p))return 0;
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
-            if(!eligible(p,id)){say(p,"Marchand, dialogue ou fidélité requis. Consulte /efm marchands.");return 0;}
+            if(!eligible(p,id)){say(p,"Marchand ou fidélité requis. Consulte /efm marchands.");return 0;}
             if(id.equals(SEARCH)&&p.getInventory().getFreeSlot()<0){say(p,"Libère une case pour la boussole.");return 0;}
             if(!s.player().accept(id,level(p))){say(p,"Quête indisponible ou déjà acceptée.");return 0;}
             CampaignStorage.save(p,CATALOG.revision(),s);
