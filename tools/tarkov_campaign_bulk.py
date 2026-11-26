@@ -189,6 +189,99 @@ def stock_draft(q, mapped, current):
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
             "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
             "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],**gates,"blockers":sorted(blockers)}
+MAP_ADAPTERS = {
+    "55f2d3fd4bdc2d5f408b4567":"factory", "56f40101d2720b2a4d8b45d6":"customs",
+    "5704e3c2d2720bac5b8b4567":"woods", "5714dbc024597771384a510d":"interchange",
+    "5714dc692459777137212e12":"streets", "59fc81d786f774390775787e":"factory",
+}
+TARGET_ADAPTERS = {
+    frozenset(["Any"]):"any", frozenset(["AnyPmc"]):"pmc",
+    frozenset(["Savage","Marksman","assaultGroup"]):"scav",
+    frozenset(["bossBoar"]):"kaban", frozenset(["bossKolontay"]):"kollontay",
+    frozenset(["bossKilla"]):"killa", frozenset(["bossTagilla"]):"foreman",
+    frozenset(["bossBully"]):"reshala", frozenset(["bossKojaniy"]):"tracker",
+    frozenset(["bossGluhar"]):"glukhar", frozenset(["bossSanitar"]):"sanitar",
+    frozenset(["bossKnight"]):"knight", frozenset(["followerBigPipe"]):"big_pipe",
+    frozenset(["followerBirdEye"]):"birdeye", frozenset(["bossPartisan"]):"partisan",
+}
+def display_name(q):
+    import re
+    name=q.get("name")
+    if name and not re.fullmatch(r"[0-9a-f]{24} name",name):
+        return name
+    # The mirror's name fields are untranslated localization keys.
+    return q["normalizedName"].replace("-"," ").title()
+
+def combat_objective(o):
+    blockers=set()
+    maps=o.get("maps") or []
+    if not set(maps)<=MAP_ADAPTERS.keys():
+        blockers.add("map-not-implemented")
+    if "59fc81d786f774390775787e" in maps and "55f2d3fd4bdc2d5f408b4567" not in maps:
+        blockers.add("night-factory-only")
+    map_value=",".join(sorted({MAP_ADAPTERS[m] for m in maps if m in MAP_ADAPTERS})) if maps else "*"
+    if not isinstance(o.get("count"),int) or o["count"]<1 or o.get("optional") is not False:
+        blockers.add("invalid-or-optional-combat-objective")
+    basic={"id","description","type","count","optional","maps"}
+    if o["type"]=="shoot":
+        known=basic|{"shotType","bodyParts","usingWeapon","usingWeaponMods","distance","timeFromHour","timeUntilHour",
+                      "wearing","notWearing","enemyHealthEffect","targetNames","playerHealthEffect","zones","effects"}
+        if set(o)-known:blockers.add("unknown-combat-predicate")
+        if o.get("shotType")!="kill":blockers.add("hit-tracking-required")
+        for key in ("bodyParts","usingWeapon","usingWeaponMods","timeFromHour","timeUntilHour","wearing",
+                    "notWearing","enemyHealthEffect","playerHealthEffect","zones","effects"):
+            if o.get(key):blockers.add("combat-"+key)
+        if o.get("distance") not in (None,{"value":0,"compareMethod":">="}):
+            blockers.add("distance-restriction")
+        role=TARGET_ADAPTERS.get(frozenset(o.get("targetNames") or []))
+        if role is None:blockers.add("unmapped-target")
+        event="kill:"+map_value+":"+(role or "unsupported")
+        scope="CAMPAIGN"
+        label="Éliminer "+({"any":"des ennemis","pmc":"des PMC","scav":"des Scavs"}.get(role,role or "cible à adapter"))
+    else:
+        if set(o)-(basic|{"exitStatus","exitName","healthEffect","bodyParts","effects"}):
+            blockers.add("unknown-extraction-predicate")
+        if any(o.get(k) for k in ("exitName","healthEffect","bodyParts","effects")):
+            blockers.add("specific-extraction-condition")
+        # EFM only reports successful extraction, not run-through or map transitions.
+        statuses=set(o.get("exitStatus") or [])
+        if statuses!={"ExpBonusSurvived"}:blockers.add("unsupported-extraction-status")
+        event="extract:"+map_value
+        scope="SURVIVING_RAID"
+        label="Extractions réussies"
+    if maps:label+=" · "+map_value
+    return {"id":o["id"],"type":event,"amount":o.get("count"),"scope":scope,
+            "optional":o.get("optional",False),"label":label},blockers
+
+def combat_draft(q,mapped,current):
+    objectives=q["objectives"]
+    # Reuse the stock validator for rewards and other gates, even when there is no handover.
+    stock=[o for o in objectives if o["type"] in STOCK]
+    d=stock_draft(dict(q,objectives=stock),mapped,current)
+    blockers=set(d["blockers"])
+    if not stock:blockers.discard("no-handover")
+    for o in objectives:
+        if o["type"] not in STOCK:
+            translated,errors=combat_objective(o)
+            d["objectives"].append(translated);blockers.update(errors)
+    if q.get("neededKeys"):blockers.add("required-key")
+    d.update({"adapter":"bulk-combat-v1","blockers":sorted(blockers)})
+    return d
+
+def test_combat_adapter():
+    o={"id":"x","type":"shoot","count":1,"optional":False,"shotType":"kill",
+       "targetNames":["bossBoar"],"maps":["5714dc692459777137212e12"],
+       "distance":{"value":0,"compareMethod":">="}}
+    result,errors=combat_objective(o)
+    assert not errors and result["type"]=="kill:streets:kaban"
+    assert "combat-usingWeapon" in combat_objective(dict(o,usingWeapon=["test"]))[1]
+    assert "map-not-implemented" in combat_objective(dict(o,maps=["missing"]))[1]
+    e={"id":"e","type":"extract","count":1,"optional":False,"maps":[],"exitStatus":["ExpBonusSurvived"]}
+    result,errors=combat_objective(e)
+    assert not errors and result["type"]=="extract:*" and result["scope"]=="SURVIVING_RAID"
+    assert "specific-extraction-condition" in combat_objective(dict(e,exitName="gate"))[1]
+    assert "unsupported-extraction-status" in combat_objective(dict(e,exitStatus=["marathon Name"]))[1]
+
 def activate_stock_batch(tasks,current,mapped,dependencies,out):
     """Build a separate development catalogue; never alter checked-in quests.
     Only exact, supported handovers with all gates and rewards represented qualify."""
@@ -200,12 +293,13 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out):
     names={slug(q["name"]) for q in current.values()}
     pending={qid:q for qid,q in tasks.items() if qid not in current and
              qid!="5c51aac186f77432ea65c552" and q["objectives"] and
-             {o["type"] for o in q["objectives"]}<=STOCK}
+             {o["type"] for o in q["objectives"]}<=CORE}
     installed=[]
     while True:
         changed=False
         for qid,q in sorted(pending.items()):
-            d=stock_draft(q,mapped,ready)
+            kinds={o["type"] for o in q["objectives"]}
+            d=stock_draft(q,mapped,ready) if kinds<=STOCK else combat_draft(q,mapped,ready)
             dep=dependencies["quests"][qid]
             if d["blockers"] or dep["errors"] or d["prerequisites"]!=dep["groups"]:
                 continue
@@ -216,20 +310,22 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out):
                 continue
             if not re.fullmatch(r"[0-9a-f]{24}",qid) or any(
                 not re.fullmatch(r"[0-9a-f]{24}",ref)
-                for o in d["objectives"] for ref in o["type"].split(":",1)[1].split(",")):
+                for o in d["objectives"] if o["type"].startswith(("turnin-","find-stock-"))
+                for ref in o["type"].split(":",1)[1].split(",")):
                 continue
             reward={k:d["reward"][k] for k in ("credits","xp","reputation")}
             if any(not isinstance(v,int) or not 0<=v<=2147483647 for v in reward.values()):
                 continue
-            name=q.get("name") or d["name"]
+            name=display_name(q)
             if not slug(name) or slug(name) in names:
                 continue
             # Explicitly limit this batch to the existing stock adapter.
             row={**d,"name":name,"reward":reward,"implemented":True,
-                 "review":"approved","approvalMethod":"strict-stock-v2",
+                 "review":"approved","approvalMethod":"strict-core-v1",
                  "reference":{"level":q.get("minPlayerLevel"),"experience":q.get("experience"),
                               "reward":d["reward"]}}
             for o in row["objectives"]:
+                if "label" in o:continue
                 mode="trouvé en raid" if "-fir:" in o["type"] else "toute provenance"
                 o["label"]=("Trouver" if o["type"].startswith("find-stock-") else "Remettre")+" ("+mode+")"
             result[qid]=row
@@ -274,7 +370,7 @@ def export_install_catalog(tasks,current,stock,dependencies,manifest,out):
     rows=[]
     for qid,q in sorted(tasks.items()):
         kinds=Counter(o.get("type","unknown") for o in q["objectives"])
-        rows.append({"id":qid,"name":q.get("name") or q["normalizedName"],"trader":TRADERS[q["trader"]],
+        rows.append({"id":qid,"name":display_name(q),"trader":TRADERS[q["trader"]],
                      "level":max(1,q.get("minPlayerLevel") or 0),
                      "kappa":q.get("kappaRequired") is True or qid=="5c51aac186f77432ea65c552",
                      "objectiveKinds":dict(sorted(kinds.items())),
@@ -362,13 +458,14 @@ def build(snapshot,out,resources):
                     "kappaDependencyClosure":len(dependencies["kappa"]["dependencyClosure"]),
                     "kappaQuestsMissingFromGameplay":len(dependencies["kappa"]["missingFromGameplay"])})
     summary["bulkInstallCandidates"]=export_install_catalog(tasks,current,stock,dependencies,manifest,out)
-    summary["automaticallyActivatedStock"]=activate_stock_batch(tasks,current,mapped,dependencies,out)
+    summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out)
     write(out/"bulk-summary.json",summary)
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
     test_dependencies()
     test_stock_activation()
     test_dialogue_free_gates()
+    test_combat_adapter()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
