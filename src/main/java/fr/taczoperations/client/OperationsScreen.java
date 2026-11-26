@@ -132,7 +132,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             widget(8, y, 139, 36, section.title, () -> send(section.tab),
                 () -> true, (g, hovered) -> {
                     TacticalSkin.tile(g, 12, y, 136, 34, active(section.tab), hovered);
-                    if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 5, 26);
+                    if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 4, 25);
                     text(g, section.title, 52, y + 12, 1.15F, WHITE, true);
                 });
         }
@@ -389,7 +389,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         if(questMode){
             TacticalSkin.logo(g);
             text(g,"CAMPAGNE  /",251,24,1.75F,WHITE,true);
-            text(g,campaign.merchant(),390,25,1.55F,TacticalSkin.ORANGE,true);
+            int merchantX=251+Math.round(font.width(styled("CAMPAGNE  /",true))*1.75f)+12;
+            text(g,campaign.merchant(),merchantX,25,1.55F,TacticalSkin.ORANGE,true);
             campaign.draw(g,(mouseX-offsetX)/scale,(mouseY-offsetY)/scale);
             g.pose().popPose();return;
         }

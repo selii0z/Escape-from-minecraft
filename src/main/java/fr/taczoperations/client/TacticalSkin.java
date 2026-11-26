@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 /** Shared tactical styling; source atlas contains cropped artwork from the approved EFM concept. */
 final class TacticalSkin {
     private static final ResourceLocation ATLAS=ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/tactical_concept.png");
+    private static final ResourceLocation SURFACE=ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/tactical_surfaces.png");
     static final int ORANGE=0xffee9e43,PALE=0xffe6d9c4,EDGE=0xff716d64;
     static void cut(GuiGraphics g,int x,int y,int w,int h,int color){
         g.fill(x+3,y,x+w-3,y+h,color);g.fill(x,y+3,x+w,y+h-3,color);
@@ -35,6 +36,7 @@ final class TacticalSkin {
         cut(g,3,3,830,444,0xff383735);outline(g,3,3,830,444,0xffa19b90);
         cut(g,6,6,824,438,0xff242424);outline(g,6,6,824,438,0xff5d5954);
         panel(g,9,71,144,370);
+        g.blit(SURFACE,13,367,136,68,0,24,64,40,192,64);
         // Fixed low-cost surface detail: no per-frame random generation or texture allocations.
         for(int i=0;i<40;i++){int x=12+(i*83)%805,y=8+(i*47)%430;
             if(x<151||y<63||y>438)g.fill(x,y,x+2+(i%5),y+1,0x247f7469);}
@@ -44,7 +46,9 @@ final class TacticalSkin {
         }
     }
     static void logo(GuiGraphics g){
+        g.blit(SURFACE,420,9,390,49,0,0,192,24,192,64);
         g.blit(ATLAS,12,8,224,53,0,0,128,27,128,48);
+        stripes(g,774,22,0xffb36b30);
         g.fill(236,58,760,59,0xffb06b2e);g.fill(236,59,760,60,0xff56361c);
     }
     static boolean portrait(GuiGraphics g,int trader,int x,int y,int size){

@@ -28,7 +28,8 @@ public final class CampaignDashboard {
     private static final int ROWS=7, LIST_X=167,LIST_Y=178,LIST_W=292,ROW=31,DETAIL_X=480,DETAIL_Y=259,DETAIL_W=330,DETAIL_ROWS=4;
     private static final String[] FILTERS={"Toutes","Disponibles","En cours","Terminées","Verrouillées"};
     private static final int[] FILTER_W={43,58,49,52,68};
-    private static final int TRADER_W=90, TRADER_STEP=94, TRADER_VISIBLE=7;
+    private static final int TRADER_W=88, TRADER_STEP=92, TRADER_VISIBLE=7;
+    private static final int[] TRADER_ORDER={0,1,2,4,7,3,6,5,8,9,10};
     private final int menuId;
     private final HashMap<Integer,CampaignTabData> cache=new HashMap<>();
     private int trader,filter,scroll,detailScroll,traderStart,rewardScroll;
@@ -140,17 +141,17 @@ public final class CampaignDashboard {
         if(waiting&&System.nanoTime()-askedAt>10_000_000_000L){waiting=false;message="Actualise pour relancer le chargement.";}
         TacticalSkin.panel(g,157,65,667,43);TacticalSkin.panel(g,157,112,305,326);TacticalSkin.panel(g,467,112,357,326);
         var loyalties=last==null?List.<Integer>of():last.loyalties();
-        int end=Math.min(CampaignTrader.values().length,traderStart+TRADER_VISIBLE);
-        for(int i=traderStart;i<end;i++){
-            int bx=mx(i);
+        int end=Math.min(TRADER_ORDER.length,traderStart+TRADER_VISIBLE);
+        for(int slot=traderStart;slot<end;slot++){
+            int i=TRADER_ORDER[slot],bx=mx(slot);
             tile(g,bx,70,TRADER_W,33,i==trader,hit(x,y,bx,70,TRADER_W,33));
             if(!TacticalSkin.portrait(g,i,bx+4,74,25))item(g,new ItemStack(ICONS[i]),bx+6,76,1.25f);
-            text(g,fit(CampaignTrader.values()[i].title,69,true),bx+31,77,.86f,WHITE,true);
+            text(g,fit(CampaignTrader.values()[i].title,64,true),bx+31,77,.86f,WHITE,true);
             if(i<loyalties.size())text(g,loyalties.get(i)==0?"Verrouillé":"Fidélité "+loyalties.get(i),bx+31,89,.70f,loyalties.get(i)==0?SOFT:ORANGE,false);
         }
         // The entire merchant list is available with the mouse wheel; compact arrows overlay the outer gutter.
         if(traderStart>0)text(g,"‹",160,82,1.05f,ORANGE,true);
-        if(end<CampaignTrader.values().length)text(g,"›",817,82,1.05f,ORANGE,true);
+        if(end<CampaignTrader.values().length)text(g,"›",812,82,1.05f,ORANGE,true);
         text(g,"Quêtes de "+merchant(),169,121,1.35f,GOLD,true);
         var d=data();
         if(d!=null){long done=d.quests().stream().filter(q->q.status().equals("Terminée")).count();
@@ -175,8 +176,8 @@ public final class CampaignDashboard {
         button(g,"Réserve",168,408,68,22,x,y,!waiting,false);
         button(g,"Offres débloquées",240,408,122,22,x,y,!waiting,false);
         button(g,"Actualiser",366,408,83,22,x,y,!waiting,false);
-        if(last!=null)text(g,last.inbox()+" objet(s) en réserve",168,443,.9F,SOFT,false);
-        if(waiting)text(g,"Synchronisation…",480,443,.95F,ORANGE,false);else if(!message.isEmpty())text(g,fit(message,330,false),480,443,.95F,GOLD,false);
+        if(last!=null)text(g,last.inbox()+" objet(s) en réserve",168,439,.85F,SOFT,false);
+        if(waiting)text(g,"Synchronisation…",480,439,.85F,ORANGE,false);else if(!message.isEmpty())text(g,fit(message,330,false),480,443,.95F,GOLD,false);
     }
     private record Detail(String label,int color,float progress){}
     private static String[] rewardStats(CampaignTabData.Quest q){
@@ -260,8 +261,9 @@ public final class CampaignDashboard {
     boolean click(double x,double y){
         if(x<157)return false;
         if(hit(x,y,157,65,12,43)){shiftTraders(-1);return true;}
-        if(hit(x,y,815,65,13,43)){shiftTraders(1);return true;}
-        for(int i=traderStart;i<Math.min(CampaignTrader.values().length,traderStart+TRADER_VISIBLE);i++)if(hit(x,y,mx(i),70,TRADER_W,33)){
+        if(hit(x,y,809,65,19,43)){shiftTraders(1);return true;}
+        for(int slot=traderStart;slot<Math.min(TRADER_ORDER.length,traderStart+TRADER_VISIBLE);slot++)if(hit(x,y,mx(slot),70,TRADER_W,33)){
+            int i=TRADER_ORDER[slot];
             if(i!=trader&&!waiting){trader=i;scroll=detailScroll=rewardScroll=0;selected="";message="";if(cache.containsKey(i))ensureSelection();else request(0,"");}return true;
         }
         int fx=167;
