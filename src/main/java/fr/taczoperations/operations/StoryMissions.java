@@ -122,6 +122,13 @@ public final class StoryMissions {
     }
     static void clear(ServerPlayer p){p.getPersistentData().remove(RUN);}
     public static void commands(RegisterCommandsEvent event){
+        event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("campagne")
+            .executes(ctx->CampaignRuntime.status(ctx.getSource().getPlayerOrException()))
+            .then(Commands.literal("accepter").then(Commands.literal("debut")
+                .executes(ctx->CampaignRuntime.acceptDebut(ctx.getSource().getPlayerOrException()))))
+            .then(Commands.literal("recompense").then(Commands.literal("debut")
+                .executes(ctx->CampaignRuntime.claimDebut(ctx.getSource().getPlayerOrException()))))));
+
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("marchands")
             .executes(ctx->CampaignCommerce.list(ctx.getSource().getPlayerOrException()))
             .then(Commands.argument("marchand",com.mojang.brigadier.arguments.StringArgumentType.word())
