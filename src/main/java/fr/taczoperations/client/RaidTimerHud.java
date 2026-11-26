@@ -42,7 +42,7 @@ public final class RaidTimerHud {
         if(!valid(mc)||state==null||mc.options.hideGui)return;
         if(System.nanoTime()-updated>3_500_000_000L)return;
         var express=fr.taczoperations.worldgen.ExpressZone.at(mc.player.getBlockX(),mc.player.getBlockZ());
-        int max=express!=null?900:state.industrial()?1800:2700;
+        int max=express!=null?express.minutes()*60:state.industrial()?1800:2700;
         int seconds=Math.clamp(state.seconds(),0,max);
         int w=RaidHudSettings.width(RaidHudSettings.Panel.TIMER);
         // Prefer the upper center; at small GUI sizes keep clear of the injury column.
@@ -53,7 +53,7 @@ public final class RaidTimerHud {
         var g=event.getGuiGraphics();
         g.fill(x,y,x+width,y+28,RaidHudSettings.bg(RaidHudSettings.Panel.TIMER,0xca171d18));
         g.fill(x,y,x+2,y+28,color);
-        String label=express!=null?switch(express){case BUNKER->"EXPRESS · BUNKER";case WAREHOUSE->"EXPRESS · ENTREPÔT";case VILLAGE->"EXPRESS · VILLAGE";}:state.industrial()?"ZONE INDUSTRIELLE":"FORÊT NOIRE";
+        String label=express!=null?switch(express){case BUNKER->"EXPRESS · BUNKER";case WAREHOUSE->"EXPRESS · ENTREPÔT";case VILLAGE->"EXPRESS · VILLAGE";case CITY->"ZOMBIEPOLIS";}:state.industrial()?"ZONE INDUSTRIELLE":"FORÊT NOIRE";
         g.drawCenteredString(mc.font,label,x+width/2,y+3,0xffd3dbcc);
         String clock=String.format(java.util.Locale.ROOT,"%02d:%02d",seconds/60,seconds%60);
         g.drawCenteredString(mc.font,clock,x+width/2,y+14,color);
