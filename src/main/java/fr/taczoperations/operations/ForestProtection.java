@@ -10,6 +10,13 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 public final class ForestProtection {
     private static final ThreadLocal<BlockPos> RAID_EDIT = new ThreadLocal<>();
 
+    // Only the dedicated renovation routine may edit fixed extraction footprints.
+    static boolean setExtractionBlock(ServerLevel level,BlockPos pos,BlockState state){
+        if(!level.dimension().equals(ForestExpedition.FOREST)||!ExtractionRenovation.allowed(pos)||!level.hasChunkAt(pos)||level.getBlockEntity(pos)!=null)return false;
+        RAID_EDIT.set(pos);
+        try{return level.getBlockState(pos).equals(state)||level.setBlock(pos,state,2);}finally{RAID_EDIT.remove();}
+    }
+
     static boolean setRaidContainer(ServerLevel level, BlockPos pos, BlockState state) {
         RAID_EDIT.set(pos);
         try {
@@ -35,7 +42,7 @@ public final class ForestProtection {
         return fr.taczoperations.worldgen.ForestVaults.door(pos)||fr.taczoperations.worldgen.IndustrialZone.VAULTS.stream().anyMatch(v->pos.equals(v.door())||pos.equals(v.door().above()));
     }
     public static boolean allowsRaidContainer(BlockPos pos, BlockState state) {
-        return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.getBlock() instanceof RaidFurnitureBlock || state.isAir() || state.is(Blocks.IRON_BLOCK)&&vaultDoor(pos));
+        return pos.equals(RAID_EDIT.get()) && (ExtractionRenovation.allowed(pos) || state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.getBlock() instanceof RaidFurnitureBlock || state.isAir() || state.is(Blocks.IRON_BLOCK)&&vaultDoor(pos));
     }
 
     public static void onBreak(BlockEvent.BreakEvent event) {
