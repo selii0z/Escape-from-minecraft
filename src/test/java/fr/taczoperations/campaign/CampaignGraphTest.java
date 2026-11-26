@@ -109,6 +109,19 @@ public final class CampaignGraphTest {
         var changed=new CampaignGraph(List.of(q("stable",List.of(),List.of(
             new Objective("kills","kill",4,Scope.CAMPAIGN,false),loot),Set.of(),true)));
         check(!oldPlayer.definitionFingerprint("stable").equals(changed.definitionFingerprint("stable")));
-        System.out.println("Campaign graph, turn-in, quest-item and upgrade checks passed");
+        // Multiple deposits at each distinct site must survive subsequent raids.
+        var deposits=new CampaignGraph(List.of(q("deposit",List.of(),List.of(
+            new Objective("site-a","plant:customs",3,Scope.CAMPAIGN,false),
+            new Objective("site-b","plant:woods",3,Scope.CAMPAIGN,false)),Set.of(),true)));
+        var depositor=deposits.newPlayer();check(depositor.accept("deposit",1));
+        for(int i=0;i<3;i++){depositor.beginRaid();check(depositor.record("deposit","site-a",1));depositor.endRaid(i!=1);}
+        check(depositor.snapshot().get("deposit").counters().get("site-a")==3);
+        check(depositor.state("deposit",1)==State.ACTIVE);
+        depositor=deposits.restore(depositor.snapshot());
+        depositor.beginRaid();check(depositor.record("deposit","site-b",2));depositor.endRaid(true);
+        check(!depositor.complete("deposit",1));
+        depositor.beginRaid();check(depositor.record("deposit","site-b",1));depositor.endRaid(true);
+        check(depositor.complete("deposit",1));check(!depositor.complete("deposit",1));
+        System.out.println("Campaign graph, turn-in, quest-item, field deposit and upgrade checks passed");
     }
 }
