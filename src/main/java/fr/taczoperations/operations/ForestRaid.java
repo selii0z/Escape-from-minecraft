@@ -1554,6 +1554,8 @@ public final class ForestRaid extends SavedData {
             DetailedStats.kill(killer,role);
             StoryMissions.kill(killer,role);
             CampaignRuntime.kill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role,guard.getUUID(),guard.getPersistentData().getString("efm_campaign_escort_of"));
+            if(RaidGrenade.credited(event.getSource().getDirectEntity(),killer,raid.id))
+                CampaignRuntime.grenadeKill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role,guard.getUUID(),guard.getPersistentData().getString("efm_campaign_escort_of"));
             PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
