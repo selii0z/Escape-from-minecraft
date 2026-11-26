@@ -1598,6 +1598,8 @@ public final class ForestRaid extends SavedData {
             corpse.put(26,CampaignSupplies.bossTrophy(role,guard.getRandom()));
             corpse.put(24,CampaignSupplies.bossEquipmentTrophy(role));
         }
+        if(role==GuardRole.CULTIST_PRIEST||"CULTIST_PRIEST".equals(guard.getPersistentData().getString("efm_campaign_escort_of")))
+            corpse.put(24,CampaignSupplies.cultistTrophy(role,guard.getPersistentData().getString("efm_campaign_escort_of")));
         if(role==GuardRole.PMC)corpse.put(25,MilitaryTag.create(guard,event.getSource().getEntity() instanceof ServerPlayer p&&raid.owns(p)?p:null));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25){
             int tier=guard.getRandom().nextInt(100)<12?4:guard.getRandom().nextInt(3);
