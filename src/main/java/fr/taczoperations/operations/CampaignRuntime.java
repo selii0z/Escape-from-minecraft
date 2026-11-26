@@ -21,12 +21,17 @@ final class CampaignRuntime {
     private static final String REVEALED="669fa39ee749756c920d02c8";
     private static final String SAMPLE_FIND="669fb6c859bdae826f7325d4";
     private static final String SAMPLE_GIVE="66a7eebed6bac3ecc16f7d6b";
+    private static final String SEARCH="5fd9fad9c1ce6b1a3b486d00", CHEMICAL="5a27bafb86f7741c73584017";
+    private static final String CONVOY="5fd9fad9c1ce6b1a3b486d03", CAMP="5fd9fad9c1ce6b1a3b486d05";
+    private static final String DEPOSIT="6a5c10e883a51e292d11b976", HOSE="59e35cbb86f7741778269d83";
     private record Catalog(CampaignGraph graph,String revision){}
     private record Reward(int credits,int xp,int reputation){}
     private static Reward reward(String id){
         return switch(id){
             case DEBUT->new Reward(DEBUT_CREDITS,DEBUT_XP,DEBUT_REP);
             case REVEALED->new Reward(1650,100,250);
+            case SEARCH->new Reward(800,30,100);
+            case CHEMICAL->new Reward(550,30,100);
             case FUEL->new Reward(550,30,100); // provisional: one reference USD per credit
             default->throw new IllegalArgumentException("Unreviewed reward");
         };
@@ -87,6 +92,13 @@ final class CampaignRuntime {
                     reviewed=objectives.equals(List.of(
                         new Objective(SAMPLE_FIND,"quest-find:factory:chemical-sample",1,Scope.SURVIVING_RAID,false),
                         new Objective(SAMPLE_GIVE,"quest-give:chemical-sample",1,Scope.CAMPAIGN,false)));
+                }
+                if(q.has("implemented")&&q.get("implemented").getAsBoolean()&&prereqs.isEmpty()&&conflicts.isEmpty()&&q.get("level").getAsInt()==1){
+                    if(id.equals(SEARCH)&&trader.equals("prapor"))reviewed=objectives.equals(List.of(
+                        new Objective(CONVOY,"visit:woods:convoy",1,Scope.CAMPAIGN,false),
+                        new Objective(CAMP,"visit:woods:camp",1,Scope.CAMPAIGN,false)));
+                    if(id.equals(CHEMICAL)&&trader.equals("peacekeeper"))reviewed=objectives.equals(List.of(
+                        new Objective(DEPOSIT,"plant:customs:medical-deposit:"+HOSE,1,Scope.CAMPAIGN,false)));
                 }
                 quests.add(new Quest(id,trader,q.get("level").getAsInt(),prereqs,objectives,conflicts,reviewed));
             }
@@ -165,7 +177,46 @@ final class CampaignRuntime {
         }
         return Set.copyOf(refs);
     }
-    private static String label(String id){return id.equals(DEBUT)?"Debut":id.equals(FUEL)?"Fuel Shortage":id.equals(REVEALED)?"All Is Revealed":id;}
+    private static String label(String id){return switch(id){case DEBUT->"Debut";case FUEL->"Fuel Shortage";case REVEALED->"All Is Revealed";case SEARCH->"Search Mission";case CHEMICAL->"Chemical Experiments";default->id;};}
+    private static boolean near(ServerPlayer p,net.minecraft.core.BlockPos pos,int radius){
+        return pos.distToCenterSqr(p.position())<=radius*radius;
+    }
+    static void visit(ServerPlayer p,UUID raidId,String map){
+        if(CATALOG==null||!map.equals("woods")||!ForestRaid.canContinue(p)||!p.isAlive())return;
+        String objective=near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(484,570)),12)?CONVOY:
+            near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(645,225)),20)?CAMP:null;
+        if(objective==null)return;
+        change(p,raidId,s->{
+            if(!raidId.equals(s.raidId())||s.player().state(SEARCH,level(p))!=State.ACTIVE)return null;
+            var progress=s.player().snapshot().get(SEARCH);
+            if(progress.counters().getOrDefault(objective,0)>0)return null;
+            if(!s.player().record(SEARCH,objective,1))return null;
+            say(p,objective.equals(CONVOY)?"Search Mission · convoi localisé.":"Search Mission · camp localisé.");
+            return s;
+        });
+    }
+    static int plant(ServerPlayer p,UUID raidId,String map){
+        if(CATALOG==null||raidId==null||!map.equals("customs")||!ForestRaid.canContinue(p)||!p.isAlive()||p.isCreative()||p.isSpectator())return 0;
+        var pos=new net.minecraft.core.BlockPos(fr.taczoperations.worldgen.IndustrialZone.ORIGIN+95,fr.taczoperations.worldgen.IndustrialZone.FLOOR+1,fr.taczoperations.worldgen.IndustrialZone.ORIGIN+425);
+        if(!near(p,pos,3)){say(p,"Rejoins le dépôt dans le bâtiment logistique ouest.");return 0;}
+        try{
+            var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
+            if(!raidId.equals(s.raidId())||s.player().state(CHEMICAL,level(p))!=State.ACTIVE)return 0;
+            var progress=s.player().snapshot().get(CHEMICAL);
+            if(progress.counters().getOrDefault(DEPOSIT,0)>0)return 0;
+            var storage=CarriedStorage.of(p);
+            if(storage.count(stack->CampaignSupplies.matches(stack,HOSE))<1){say(p,"Tuyau annelé requis.");return 0;}
+            if(!s.player().record(CHEMICAL,DEPOSIT,1))return 0;
+            if(!storage.consume(stack->CampaignSupplies.matches(stack,HOSE),1))return 0;
+            CampaignStorage.save(p,CATALOG.revision(),s);
+            say(p,"Chemical Experiments · tuyau déposé.");
+            return 1;
+        }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign plant failed",e);return 0;}
+    }
+    static int acceptSearch(ServerPlayer p){return accept(p,SEARCH);}
+    static int claimSearch(ServerPlayer p){return claim(p,SEARCH);}
+    static int acceptChemical(ServerPlayer p){return accept(p,CHEMICAL);}
+    static int claimChemical(ServerPlayer p){return claim(p,CHEMICAL);}
     private static boolean eligible(ServerPlayer p,String id){
         return !id.equals(REVEALED)||CampaignTraderAccount.loyalty(p,CampaignTrader.THERAPIST)>=2;
     }
@@ -211,7 +262,7 @@ final class CampaignRuntime {
                     var refs=turnInRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)
                         count=CarriedStorage.of(p).count(stack->RaidOrigin.found(stack)&&CampaignSupplies.reference(stack).filter(refs::contains).isPresent());
-                    String title=o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
+                    String title=o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
                     say(p,title+" : "+Math.min(count,o.amount())+"/"+o.amount());
                 }
                 if(q.id().equals(REVEALED))say(p,"Bunker · salle nord-ouest · fidélité Therapist 2 · /efm campagne fouiller à proximité.");
@@ -227,8 +278,10 @@ final class CampaignRuntime {
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
             if(!eligible(p,id)){say(p,"Fidélité 2 auprès de Therapist requise.");return 0;}
+            if(id.equals(SEARCH)&&p.getInventory().getFreeSlot()<0){say(p,"Libère une case pour la boussole.");return 0;}
             if(!s.player().accept(id,level(p))){say(p,"Quête indisponible ou déjà acceptée.");return 0;}
             CampaignStorage.save(p,CATALOG.revision(),s);
+            if(id.equals(SEARCH))p.getInventory().add(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COMPASS));
             say(p,label(id)+" acceptée.");
             return 1;
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign accept failed",e);return 0;}
