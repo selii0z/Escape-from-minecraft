@@ -51,8 +51,9 @@ public final class RaidExitHud {
         g.fill(x,y,x+width,y+17,RaidHudSettings.bg(RaidHudSettings.Panel.EXITS,0xca171d18));
         g.drawString(mc.font,"EXTRACTIONS",x+7,y+5,0xffd3dbcc,false);
         y+=19;
-        row(g,mc,x,y,width,"Principale",RaidExitPayload.OPEN,state.primaryDistance());y+=25;
-        row(g,mc,x,y,width,state.industrial()?"Clé industrielle":"Relais",state.secondState(),state.secondDistance());y+=25;
+        var express=fr.taczoperations.worldgen.ExpressZone.at(mc.player.getBlockX(),mc.player.getBlockZ());
+        row(g,mc,x,y,width,express!=null?"Sortie A":"Principale",RaidExitPayload.OPEN,state.primaryDistance());y+=25;
+        row(g,mc,x,y,width,express!=null?"Sortie B":state.industrial()?"Clé industrielle":"Relais",state.secondState(),state.secondDistance());y+=25;
         if(state.industrial())row(g,mc,x,y,width,"Payante · "+state.price()+" cr.",state.thirdState(),state.thirdDistance());
     }
     private static void row(GuiGraphics g,Minecraft mc,int x,int y,int w,String title,int status,int distance){
