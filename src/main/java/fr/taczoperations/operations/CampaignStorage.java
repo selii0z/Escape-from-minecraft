@@ -58,7 +58,9 @@ final class CampaignStorage {
             var pendingTag=root.getCompound("pending");
             for(var id:pendingTag.getAllKeys())if(!retired(id)||graph.quests().containsKey(id))pending.put(id,counters(pendingTag.getCompound(id)));
         }
-        return new Session(graph.restore(new Checkpoint(saved,sameRaid,pending)),sameRaid?stored:null);
+        var player=graph.restore(new Checkpoint(saved,sameRaid,pending));
+        if(stored!=null&&!sameRaid)CampaignRuntime.resetFailedRaidChallenges(player);
+        return new Session(player,sameRaid?stored:null);
     }
     static void save(ServerPlayer p,String revision,Session session){
         var cp=session.player().checkpoint();
