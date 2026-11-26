@@ -953,6 +953,10 @@ def select_efm_campaign(reference):
             # Part 6 requires unavailable attachments. Part 7 must follow the
             # completed previous compatible challenge, not merely its acceptance.
             replacement=[dict(req,status=["complete"]) if req["task"]=="5bc4836986f7740c0152911c" and set(req["status"])=={"active","complete"} else req for req in replacement]
+        if qid=="666314b2a9290f9e0806cca3" and original==[{"task":"666314b0acf8442f8b0531a1","status":["complete"]}]:
+            # The removed weapon-build part depended on The Good Times 1 being
+            # active or complete; a sequential EFM chain requires completion.
+            replacement=[dict(req,status=["complete"]) if req["task"]=="666314b4d7f171c4c20226c3" and set(req["status"])=={"active","complete"} else req for req in replacement]
         q["taskRequirements"]=replacement
         if original!=replacement:changes.append({"id":qid,"before":original,"after":replacement})
         # A kill/extraction allowed on multiple maps can be satisfied on the available subset.
