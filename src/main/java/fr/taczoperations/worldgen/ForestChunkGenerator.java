@@ -81,8 +81,8 @@ public final class ForestChunkGenerator extends ChunkGenerator {
             for (ForestPlan.Point point : ForestPlan.ENTRIES) {
                 landmark(out, point, Blocks.MOSSY_STONE_BRICKS);
             }
-            landmark(out, ForestPlan.EXTRACTION, Blocks.GOLD_BLOCK);
-            landmark(out, ForestPlan.CONDITIONAL_EXIT, Blocks.GOLD_BLOCK);
+            extraction(out,ForestPlan.EXTRACTION,ExtractionLayout.Style.FOREST);
+            extraction(out,ForestPlan.CONDITIONAL_EXIT,ExtractionLayout.Style.RELAY);
             landmark(out, ForestPlan.RELAY, Blocks.LIGHTNING_ROD);
             roadsideDetails(out);
             Heightmap.primeHeightmaps(chunk, java.util.EnumSet.of(
@@ -268,6 +268,13 @@ public final class ForestChunkGenerator extends ChunkGenerator {
                 }
             }
         }
+    }
+
+    private static void extraction(Painter out,ForestPlan.Point point,ExtractionLayout.Style style){
+        landmark(out,point,Blocks.STONE_BRICKS);
+        if(!out.intersects(point.x()-4,point.z()-4,point.x()+4,point.z()+4))return;
+        int y=ForestPlan.surfaceY(point);
+        ExtractionLayout.paint(style,(dx,dy,dz,block)->out.put(point.x()+dx,y+dy,point.z()+dz,block));
     }
 
     private static void landmark(Painter out, ForestPlan.Point point, Block marker) {
