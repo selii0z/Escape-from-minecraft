@@ -911,7 +911,7 @@ public final class ForestRaid extends SavedData {
             if (center.distToCenterSqr(player.position()) > 160.0 * 160.0 || !level.hasChunkAt(center)) continue;
             boolean pmc = raid.pmcGroups.get(group);
             Random squadRandom = new Random(raid.seed ^ (0x632BE59BD9B4E019L * (group + 1)));
-            int members = raid.express!=null?2+squadRandom.nextInt(2):2 + squadRandom.nextInt(2);
+            int members = raid.express!=null?2+(group==0?0:squadRandom.nextInt(2)):2 + squadRandom.nextInt(2);
             for (int member = 0; member < members && budget > 0; member++) {
                 int slot = group * 3 + member;
                 if (raid.enemies.get(slot)) continue;
@@ -1070,7 +1070,8 @@ public final class ForestRaid extends SavedData {
     private static BlockPos findLootFloor(ServerLevel level,BlockPos center,int radius){
         BlockPos best=null;int score=Integer.MIN_VALUE;
         for(BlockPos pos:BlockPos.withinManhattan(center,radius,0,radius)){
-            if(ExtractionRenovation.allowed(pos))continue;
+            var express=ExpressZone.at(pos.getX(),pos.getZ());
+            if(ExtractionRenovation.allowed(pos)||express!=null&&express.checkpoint(pos))continue;
             if(!level.hasChunkAt(pos)||(!ForestPlan.inside(pos.getX(),pos.getZ())&&!IndustrialZone.inside(pos.getX(),pos.getZ())&&ExpressZone.at(pos.getX(),pos.getZ())==null))continue;
             if(!level.getBlockState(pos).isAir()||!level.getBlockState(pos.above()).isAir())continue;
             var floor=level.getBlockState(pos.below());
