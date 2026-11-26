@@ -234,6 +234,11 @@ public final class ForestRaid extends SavedData {
         if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
+    static int campaignSearch(ServerPlayer player){
+        var raid=forPlayer(player);
+        if(raid==null||!isParticipant(player))return 0;
+        return CampaignRuntime.search(player,raid.id,CampaignRuntime.map(raid.industrial,raid.express));
+    }
     static void campaignEnd(ServerPlayer player,boolean survived){
         var raid=forPlayer(player);
         if(raid!=null)CampaignRuntime.end(player,raid.id,CampaignRuntime.map(raid.industrial,raid.express),survived);
