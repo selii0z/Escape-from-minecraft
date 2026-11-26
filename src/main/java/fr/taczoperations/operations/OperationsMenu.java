@@ -48,7 +48,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int TRADE_FIRST = 55, SHOP_CATEGORY_FIRST=228;
     public static final int SELL_ALL_FIRST=100, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
-    public static final int INDUSTRIAL_FIRST = 65, EXPRESS_FIRST=300;
+    public static final int INDUSTRIAL_FIRST = 65, EXPRESS_FIRST=300, SCAV_FIRST=320, SCAV_COLLECT=332;
 
     public static final int FILTER_CATEGORY = 100, FILTER_DIFFICULTY = 110, FILTER_STATUS = 120, FILTER_MERCHANT = 130;
 
@@ -355,6 +355,15 @@ public final class OperationsMenu extends AbstractContainerMenu {
             || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET || button==DETAILED_STATS) {
             tab = button;
             page = 0;
+        } else if(tab==FOREST&&button>=SCAV_FIRST&&button<SCAV_FIRST+12){
+            int mode=button-SCAV_FIRST,area=mode/2;
+            boolean night=(mode&1)!=0,industrial=area==1;
+            var express=area<2?null:fr.taczoperations.worldgen.ExpressZone.byId(area-1);
+            if(area>=2&&express==null)return false;
+            notice=ForestExpedition.departScav(serverPlayer,position,night,industrial,express);
+            if(notice.isEmpty())return true;
+        } else if(tab==FOREST&&button==SCAV_COLLECT){
+            notice=ScavRun.collect(serverPlayer);
         } else if(tab==FOREST&&button>=EXPRESS_FIRST&&button<EXPRESS_FIRST+16){
             int mode=button-EXPRESS_FIRST;
             var map=fr.taczoperations.worldgen.ExpressZone.byId(1+mode/4);
