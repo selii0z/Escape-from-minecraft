@@ -33,7 +33,7 @@ final class CampaignRuntime {
     private static final String INTRO="5d2495a886f77425cd51e403", FILTH="600302d73b897b11364cd161", ULTRA="5ae448bf86f7744d733e55ee", ACQUAINTANCE="5d24b81486f77439c92d6ba8";
     private static final String HUNT_VISIT="63ac18f4972364554162a25c", HUNT_FIND="5d249a6e86f774791546e952", HUNT_GIVE="5d249aa286f77475e8376399";
     private record QuestSite(String map,int x,int z,int radius,String title,String find,String give){}
-    private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels,String dialogue,QuestSite site,List<TraderRequirement> traderRequirements){}
+    private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels,String dialogue,QuestSite site,List<TraderRequirement> traderRequirements,Map<String,Integer> starters){}
     private record Catalog(CampaignGraph graph,String revision,Map<String,Meta> meta){}
     private record Reward(int credits,int xp,int reputation,Map<String,Integer> items,Map<String,Integer> otherStanding){
         Reward(int credits,int xp,int reputation){this(credits,xp,reputation,Map.of(),Map.of());}
@@ -212,10 +212,16 @@ final class CampaignRuntime {
                     var operator=TraderRequirement.Operator.valueOf(req.get("operator").getAsString());
                     traderRequirements.add(new TraderRequirement(t.id,kind,operator,req.get("value").getAsInt()));
                 }
+                var starters=new TreeMap<String,Integer>();
+                if(q.has("starterItems"))for(var e:q.getAsJsonObject("starterItems").entrySet()){
+                    int count=e.getValue().getAsInt();
+                    if(count<=0||!CampaignSupplies.rewardKnown(e.getKey()))throw new IllegalArgumentException("Invalid starter item");
+                    starters.put(e.getKey(),count);
+                }
                 String name=q.get("name").getAsString();
                 String slug=name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
                 if(meta.values().stream().anyMatch(x->x.slug().equals(slug)))throw new IllegalArgumentException("Duplicate quest slug");
-                meta.put(id,new Meta(name,slug,reward,loyalty,Map.copyOf(labels),dialogue,site,List.copyOf(traderRequirements)));
+                meta.put(id,new Meta(name,slug,reward,loyalty,Map.copyOf(labels),dialogue,site,List.copyOf(traderRequirements),Map.copyOf(starters)));
                 quests.add(new Quest(id,trader,q.get("level").getAsInt(),prereqs,objectives,conflicts,reviewed));
             }
             return new Catalog(new CampaignGraph(quests),HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),Map.copyOf(meta));
@@ -403,7 +409,7 @@ final class CampaignRuntime {
             case BLACK_SWAN->Map.of(MARKER,1);
             case CHUMMING->Map.of(GOLD_CHAIN,4);
             case EASY_MONEY->Map.of(POSTER,3);
-            default->Map.of();
+            default->CATALOG==null||!CATALOG.meta().containsKey(id)?Map.of():CATALOG.meta().get(id).starters();
         };
     }
     private static int fieldTarget(Site x){
