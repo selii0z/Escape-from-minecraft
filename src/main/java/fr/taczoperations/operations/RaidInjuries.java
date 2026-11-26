@@ -90,6 +90,10 @@ public final class RaidInjuries {
         if(bleed>0&&p.tickCount%(bleed==2?80:160)==0)p.hurt(p.damageSources().magic(),1F);
         if(p.isAlive())sync(p,true);
     }
+    static boolean wounded(ServerPlayer p){
+        var d=p.getPersistentData();
+        return active(p)&&(d.getInt(BLEED)>0||d.getBoolean(FRACTURE)||d.getBoolean(ARM));
+    }
     static boolean canTreat(ServerPlayer p,String kind){
         if(!active(p))return false;
         var d=p.getPersistentData();
@@ -130,6 +134,7 @@ public final class RaidInjuries {
         }
         sync(p,true);
         PassiveSkills.medicine(p);
+        CampaignRuntime.medicalTreatment(p);
         p.sendSystemMessage(Component.literal("Soin appliqué."));
         return true;
     }
