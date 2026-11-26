@@ -123,7 +123,7 @@ public final class CampaignSupplies {
     }
     static boolean matches(ItemStack stack,String reference){return reference(stack).filter(reference::equals).isPresent();}
     private static final Set<String> BOSS_TROPHIES=Set.of("5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6",
-        "60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d");
+        "60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d","5e997f0b86f7741ac73993e2","609e860ebd219504d8507525","628baf0b967de16aab5a4f36","628bc7fb408e2b2e9c0801b1","628b9c7d45122232a872358f");
     static ItemStack bossTrophy(GuardRole role,net.minecraft.util.RandomSource rng){
         String id=switch(role){
             case KILLA->rng.nextInt(20)==0?"6759af0f9c8a538dd70bfae6":"5c0e874186f7745dc7616606";
@@ -135,6 +135,17 @@ public final class CampaignSupplies {
         if(id==null)return ItemStack.EMPTY;
         var item=ITEMS.get(id);
         return item==null?ItemStack.EMPTY:new ItemStack(item.get());
+    }
+    static ItemStack bossEquipmentTrophy(GuardRole role){
+        String ref=switch(role){
+            case SANITAR->"5e997f0b86f7741ac73993e2";
+            case FOREMAN->"609e860ebd219504d8507525";
+            case KNIGHT->"628baf0b967de16aab5a4f36";
+            case BIRDEYE->"628bc7fb408e2b2e9c0801b1";
+            case BIG_PIPE->"628b9c7d45122232a872358f";
+            default->null;
+        };
+        return ref==null?ItemStack.EMPTY:rewardStack(ref);
     }
     static void addLoot(Container c,Random rng,int chance){
         if(rng.nextInt(100)>=chance)return;
