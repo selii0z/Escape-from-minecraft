@@ -276,6 +276,24 @@ BOLT_REFERENCE={"627e14b21713922ded6f2c15","5bfd297f0db834001a669119","5ae08f0a5
     "55801eed4bdc2d89578b4588","588892092459774ac91d4b11","5de652c31b7e3716273428be",
     "5df24cf80dee1b22f862e9bc","5bfea6e90db834001b7347f3","61f7c9e189e6fb1a5e3ea78d",
     "673cab3e03c6a20581028bc1","67c6de3ce39861860909e8e5"}
+# Audited source alternative sets; unexpected sets stay blocked.
+# EFM equivalents are base weapon families, without attachments or presets.
+WEAPON_GROUPS={
+    "16880dc6d37b6bd36de325bdaf279faab8229bd0bede2c4920cdbc0546b35544":"pistol",
+    "e07953c49fbab21dbf2e3b381487e79d911d50d8ae3e6f02683167abad8824e6":"pistol",
+    "23426ad30af586b87349f02579a9cfc0f961096bc3047c2cabbfe81b6024b4ac":"ak",
+    "f567b56ab07cfb247c02582d43e3cabd39600ba72575d067f5146874195f1bd6":"ak",
+    "49c178a0f943942d6f89ac7844cf81c2736ae8fe94611932ab4a1130467bd43a":"western",
+    "d6239b70320494fc567f16b32ccd769027a957279d7b2dea707de663311367f5":"western",
+    "7613a9b6ec311855ed3f362cff3b25b794622d05ab2890a5c3f55bdeb948a1bf":"smg",
+    "90c1486f9fef7a83704406c84d2a31664f3a666c324e0ea4275e0510a0b03fe7":"rifle",
+    "b2ed8193677c863d5484f0c0ba663c072a1ef7b8142511b8a27c38a9f16baaab":"shotgun",
+}
+def weapon_group(refs):
+    if not refs:return "any"
+    if refs<=BOLT_REFERENCE:return "bolt"
+    return WEAPON_GROUPS.get(hashlib.sha256(",".join(sorted(refs)).encode()).hexdigest())
+
 def combat_objective(o):
     blockers=set()
     maps=o.get("maps") or []
@@ -308,9 +326,10 @@ def combat_objective(o):
         elif body=={"LeftLeg","RightLeg"}:part="legs"
         elif body:blockers.add("combat-bodyParts")
         weapons=set(o.get("usingWeapon") or [])
-        weapon="any"
-        if weapons and weapons<=BOLT_REFERENCE:weapon="bolt"
-        elif weapons:blockers.add("combat-usingWeapon")
+        weapon=weapon_group(weapons)
+        if weapon is None:
+            blockers.add("combat-usingWeapon")
+            weapon="any"
         role=TARGET_ADAPTERS.get(frozenset(o.get("targetNames") or []))
         if role is None:blockers.add("unmapped-target")
         event="kill:"+map_value+":"+(role or "unsupported")
@@ -319,7 +338,7 @@ def combat_objective(o):
         if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge":
             event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
             if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
-            if weapon=="bolt":label+=" · fusil à verrou EFM"
+            if weapon!="any":label+=" · "+{"bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM"}[weapon]
             if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
     else:
         if set(o)-(basic|{"exitStatus","exitName","healthEffect","bodyParts","effects"}):
