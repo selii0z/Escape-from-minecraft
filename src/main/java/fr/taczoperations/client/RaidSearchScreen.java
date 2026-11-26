@@ -61,11 +61,11 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
         g.drawString(font,count,168-font.width(count),164,SOFT,false);
     }
     @Override public boolean keyPressed(int key,int scan,int mods){
-        if(key==org.lwjgl.glfw.GLFW.GLFW_KEY_I&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        if(DiscoveryClient.inspectKey(key,scan)&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.keyPressed(key,scan,mods);
     }
     @Override public boolean mouseClicked(double x,double y,int button){
-        if(button==2&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
+        if(DiscoveryClient.inspectMouse(button)&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.mouseClicked(x,y,button);
     }
 }
