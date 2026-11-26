@@ -3,8 +3,17 @@ package fr.taczoperations.operations;
 import java.util.List;
 import java.util.Random;
 
-/** Adaptation of EFT boss identities to the two existing EFM maps. */
+/** Shared boss policy for every classic and express raid. */
 final class BossRoster {
+    static final int CONVERGENCE_PERCENT=5, NORMAL_PERCENT=80;
+    record Selection(boolean convergence,List<GuardRole> bosses){}
+    static Selection select(boolean industrial,boolean night,long seed){
+        var rng=new Random(seed^0x72c6aee3L);
+        if(rng.nextInt(100)<CONVERGENCE_PERCENT)return new Selection(true,all());
+        if(rng.nextInt(100)>=NORMAL_PERCENT)return new Selection(false,List.of());
+        // Preserve the ordinary/rare roster mix, separately from appearance odds.
+        return new Selection(false,normal(industrial,night,seed,rng.nextInt(75)<10));
+    }
     static List<GuardRole> all(){return java.util.Arrays.stream(GuardRole.values()).filter(GuardRole::boss).toList();}
     static List<GuardRole> normal(boolean industrial,boolean night,long seed,boolean rare){
         var choices=new java.util.ArrayList<>(rare
