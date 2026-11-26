@@ -126,18 +126,12 @@ public final class StoryMissions {
             .executes(ctx->CampaignRuntime.status(ctx.getSource().getPlayerOrException()))
             .then(Commands.literal("fouiller").executes(ctx->ForestRaid.campaignSearch(ctx.getSource().getPlayerOrException())))
             .then(Commands.literal("deposer").executes(ctx->ForestRaid.campaignPlant(ctx.getSource().getPlayerOrException())))
-            .then(Commands.literal("accepter")
-                .then(Commands.literal("debut").executes(ctx->CampaignRuntime.acceptDebut(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("fuel-shortage").executes(ctx->CampaignRuntime.acceptFuel(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("all-is-revealed").executes(ctx->CampaignRuntime.acceptRevealed(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("search-mission").executes(ctx->CampaignRuntime.acceptSearch(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("chemical-experiments").executes(ctx->CampaignRuntime.acceptChemical(ctx.getSource().getPlayerOrException()))))
-            .then(Commands.literal("recompense")
-                .then(Commands.literal("debut").executes(ctx->CampaignRuntime.claimDebut(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("fuel-shortage").executes(ctx->CampaignRuntime.claimFuel(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("all-is-revealed").executes(ctx->CampaignRuntime.claimRevealed(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("search-mission").executes(ctx->CampaignRuntime.claimSearch(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("chemical-experiments").executes(ctx->CampaignRuntime.claimChemical(ctx.getSource().getPlayerOrException()))))));
+            .then(Commands.literal("accepter").then(Commands.argument("quete",com.mojang.brigadier.arguments.StringArgumentType.word())
+                .suggests((ctx,builder)->{for(var slug:CampaignRuntime.slugs())if(slug.startsWith(builder.getRemainingLowerCase()))builder.suggest(slug);return builder.buildFuture();})
+                .executes(ctx->CampaignRuntime.acceptNamed(ctx.getSource().getPlayerOrException(),com.mojang.brigadier.arguments.StringArgumentType.getString(ctx,"quete")))))
+            .then(Commands.literal("recompense").then(Commands.argument("quete",com.mojang.brigadier.arguments.StringArgumentType.word())
+                .suggests((ctx,builder)->{for(var slug:CampaignRuntime.slugs())if(slug.startsWith(builder.getRemainingLowerCase()))builder.suggest(slug);return builder.buildFuture();})
+                .executes(ctx->CampaignRuntime.claimNamed(ctx.getSource().getPlayerOrException(),com.mojang.brigadier.arguments.StringArgumentType.getString(ctx,"quete")))))));
 
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("marchands")
             .executes(ctx->CampaignCommerce.list(ctx.getSource().getPlayerOrException()))
@@ -160,6 +154,7 @@ public final class StoryMissions {
         fr.taczoperations.campaign.CampaignTrader trader;
         try{trader=fr.taczoperations.campaign.CampaignTrader.byId(id);}
         catch(IllegalArgumentException e){say(p,"Marchand inconnu.");return 0;}
+        CampaignRuntime.traderDialogue(p,trader);
         return CampaignCommerce.preview(p,trader,page);
     }
     private StoryMissions(){}
