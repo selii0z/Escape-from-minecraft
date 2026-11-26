@@ -36,8 +36,9 @@ public final class CampaignSupplies {
     }
     private static final String KAPPA_REFERENCE="5c093ca986f7740a1867ab12";
     private static final Map<String,String> EQUIPMENT=Map.of("59e763f286f7742ee57895da","backpack_expedition","59e7643b86f7742cbf2c109a","rig_tactical","5648a69d4bdc2ded0b8b457b","rig_elite");
-    static boolean rewardKnown(String id){return EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    static boolean rewardKnown(String id){return id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
     static ItemStack rewardStack(String id){
+        if(id.equals("5b8683a486f77467f2423114"))return OperationsShop.weapon("ai_awp",5);
         if(KAPPA_REFERENCE.equals(id)){
             var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","secure_kappa"));
             return item instanceof SecureCaseItem s&&s.tier()==SecureCaseItem.Tier.KAPPA?new ItemStack(item):ItemStack.EMPTY;
