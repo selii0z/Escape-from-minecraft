@@ -201,6 +201,7 @@ public final class ForestExpedition {
     static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial){return departureProblem(player,board,duo,industrial,null);}
     private static boolean insideMap(int x,int z,boolean industrial,ExpressZone express){return express!=null?express.inside(x,z):industrial?IndustrialZone.inside(x,z):ForestPlan.inside(x,z);}
     static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial,ExpressZone express){
+        if(express!=null&&!express.available())return "Les ressources de cette carte sont absentes du serveur.";
         ServerLevel forest=player.server.getLevel(FOREST);
         if(forest==null||!(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator))
             return "La dimension Forêt Noire est indisponible.";
@@ -319,7 +320,7 @@ public final class ForestExpedition {
             return false;
         }
         atmosphere(player, point);
-        player.sendSystemMessage(Component.literal(express!=null?express.title+" · Raid express · 15 minutes, deux sorties libres.":industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
+        player.sendSystemMessage(Component.literal(express!=null?express.title+" · "+express.minutes()+" minutes, deux sorties libres.":industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
             : "Forêt Noire · checkpoint d’extraction principal. Relais secondaire selon la session."));
         if(industrial){
             BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
