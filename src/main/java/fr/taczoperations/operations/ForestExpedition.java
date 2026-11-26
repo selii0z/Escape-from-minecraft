@@ -44,6 +44,7 @@ public final class ForestExpedition {
         sendExtraction(p,false,0);
         if(notify)p.displayClientMessage(Component.literal("Extraction annulée"),true);
     }
+    private static boolean inExtraction(BlockPos feet,BlockPos center){return fr.taczoperations.worldgen.ExtractionLayout.contains(feet.getX()-center.getX(),feet.getY()-center.getY(),feet.getZ()-center.getZ());}
     private static boolean extractionReady(ServerPlayer p,BlockPos exit){
         int now=p.tickCount;
         var hold=EXTRACTION_HOLDS.get(p);
@@ -313,7 +314,7 @@ public final class ForestExpedition {
         }
         atmosphere(player, point);
         player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
-            : "Forêt Noire · sortie principale sur le bloc d’or. Relais secondaire selon la session."));
+            : "Forêt Noire · checkpoint d’extraction principal. Relais secondaire selon la session."));
         if(industrial){
             BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
             player.sendSystemMessage(Component.literal("Sortie à clé · X "+key.getX()+" Z "+key.getZ()+" | Sortie payante · X "+paid.getX()+" Z "+paid.getZ()));
@@ -368,12 +369,13 @@ public final class ForestExpedition {
         boolean relayAvailable=!industrial&&ForestRaid.secondaryOpen(player,0);
         boolean relay = relayAvailable && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
+        if(player.tickCount%20==0)ExtractionRenovation.near(player,industrial);
         if(player.tickCount%20==0)syncExits(player,industrial,relayAvailable,relay,primary,secondary);
         if(industrial && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
             BlockPos paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
-            boolean key=feet.equals(keyExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.IRON_BLOCK);
-            boolean paid=feet.equals(paidExit)&&player.level().getBlockState(feet.below()).is(net.minecraft.world.level.block.Blocks.EMERALD_BLOCK);
+            boolean key=inExtraction(feet,keyExit);
+            boolean paid=inExtraction(feet,paidExit);
             if(key||paid){
                 if(!ForestRaid.secondaryOpen(player,key?1:2)){
                     cancelExtraction(player,true);
@@ -388,7 +390,7 @@ public final class ForestExpedition {
                     if(player.tickCount%20==0)player.displayClientMessage(Component.literal(key?"Extraction verrouillée · clé industrielle requise.":"Extraction payante · "+IndustrialZone.PAID_EXIT_COST+" crédits requis."),true);
                     return;
                 }
-                if(!extractionReady(player,feet))return;
+                if(!extractionReady(player,key?keyExit:paidExit))return;
                 // The server thread is synchronous. Charge only after a confirmed dimension change.
                 if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
                 if(returnToOrigin(player,true)){
@@ -411,7 +413,7 @@ public final class ForestExpedition {
         }
         cancelExtraction(player,true);
         if (player.tickCount % 20 == 0) {
-            if (!industrial && feet.equals(secondary) && !relay) {
+            if (!industrial && inExtraction(feet,secondary) && !relay) {
                 player.displayClientMessage(Component.literal(relayAvailable?"Sortie verrouillée · active le relais de la station.":"Sortie fermée pour ce raid."), true);
                 return;
             }
