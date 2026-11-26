@@ -4,6 +4,7 @@ import fr.taczoperations.OperationsMod;
 import fr.taczoperations.worldgen.ForestChunkGenerator;
 import fr.taczoperations.worldgen.ForestPlan;
 import fr.taczoperations.worldgen.IndustrialZone;
+import fr.taczoperations.worldgen.ExpressZone;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.world.InteractionResult;
@@ -197,7 +198,9 @@ public final class ForestExpedition {
     }
 
     // Read-only eligibility check before opening or charging an insurance selection.
-    static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial){
+    static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial){return departureProblem(player,board,duo,industrial,null);}
+    private static boolean insideMap(int x,int z,boolean industrial,ExpressZone express){return express!=null?express.inside(x,z):industrial?IndustrialZone.inside(x,z):ForestPlan.inside(x,z);}
+    static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial,ExpressZone express){
         ServerLevel forest=player.server.getLevel(FOREST);
         if(forest==null||!(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator))
             return "La dimension Forêt Noire est indisponible.";
@@ -212,14 +215,15 @@ public final class ForestExpedition {
                 ||!player.getUUID().equals(OperationsGroups.of(partner).partner(partner)))
                 return "Ton équipier doit être à pied près du tableau.";
         }
-        if(ForestRaid.hasActiveSession(forest,industrial)||forest.players().stream().anyMatch(other->!other.isSpectator()
-            &&(industrial?IndustrialZone.inside(other.getBlockX(),other.getBlockZ()):ForestPlan.inside(other.getBlockX(),other.getBlockZ()))))
+        if(ForestRaid.hasActiveSession(forest,industrial,express)||forest.players().stream().anyMatch(other->!other.isSpectator()
+            &&insideMap(other.getBlockX(),other.getBlockZ(),industrial,express)))
             return "Une équipe occupe déjà cette carte.";
         return "";
     }
 
-    static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo, boolean industrial) {
-        String problem=departureProblem(player,board,duo,industrial);
+    static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo, boolean industrial){return depart(player,board,night,duo,industrial,null);}
+    static String depart(ServerPlayer player, BlockPos board, boolean night, boolean duo, boolean industrial,ExpressZone express) {
+        String problem=departureProblem(player,board,duo,industrial,express);
         if(!problem.isEmpty())return problem;
         ServerLevel forest = player.server.getLevel(FOREST);
         if (forest == null || !(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator)) {
@@ -249,25 +253,25 @@ public final class ForestExpedition {
             clearStaleDeparture(partner);
         }
 
-        if(ForestRaid.hasActiveSession(forest,industrial)
+        if(ForestRaid.hasActiveSession(forest,industrial,express)
             ||forest.players().stream().anyMatch(other->!other.isSpectator()&&
-                (industrial?IndustrialZone.inside(other.getBlockX(),other.getBlockZ()):ForestPlan.inside(other.getBlockX(),other.getBlockZ())))){
+                insideMap(other.getBlockX(),other.getBlockZ(),industrial,express))){
             return "Une équipe occupe déjà cette carte (joueurs déconnectés inclus).";
         }
         var random = forest.getRandom();
-        var entry = industrial ? industrialPosition(IndustrialZone.ENTRY)
+        var entry = express!=null?express.pos(express.entry()):industrial ? industrialPosition(IndustrialZone.ENTRY)
             : ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
         int weatherRoll=random.nextInt(100);
         int weather=weatherRoll<50?0:weatherRoll<85?1:2;
-        if (!enter(player, forest, entry, night, weather, industrial)) {
+        if (!enter(player, forest, entry, night, weather, industrial,express)) {
             return "Le départ a été annulé.";
         }
-        if (partner != null && !enter(partner, forest, entry.south(), night, weather, industrial)) {
+        if (partner != null && !enter(partner, forest, entry.south(), night, weather, industrial,express)) {
             returnToOrigin(player);
             player.sendSystemMessage(Component.literal("Départ annulé : ton équipier n’a pas pu entrer."));
             return "";
         }
-        ForestRaid.begin(forest, player, partner, industrial);
+        ForestRaid.begin(forest, player, partner, industrial,express);
         return "";
     }
 
@@ -289,7 +293,7 @@ public final class ForestExpedition {
         return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping();
     }
 
-    private static boolean enter(ServerPlayer player, ServerLevel forest, BlockPos destination, boolean night, int weather, boolean industrial) {
+    private static boolean enter(ServerPlayer player, ServerLevel forest, BlockPos destination, boolean night, int weather, boolean industrial,ExpressZone express) {
         CompoundTag point = new CompoundTag();
         point.putString("dimension", player.level().dimension().location().toString());
         point.putDouble("x", player.getX());
@@ -300,6 +304,7 @@ public final class ForestExpedition {
         point.putBoolean("night", night);
         point.putInt("weather", weather);
         point.putBoolean("industrial", industrial);
+        point.putInt("express",express==null?0:express.id);
         player.getPersistentData().put(RETURN_POINT, point);
         player.closeContainer();
         snapshotInventory(player);
@@ -313,7 +318,7 @@ public final class ForestExpedition {
             return false;
         }
         atmosphere(player, point);
-        player.sendSystemMessage(Component.literal(industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
+        player.sendSystemMessage(Component.literal(express!=null?express.title+" · Raid express · 15 minutes, deux sorties libres.":industrial ? "Zone industrielle · sortie principale gratuite et sorties secondaires selon la session."
             : "Forêt Noire · checkpoint d’extraction principal. Relais secondaire selon la session."));
         if(industrial){
             BlockPos key=industrialPosition(IndustrialZone.KEY_EXIT),paid=industrialPosition(IndustrialZone.PAID_EXIT);
@@ -356,20 +361,20 @@ public final class ForestExpedition {
         }
         CompoundTag point = player.getPersistentData().getCompound(RETURN_POINT);
         boolean industrial = point.getBoolean("industrial");
-        boolean inside = industrial ? IndustrialZone.inside(player.getBlockX(), player.getBlockZ())
-            : ForestPlan.inside(player.getBlockX(), player.getBlockZ());
+        ExpressZone express=ExpressZone.byId(point.getInt("express"));
+        boolean inside=insideMap(player.getBlockX(),player.getBlockZ(),industrial,express);
         if (!inside || player.getY() < 1
             || player.getY() >= player.level().getMaxBuildHeight()) {
             returnToOrigin(player);
             return;
         }
         ForestRaid.populateNear(player);
-        BlockPos primary = industrial ? industrialPosition(IndustrialZone.EXIT) : ForestLandmarks.position(ForestPlan.EXTRACTION);
-        BlockPos secondary = industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
+        BlockPos primary = express!=null?express.pos(express.exitA()):industrial ? industrialPosition(IndustrialZone.EXIT) : ForestLandmarks.position(ForestPlan.EXTRACTION);
+        BlockPos secondary = express!=null?express.pos(express.exitB()):industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
         boolean relayAvailable=!industrial&&ForestRaid.secondaryOpen(player,0);
-        boolean relay = relayAvailable && point.getBoolean("relay");
+        boolean relay = express!=null || relayAvailable && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
-        if(player.tickCount%20==0)ExtractionRenovation.near(player,industrial);
+        if(express==null&&player.tickCount%20==0)ExtractionRenovation.near(player,industrial);
         if(player.tickCount%20==0)syncExits(player,industrial,relayAvailable,relay,primary,secondary);
         if(industrial && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
