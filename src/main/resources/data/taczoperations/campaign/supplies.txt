@@ -73,3 +73,60 @@
 60a7acf20c5cb24b01346648|Casquette de Tagilla (trophée)|leather_helmet
 675aae1c26dc64e17800fee6|Chapeau à bois de renne (trophée)|leather_helmet
 6540d2162ae6d96b540afcaf|Matraque PR-Taran de Kollontay (trophée)|stick
+5733279d245977289b77ec24|Batterie de voiture|iron_ingot
+5734758f24597738025ee253|Chaîne en or|gold_ingot
+5734779624597737e04bf329|Ventilateur de processeur|iron_nugget
+5734781f24597737e04bf32a|Lecteur DVD|iron_ingot
+573478bc24597738002c6175|Figurine de cheval|brick
+57347baf24597738002c6178|Barrette de RAM|green_dye
+57347c2e24597744902c94a1|Bloc d'alimentation PC|iron_ingot
+57347ca924597744596b4e71|Carte graphique|green_dye
+57347cd0245977445a2d6ff1|Connecteur en T|iron_nugget
+5909e99886f7740c983b9984|Adaptateur USB|iron_nugget
+590a386e86f77429692b27ab|Disque dur endommagé|iron_ingot
+590a3c0a86f774385a33c450|Bougie d'allumage|iron_nugget
+590a3efd86f77437d351a25b|Analyseur de gaz|clock
+590c392f86f77444754deb29|Disque SSD|iron_ingot
+590c621186f774138d11ea29|Clé USB sécurisée|iron_nugget
+590de71386f774347051a052|Théière ancienne|flower_pot
+590de7e986f7741b096e5f32|Vase ancien|flower_pot
+59e3606886f77417674759a5|Solution saline|glass_bottle
+59e361e886f774176c10a2a5|Peroxyde d'hydrogène|glass_bottle
+59e3639286f7741777737013|Figurine de lion en bronze|copper_ingot
+59e3658a86f7741776641ac4|Figurine de chat|brick
+59faf7ca86f7740dbe19f6c2|Montre Roler en or|gold_nugget
+5af0534a86f7743b6f354284|Ophtalmoscope|spyglass
+5af0561e86f7745f5f3ad6ac|Batterie externe|iron_ingot
+5b4335ba86f7744d2837a264|Kit de transfusion|glass_bottle
+5c052e6986f7746b207bc3c9|Défibrillateur portable|redstone
+5c052f6886f7746b1e3db148|Émetteur militaire COFDM|redstone
+5c052fb986f7746b2101e909|Lecteur RFID UHF|redstone
+5c05300686f7746dce784e5d|Module de stockage VPX|iron_ingot
+5c05308086f7746b2101e90b|Processeur programmable Virtex|green_dye
+5c0530ee86f774697952d952|Transilluminateur LEDX|glowstone_dust
+5c06779c86f77426e00dd782|Faisceau de fils|string
+5c06782b86f77426df5407d2|Condensateurs|iron_nugget
+5c12613b86f7743bbe2c3f76|Dossier de renseignements|paper
+5d0375ff86f774186372f685|Câble militaire|string
+5d0376a486f7747d8050965c|Circuit imprimé militaire|green_dye
+5d0377ce86f774186372f689|Module thermique Iridium|iron_ingot
+5d03784a86f774203e7e0c4d|Gyrotachymètre militaire|redstone
+5d0378d486f77420421a5ff4|Filtre électrique militaire|iron_ingot
+5d03794386f77420415576f5|Batterie militaire|iron_ingot
+5d1b2ffd86f77425243e8d17|Objectif Nixxor|spyglass
+5d1b304286f774253763a528|Écran LCD fonctionnel|iron_ingot
+5d1b392c86f77425243e98fe|Ampoule|glowstone_dust
+5d1b3a5d86f774252167ba22|Lot de médicaments|paper
+5d1b3f2d86f774253763b735|Seringue jetable|stick
+5d235a5986f77443f6329bc6|Bague crâne en or|gold_nugget
+5e2af29386f7746d4159f077|Ruban adhésif Kektape|paper
+5e2af41e86f774755a234b67|Tissu Cordura|white_dye
+5e2af47786f7746d404f3aaa|Tissu polaire|white_dye
+5e2af4a786f7746d3f3c3400|Tissu Ripstop|white_dye
+5e2af4d286f7746d4159f07a|Tissu aramide|white_dye
+619cc01e0a7c3a1a2731940c|Instruments médicaux|iron_nugget
+62a0a124de7ac81993580542|Cartes topographiques|paper
+62a0a16d0b9d3c46de5b6e97|Clé USB militaire|iron_nugget
+6389c6c7dbfd5e4b95197e68|Pastilles Aquapeps|paper
+6389c70ca33d8c4cdf4932c6|Composants électroniques|green_dye
+6389c8c5dbfd5e4b95197e6b|Dossiers bleus TerraGroup|paper
