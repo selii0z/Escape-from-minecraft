@@ -66,54 +66,41 @@ public final class Hideout {
         }
         block(l,c.below(2),Blocks.OBSIDIAN);
     }
-    static void fromBoard(ServerPlayer p){
-        if(!(p.containerMenu instanceof OperationsMenu)||!p.containerMenu.getCarried().isEmpty())return;
-        p.closeContainer();go(p);
-    }
-    private static void go(ServerPlayer p){
-        if(ownsPlot(p)){HideoutMenu.open(p);return;}
-        if(!survival(p)||!p.level().dimension().equals(Level.OVERWORLD)||ForestRaid.isParticipant(p)){say(p,"Accès à la planque depuis le monde principal, hors raid.");return;}
-        if(!p.onGround()||p.isPassenger()||!p.level().getFluidState(p.blockPosition()).isEmpty()||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty()){
-            say(p,"Place-toi au sol, hors de l’eau, et ferme tes menus avant de rejoindre la planque.");return;
-        }
-        var level=p.server.getLevel(DIMENSION);if(level==null){say(p,"Dimension planque indisponible.");return;}
-        int id=HideoutPlots.of(level).allocate(p.getUUID());
-        if(id<0){say(p,"Aucune parcelle disponible.");return;}
-        BlockPos c=center(id);build(level,c);
-        var back=new CompoundTag();back.putDouble("x",p.getX());back.putDouble("y",p.getY());back.putDouble("z",p.getZ());back.putFloat("yaw",p.getYRot());back.putFloat("pitch",p.getXRot());
-        SupplyContract.account(p).put(RETURN,back);
-        p.closeContainer();
-        p.teleportTo(level,c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);
-        if(p.level()!=level){SupplyContract.account(p).remove(RETURN);return;}
-        HideoutDecor.refresh(p,c);
-        say(p,"Bienvenue dans ta planque personnelle. Les installations sont identifiées par des panneaux.");
-        HideoutMenu.open(p);
-    }
+    // Retired feature: keep the dimension registered solely for old world/player data.
+    static void fromBoard(ServerPlayer p){say(p,"La planque a été supprimée.");}
     static void leave(ServerPlayer p){
-        if(!here(p))return;
-        if(HideoutRange.active(p))HideoutRange.report(p);
-        var level=p.server.overworld();var account=SupplyContract.account(p);var back=account.getCompound(RETURN);
-        double x=back.getDouble("x"),y=back.getDouble("y"),z=back.getDouble("z");
-        BlockPos target=BlockPos.containing(x,y,z);
-        boolean safe=account.contains(RETURN)&&Double.isFinite(x)&&Double.isFinite(y)&&Double.isFinite(z)&&level.getWorldBorder().isWithinBounds(target)
-            &&y>=level.getMinBuildHeight()&&y<level.getMaxBuildHeight()-2
-            &&level.noCollision(p,p.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(new net.minecraft.world.phys.Vec3(x,y,z)))
-            &&level.getFluidState(target).isEmpty()
-            &&level.getFluidState(target.above()).isEmpty()
-            &&level.getBlockState(target.below()).isFaceSturdy(level,target.below(),net.minecraft.core.Direction.UP);
-        if(!safe){var spawn=p.adjustSpawnLocation(level,level.getSharedSpawnPos());x=spawn.getX()+.5;y=spawn.getY();z=spawn.getZ()+.5;}
-        p.closeContainer();p.teleportTo(level,x,y,z,Set.of(),safe?back.getFloat("yaw"):0,safe?back.getFloat("pitch"):0);
-        if(p.level()==level)account.remove(RETURN);
+        if(!here(p)||!p.isAlive())return;
+        var level=p.server.overworld();var account=SupplyContract.account(p);
+        var back=account.getCompound(RETURN);
+        var destination=legacyDestination(p,level);
+        boolean saved=destination!=null;
+        if(!saved)destination=net.minecraft.world.phys.Vec3.atBottomCenterOf(p.adjustSpawnLocation(level,level.getSharedSpawnPos()));
+        p.closeContainer();
+        p.teleportTo(level,destination.x,destination.y,destination.z,Set.of(),saved?back.getFloat("yaw"):0,saved?back.getFloat("pitch"):0);
+        if(p.level()==level){
+            account.remove(RETURN);
+            say(p,"La planque a été supprimée. Retour dans le monde principal.");
+            if(account.contains("hideout_stash",9)&&!account.getList("hideout_stash",10).isEmpty())
+                say(p,"Tes anciens objets sont conservés : /efm recuperer_reserve");
+        }
     }
+    static net.minecraft.world.phys.Vec3 legacyDestination(ServerPlayer p,ServerLevel level){
+        var account=SupplyContract.account(p);var back=account.getCompound(RETURN);
+        if(!account.contains(RETURN,10)||!back.contains("x",99)||!back.contains("y",99)||!back.contains("z",99))return null;
+        double x=back.getDouble("x"),y=back.getDouble("y"),z=back.getDouble("z");
+        if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||y<level.getMinBuildHeight()||y>=level.getMaxBuildHeight()-2)return null;
+        var pos=new net.minecraft.world.phys.Vec3(x,y,z);var target=BlockPos.containing(pos);
+        if(!level.getWorldBorder().isWithinBounds(target)||!level.noCollision(p,p.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(pos))
+            ||!level.getFluidState(target).isEmpty()||!level.getFluidState(target.above()).isEmpty()
+            ||!level.getBlockState(target.below()).isFaceSturdy(level,target.below(),net.minecraft.core.Direction.UP))return null;
+        return pos;
+    }
+    static void clearLegacyReturn(ServerPlayer p){SupplyContract.account(p).remove(RETURN);}
     private static CompoundTag stations(ServerPlayer p){
         var a=SupplyContract.account(p);if(!a.contains(STATIONS))a.put(STATIONS,new CompoundTag());return a.getCompound(STATIONS);
     }
     static int tier(ServerPlayer p,Station s){return Math.clamp(stations(p).getInt(s.id),0,3);}
-    static boolean ownsPlot(ServerPlayer p){
-        if(!here(p)||!survival(p))return false;
-        int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
-        return id>=0&&inside(p,center(id));
-    }
+    static boolean ownsPlot(ServerPlayer p){return false;}
     private static void list(ServerPlayer p){
         say(p,"Installations de la planque · niveaux 0 à 3");
         HideoutPower.status(p);
@@ -139,34 +126,11 @@ public final class Hideout {
         say(p,s.label+" améliorée au niveau "+n+".");
     }
     public static void commands(RegisterCommandsEvent event){
-        event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("planque")
-            .executes(ctx->{go(ctx.getSource().getPlayerOrException());return 1;})
-            .then(Commands.literal("mobile").executes(ctx->{HideoutRange.mobile(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("records").executes(ctx->{HideoutRange.records(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("tir").executes(ctx->{HideoutRange.toggle(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("decoration").executes(ctx->{HideoutDecor.cycle(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("menu").executes(ctx->{HideoutMenu.open(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("sortir").executes(ctx->{leave(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("carburant").executes(ctx->{HideoutPower.refuel(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("reparer").executes(ctx->{HideoutPower.repair(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("repos").executes(ctx->{HideoutPower.rest(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("reserve").executes(ctx->{HideoutServices.reserve(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("produire").then(Commands.argument("recette",StringArgumentType.word())
-                .suggests((ctx,b)->{for(var recipe:HideoutServices.Recipe.values())if(recipe.id.startsWith(b.getRemainingLowerCase()))b.suggest(recipe.id);return b.buildFuture();})
-                .executes(ctx->{HideoutServices.craft(ctx.getSource().getPlayerOrException(),StringArgumentType.getString(ctx,"recette"));return 1;})))
-            .then(Commands.literal("installations").executes(ctx->{list(ctx.getSource().getPlayerOrException());return 1;}))
-            .then(Commands.literal("ameliorer").then(Commands.argument("installation",StringArgumentType.word())
-                .suggests((ctx,b)->{for(var s:Station.values())if(s.id.startsWith(b.getRemainingLowerCase()))b.suggest(s.id);return b.buildFuture();})
-                .executes(ctx->{upgrade(ctx.getSource().getPlayerOrException(),StringArgumentType.getString(ctx,"installation"));return 1;})))));
+        event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("recuperer_reserve")
+            .executes(ctx->HideoutServices.recoverLegacyStash(ctx.getSource().getPlayerOrException()))));
     }
     public static void tick(PlayerTickEvent.Post event){
-        if(!(event.getEntity() instanceof ServerPlayer p)||!here(p))return;
-        int id=HideoutPlots.of(p.serverLevel()).find(p.getUUID());
-        if(id<0){leave(p);return;}
-        if(!inside(p,center(id))&&!HideoutRange.inside(p,center(id))){
-            HideoutRange.finishIfStarted(p);
-            p.closeContainer();var c=center(id);p.teleportTo(p.serverLevel(),c.getX()+.5,Y,c.getZ()+.5,Set.of(),0,0);
-        }
+        if(event.getEntity() instanceof ServerPlayer p&&here(p)&&p.isAlive())leave(p);
     }
     public static void interact(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e){
         if(!(e.getEntity() instanceof ServerPlayer p)||!here(p))return;
@@ -208,7 +172,6 @@ public final class Hideout {
             persisted.put("taczoperations",previous.getCompound("taczoperations").copy());
             root.put(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG,persisted);
         }
-        SupplyContract.account(p).remove(RETURN);
     }
     private Hideout(){}
 }

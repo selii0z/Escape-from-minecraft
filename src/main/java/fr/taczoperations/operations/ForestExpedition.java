@@ -314,7 +314,7 @@ public final class ForestExpedition {
     }
 
     private static boolean canDepart(ServerPlayer player) {
-        return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping() && !ScavRun.active(player);
+        return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping() && !ScavRun.active(player) && !player.level().dimension().equals(Hideout.DIMENSION);
     }
 
     private static boolean enter(ServerPlayer player, ServerLevel forest, BlockPos destination, boolean night, int weather, boolean industrial,ExpressZone express) {
@@ -529,6 +529,8 @@ public final class ForestExpedition {
         ResourceLocation key = ResourceLocation.tryParse(point.getString("dimension"));
         ServerLevel origin = key == null ? null : player.server.getLevel(ResourceKey.create(Registries.DIMENSION, key));
         Vec3 destination = new Vec3(point.getDouble("x"), point.getDouble("y"), point.getDouble("z"));
+        boolean legacyHideout=Hideout.DIMENSION.location().equals(key);
+        if(legacyHideout){origin=player.server.overworld();destination=Hideout.legacyDestination(player,origin);if(destination==null)destination=safeSpawn(player,origin,origin.getSharedSpawnPos());}
         // A missing or corrupted return point must never send a player to
         // arbitrary coordinates or back into the raid dimension.
         if (!hasReturnPoint(player) || origin == null || origin == player.level()
@@ -544,6 +546,7 @@ public final class ForestExpedition {
         if (player.level() != origin) {
             return false;
         }
+        if(legacyHideout)Hideout.clearLegacyReturn(player);
         if (leavingRaid) {
             RaidInjuries.clear(player);
             RaidAudio.clear(player);

@@ -22,7 +22,7 @@ import java.util.function.IntConsumer;
 final class ProgressionMenus {
     private static final Item[] SKILL_ICONS={Items.LEATHER_BOOTS,Items.IRON_INGOT,Items.GOLDEN_APPLE,Items.SPYGLASS,Items.BLACK_DYE,Items.COMPASS,Items.CROSSBOW,Items.EMERALD};
     static boolean available(ServerPlayer p){
-        return PlayerMarket.available(p)&&(!p.level().dimension().equals(Hideout.DIMENSION)||Hideout.ownsPlot(p));
+        return PlayerMarket.available(p)&&!p.level().dimension().equals(Hideout.DIMENSION);
     }
     private static boolean canOpen(ServerPlayer p){return available(p)&&p.containerMenu==p.inventoryMenu&&p.containerMenu.getCarried().isEmpty();}
     static void missions(ServerPlayer p){

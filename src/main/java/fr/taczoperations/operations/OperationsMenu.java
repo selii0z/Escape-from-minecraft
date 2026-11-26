@@ -365,7 +365,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             return true;
         }
         if(button==QUESTS){if(!ProgressionMenus.available(serverPlayer)||!getCarried().isEmpty())return false;open(serverPlayer,position,QUESTS,0,"");return true;}
-        if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
+        if(button==ENTER_HIDEOUT)return false;
         int tab = view.tab();
         int page = view.page();
         String notice = "";
