@@ -28,6 +28,37 @@
           "ground-zero-21"
         ]
       }
+    },
+    {
+      "id": "5a0327ba86f77456b9154236",
+      "name": "Fuel Shortage",
+      "trader": "peacekeeper",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5a03289686f7745dbc6c5063",
+          "type": "turnin-fir:577e1c9d2459773cd707c525,59faf98186f774067b6be103,59e3596386f774176c10a2a2,59e3556c86f7741776641ac2,5e2af02c86f7746d420957d4,5e2af00086f7746d3f3c33f7,5e2aef7986f7746d3f3c33f5,62a09ee4cf4a99369e262453,5d40412b86f7743cb332ac3a,5c13cd2486f774072c757944,59e35abd86f7741778269d82,5c13cef886f774072e618e82,5d4041f086f7743cac3f22a7,67586c61a0c49554ed0bb4a8,59e358a886f7741776641ac3,60b0f561c4449e4cb624c1d7,5bc9b9ecd4351e3bac122519,57347c93245977448d35f6e3",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false
+        },
+        {
+          "id": "5a0328cb86f77456b91543b8",
+          "type": "turnin-fir:60391b0fb847c71012789415,56742c284bdc2d98058b456d,67586bee39b1b82b0d0f9d06,59fafb5d86f774067a6f2084,5e2af2bc86f7746d3f3c33fc,5e2af37686f774755a234b65,60391a8b3364dc22b04d0ce5,590c5bbd86f774785762df04,590c5c9f86f77477c91c36e7,57347b8b24597737dd42e192,56742c2e4bdc2d95058b456d,699f09de81a6c812900a77b7,590a373286f774287540368b,5bc9b355d4351e6d1509862a,5b43575a86f77424f443fe62,5d1b36a186f7742523398433,5d1b371186f774253763a656",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "dollars": 550,
+        "reputationMilli": 100
+      }
     }
   ]
 }
