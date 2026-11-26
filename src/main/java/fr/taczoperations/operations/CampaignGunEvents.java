@@ -21,6 +21,7 @@ public final class CampaignGunEvents {
         String gun=id.getPath();
         return switch(group){
             case "bolt"->gun.equals("ai_awp");
+            case "civilianlong"->java.util.Set.of("m870","ai_awp","ak47").contains(gun);
             case "pistol"->gun.equals("glock_17");
             case "ak"->gun.equals("ak47");
             case "western"->gun.equals("m4a1");
@@ -37,6 +38,9 @@ public final class CampaignGunEvents {
         var head=p.getItemBySlot(EquipmentSlot.HEAD);
         boolean rig=FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)>0;
         return switch(gear){
+            case "injured"->RaidInjuries.wounded(p);
+            case "novision"->FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.GOGGLES)).isEmpty();
+            case "scavuniform"->head.is(net.minecraft.world.item.Items.LEATHER_HELMET)&&FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)==4;
             case "heavyuniform"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==6&&BallisticVest.tier(head,EquipmentSlot.HEAD)==3;
             case "uniform2"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==2&&BallisticVest.tier(head,EquipmentSlot.HEAD)==2;
             case "armor2"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==2;
