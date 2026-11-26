@@ -7,7 +7,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import java.util.*;
 
-/** EFM-only persistence. Catalog revision and raid identity prevent stale progress from being reused. */
+/** EFM-only persistence. Per-quest definition signatures permit additive catalogue updates without resetting progress. */
 final class CampaignStorage {
     private static final String KEY="efm_campaign_v2";
     private static final int SCHEMA=1;
@@ -17,12 +17,15 @@ final class CampaignStorage {
         var account=SupplyContract.account(p);
         if(!account.contains(KEY))return new Session(graph.newPlayer(),null);
         var root=account.getCompound(KEY);
-        if(root.getInt("schema")!=SCHEMA||!revision.equals(root.getString("revision")))
-            throw new IllegalStateException("Campaign save schema/catalog mismatch; explicit EFM wipe required");
+        if(root.getInt("schema")!=SCHEMA)
+            throw new IllegalStateException("Campaign save schema mismatch; preserve backup for migration");
+        boolean revised=!revision.equals(root.getString("revision"));
         var saved=new HashMap<String,Progress>();
         var quests=root.getCompound("quests");
         for(var id:quests.getAllKeys()){
             var entry=quests.getCompound(id);
+            if(revised&&(!graph.quests().containsKey(id)||!graph.definitionFingerprint(id).equals(entry.getString("definition"))))
+                throw new IllegalStateException("Incompatible quest update: "+id+"; save preserved for migration");
             saved.put(id,new Progress(State.valueOf(entry.getString("state")),counters(entry.getCompound("counters"))));
         }
         UUID stored=root.hasUUID("raid")?root.getUUID("raid"):null;
@@ -43,6 +46,7 @@ final class CampaignStorage {
         cp.saved().forEach((id,progress)->{
             var entry=new CompoundTag();
             entry.putString("state",progress.state().name());
+            entry.putString("definition",session.player().definitionFingerprint(id));
             entry.put("counters",tag(progress.counters()));
             quests.put(id,entry);
         });
