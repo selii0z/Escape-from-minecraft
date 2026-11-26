@@ -201,6 +201,7 @@ public final class RaidSecurity {
         }
         return false;
     }
+    static boolean emptyCase(ItemStack s){return s.getItem() instanceof SecureCaseItem&&tag(s).getList(POUCH,10).isEmpty();}
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }
