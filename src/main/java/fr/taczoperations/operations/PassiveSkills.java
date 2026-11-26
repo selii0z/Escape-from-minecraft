@@ -38,6 +38,10 @@ public final class PassiveSkills {
         int before=level(p,s);var d=data(p);d.putInt(s.name(),Math.min(threshold(50),xp(p,s)+amount));
         int after=level(p,s);if(after>before)p.sendSystemMessage(Component.literal(s.title+" · niveau "+after+"/50"));
     }
+    static void questReward(ServerPlayer p,Skill skill,int levels){
+        int target=Math.min(50,level(p,skill)+levels);
+        award(p,skill,Math.max(0,threshold(target)-xp(p,skill)));
+    }
     static boolean loaded(ServerPlayer p){return p.getInventory().items.stream().filter(s->!s.isEmpty()).count()>=24;}
     // Sample movement once a second; reject stationary and teleport-scale displacements.
     static void movement(ServerPlayer p){
