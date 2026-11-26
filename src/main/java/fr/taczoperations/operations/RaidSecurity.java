@@ -54,7 +54,7 @@ public final class RaidSecurity {
                     Slot filtered=new Slot(old.container,old.getContainerSlot(),old.x,old.y) {
                         @Override public boolean mayPlace(ItemStack s) {
                             return !locked && !(s.getItem() instanceof SecureCaseItem)
-                                && !s.has(DataComponents.CONTAINER) && !s.has(DataComponents.BUNDLE_CONTENTS);
+                                && (s.getItem() instanceof KeyRingItem || !s.has(DataComponents.CONTAINER)) && !s.has(DataComponents.BUNDLE_CONTENTS);
                         }
                         @Override public boolean mayPickup(Player player) {return !locked;}
                     };
@@ -139,6 +139,31 @@ public final class RaidSecurity {
             if(slot>=0&&slot<5)result.add(ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item")));
         }
         return result;
+    }
+    // Consume a nested key by updating the actual saved secure-case slot, never a detached copy.
+    static boolean secureKey(ServerPlayer p,java.util.function.Predicate<ItemStack> matches,boolean consume){
+        for(var carrier:p.getInventory().items){
+            if(!(carrier.getItem() instanceof SecureCaseItem))continue;
+            CompoundTag data=tag(carrier);ListTag items=data.getList(POUCH,10);
+            for(int i=0;i<items.size();i++){
+                var entry=items.getCompound(i);
+                var ring=ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item"));
+                if(!(ring.getItem() instanceof KeyRingItem))continue;
+                var keys=KeyRingItem.contents(ring);
+                for(var key:keys){
+                    if(key.isEmpty()||!matches.test(key))continue;
+                    if(consume){
+                        key.shrink(1);
+                        ring.set(DataComponents.CONTAINER,net.minecraft.world.item.component.ItemContainerContents.fromItems(keys));
+                        entry.put("item",ring.saveOptional(p.registryAccess()));
+                        data.put(POUCH,items);carrier.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
+                        p.getInventory().setChanged();
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
