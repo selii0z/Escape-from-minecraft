@@ -287,6 +287,8 @@ BOLT_REFERENCE={"627e14b21713922ded6f2c15","5bfd297f0db834001a669119","5ae08f0a5
 # Audited source alternative sets; unexpected sets stay blocked.
 # EFM equivalents are base weapon families, without attachments or presets.
 WEAPON_GROUPS={
+    "d6607f5d84d294f1c73ec0be4803de0321ea5a8887440c81fad4caa2606369fb":"civilianlong",
+    "c68d9f8998bd56a5910a94d1e2a2411512cac7e31304020569ed5d524996de5b":"pistol",
     "31138b3b113877fef665f246e685b9bb641134cec8ba7e92a4ac93f38256df5f":"rifle",
     "bbc5f2ca6ae8680227195cc1dff458757c116c88c8fba686f7aee18c09653b1b":"lmg",
     "82f6d52e4acd11319bb5814c922f2a17ad53f647deaaecdac94e9ff666e8edf8":"smg",
@@ -310,11 +312,13 @@ def weapon_group(refs):
 
 # Exact reference sets with explicitly chosen equivalents in EFM.
 GEAR_REQUIRED={
+    "f29275ad30ac8ad850616910ae69898fe36eba733cc7adfa4f824e343caa5f5a":"scavuniform",
     "dcb1ada0a20d04ab3a0f1c6cdeb2cfec1e60dcd93e18cd43ed5e721992db7a4b":"heavyuniform",
     "d6e904eff6f3c50d8d49af80ced1320c6f093e5e5b0f20b0ef957a14304074ed":"uniform2",
     "4f5a98a4b84772300c3798c2cd847bd4c74528bd166981c04c4e46bddd0167d6":"armor2",
 }
 GEAR_FORBIDDEN={
+    "4dc75f5e78afd46ef8589c2b1b4759cb864db7a2004effeb911e2c30e0cbf812":"novision",
     "325256dae9760b0fe3ebc824dc75335bfa694098b05cd29a2ca6adeabffb3df6":"noarmor",
     "18706061bb3caa06edf3b93e761e910dee5f6aca92f0fb343fda828d3e351d55":"unarmored",
 }
@@ -362,8 +366,10 @@ def combat_objective(o):
         if gear is None:
             blockers.add("combat-gear-unmapped")
             gear="any"
+        if o["id"]=="5d25c8c986f77443e47ad47a" and o.get("effects")==["Pain"] and (o.get("playerHealthEffect") or {}).get("effects")==["Pain"] and gear=="any":
+            blockers.discard("combat-effects");blockers.discard("combat-playerHealthEffect");gear="injured"
         hours=(o.get("timeFromHour") or 0,o.get("timeUntilHour") or 0)
-        night=hours in {(21,5),(21,6)}
+        night=hours in {(21,4),(21,5),(21,6)}
         if hours!=(0,0) and not night:blockers.add("unsupported-combat-time-window")
         distance=o.get("distance") or {"value":0,"compareMethod":">="}
         value=distance.get("value")
@@ -387,13 +393,15 @@ def combat_objective(o):
         event="kill:"+map_value+":"+(role or "unsupported")
         scope="CAMPAIGN"
         label=("Toucher " if mode=="hit" else "Éliminer ")+({"any":"des ennemis","pmc":"des PMC","scav":"des Scavs"}.get(role,role or "cible à adapter"))
-        if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge" or night or gear!="any":
+        if o["id"]=="5d25d09286f77444001e284c" and o["count"]==3 and map_value=="woods" and role=="scav":
+            event="noheal:woods:scav";scope="CURRENT_RAID";label="Éliminer 3 Scavs et extraire dans le même raid sans utiliser de soin EFM"
+        elif mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge" or night or gear!="any":
             event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
             if night or gear!="any":event+=":"+("night" if night else "anytime")+":"+gear
             if night:label+=" · raid de nuit"
-            if gear!="any":label+=" · "+{"heavyuniform":"tunique classe 6 et casque classe 3","uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
+            if gear!="any":label+=" · "+{"scavuniform":"casque en cuir et gilet léger","novision":"sans lunettes nocturnes ni thermiques","injured":"avec une blessure EFM active","heavyuniform":"tunique classe 6 et casque classe 3","uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
             if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
-            if weapon!="any":label+=" · "+{"bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM","lmg":"mitrailleuse EFM"}[weapon]
+            if weapon!="any":label+=" · "+{"civilianlong":"fusil à pompe, fusil à verrou ou AK EFM","bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM","lmg":"mitrailleuse EFM"}[weapon]
             if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
     else:
         if set(o)-(basic|{"exitStatus","exitName","healthEffect","bodyParts","effects"}):
@@ -1038,6 +1046,11 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 q["failConditions"]=[]
                 q["restartable"]=False
                 changes.append({"type":"reset-progress-on-failed-raid","reference":fail})
+        if qid=="5d25cf2686f77443e75488d4":
+            fail=q.get("failConditions") or []
+            if q.get("restartable") and len(fail)==1 and fail[0].get("type")=="useItem" and fail[0].get("count")==1 and fail[0].get("maps")==["5704e3c2d2720bac5b8b4567"] and not any((q.get("failureOutcome") or {}).values()):
+                q["failConditions"]=[];q["restartable"]=False
+                changes.append({"type":"same-raid-without-efm-treatment","reference":fail})
         restricted_kills={"66631489acf8442f8b05319f":"06e9eb1f9e04148ea4752b918d6d0a89f455ee4728eafc75620c2927d5369c6f",
                           "6663149196a9349baa021baa":"0b2156b029eb0dcecb3964218c7c2cf5f44c14ad3f4f3dff6361ed6678ae0a0b"}
         if qid in restricted_kills:
@@ -1194,6 +1207,7 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             # Preserve the usable starter weapon; unsupported separate magazines/packs
             # from these two exact starter kits are not required by the objective.
             starter_adapters={
+                "666314bafd5ca9577902e03a":({"5b44abe986f774283e2e3512"},[{"item":"5448bd6b4bdc2dfc2f8b4569","count":1,"attributes":{}}]),
                 "666314b4d7f171c4c20226c3":({"65766adc234b9f6e050a431a","5645bc214bdc2d363b8b4571"},[{"item":"545cdb794bdc2d3a198b456a","count":1,"attributes":{}},{"item":"5645bc214bdc2d363b8b4571","count":1,"attributes":{}}]),
                 "5c0d4c12d09282029f539173":({"5aa7d03ae5b5b00016327db5","5ab8e4ed86f7742d8e50c7fa","707265736574000000000009","5aaa5dfee5b5b000140293d3"},[{"item":"5aa7d03ae5b5b00016327db5","count":1,"attributes":{}},{"item":"59e7635f86f7742cbf2c1095","count":1,"attributes":{}},{"item":"5447a9cd4bdc2dbd208b4567","count":1,"attributes":{}}]),
                 "68341a0b2f0e2a7eb90b62d4":({"5648a7494bdc2d9d488b4583"},[{"item":"59e7635f86f7742cbf2c1095","count":2,"attributes":{}}]),
