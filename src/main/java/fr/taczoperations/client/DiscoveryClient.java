@@ -64,6 +64,27 @@ public final class DiscoveryClient {
         event.getToolTip().add(Component.literal("Objet non identifié").withStyle(ChatFormatting.GOLD));
         event.getToolTip().add(Component.literal(keyLabel()+" ou clic molette pour examiner").withStyle(ChatFormatting.GRAY));
     }
+    @SubscribeEvent
+    public static void legacyMilitaryTagTooltip(ItemTooltipEvent event){
+        var stack=event.getItemStack();
+        if(!net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals("taczoperations:military_tag"))return;
+        var lines=event.getToolTip();
+        for(int i=0;i<lines.size();i++){
+            var line=lines.get(i);
+            String raw=line.getString();
+            String prefix="Arme tenue : ";
+            if(raw.startsWith(prefix+"item.")){
+                String key=raw.substring(prefix.length());
+                String fallback=key.substring(key.lastIndexOf('.')+1).replace('_',' ').replace('-',' ').toUpperCase(java.util.Locale.ROOT);
+                lines.set(i,Component.literal(prefix).append(Component.translatableWithFallback(key,fallback)).withStyle(line.getStyle()));
+            }else if(raw.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T.*Z")){
+                try{
+                    String date=java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm 'UTC'").withZone(java.time.ZoneOffset.UTC).format(java.time.Instant.parse(raw));
+                    lines.set(i,Component.literal("Date : "+date).withStyle(line.getStyle()));
+                }catch(java.time.DateTimeException ignored){}
+            }
+        }
+    }
     @SubscribeEvent public static void logout(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event){KNOWN.clear();}
     private DiscoveryClient(){}
 }
