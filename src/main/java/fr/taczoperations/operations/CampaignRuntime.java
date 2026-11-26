@@ -306,6 +306,16 @@ final class CampaignRuntime {
             return changed?s:null;
         });
     }
+    static void recordEquipmentSale(ServerPlayer p,int quantity){
+        if(quantity<=0||!accessible(p))return;
+        change(p,null,s->{
+            var q=CATALOG.graph().quests().get("6663149f1d3ec95634095e75");
+            if(q==null||!q.implemented())return null;
+            var progress=s.player().snapshot().get(q.id());
+            if(progress==null||progress.state()!=State.ACTIVE)return null;
+            return s.player().record(q.id(),"666973ee1d80fbbbfeaf46c9",quantity)?s:null;
+        });
+    }
     private static boolean record(CampaignStorage.Session s,String event,String map,GuardRole role,UUID enemy,String escortOf){
         boolean changed=false;
         for(var q:CATALOG.graph().quests().values()){
@@ -357,6 +367,10 @@ final class CampaignRuntime {
                 combat++;continue;
             }
             if(parts.length<2)return false;
+            if(o.type().equals("sale:field-equipment")){
+                if(o.scope()!=Scope.CAMPAIGN||o.amount()!=250||!o.id().equals("666973ee1d80fbbbfeaf46c9"))return false;
+                combat++;continue;
+            }
             if(parts[0].equals("milestone")){
                 if(!milestoneValid(o))return false;
                 combat++;continue;
