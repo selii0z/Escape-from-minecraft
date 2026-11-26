@@ -103,6 +103,81 @@
         "localZ": 54,
         "radius": 3
       }
+    },
+    {
+      "id": "5fd9fad9c1ce6b1a3b486d00",
+      "name": "Search Mission",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5fd9fad9c1ce6b1a3b486d03",
+          "type": "visit:woods:convoy",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        },
+        {
+          "id": "5fd9fad9c1ce6b1a3b486d05",
+          "type": "visit:woods:camp",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "startItem": "5f4f9eb969cdc30ff33f09db"
+      },
+      "adaptation": {
+        "convoy": [
+          484,
+          570
+        ],
+        "camp": [
+          645,
+          225
+        ],
+        "startItem": "minecraft:compass"
+      }
+    },
+    {
+      "id": "5a27bafb86f7741c73584017",
+      "name": "Chemical Experiments",
+      "trader": "peacekeeper",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "6a5c10e883a51e292d11b976",
+          "type": "plant:customs:medical-deposit:59e35cbb86f7741778269d83",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "dollars": 550,
+        "reputationMilli": 100,
+        "foundInRaid": false
+      },
+      "adaptation": {
+        "site": [
+          95,
+          425
+        ],
+        "radius": 3
+      }
     }
   ]
 }
