@@ -498,7 +498,7 @@ final class CampaignRuntime {
         }
         return TurnInPlanner.plan(stock,demands);
     }
-    private static String label(String id){var m=CATALOG.meta().get(id);return m==null?id:m.name();}
+    private static String label(String id){var m=CATALOG.meta().get(id);return m==null?id:CampaignFrench.title(m.name());}
     static List<String> slugs(){return CATALOG==null?List.of():CATALOG.graph().quests().values().stream().filter(Quest::implemented).map(q->CATALOG.meta().get(q.id()).slug()).sorted().toList();}
     static int acceptNamed(ServerPlayer p,String slug){String id=resolve(slug);return id==null?0:accept(p,id);}
     static int claimNamed(ServerPlayer p,String slug){String id=resolve(slug);return id==null?0:claim(p,id);}
@@ -816,7 +816,7 @@ final class CampaignRuntime {
     private static String objectiveTitle(Quest q,Objective o,Set<String> refs){
                     String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
                     title=CATALOG.meta().get(q.id()).labels().getOrDefault(o.id(),title);
-        return title;
+        return CampaignFrench.text(title);
     }
     /** Read-only progress. Pending counters are never saved by the HUD. */
     static RaidQuestPayload trackedRaidView(ServerPlayer p){
@@ -972,7 +972,7 @@ final class CampaignRuntime {
                 r.skills().forEach((skill,amount)->lines.add(skill.title+" : +"+amount+" niveau(x)"));
                 for(var standing:r.otherStanding().entrySet())lines.add(CampaignTrader.byId(standing.getKey()).title+" : "+(standing.getValue()>=0?"+":"")+standing.getValue()/1000d+" réputation");
                 boolean claimable=state==State.READY||state==State.ACTIVE&&canClaimPreview(p,s,q,storage);
-                result.add(new QuestView(q.id(),label(q.id()),q.trader(),state,q.level(),List.copyOf(lines),claimable));
+                result.add(new QuestView(q.id(),label(q.id()),q.trader(),state,q.level(),lines.stream().map(CampaignFrench::text).toList(),claimable));
             }
             return List.copyOf(result);
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign preview failed",e);return List.of();}

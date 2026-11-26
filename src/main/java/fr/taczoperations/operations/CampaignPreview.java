@@ -36,7 +36,7 @@ final class CampaignPreview {
                 if(q.get("unresolvedPrerequisites").getAsInt()>0)lines.add("Prérequis à vérifier");
                 for(var kind:q.getAsJsonObject("objectiveKinds").entrySet())
                     lines.add(kindLabel(kind.getKey())+" : "+kind.getValue().getAsInt()+" objectif(s)");
-                list.add(new CampaignRuntime.QuestView(id,q.get("name").getAsString(),trader,State.LOCKED,level,List.copyOf(lines),false));
+                list.add(new CampaignRuntime.QuestView(id,CampaignFrench.title(q.get("name").getAsString()),trader,State.LOCKED,level,List.copyOf(lines),false));
             }
             if(list.size()!=root.get("count").getAsInt())throw new IllegalArgumentException("Incomplete reference catalogue");
             return List.copyOf(list);

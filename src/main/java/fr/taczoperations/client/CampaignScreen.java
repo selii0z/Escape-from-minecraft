@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
-    private static final int W=836,H=470, ROWS=12,ROW_H=29,DETAIL_Y=207,DETAIL_H=183;
+    private static final int W=836,H=470, ROWS=12,ROW_H=29,DETAIL_Y=238,DETAIL_H=150;
     private static final int GOLD=0xffdec38b,WHITE=0xffeeebe3,SOFT=0xffb8b8ac,FRAME=0xff696457,
         LIME=0xffb8cf8c,ORANGE=0xffdba16b,DARK=0xff161716;
     private static final ResourceLocation BODY=asset("interface"),HEADING=asset("heading"),DESK=texture("dashboard");
@@ -90,7 +90,11 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
         if(!List.of("forest","industrial","village","underground","quarantine","military").contains(id))id="military";
         var tex=texture(id);
         minecraft.getTextureManager().bindForSetup(tex);minecraft.getTextureManager().getTexture(tex).setFilter(true,false);
-        g.blit(tex,x,y,0,0,w,h,w,h);g.renderOutline(x,y,w,h,FRAME);
+        // The six packaged raid illustrations are all 380 x 170. Fit the full image without stretching.
+        int iw=w,ih=Math.round(w*170f/380f);if(ih>h){ih=h;iw=Math.round(h*380f/170f);}
+        int ix=x+(w-iw)/2,iy=y+(h-ih)/2;
+        g.fill(x,y,x+w,y+h,0xff121412);
+        g.blit(tex,ix,iy,0,0,iw,ih,iw,ih);g.renderOutline(ix,iy,iw,ih,FRAME);
     }
     // Distinct compact Minecraft-style portraits, drawn at native pixel sizes.
     private void portrait(GuiGraphics g,int i,int x,int y){
@@ -207,12 +211,12 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
         text(g,fit(name(s),250,true),491,75,1.24F,WHITE,true);
         text(g,status,491,93,1.04F,statusColor(status),true);
         text(g,fit(line(s,5),310,false),491,107,.95F,SOFT,false);
-        art(g,line(s,4),491,123,326,76);
+        art(g,line(s,4),491,123,326,108);
         var lines=visualDetails(s);int total=lines.size();
         var contents=s.get(DataComponents.CONTAINER);
         var rewards=contents==null?List.<ItemStack>of():contents.nonEmptyStream().toList();
         int rewardRows=(rewards.size()+5)/6;
-        int visibleLines=rewardRows>0?7:12;
+        int visibleLines=rewardRows>0?5:10;
         int max=Math.max(0,total-visibleLines);
         detailScroll=Math.clamp(detailScroll,0,max);
         int ry=DETAIL_Y;
@@ -254,7 +258,7 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
         var ids=visible();
         for(int row=0;row<ROWS&&row+scroll<ids.size();row++)if(hit(x,y,180,116+row*25,282,24)){selected=ids.get(row+scroll);detailScroll=0;return true;}
         if(hit(x,y,465,116,8,300)){dragList=true;seekList(y);return true;}
-        if(hit(x,y,810,DETAIL_Y,9,180)){dragDetail=true;seekDetail(y);return true;}
+        if(hit(x,y,810,DETAIL_Y,9,150)){dragDetail=true;seekDetail(y);return true;}
         String status=line(quest(),0);
         if(hit(x,y,491,405,102,22)){if(status.equals("Disponible"))send(CampaignMenu.ACCEPT+selected);return true;}
         if(hit(x,y,599,405,102,22)){if(status.equals("À valider"))send(CampaignMenu.CLAIM+selected);return true;}
@@ -266,9 +270,9 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
     private void seekList(double y){scroll=(int)Math.round(Math.clamp((y-116)/300,0d,1d)*Math.max(0,visible().size()-ROWS));}
     private int detailMax(){
         var s=quest();var contents=s.get(DataComponents.CONTAINER);
-        return Math.max(0,visualDetails(s).size()-(contents==null?12:7));
+        return Math.max(0,visualDetails(s).size()-(contents==null?10:5));
     }
-    private void seekDetail(double y){detailScroll=(int)Math.round(Math.clamp((y-DETAIL_Y)/180,0d,1d)*detailMax());}
+    private void seekDetail(double y){detailScroll=(int)Math.round(Math.clamp((y-DETAIL_Y)/150,0d,1d)*detailMax());}
     @Override public boolean mouseDragged(double mx,double my,int button,double dx,double dy){
         double y=(my-topPos)/scale;
         if(dragList){seekList(y);return true;}

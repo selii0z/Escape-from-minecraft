@@ -61,6 +61,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static final Section[] SECTIONS = {
         new Section(OperationsMenu.FOREST, "Opérations", "Lancer un raid"),
         new Section(OperationsMenu.CONTRACTS, "Contrats", "Objectifs et récompenses"),
+        new Section(OperationsMenu.QUESTS, "Quêtes", "Campagne marchands"),
         new Section(OperationsMenu.SHOP, "Marchands", "Matériel et ravitaillement"),
         new Section(OperationsMenu.PROGRESSION, "Progression", "Rang, XP et crédits"),
         new Section(OperationsMenu.FILES, "Dossiers", "Ennemis et renseignements"),
@@ -120,21 +121,21 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var view = menu.view();
         for (int row = 0; row < SECTIONS.length; row++) {
             Section section = SECTIONS[row];
-            int iconIndex = row;
-            int y = 102 + row * 43;
+            int iconIndex = row>2?row-1:row;
+            int y = 83 + row * 40;
             widget(8, y, 139, 36, section.title, () -> send(section.tab),
                 () -> true, (g, hovered) -> {
                     key(g, 8, y, 139, 36, active(section.tab), hovered, true);
-                    icon(g, iconIndex, 17, y + 5, 26);
+                    if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 5, 26);
                     text(g, upper(section.title), 52, y + 6, 1.15F, WHITE, true);
                     text(g, fit(section.subtitle, 105), 52, y + 21, .83F, SOFT, false);
                 });
         }
-        widget(8,360,139,36,"Planque",()->send(OperationsMenu.ENTER_HIDEOUT),()->true,(g,hover)->{
-            key(g,8,360,139,36,false,hover,true);
-            item(g,new ItemStack(Items.IRON_DOOR),20,367,1.35F);
-            text(g,"PLANQUE",52,366,1.15F,WHITE,true);
-            text(g,"Base personnelle",52,381,.83F,SOFT,false);
+        widget(8,363,139,36,"Planque",()->send(OperationsMenu.ENTER_HIDEOUT),()->true,(g,hover)->{
+            key(g,8,363,139,36,false,hover,true);
+            item(g,new ItemStack(Items.IRON_DOOR),20,370,1.35F);
+            text(g,"PLANQUE",52,369,1.15F,WHITE,true);
+            text(g,"Base personnelle",52,384,.83F,SOFT,false);
         });
         switch (view.tab()) {
             case OperationsMenu.FOREST -> operationWidgets();

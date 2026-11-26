@@ -39,6 +39,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
     public static final int ENTER_HIDEOUT = 27;
+    public static final int QUESTS = 28;
     private static final int PAGE_SIZE = 4;
     public static final int LIST_ROWS = 6;
     public static final int CONTRACT_ROWS = 5;
@@ -347,6 +348,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             else {wipeUntil=-1;serverPlayer.sendSystemMessage(Component.literal(problem));}
             return true;
         }
+        if(button==QUESTS){if(!ProgressionMenus.available(serverPlayer)||!getCarried().isEmpty())return false;serverPlayer.closeContainer();CampaignMenu.openFromBoard(serverPlayer,position);return true;}
         if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
         int tab = view.tab();
         int page = view.page();

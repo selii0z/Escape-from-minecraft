@@ -29,6 +29,7 @@ public final class CampaignMenu extends AbstractContainerMenu {
     public static final int ACCEPT=1000, CLAIM=2000, FOLLOW=3000;
     static final String TRACKED="campaign_followed_quest";
     private final Player owner;
+    private final net.minecraft.core.BlockPos board;
     private final int trader,selected,count;
     private final List<CampaignRuntime.QuestView> serverQuests;
 
@@ -36,11 +37,11 @@ public final class CampaignMenu extends AbstractContainerMenu {
         this(id,inv,buf.readVarInt(),buf.readVarInt(),buf.readVarInt());
     }
     private CampaignMenu(int id,Inventory inv,int trader,int selected,int count){
-        this(id,inv,trader,selected,count,new SimpleContainer(FIRST+count),List.of());
+        this(id,inv,trader,selected,count,new SimpleContainer(FIRST+count),List.of(),null);
     }
-    private CampaignMenu(int id,Inventory inv,int trader,int selected,int count,SimpleContainer data,List<CampaignRuntime.QuestView> quests){
+    private CampaignMenu(int id,Inventory inv,int trader,int selected,int count,SimpleContainer data,List<CampaignRuntime.QuestView> quests,net.minecraft.core.BlockPos board){
         super(OperationsMod.CAMPAIGN_MENU.get(),id);
-        this.owner=inv.player;this.trader=trader;this.selected=selected;this.count=count;this.serverQuests=List.copyOf(quests);
+        this.owner=inv.player;this.board=board;this.trader=trader;this.selected=selected;this.count=count;this.serverQuests=List.copyOf(quests);
         for(int i=0;i<data.getContainerSize();i++)addSlot(new Slot(data,i,-10000,-10000){
             @Override public boolean mayPlace(ItemStack stack){return false;}
             @Override public boolean mayPickup(Player player){return false;}
@@ -52,8 +53,9 @@ public final class CampaignMenu extends AbstractContainerMenu {
     public ItemStack traderStack(int index){return slots.get(index).getItem();}
     public ItemStack questStack(int index){return slots.get(FIRST+index).getItem();}
     public ItemStack inboxStack(){return slots.get(INBOX).getItem();}
-    static void open(ServerPlayer p){open(p,CampaignTrader.PRAPOR,0);}
-    private static void open(ServerPlayer p,CampaignTrader trader,int requested){
+    static void open(ServerPlayer p){open(p,CampaignTrader.PRAPOR,0,null);}
+    static void openFromBoard(ServerPlayer p,net.minecraft.core.BlockPos board){open(p,CampaignTrader.PRAPOR,0,board);}
+    private static void open(ServerPlayer p,CampaignTrader trader,int requested,net.minecraft.core.BlockPos board){
         if(!ProgressionMenus.available(p)||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty())return;
         var live=CampaignRuntime.views(p);
         var all=CampaignPreview.merge(live);
@@ -86,7 +88,7 @@ public final class CampaignMenu extends AbstractContainerMenu {
                 case COMPLETED->Items.LIME_DYE;case READY->Items.EMERALD;case ACTIVE->Items.PAPER;
                 case AVAILABLE->Items.WRITABLE_BOOK;case FAILED->Items.BARRIER;default->Items.GRAY_DYE;
             };
-            var stack=tile(q.claimable()?Items.EMERALD:item,q.name(),lines);
+            var stack=tile(q.claimable()?Items.EMERALD:item,CampaignFrench.title(q.name()),lines);
             if(playable){
                 var rewards=CampaignRuntime.rewardIcons(q.id());
                 if(!rewards.isEmpty())stack.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(rewards));
@@ -94,7 +96,7 @@ public final class CampaignMenu extends AbstractContainerMenu {
             c.setItem(FIRST+i,stack);
         }
         int selection=Math.max(0,Math.min(requested,list.size()-1));
-        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new CampaignMenu(id,inv,trader.ordinal(),selection,list.size(),c,list),
+        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new CampaignMenu(id,inv,trader.ordinal(),selection,list.size(),c,list,board),
             Component.literal("EFM · "+trader.title)),buf->{buf.writeVarInt(trader.ordinal());buf.writeVarInt(selection);buf.writeVarInt(list.size());});
     }
     @Override public boolean stillValid(Player p){return p==owner&&p.isAlive()&&!p.isSpectator()&&(!(p instanceof ServerPlayer server)||ProgressionMenus.available(server));}
@@ -103,10 +105,10 @@ public final class CampaignMenu extends AbstractContainerMenu {
     @Override public boolean clickMenuButton(Player player,int action){
         if(!(player instanceof ServerPlayer p)||p.containerMenu!=this||!stillValid(p)||!getCarried().isEmpty())return false;
         var t=CampaignTrader.values()[trader];
-        if(action>=0&&action<TRADERS){p.closeContainer();open(p,CampaignTrader.values()[action],0);return true;}
-        if(action==BACK){p.closeContainer();if(Hideout.ownsPlot(p))HideoutMenu.open(p);return true;}
+        if(action>=0&&action<TRADERS){p.closeContainer();open(p,CampaignTrader.values()[action],0,board);return true;}
+        if(action==BACK){p.closeContainer();if(board!=null&&p.serverLevel().isLoaded(board)&&p.serverLevel().getBlockState(board).is(OperationsMod.BOARD.get())&&board.distToCenterSqr(p.position())<=64)OperationsMenu.open(p,board,OperationsMenu.FOREST,0,"");else if(board==null&&Hideout.ownsPlot(p))HideoutMenu.open(p);return true;}
         if(action==LEGACY){p.closeContainer();ProgressionMenus.missions(p);return true;}
-        if(action==SHOP){p.closeContainer();CampaignUnlockShop.open(p,t,0,()->open(p,t,selected));return true;}
+        if(action==SHOP){p.closeContainer();CampaignUnlockShop.open(p,t,0,()->open(p,t,selected,board));return true;}
         if(action==COLLECT){p.closeContainer();int moved=CampaignRewardInbox.collect(p);p.sendSystemMessage(Component.literal(moved+" objet(s) récupéré(s) · "+CampaignRewardInbox.pending(p)+" en réserve"));open(p,t,selected);return true;}
         if(action==REFRESH){p.closeContainer();open(p,t,selected);return true;}
         int kind=action/1000,index=action%1000;
@@ -122,7 +124,7 @@ public final class CampaignMenu extends AbstractContainerMenu {
             if(account.getString(TRACKED).equals(q.id()))account.remove(TRACKED);
             else account.putString(TRACKED,q.id());
         }
-        open(p,t,index);return true;
+        open(p,t,index,board);return true;
     }
     private static Item icon(CampaignTrader t){return switch(t){
         case PRAPOR->Items.CROSSBOW;case THERAPIST->Items.GOLDEN_APPLE;case SKIER->Items.IRON_NUGGET;
