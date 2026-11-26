@@ -1306,6 +1306,7 @@ public final class ForestRaid extends SavedData {
             if(random.nextInt(100)<30)barrel.setItem(25,medicalLoot("field_ration",1+random.nextInt(2)));
             if(random.nextInt(100)<45)barrel.setItem(24,net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,net.minecraft.world.item.alchemy.Potions.WATER));
         }
+        CampaignSupplies.addLoot(barrel,random,30);
         CollectorItems.addLoot(barrel,random,10);
         RaidOrigin.markContainer(barrel);
         return true;
