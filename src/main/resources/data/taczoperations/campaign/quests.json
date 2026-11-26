@@ -993,6 +993,159 @@
         "rubles": 165000,
         "reputationMilli": 250
       }
+    },
+    {
+      "id": "669fa39b91b0a8c9680fc467",
+      "name": "Black Swan",
+      "trader": "mechanic",
+      "level": 12,
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "669fb647a5be751be095da27",
+          "type": "plant:factory:black-swan:5991b51486f77447b112d44f",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Poser une balise MS2000 · Bunker, salle centrale"
+        }
+      ],
+      "adaptation": {
+        "sites": [
+          {
+            "map": "factory",
+            "x": 112,
+            "z": 112,
+            "radius": 4
+          }
+        ],
+        "durationSeconds": 10
+      },
+      "reference": {
+        "level": 12,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "startItems": {
+          "5991b51486f77447b112d44f": 1
+        }
+      },
+      "adapter": "field-deposit-v2",
+      "implemented": true,
+      "prerequisites": [],
+      "conflicts": []
+    },
+    {
+      "id": "5b4795fb86f7745876267770",
+      "name": "Chumming",
+      "trader": "skier",
+      "level": 7,
+      "loyalty": 2,
+      "reward": {
+        "credits": 1000,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "5b4796c086f7745877352c2c",
+          "type": "plant:customs:chumming:5734758f24597738025ee253",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Déposer des chaînes en or · Zone industrielle"
+        },
+        {
+          "id": "5b47971086f774587877ad34",
+          "type": "plant:woods:chumming:5734758f24597738025ee253",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Déposer des chaînes en or · Forêt Noire"
+        }
+      ],
+      "adaptation": {
+        "sites": [
+          {
+            "map": "customs",
+            "x": 350,
+            "z": 520,
+            "radius": 5
+          },
+          {
+            "map": "woods",
+            "x": 645,
+            "z": 225,
+            "radius": 6
+          }
+        ],
+        "durationSeconds": 10
+      },
+      "reference": {
+        "level": 7,
+        "experience": 10000,
+        "euros": 1000,
+        "reputationMilli": 250,
+        "startItems": {
+          "5734758f24597738025ee253": 4
+        }
+      },
+      "adapter": "field-deposit-v2",
+      "implemented": true,
+      "prerequisites": [],
+      "conflicts": []
+    },
+    {
+      "id": "6834145ebc1f443d7603c8a7",
+      "name": "Easy Money - Part 1",
+      "trader": "skier",
+      "level": 10,
+      "loyalty": 2,
+      "reward": {
+        "credits": 450,
+        "xp": 30,
+        "reputation": 0
+      },
+      "objectives": [
+        {
+          "id": "6834145ebc1f443d7603c8ab",
+          "type": "plant:customs:arena-poster:675a0288c3102563bd01c9c3",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Déposer une affiche Arena · Zone industrielle"
+        }
+      ],
+      "adaptation": {
+        "sites": [
+          {
+            "map": "customs",
+            "x": 125,
+            "z": 540,
+            "radius": 5
+          }
+        ],
+        "durationSeconds": 10
+      },
+      "reference": {
+        "level": 10,
+        "experience": 3000,
+        "euros": 450,
+        "reputationMilli": 0,
+        "startItems": {
+          "675a0288c3102563bd01c9c3": 3
+        },
+        "unlockTrader": "ref"
+      },
+      "adapter": "field-deposit-v2",
+      "implemented": true,
+      "prerequisites": [],
+      "conflicts": []
     }
   ]
 }
