@@ -20,7 +20,7 @@ tasks.register('verifyEfmAssets') {
             'screwdriver','wrench','flat_pliers','measuring_tape','hand_drill','tool_set','fuel_can',
             'air_filter','water_filter','aramid_fabric','ripstop_fabric','paracord','saline','medical_tools',
             'surgical_kit','ophthalmoscope','blood_set','defibrillator','ledx','tea_box','bear_plush',
-            'master_tools','metal_scissors','filter_cartridge','secure_case','industrial_key']
+            'master_tools','metal_scissors','filter_cartridge','secure_case','industrial_key','military_tag']
         def parser=new JsonSlurper()
         icons.each { id ->
             checkImage('textures/item/'+id+'.png',64,64)
