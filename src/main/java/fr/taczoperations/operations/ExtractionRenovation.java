@@ -39,6 +39,8 @@ final class ExtractionRenovation {
     private static void renovate(ServerLevel level,Pad pad){
         BlockPos center=pad.center(),marker=center.below();
         if(!level.hasChunkAt(marker)||!level.getBlockState(marker).is(pad.old()))return;
+        // Never remodel beneath another player currently standing on the pad.
+        if(level.players().stream().anyMatch(p->Math.abs(p.getX()-center.getX()-.5)<5&&Math.abs(p.getZ()-center.getZ()-.5)<5&&Math.abs(p.getY()-center.getY())<4))return;
         var edits=new LinkedHashMap<BlockPos,Block>();
         ExtractionLayout.paint(pad.style(),(x,y,z,block)->edits.put(center.offset(x,y,z),block));
         // All target chunks must already be loaded. Never erase container or other block-entity data.
