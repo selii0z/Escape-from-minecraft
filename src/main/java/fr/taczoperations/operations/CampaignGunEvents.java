@@ -27,6 +27,7 @@ public final class CampaignGunEvents {
             case "rifle"->java.util.Set.of("ak47","m4a1").contains(gun);
             case "smg"->gun.equals("hk_mp5a5");
             case "shotgun"->gun.equals("m870");
+            case "lmg"->gun.equals("m249");
             default->false;
         };
     }
