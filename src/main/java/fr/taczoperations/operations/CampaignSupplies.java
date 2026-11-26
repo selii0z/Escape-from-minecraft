@@ -45,8 +45,14 @@ public final class CampaignSupplies {
     private static final String SHOTGUN="5a38e6bac4a2826c6e06d79b";
     private static final Map<String,String> BASE_GUNS=Map.of("5644bd2b4bdc2d3b4c8b4572","ak47","5447a9cd4bdc2dbd208b4567","m4a1","5448bd6b4bdc2dfc2f8b4569","glock_17");
     private static final String THERMAL="5a1eaa87fcdbcb001865f75e",HELMET5="5ca20ee186f774799474abc2",AMMO556="60194943740c5d77f6705eea";
-    static boolean rewardKnown(String id){return THERMAL.equals(id)||HELMET5.equals(id)||AMMO556.equals(id)|| "5645bcc04bdc2d363b8b4572".equals(id)||"5aa7d03ae5b5b00016327db5".equals(id)||BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    private static final String EPSILON="59db794186f77448bc595262", HELMET3="5645bc214bdc2d363b8b4571";
+    static boolean rewardKnown(String id){return EPSILON.equals(id)||HELMET3.equals(id)|| THERMAL.equals(id)||HELMET5.equals(id)||AMMO556.equals(id)|| "5645bcc04bdc2d363b8b4572".equals(id)||"5aa7d03ae5b5b00016327db5".equals(id)||BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
     static ItemStack rewardStack(String id){
+        if(EPSILON.equals(id)){
+            var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","secure_epsilon"));
+            return item instanceof SecureCaseItem s&&s.tier()==SecureCaseItem.Tier.EPSILON?new ItemStack(item):ItemStack.EMPTY;
+        }
+        if(HELMET3.equals(id))return BallisticVest.create(net.minecraft.world.entity.EquipmentSlot.HEAD,3,BallisticVest.classColor(3));
         if(THERMAL.equals(id))return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","thermal_goggles")));
         if(HELMET5.equals(id))return BallisticVest.create(net.minecraft.world.entity.EquipmentSlot.HEAD,5,BallisticVest.classColor(5));
         if(AMMO556.equals(id))return OperationsShop.ammo("556x45",1);
@@ -75,6 +81,9 @@ public final class CampaignSupplies {
     }
     private static final String BEAR_TAG="59f32bb586f774757e1e8442", USEC_TAG="59f32c3b86f77472a31742f0";
     static Optional<String> reference(ItemStack stack){
+        if(stack.getItem() instanceof SecureCaseItem c)
+            return c.tier()==SecureCaseItem.Tier.EPSILON&&RaidSecurity.emptyCase(stack)?Optional.of(EPSILON):Optional.empty();
+        if(BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.HEAD)==3)return Optional.of(HELMET3);
         if(MilitaryTag.isTag(stack)){
             var custom=stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
             if(custom==null)return Optional.empty();
