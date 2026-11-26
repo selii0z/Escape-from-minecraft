@@ -128,6 +128,16 @@ def normalize_gates(q, current):
             blockers.add("unsupported-"+r["type"]+"-requirement")
     return {"prerequisites":prerequisites,"traderRequirements":trader_requirements,"dialogueTrader":dialogue},blockers
 
+def test_dialogue_free_gates():
+    trader="54cb50c76803fa8b248b4571"
+    q={"trader":trader,"otherRequirements":[{"type":"dialogue","traders":[trader]}],
+       "traderRequirements":[{"trader":trader,"requirementType":"level","compareMethod":">=","value":2}]}
+    gates,blockers=normalize_gates(q,{})
+    assert not blockers and gates["dialogueTrader"] is None
+    assert gates["traderRequirements"]==[{"trader":"prapor","kind":"LEVEL","operator":"GE","value":2}]
+    q["otherRequirements"].append({"type":"globalVariable"})
+    assert "unsupported-globalVariable-requirement" in normalize_gates(q,{})[1]
+
 def stock_draft(q, mapped, current):
     blockers=set()
     translated=[]
@@ -358,6 +368,7 @@ def build(snapshot,out,resources):
 if __name__=="__main__":
     test_dependencies()
     test_stock_activation()
+    test_dialogue_free_gates()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
