@@ -261,6 +261,7 @@ TARGET_ADAPTERS = {
     frozenset(["Any"]):"any", frozenset(["AnyPmc"]):"pmc",
     frozenset(["Savage","Marksman","assaultGroup"]):"scav",
     frozenset(["Savage"]):"scav", frozenset(["Marksman"]):"marksman",
+    frozenset(["Marksman","followerKojaniy","followerGluharScout","bossBoarSniper","bossKojaniy"]):"longrange_targets",
     frozenset(["sectantPriest","sectantWarrior"]):"cultist",
     frozenset(["bossBoar","bossBully","bossGluhar","bossKilla","bossKojaniy","bossKolontay","bossSanitar","bossTagilla","bossZryachiy","bossKillaAgro","bossTagillaAgro","infectedTagilla","tagillaHelperAgro"]):"classic_boss",
     frozenset(["Bear"]):"bear", frozenset(["Usec"]):"usec",
@@ -1059,8 +1060,37 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             second["taskRequirements"]=[{"task":helping,"status":["complete"]}]
             third["taskRequirements"]=[dict(req,status=["complete"]) if req["task"]==helping else req for req in third.get("taskRequirements",[])]
             audit.extend({"id":qid,"name":display_name(tasks[qid]),"changes":[{"type":"shipping-document-sequential"}]} for qid in (helping,shipping1,shipping2))
+    # Sensory Analysis: visit an eligible map and extract, then hand the
+    # actual stock item to the second merchant. Avoid the circular ACTIVE gate.
+    sensory1="67a0967c003a9986cb0f5ac1"; sensory2="67a096ed77dd677f600804ba"
+    if sensory1 in tasks and sensory2 in tasks:
+        first,second=tasks[sensory1],tasks[sensory2]
+        find=next((o for o in first["objectives"] if o["id"]=="67dc3861d5c0070b960c1bba"),None)
+        visit=next((o for o in first["objectives"] if o["id"]=="67dc393c6089aa48050efa02"),None)
+        status=next((o for o in first["objectives"] if o["type"]=="taskStatus" and o.get("task")==sensory2),None)
+        give=next((o for o in second["objectives"] if o["type"]=="giveItem"),None)
+        if find and visit and status and give and find["items"]==give["items"] and find["count"]==give["count"]==1 and len(first["objectives"])==3:
+            before=first["objectives"]
+            first["objectives"]=[{"id":visit["id"],"description":"Reconnaissance avec extraction","type":"extract","count":1,"optional":False,"maps":visit["maps"],"exitStatus":["ExpBonusSurvived"]}]
+            second["taskRequirements"]=[{"task":sensory1,"status":["complete"]}]
+            first["availableDelaySecondsMin"]=first["availableDelaySecondsMax"]=0
+            audit.append({"id":sensory1,"name":display_name(first),"changes":[{"type":"sequential-reconnaissance-before-item-handover","reference":before}]})
+            audit.append({"id":sensory2,"name":display_name(second),"changes":[{"type":"complete-reconnaissance-before-handover"}]})
     for qid,q in sorted(tasks.items()):
         changes=[]
+        if qid=="6396701b9113f06a7c3b2379" and q.get("availableDelaySecondsMin")==q.get("availableDelaySecondsMax")==36000:
+            for o in q["objectives"]:
+                if o["id"]=="6397ac912e519e69d2139b26" and o.get("distance")=={"value":200,"compareMethod":">="}:
+                    o["distance"]={"value":100,"compareMethod":">="}
+                    q["availableDelaySecondsMin"]=q["availableDelaySecondsMax"]=0
+                    changes.append({"type":"efm-render-range-and-no-wait","originalDistance":200,"distance":100,"originalDelaySeconds":36000})
+        if qid=="675c1cf4a757ddd00404f0a3" and {o["id"] for o in q["objectives"]}=={"675c1cf4a757ddd00404f0a6","676ab31c058363b09072c78e"}:
+            visit=next(o for o in q["objectives"] if o["type"]=="visit")
+            optional=next(o for o in q["objectives"] if o["type"]=="findItem")
+            if optional.get("optional") and {z.get("id") for z in visit.get("zones",[])}=={"exit777"}:
+                before=q["objectives"]
+                q["objectives"]=[{"id":visit["id"],"description":"Reconnaissance d’une extraction industrielle","type":"extract","count":1,"optional":False,"maps":["56f40101d2720b2a4d8b45d6"],"exitStatus":["ExpBonusSurvived"]}]
+                changes.append({"type":"industrial-extraction-equivalent","reference":before})
         # These two reviewed challenges reset on any unsuccessful EFM raid.
         # A fresh attempt starts automatically, with no reward or repeat-completion.
         if qid in {"5bc4893c86f774626f5ebf3e","5c0be13186f7746f016734aa"}:
