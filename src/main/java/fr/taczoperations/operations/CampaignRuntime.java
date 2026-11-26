@@ -46,8 +46,8 @@ final class CampaignRuntime {
     // Provisional economy conversion: 100 reference rubles per EFM credit,
     // 100 reference XP per EFM XP. Keep original values in the reference catalog.
     private static final int DEBUT_CREDITS=800,DEBUT_XP=30,DEBUT_REP=100;
-    private static final Catalog CATALOG=load();
     private static final Set<String> MAPS=Set.of("*","woods","customs","factory","interchange","village","streets");
+    private static final Catalog CATALOG=load();
 
     static String map(boolean industrial,ExpressZone express){
         if(express==null)return industrial?"customs":"woods";
@@ -140,6 +140,10 @@ final class CampaignRuntime {
                 if(q.has("adapter")&&q.get("adapter").getAsString().equals("bulk-stock-v2")){
                     reviewed=q.get("implemented").getAsBoolean()&&q.has("review")&&q.get("review").getAsString().equals("approved")
                         &&q.has("blockers")&&q.getAsJsonArray("blockers").isEmpty()&&reward!=null&&StockObjectives.valid(objectives);
+                }
+                if(q.has("adapter")&&q.get("adapter").getAsString().equals("bulk-combat-v1")){
+                    reviewed=q.get("implemented").getAsBoolean()&&q.has("review")&&q.get("review").getAsString().equals("approved")
+                        &&q.has("blockers")&&q.getAsJsonArray("blockers").isEmpty()&&reward!=null&&combatObjectivesValid(objectives);
                 }
                 String dialogue=q.has("dialogueTrader")&&!q.get("dialogueTrader").isJsonNull()?CampaignTrader.byId(q.get("dialogueTrader").getAsString()).id:null;
                 QuestSite site=null;
@@ -244,6 +248,29 @@ final class CampaignRuntime {
             case "scav"->role==GuardRole.RAIDER||role==GuardRole.SCOUT||role==GuardRole.SOLDIER||role==GuardRole.MARKSMAN;
             default->parts[2].equals(role.name().toLowerCase(Locale.ROOT));
         };
+    }
+    /** Strict event adapter: no implicit wildcard targets or unsupported map restrictions. */
+    private static boolean combatObjectivesValid(List<Objective> objectives){
+        var stock=objectives.stream().filter(o->StockObjectives.find(o)||StockObjectives.give(o)).toList();
+        if(!stock.isEmpty()&&!StockObjectives.valid(stock))return false;
+        int combat=0;
+        for(var o:objectives){
+            if(StockObjectives.find(o)||StockObjectives.give(o))continue;
+            String[] parts=o.type().split(":",-1);
+            if(o.optional()||parts.length<2)return false;
+            var maps=Arrays.asList(parts[1].split(",",-1));
+            if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
+            if(parts[0].equals("extract")){
+                if(parts.length!=2||o.scope()!=Scope.SURVIVING_RAID)return false;
+            }else if(parts[0].equals("kill")){
+                if(parts.length!=3||o.scope()!=Scope.CAMPAIGN)return false;
+                String role=parts[2];
+                if(!Set.of("any","pmc","scav","boss").contains(role)&&Arrays.stream(GuardRole.values())
+                    .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
+            }else return false;
+            combat++;
+        }
+        return combat>0;
     }
     private static boolean pairedStockValid(List<Objective> objectives){return StockObjectives.valid(objectives);}
     private static boolean findStock(Objective o){return StockObjectives.find(o);}
