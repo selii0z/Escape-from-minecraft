@@ -4,11 +4,25 @@ on:
     branches: [feature/tarkov-campaign]
     paths:
       - tools/tarkov_campaign_snapshot.py
+      - 'src/main/java/fr/taczoperations/campaign/**'
+      - 'src/test/java/fr/taczoperations/campaign/**'
       - .github/workflows/tarkov-reference.yml
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Test campaign graph
+        run: |
+          javac -d build/campaign-tests src/main/java/fr/taczoperations/campaign/CampaignGraph.java src/test/java/fr/taczoperations/campaign/CampaignGraphTest.java
+          java -cp build/campaign-tests fr.taczoperations.campaign.CampaignGraphTest
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 5
