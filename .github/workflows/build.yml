@@ -60,6 +60,7 @@ jobs:
             build/tarkov-review/activation-blockers.json
             build/tarkov-review/campaign-retired-quests.json
             build/tarkov-review/campaign-scope-review.json
+            build/tarkov-review/campaign-adaptation-review.json
             build/tarkov-reference/manifest.json
           if-no-files-found: error
       - name: Compile and capture diagnostics
