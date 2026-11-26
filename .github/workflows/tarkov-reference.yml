@@ -27,7 +27,7 @@ jobs:
           java-version: '21'
       - name: Test campaign graph
         run: |
-          javac -d build/campaign-tests src/main/java/fr/taczoperations/campaign/CampaignGraph.java src/main/java/fr/taczoperations/campaign/TurnInPlanner.java src/main/java/fr/taczoperations/campaign/FieldAction.java src/test/java/fr/taczoperations/campaign/CampaignGraphTest.java
+          javac -d build/campaign-tests src/main/java/fr/taczoperations/campaign/CampaignGraph.java src/main/java/fr/taczoperations/campaign/TurnInPlanner.java src/main/java/fr/taczoperations/campaign/FieldAction.java src/main/java/fr/taczoperations/campaign/CampaignTrader.java src/main/java/fr/taczoperations/campaign/TraderRequirement.java src/main/java/fr/taczoperations/campaign/StockObjectives.java src/test/java/fr/taczoperations/campaign/CampaignGraphTest.java
           java -cp build/campaign-tests fr.taczoperations.campaign.CampaignGraphTest
   audit:
     runs-on: ubuntu-latest
