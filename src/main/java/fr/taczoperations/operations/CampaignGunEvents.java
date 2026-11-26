@@ -31,6 +31,19 @@ public final class CampaignGunEvents {
             default->false;
         };
     }
+    static boolean matchesGear(ServerPlayer p,String gear){
+        if(gear.equals("any"))return true;
+        var chest=p.getItemBySlot(EquipmentSlot.CHEST);
+        var head=p.getItemBySlot(EquipmentSlot.HEAD);
+        boolean rig=FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)>0;
+        return switch(gear){
+            case "uniform2"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==2&&BallisticVest.tier(head,EquipmentSlot.HEAD)==2;
+            case "armor2"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==2;
+            case "noarmor"->chest.isEmpty()&&!rig;
+            case "unarmored"->!rig&&java.util.Arrays.stream(BallisticVest.SLOTS).allMatch(slot->p.getItemBySlot(slot).isEmpty());
+            default->false;
+        };
+    }
     private static boolean eligible(ServerPlayer p,Pillager guard,ServerLevel level){
         return p.isAlive()&&!p.isCreative()&&!p.isSpectator()&&!ScavRun.active(p)
             &&ForestRaid.isParticipant(p)&&ForestRaid.currentGuard(level,guard)&&ForestRaid.sameSession(level,guard,p);
