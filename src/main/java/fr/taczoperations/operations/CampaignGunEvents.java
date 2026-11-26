@@ -37,6 +37,7 @@ public final class CampaignGunEvents {
         var head=p.getItemBySlot(EquipmentSlot.HEAD);
         boolean rig=FieldPack.capacity(FieldInventoryMenu.current(FieldInventoryMenu.handler(p,FieldInventoryMenu.RIG)),true)>0;
         return switch(gear){
+            case "heavyuniform"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==6&&BallisticVest.tier(head,EquipmentSlot.HEAD)==3;
             case "uniform2"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==2&&BallisticVest.tier(head,EquipmentSlot.HEAD)==2;
             case "armor2"->BallisticVest.tier(chest,EquipmentSlot.CHEST)==2;
             case "noarmor"->chest.isEmpty()&&!rig;
