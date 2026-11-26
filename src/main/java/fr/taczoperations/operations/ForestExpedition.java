@@ -403,8 +403,8 @@ public final class ForestExpedition {
             }
         }
         if (!player.isSpectator() && player.onGround()
-            && (feet.equals(primary) || (relay && feet.equals(secondary)))) {
-            if(!extractionReady(player,feet))return;
+            && (inExtraction(feet,primary) || (relay && inExtraction(feet,secondary)))) {
+            if(!extractionReady(player,inExtraction(feet,primary)?primary:secondary))return;
             if(!ForestRaid.canContinue(player)){returnToOrigin(player,false);return;}
             if (returnToOrigin(player, true)) {
                 SupplyContract.extracted(player, industrial);
