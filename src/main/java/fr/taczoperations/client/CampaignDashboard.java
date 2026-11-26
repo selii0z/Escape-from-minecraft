@@ -21,14 +21,17 @@ import java.util.regex.Pattern;
 
 /** Local page inside the original EFM operations screen. */
 public final class CampaignDashboard {
-    private static final int GOLD=0xffe5ce88,WHITE=0xfff5f3e8,SOFT=0xffbfc8b8,OLIVE=0xffa4c67c,ORANGE=0xffe3ab6e,FRAME=0xff716751;
+    private static final int GOLD=0xffe6d9c4,WHITE=0xfff5f3e8,SOFT=0xffbdb9b2,OLIVE=0xffb4ca77,ORANGE=0xffee9e43,FRAME=0xff625d55;
     private static final ResourceLocation FONT=ResourceLocation.fromNamespaceAndPath("taczoperations","interface"),HEAD=ResourceLocation.fromNamespaceAndPath("taczoperations","heading");
     private static final Pattern PROGRESS=Pattern.compile("^(.*) : (\\d+)/(\\d+)$");
     private static final Item[] ICONS={Items.CROSSBOW,Items.GOLDEN_APPLE,Items.IRON_NUGGET,Items.GOLD_INGOT,Items.ANVIL,Items.LEATHER_CHESTPLATE,Items.COMPASS,Items.ENDER_CHEST,Items.TARGET,Items.LANTERN,Items.MINECART};
-    private static final int ROWS=10, LIST_X=169,LIST_Y=178,LIST_W=272,ROW=20,DETAIL_X=455,DETAIL_Y=270,DETAIL_W=361,DETAIL_ROWS=7;
+    private static final int ROWS=7, LIST_X=167,LIST_Y=178,LIST_W=292,ROW=31,DETAIL_X=480,DETAIL_Y=259,DETAIL_W=330,DETAIL_ROWS=4;
+    private static final String[] FILTERS={"Toutes","Disponibles","En cours","Terminées","Verrouillées"};
+    private static final int[] FILTER_W={43,58,49,52,68};
+    private static final int TRADER_W=90, TRADER_STEP=94, TRADER_VISIBLE=7;
     private final int menuId;
     private final HashMap<Integer,CampaignTabData> cache=new HashMap<>();
-    private int trader,filter,scroll,detailScroll;
+    private int trader,filter,scroll,detailScroll,traderStart,rewardScroll;
     private String selected="";
     private boolean waiting,changed,dragList,dragDetail;
     private long askedAt;
@@ -48,6 +51,7 @@ public final class CampaignDashboard {
     }
     void enter(){if(!cache.containsKey(trader)&&!waiting)request(0,"");}
     boolean changed(){return changed;}
+    String merchant(){return CampaignTrader.values()[trader].title;}
     CampaignTabData latest(){return last;}
     private CampaignTabData data(){return cache.get(trader);}
     private void request(int action,String id){
@@ -75,7 +79,7 @@ public final class CampaignDashboard {
     }
     private void ensureSelection(){
         var list=visible();
-        if(list.stream().noneMatch(q->q.id().equals(selected))){selected=list.isEmpty()?"":list.getFirst().id();detailScroll=0;}
+        if(list.stream().noneMatch(q->q.id().equals(selected))){selected=list.isEmpty()?"":list.getFirst().id();detailScroll=rewardScroll=0;}
         scroll=Math.clamp(scroll,0,Math.max(0,list.size()-ROWS));
     }
     private CampaignTabData.Quest current(){var d=data();return d==null?null:d.quests().stream().filter(q->q.id().equals(selected)).findFirst().orElse(null);}
@@ -91,89 +95,104 @@ public final class CampaignDashboard {
         g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);
         g.drawString(font(),styled(s,bold),0,0,color,false);g.pose().popPose();
     }
-    private static void tile(GuiGraphics g,int x,int y,int w,int h,boolean selected,boolean hover){
-        g.fillGradient(x+1,y+1,x+w-1,y+h-1,selected?0xff4a5730:hover?0xff374432:0xff2b3328,0xff171d16);
-        g.fill(x+2,y,x+w-2,y+1,selected?GOLD:FRAME);g.fill(x+2,y+h-1,x+w-2,y+h,selected?GOLD:FRAME);
-        g.fill(x,y+2,x+1,y+h-2,selected?GOLD:FRAME);g.fill(x+w-1,y+2,x+w,y+h-2,selected?GOLD:FRAME);
-    }
+    private static void tile(GuiGraphics g,int x,int y,int w,int h,boolean selected,boolean hover){TacticalSkin.tile(g,x,y,w,h,selected,hover);}
     private static void button(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled,boolean selected){
         tile(g,x,y,w,h,enabled&&selected,enabled&&hit(mx,my,x,y,w,h));
-        text(g,s,x+(w-font().width(styled(s,true)))/2,y+(h-8)/2,1,enabled?WHITE:0xff777d72,true);
+        text(g,s,x+(w-font().width(styled(s,true)))/2,y+(h-8)/2,1,enabled?WHITE:0xff777777,true);
+    }
+    private static void accentButton(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled,int accent){
+        tile(g,x,y,w,h,enabled&&accent==ORANGE,enabled&&hit(mx,my,x,y,w,h));
+        if(enabled){g.fillGradient(x+2,y+2,x+w-2,y+h-2,accent==ORANGE?0xff54391f:0xff3d4428,0xff1d2017);TacticalSkin.outline(g,x,y,w,h,accent);}
+        text(g,s,x+(w-font().width(styled(s,true)))/2,y+(h-8)/2,1,enabled?accent:0xff777777,true);
+    }
+    private static void badge(GuiGraphics g,String s,int x,int y,int w,int h){
+        int c=status(s);TacticalSkin.cut(g,x,y,w,h,0xff242422);TacticalSkin.outline(g,x,y,w,h,c);
+        text(g,s,x+(w-Math.round(font().width(styled(s,false))*.85f))/2,y+(h-7)/2,.85f,c,false);
+    }
+    private static void section(GuiGraphics g,String s,int x,int y,int w){
+        text(g,s,x,y,1.08f,GOLD,true);g.fill(x,y+12,x+w,y+13,0xff655340);TacticalSkin.stripes(g,x+w-40,y+3,0xffa6642d);
+    }
+    private static ItemStack questIcon(CampaignTabData.Quest q){
+        return new ItemStack(switch(q.status()){case "Disponible"->Items.WRITABLE_BOOK;case "En cours"->Items.PAPER;case "À valider","Terminée"->Items.LIME_DYE;case "Échouée"->Items.BARRIER;default->Items.GRAY_DYE;});
     }
     private static void item(GuiGraphics g,ItemStack s,int x,int y,float scale){
         g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);g.renderItem(s,0,0);g.pose().popPose();
     }
     private static int status(String s){return switch(s){
-        case "Disponible"->GOLD;case "En cours"->ORANGE;case "À valider","Terminée"->OLIVE;case "Échouée"->0xffdf8b80;default->SOFT;
+        case "Disponible"->OLIVE;case "En cours"->ORANGE;case "À valider","Terminée"->OLIVE;case "Échouée"->0xffdf8b80;default->SOFT;
     };}
     private static void scrollBar(GuiGraphics g,int x,int y,int h,int total,int rows,int offset){
-        g.fill(x,y,x+4,y+h,0xff343b30);int size=Math.min(h,Math.max(12,h*rows/Math.max(1,total)));
-        int top=y+(h-size)*offset/Math.max(1,total-rows);g.fill(x,top,x+4,top+size,0xff8c9475);
+        g.fill(x,y,x+4,y+h,0xff343434);int size=Math.min(h,Math.max(12,h*rows/Math.max(1,total)));
+        int top=y+(h-size)*offset/Math.max(1,total-rows);g.fill(x,top,x+4,top+size,0xff99958d);
     }
     private static void art(GuiGraphics g,String id,int x,int y,int w,int h){
         if(!List.of("forest","industrial","village","underground","quarantine","military").contains(id))id="military";
         var tex=ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/"+id+".png");
         var textures=Minecraft.getInstance().getTextureManager();textures.bindForSetup(tex);textures.getTexture(tex).setFilter(true,false);
-        g.blit(tex,x,y,0,0,w,h,w,h);g.renderOutline(x,y,w,h,FRAME);
+        // Center crop from the original 380x170 illustration; never stretch.
+        int sourceH=Math.min(170,Math.round(380f*h/w));
+        g.blit(tex,x,y,w,h,0,(170-sourceH)/2,380,sourceH,380,170);
+        TacticalSkin.outline(g,x,y,w,h,0xff8a8070);
     }
-    private int mx(int i){return 169+(i%6)*108;}
-    private int my(int i){return 108+(i/6)*22;}
+    private int mx(int i){return 169+(i-traderStart)*TRADER_STEP;}
+    private void shiftTraders(int delta){traderStart=Math.clamp(traderStart+delta,0,Math.max(0,CampaignTrader.values().length-TRADER_VISIBLE));}
     void draw(GuiGraphics g,double x,double y){
         if(waiting&&System.nanoTime()-askedAt>10_000_000_000L){waiting=false;message="Actualise pour relancer le chargement.";}
-        text(g,"CAMPAGNE  /  QUÊTES",170,82,1.5F,WHITE,true);
-        text(g,"Contrats des marchands",565,86,1,SOFT,false);
+        TacticalSkin.panel(g,157,65,667,43);TacticalSkin.panel(g,157,112,305,326);TacticalSkin.panel(g,467,112,357,326);
         var loyalties=last==null?List.<Integer>of():last.loyalties();
-        for(int i=0;i<CampaignTrader.values().length;i++){
-            int bx=mx(i),by=my(i);
-            tile(g,bx,by,104,20,i==trader,hit(x,y,bx,by,104,20));
-            item(g,new ItemStack(ICONS[i]),bx+3,by+3,.8F);
-            text(g,fit(CampaignTrader.values()[i].title,75,true),bx+19,by+3,.95F,WHITE,true);
-            if(i<loyalties.size())text(g,loyalties.get(i)==0?"Verrouillé":"Fidélité "+loyalties.get(i),bx+19,by+12,.68F,loyalties.get(i)==0?SOFT:GOLD,false);
+        int end=Math.min(CampaignTrader.values().length,traderStart+TRADER_VISIBLE);
+        for(int i=traderStart;i<end;i++){
+            int bx=mx(i);
+            tile(g,bx,70,TRADER_W,33,i==trader,hit(x,y,bx,70,TRADER_W,33));
+            if(!TacticalSkin.portrait(g,i,bx+4,74,25))item(g,new ItemStack(ICONS[i]),bx+6,76,1.25f);
+            text(g,fit(CampaignTrader.values()[i].title,69,true),bx+31,77,.86f,WHITE,true);
+            if(i<loyalties.size())text(g,loyalties.get(i)==0?"Verrouillé":"Fidélité "+loyalties.get(i),bx+31,89,.70f,loyalties.get(i)==0?SOFT:ORANGE,false);
         }
-        g.fill(167,152,820,153,FRAME);
+        // The entire merchant list is available with the mouse wheel; compact arrows overlay the outer gutter.
+        if(traderStart>0)text(g,"‹",160,82,1.05f,ORANGE,true);
+        if(end<CampaignTrader.values().length)text(g,"›",817,82,1.05f,ORANGE,true);
+        text(g,"Quêtes de "+merchant(),169,121,1.35f,GOLD,true);
         var d=data();
-        String[] names={"Toutes","Disponibles","Actives","Finies","Bloquées"};
-        int[] widths={44,64,46,43,60};int fx=169;
-        for(int i=0;i<names.length;i++){button(g,names[i],fx,157,widths[i],17,x,y,true,filter==i);fx+=widths[i]+3;}
-        if(d==null){
-            text(g,waiting?"Chargement des quêtes…":"Aucune donnée reçue.",173,188,1.1F,SOFT,false);
-        }else{
+        if(d!=null){long done=d.quests().stream().filter(q->q.status().equals("Terminée")).count();
+            String count=done+" / "+d.quests().size();text(g,count,449-font().width(styled(count,false)),124,1,SOFT,false);}
+        g.fill(168,140,450,141,FRAME);
+        int fx=167;
+        for(int i=0;i<FILTERS.length;i++){button(g,FILTERS[i],fx,148,FILTER_W[i],22,x,y,true,filter==i);fx+=FILTER_W[i]+3;}
+        if(d==null){text(g,waiting?"Chargement des quêtes…":"Aucune donnée reçue.",173,188,1.1F,SOFT,false);}
+        else{
             ensureSelection();var list=visible();
             for(int i=0;i<ROWS&&i+scroll<list.size();i++){
                 var q=list.get(i+scroll);int ry=LIST_Y+i*ROW;
-                tile(g,LIST_X,ry,LIST_W-7,ROW-2,q.id().equals(selected),hit(x,y,LIST_X,ry,LIST_W-7,ROW-2));
-                int c=status(q.status());g.fill(LIST_X+2,ry+3,LIST_X+4,ry+ROW-5,c);
-                text(g,fit((q.followed()?"★ ":"")+q.name(),205,false),LIST_X+8,ry+3,1,WHITE,false);
-                text(g,q.status(),LIST_X+8,ry+12,.66F,c,false);
+                tile(g,LIST_X,ry,LIST_W-12,ROW-3,q.id().equals(selected),hit(x,y,LIST_X,ry,LIST_W-12,ROW-3));
+                item(g,questIcon(q),LIST_X+5,ry+5,1.12f);
+                text(g,fit((q.followed()?"★ ":"")+q.name(),177,false),LIST_X+28,ry+10,1,WHITE,false);
+                badge(g,q.status(),LIST_X+205,ry+6,70,16);
             }
-            scrollBar(g,435,LIST_Y,ROWS*ROW,list.size(),ROWS,scroll);
+            scrollBar(g,453,LIST_Y,ROWS*ROW-3,list.size(),ROWS,scroll);
             if(list.isEmpty())text(g,"Aucune quête pour ce filtre.",175,185,1,SOFT,false);
-            long done=d.quests().stream().filter(q->q.status().equals("Terminée")).count();
-            long playable=d.quests().stream().filter(CampaignTabData.Quest::playable).count();
-            text(g,done+"/"+playable+" terminées  ·  "+d.quests().size()+" au catalogue",169,382,.9F,SOFT,false);
         }
-        g.fill(447,157,448,395,FRAME);
         drawQuest(g,x,y);
-        button(g,"Réserve",169,402,83,22,x,y,!waiting,false);
-        button(g,"Offres débloquées",258,402,122,22,x,y,!waiting,false);
-        button(g,"Actualiser",386,402,69,22,x,y,!waiting,false);
-        if(last!=null)text(g,last.inbox()+" objet(s) en réserve",169,432,.9F,SOFT,false);
-        if(waiting)text(g,"Synchronisation…",460,432,.95F,GOLD,false);else if(!message.isEmpty())text(g,fit(message,350,false),460,432,.95F,GOLD,false);
+        button(g,"Réserve",168,408,68,22,x,y,!waiting,false);
+        button(g,"Offres débloquées",240,408,122,22,x,y,!waiting,false);
+        button(g,"Actualiser",366,408,83,22,x,y,!waiting,false);
+        if(last!=null)text(g,last.inbox()+" objet(s) en réserve",168,443,.9F,SOFT,false);
+        if(waiting)text(g,"Synchronisation…",480,443,.95F,ORANGE,false);else if(!message.isEmpty())text(g,fit(message,330,false),480,443,.95F,GOLD,false);
     }
     private record Detail(String label,int color,float progress){}
+    private static String[] rewardStats(CampaignTabData.Quest q){
+        for(String line:q.lines())if(line.contains(" crédits · ")&&line.contains(" XP · "))return line.split(" · ",3);
+        return new String[]{"— crédits","— XP","— réputation"};
+    }
     private List<Detail> details(CampaignTabData.Quest q){
-        var result=new ArrayList<Detail>();
-        if(q==null)return result;
-        if(q.objectives()>0)result.add(new Detail("OBJECTIFS",GOLD,-1));
-        boolean reward=false;
+        var result=new ArrayList<Detail>();if(q==null)return result;
         for(int i=1;i<q.lines().size();i++){
-            String line=q.lines().get(i);var m=PROGRESS.matcher(line);
+            String line=q.lines().get(i);if(line.contains(" crédits · ")&&line.contains(" XP · "))continue;
+            var m=PROGRESS.matcher(line);
             if(i<=q.objectives()&&m.matches()){
                 try{int a=Integer.parseInt(m.group(2)),b=Integer.parseInt(m.group(3));
                     result.add(new Detail(line,a>=b?OLIVE:WHITE,b>0?a/(float)b:0));continue;
                 }catch(NumberFormatException ignored){}
             }
-            if(!reward&&line.contains(" crédits · ")&&line.contains(" XP · ")){result.add(new Detail("RÉCOMPENSES",GOLD,-1));reward=true;}
             result.add(new Detail(line,SOFT,-1));
         }
         for(var stack:q.rewards()){
@@ -196,68 +215,85 @@ public final class CampaignDashboard {
     }
     private void drawQuest(GuiGraphics g,double x,double y){
         var q=current();
-        if(q==null){text(g,"Sélectionne une quête",460,170,1.1F,SOFT,true);return;}
-        text(g,fit(q.name(),355,true),460,160,1.12F,WHITE,true);
-        text(g,q.status(),460,175,1,status(q.status()),true);
-        text(g,fit(q.lines().isEmpty()?"":q.lines().getFirst(),355,false),460,190,.9F,SOFT,false);
-        art(g,q.art(),460,202,140,63);
-        text(g,"RÉCOMPENSES MATÉRIELLES",610,203,.88F,GOLD,true);
-        int limit=Math.min(7,q.rewards().size());
-        for(int i=0;i<limit;i++){
-            var stack=q.rewards().get(i);int ix=610+i*29;
-            tile(g,ix,216,25,26,false,hit(x,y,ix,216,25,26));item(g,stack,ix+4,218,1);
-            var lore=stack.get(DataComponents.LORE);if(lore!=null&&!lore.lines().isEmpty())text(g,"×"+lore.lines().getFirst().getString(),ix+2,235,.65F,WHITE,false);
-        }
-        if(limit==0)text(g,"Crédits, XP et réputation",610,222,.9F,SOFT,false);
-        else if(q.rewards().size()>limit)text(g,"+"+(q.rewards().size()-limit)+" autre(s) objet(s)",610,246,.85F,SOFT,false);
+        if(q==null){text(g,"Sélectionne une quête",480,170,1.1F,SOFT,true);return;}
+        tile(g,478,119,24,24,false,false);item(g,questIcon(q),482,123,1);
+        text(g,fit(q.name(),230,true),508,119,1.35F,WHITE,true);
+        text(g,fit(q.lines().isEmpty()?q.status():q.lines().getFirst(),300,false),508,135,.91F,SOFT,false);
+        TacticalSkin.stripes(g,774,121,0xffa7612b);
+        art(g,q.art(),478,151,335,77);
+        String state=q.followed()?"★ Quête suivie en raid":q.status();
+        text(g,state,480,232,.94F,status(q.status()),false);
+        section(g,"⊕  Objectifs",480,244,332);
         var lines=wrapped(q);int max=Math.max(0,lines.size()-DETAIL_ROWS);
         detailScroll=Math.clamp(detailScroll,0,max);
         for(int i=detailScroll;i<Math.min(lines.size(),detailScroll+DETAIL_ROWS);i++){
-            var l=lines.get(i);int ry=DETAIL_Y+(i-detailScroll)*16;
-            text(g,l.label(),460,ry,1,l.color(),l.color()==GOLD);
+            var l=lines.get(i);int ry=DETAIL_Y+(i-detailScroll)*15;
             if(l.progress()>=0){
-                g.fill(460,ry+11,805,ry+14,0xff404b39);
-                g.fill(460,ry+11,460+(int)(345*Math.clamp(l.progress(),0f,1f)),ry+14,OLIVE);
-            }
+                TacticalSkin.outline(g,480,ry,9,9,l.color());
+                if(l.progress()>=1)text(g,"✓",481,ry,1,OLIVE,true);
+                text(g,fit(l.label(),206,false),494,ry,1,l.color(),false);
+                g.fill(708,ry+2,805,ry+8,0xff171717);TacticalSkin.outline(g,708,ry+2,97,6,0xff72695b);
+                g.fillGradient(710,ry+3,710+(int)(93*Math.clamp(l.progress(),0f,1f)),ry+7,0xfff9bb73,ORANGE);
+            }else text(g,l.label(),480,ry,.95F,l.color(),false);
         }
-        scrollBar(g,812,DETAIL_Y,DETAIL_ROWS*16,lines.size(),DETAIL_ROWS,detailScroll);
-        button(g,"Accepter",460,402,112,22,x,y,!waiting&&q.status().equals("Disponible"),true);
-        button(g,"Terminer",577,402,112,22,x,y,!waiting&&q.status().equals("À valider"),true);
-        button(g,q.followed()?"Ne plus suivre":"Suivre",694,402,122,22,x,y,!waiting&&(q.status().equals("En cours")||q.status().equals("À valider")),q.followed());
+        if(max>0)scrollBar(g,816,DETAIL_Y,DETAIL_ROWS*15,lines.size(),DETAIL_ROWS,detailScroll);
+        section(g,"✦  Récompenses",480,320,332);
+        String[] stats=rewardStats(q);
+        for(int i=0;i<3;i++){int bx=478+i*112;tile(g,bx,337,108,23,false,false);
+            if(i==0)item(g,new ItemStack(Items.IRON_INGOT),bx+4,341,.9f);
+            else text(g,i==1?"XP":"✦",bx+5,345,1.05f,ORANGE,true);
+            text(g,fit(stats[i],86,false),bx+22,345,.9f,WHITE,false);}
+        int total=q.rewards().size();rewardScroll=Math.clamp(rewardScroll,0,Math.max(0,total-4));
+        for(int i=0;i<Math.min(4,total-rewardScroll);i++){
+            var stack=q.rewards().get(i+rewardScroll);int ix=478+i*84;
+            tile(g,ix,365,80,37,false,hit(x,y,ix,365,80,37));item(g,stack,ix+28,368,1.5f);
+            var lore=stack.get(DataComponents.LORE);if(lore!=null&&!lore.lines().isEmpty()){
+                String count="× "+lore.lines().getFirst().getString();text(g,count,ix+(80-font().width(styled(count,false)))/2,391,.85f,WHITE,false);}
+            if(hit(x,y,ix,365,80,37)){g.fill(478,230,813,242,0xff161616);text(g,fit(stack.getHoverName().getString(),325,false),480,232,.95f,GOLD,false);}
+        }
+        if(total==0)text(g,"Aucun objet supplémentaire",480,377,.95f,SOFT,false);
+        else if(total>4)text(g,(rewardScroll+1)+"–"+Math.min(total,rewardScroll+4)+" / "+total+" · molette",480,401,.75f,SOFT,false);
+        accentButton(g,"✓ Accepter",478,412,108,21,x,y,!waiting&&q.status().equals("Disponible"),OLIVE);
+        accentButton(g,"✓ Terminer",590,412,108,21,x,y,!waiting&&q.status().equals("À valider"),OLIVE);
+        accentButton(g,q.followed()?"Ne plus suivre":"▱ Suivre",702,412,111,21,x,y,!waiting&&(q.status().equals("En cours")||q.status().equals("À valider")),ORANGE);
     }
     boolean click(double x,double y){
         if(x<157)return false;
-        for(int i=0;i<CampaignTrader.values().length;i++)if(hit(x,y,mx(i),my(i),104,20)){
-            if(i!=trader&&!waiting){trader=i;scroll=detailScroll=0;selected="";message="";if(cache.containsKey(i))ensureSelection();else request(0,"");}return true;
+        if(hit(x,y,157,65,12,43)){shiftTraders(-1);return true;}
+        if(hit(x,y,815,65,13,43)){shiftTraders(1);return true;}
+        for(int i=traderStart;i<Math.min(CampaignTrader.values().length,traderStart+TRADER_VISIBLE);i++)if(hit(x,y,mx(i),70,TRADER_W,33)){
+            if(i!=trader&&!waiting){trader=i;scroll=detailScroll=rewardScroll=0;selected="";message="";if(cache.containsKey(i))ensureSelection();else request(0,"");}return true;
         }
-        int[] widths={44,64,46,43,60};int fx=169;
-        for(int i=0;i<widths.length;i++){if(hit(x,y,fx,157,widths[i],17)){filter=i;scroll=0;ensureSelection();return true;}fx+=widths[i]+3;}
+        int fx=167;
+        for(int i=0;i<FILTER_W.length;i++){if(hit(x,y,fx,148,FILTER_W[i],22)){filter=i;scroll=0;ensureSelection();return true;}fx+=FILTER_W[i]+3;}
         var list=visible();
-        if(hit(x,y,433,LIST_Y,9,ROWS*ROW)){dragList=true;seekList(y);return true;}
-        if(hit(x,y,810,DETAIL_Y,9,DETAIL_ROWS*16)){dragDetail=true;seekDetail(y);return true;}
-        if(hit(x,y,LIST_X,LIST_Y,LIST_W-8,ROWS*ROW)){
-            int index=scroll+(int)(y-LIST_Y)/ROW;if(index<list.size()){selected=list.get(index).id();detailScroll=0;}return true;
+        if(hit(x,y,451,LIST_Y,9,ROWS*ROW)){dragList=true;seekList(y);return true;}
+        if(hit(x,y,814,DETAIL_Y,9,DETAIL_ROWS*15)){dragDetail=true;seekDetail(y);return true;}
+        if(hit(x,y,LIST_X,LIST_Y,LIST_W-12,ROWS*ROW)){
+            int index=scroll+(int)(y-LIST_Y)/ROW;if(index<list.size()){selected=list.get(index).id();detailScroll=rewardScroll=0;}return true;
         }
         if(waiting)return true;
         var q=current();
-        if(hit(x,y,169,402,83,22)){request(4,"");return true;}
-        if(hit(x,y,258,402,122,22)){request(5,"");return true;}
-        if(hit(x,y,386,402,69,22)){cache.keySet().removeIf(key->key!=trader);request(0,"");return true;}
+        if(hit(x,y,168,408,68,22)){request(4,"");return true;}
+        if(hit(x,y,240,408,122,22)){request(5,"");return true;}
+        if(hit(x,y,366,408,83,22)){cache.keySet().removeIf(key->key!=trader);request(0,"");return true;}
         if(q!=null){
-            if(hit(x,y,460,402,112,22)&&q.status().equals("Disponible"))request(1,q.id());
-            else if(hit(x,y,577,402,112,22)&&q.status().equals("À valider"))request(2,q.id());
-            else if(hit(x,y,694,402,122,22)&&(q.status().equals("En cours")||q.status().equals("À valider")))request(3,q.id());
+            if(hit(x,y,478,412,108,21)&&q.status().equals("Disponible"))request(1,q.id());
+            else if(hit(x,y,590,412,108,21)&&q.status().equals("À valider"))request(2,q.id());
+            else if(hit(x,y,702,412,111,21)&&(q.status().equals("En cours")||q.status().equals("À valider")))request(3,q.id());
         }
         return true;
     }
     boolean scroll(double x,double y,double sy){
         if(sy==0)return false;int delta=sy>0?-1:1;
-        if(hit(x,y,169,LIST_Y,272,ROWS*ROW)){scroll=Math.clamp(scroll+delta,0,Math.max(0,visible().size()-ROWS));return true;}
-        if(hit(x,y,455,DETAIL_Y,361,DETAIL_ROWS*16)){detailScroll=Math.clamp(detailScroll+delta,0,Math.max(0,wrapped(current()).size()-DETAIL_ROWS));return true;}
+        if(hit(x,y,157,65,667,43)){shiftTraders(delta);return true;}
+        if(hit(x,y,167,LIST_Y,292,ROWS*ROW)){scroll=Math.clamp(scroll+delta,0,Math.max(0,visible().size()-ROWS));return true;}
+        if(hit(x,y,478,365,335,40)){var q=current();if(q!=null)rewardScroll=Math.clamp(rewardScroll+delta,0,Math.max(0,q.rewards().size()-4));return true;}
+        if(hit(x,y,478,DETAIL_Y,345,DETAIL_ROWS*15)){detailScroll=Math.clamp(detailScroll+delta,0,Math.max(0,wrapped(current()).size()-DETAIL_ROWS));return true;}
         return false;
     }
     private void seekList(double y){scroll=(int)Math.round(Math.clamp((y-LIST_Y)/(ROWS*(double)ROW),0d,1d)*Math.max(0,visible().size()-ROWS));}
-    private void seekDetail(double y){detailScroll=(int)Math.round(Math.clamp((y-DETAIL_Y)/(DETAIL_ROWS*16d),0d,1d)*Math.max(0,wrapped(current()).size()-DETAIL_ROWS));}
+    private void seekDetail(double y){detailScroll=(int)Math.round(Math.clamp((y-DETAIL_Y)/(DETAIL_ROWS*15d),0d,1d)*Math.max(0,wrapped(current()).size()-DETAIL_ROWS));}
     boolean drag(double y){if(dragList){seekList(y);return true;}if(dragDetail){seekDetail(y);return true;}return false;}
     boolean release(){boolean was=dragList||dragDetail;dragList=dragDetail=false;return was;}
 }

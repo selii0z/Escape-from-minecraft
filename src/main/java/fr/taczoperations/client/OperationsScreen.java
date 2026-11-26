@@ -131,10 +131,9 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             int y = 83 + row * 40;
             widget(8, y, 139, 36, section.title, () -> send(section.tab),
                 () -> true, (g, hovered) -> {
-                    key(g, 8, y, 139, 36, active(section.tab), hovered, true);
+                    TacticalSkin.tile(g, 12, y, 136, 34, active(section.tab), hovered);
                     if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 5, 26);
-                    text(g, upper(section.title), 52, y + 6, 1.15F, WHITE, true);
-                    text(g, fit(section.subtitle, 105), 52, y + 21, .83F, SOFT, false);
+                    text(g, section.title, 52, y + 12, 1.15F, WHITE, true);
                 });
         }
         if(questMode)return;
@@ -386,10 +385,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     @Override
     protected void renderBg(GuiGraphics g, float tick, int mouseX, int mouseY) {
         canvas(g);
-        image(g, DESK, 0, 0, WIDTH, HEIGHT);
-        panel(g, 3, 74, 149, 337, 0xc0111713);
+        TacticalSkin.shell(g);
         if(questMode){
-            panel(g,157,74,674,367,0xf0111612);header(g);
+            TacticalSkin.logo(g);
+            text(g,"CAMPAGNE  /",251,24,1.75F,WHITE,true);
+            text(g,campaign.merchant(),390,25,1.55F,TacticalSkin.ORANGE,true);
             campaign.draw(g,(mouseX-offsetX)/scale,(mouseY-offsetY)/scale);
             g.pose().popPose();return;
         }
@@ -419,11 +419,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private void header(GuiGraphics g) {
-        g.fill(0, 0, 249, 66, 0x65050707);
-        text(g, "ESCAPE FROM", 50, 4, 1.76F, WHITE, true);
-        text(g, "MINECRAFT", 54, 23, 2.40F, WHITE, true);
-        g.fillGradient(50, 48, 220, 64, 0xffecc33c, 0xffb18321);
-        text(g, "▰  TaCZ OPERATIONS", 58, 50, 1.14F, 0xff12130e, true);
+        TacticalSkin.logo(g);
 
         panel(g, 528, 7, 195, 49, 0xec0f1311);
         if (minecraft.player != null) {
@@ -440,7 +436,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         item(g, new ItemStack(Items.GOLD_INGOT), 740, 19, 1.25F);
         text(g, "Crédits", 766, 16, 1.04F, SOFT, false);
         text(g, Integer.toString(questMode&&campaign.latest()!=null?campaign.latest().credits():menu.view().credits()), 766, 29, 1.40F, WHITE, true);
-        g.fillGradient(3, 66, 833, 73, 0xff6e6454, 0xff1c201a);
+        g.fillGradient(9, 65, 824, 68, 0xff71675b, 0xff292929);
     }
 
     private void operationDetails(GuiGraphics g) {
@@ -1164,9 +1160,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private static void key(GuiGraphics g, int x, int y, int w, int h, boolean selected, boolean hover, boolean enabled) {
-        g.fillGradient(x, y, x + w, y + h, !enabled ? 0xff292d27 : selected ? 0xff515d28 : hover ? 0xff404a30 : 0xff30342d,
-            !enabled ? 0xff191c17 : selected ? 0xff242d14 : hover ? 0xff1f2a18 : 0xff181c17);
-        frame(g, x, y, w, h, selected, hover);
+        TacticalSkin.tile(g,x,y,w,h,selected&&enabled,hover&&enabled);
     }
 
     private static void frame(GuiGraphics g, int x, int y, int w, int h, boolean selected, boolean hover) {
