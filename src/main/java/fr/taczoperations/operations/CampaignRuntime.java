@@ -342,30 +342,66 @@ final class CampaignRuntime {
         return CATALOG!=null&&PlayerMarket.available(p)&&!ForestExpedition.hasReturnPoint(p)&&!p.isCreative()&&!p.isSpectator();
     }
     private static void say(ServerPlayer p,String text){p.sendSystemMessage(net.minecraft.network.chat.Component.literal(text));}
-    static int status(ServerPlayer p){
-        if(!accessible(p)){say(p,"Campagne disponible hors raid, en survie.");return 0;}
+    record QuestView(String id,String name,String trader,State state,int level,List<String> lines,boolean claimable){}
+    static List<QuestView> views(ServerPlayer p){
+        if(!accessible(p))return List.of();
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
+            var result=new ArrayList<QuestView>();
+            var storage=CarriedStorage.of(p);
             for(var q:CATALOG.graph().quests().values()){
                 if(!q.implemented())continue;
                 var state=s.player().state(q.id(),level(p));
                 if(state==State.AVAILABLE&&!eligible(p,q.id()))state=State.LOCKED;
                 var progress=s.player().snapshot().get(q.id());
                 var r=reward(q.id());
-                say(p,CampaignTrader.byId(q.trader()).title+" · "+label(q.id())+" · "+state);
+                var lines=new ArrayList<String>();
+                lines.add("Niveau "+q.level()+" · "+stateLabel(state));
                 for(var o:q.objectives()){
                     int count=progress==null?0:progress.counters().getOrDefault(o.id(),0);
                     var refs=turnInRefs(o);
-                    if(!refs.isEmpty()&&state==State.ACTIVE)
-                        count=CarriedStorage.of(p).count(stack->itemEligible(stack,o));
+                    if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->itemEligible(stack,o));
                     String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
-                    say(p,title+" : "+Math.min(count,o.amount())+"/"+o.amount());
+                    lines.add(title+" : "+Math.min(count,o.amount())+"/"+o.amount());
                 }
-                if(q.id().equals(REVEALED))say(p,"Bunker · salle nord-ouest · fidélité Therapist 2 · /efm campagne fouiller à proximité.");
-                say(p,"Récompenses : "+r.credits()+" crédits · "+r.xp()+" XP · +"+r.reputation()/1000d+" réputation.");
+                if(q.id().equals(REVEALED))lines.add("Bunker · salle nord-ouest · fidélité Therapist 2");
+                if(q.id().equals(INTRO))lines.add("Forêt Noire · cabane de chasse");
+                if(q.id().equals(SEARCH))lines.add("Forêt Noire · convoi et camp");
+                if(q.id().equals(CHEMICAL))lines.add("Zone industrielle · dépôt logistique ouest");
+                if(q.id().equals(ULTRA))lines.add("Entrepôt");
+                lines.add(r.credits()+" crédits · "+r.xp()+" XP · +"+r.reputation()/1000d+" réputation");
+                boolean claimable=state==State.READY||state==State.ACTIVE&&canClaimPreview(p,s,q,storage);
+                result.add(new QuestView(q.id(),label(q.id()),q.trader(),state,q.level(),List.copyOf(lines),claimable));
             }
-            return 1;
-        }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign status failed",e);say(p,"Sauvegarde de campagne incompatible.");return 0;}
+            return List.copyOf(result);
+        }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign preview failed",e);return List.of();}
+    }
+    private static boolean canClaimPreview(ServerPlayer p,CampaignStorage.Session s,Quest q,CarriedStorage storage){
+        var trial=CATALOG.graph().restore(s.player().snapshot());
+        var demands=new ArrayList<TurnInPlanner.Demand>();var stock=new TreeMap<String,Integer>();
+        boolean fir=q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-fir:"));
+        if(fir&&q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-any:")))return false;
+        for(var o:q.objectives()){
+            var refs=turnInRefs(o);if(refs.isEmpty())continue;
+            demands.add(new TurnInPlanner.Demand(o.amount(),refs));
+            for(var ref:refs)stock.computeIfAbsent(ref,key->storage.count(stack->(!fir||RaidOrigin.found(stack))&&CampaignSupplies.matches(stack,key)));
+            trial.record(q.id(),o.id(),o.amount());
+        }
+        if(TurnInPlanner.plan(stock,demands)==null)return false;
+        if(q.id().equals(INTRO)||q.id().equals(REVEALED)){
+            String find=q.id().equals(INTRO)?HUNT_FIND:SAMPLE_FIND,give=q.id().equals(INTRO)?HUNT_GIVE:SAMPLE_GIVE;
+            if(trial.snapshot().get(q.id()).counters().getOrDefault(find,0)<1)return false;
+            trial.record(q.id(),give,1);
+        }
+        return trial.state(q.id(),level(p))==State.READY;
+    }
+    static String stateLabel(State state){return switch(state){
+        case AVAILABLE->"Disponible";case LOCKED->"Verrouillée";case ACTIVE->"En cours";case READY->"À valider";case COMPLETED->"Terminée";case FAILED->"Échouée";
+    };}
+    static int status(ServerPlayer p){
+        if(!accessible(p)){say(p,"Campagne disponible hors raid, en survie.");return 0;}
+        for(var q:views(p)){say(p,CampaignTrader.byId(q.trader()).title+" · "+q.name());for(var line:q.lines())say(p,line);}
+        return 1;
     }
     static int acceptDebut(ServerPlayer p){return accept(p,DEBUT);}
     static int acceptFuel(ServerPlayer p){return accept(p,FUEL);}
