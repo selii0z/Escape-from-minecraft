@@ -35,15 +35,24 @@ public final class CampaignSupplies {
         },new Item.Properties().stacksTo(16)));
     }
     private static final String KAPPA_REFERENCE="5c093ca986f7740a1867ab12";
-    static boolean rewardKnown(String id){return KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    private static final Map<String,String> EQUIPMENT=Map.of("59e763f286f7742ee57895da","backpack_expedition","59e7643b86f7742cbf2c109a","rig_tactical","5648a69d4bdc2ded0b8b457b","rig_elite");
+    static boolean rewardKnown(String id){return EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
     static ItemStack rewardStack(String id){
         if(KAPPA_REFERENCE.equals(id)){
             var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","secure_kappa"));
             return item instanceof SecureCaseItem s&&s.tier()==SecureCaseItem.Tier.KAPPA?new ItemStack(item):ItemStack.EMPTY;
         }
+        if(EQUIPMENT.containsKey(id)){
+            var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",EQUIPMENT.get(id)));
+            return item instanceof FieldPack?new ItemStack(item):ItemStack.EMPTY;
+        }
         var item=ITEMS.get(id);return item==null?CollectorItems.rewardStack(id):new ItemStack(item.get());
     }
     static Optional<String> reference(ItemStack stack){
+        if(stack.getItem() instanceof FieldPack&&FieldPack.contents(stack).stream().allMatch(ItemStack::isEmpty)){
+            String key=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            for(var e:EQUIPMENT.entrySet())if(key.equals("taczoperations:"+e.getValue()))return Optional.of(e.getKey());
+        }
         var collector=CollectorItems.reference(stack);
         if(collector.isPresent())return collector;
         for(var row:ITEMS.entrySet())if(stack.is(row.getValue().get()))return Optional.of(row.getKey());
