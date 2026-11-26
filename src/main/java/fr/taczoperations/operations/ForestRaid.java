@@ -146,11 +146,10 @@ public final class ForestRaid extends SavedData {
         raid.endsAt=level.getGameTime()+20L*60*(express!=null?express.minutes():industrial?30:45);
         raid.warningMask=0;
         raid.seed = level.getRandom().nextLong();
-        int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
-        raid.bossConvergence=express==null&&bossRoll<5;
-        raid.selectedBosses=raid.bossConvergence?BossRoster.all():bossRoll<15?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,true)
-            :bossRoll<80?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,false):List.of();
-        if(express!=null)raid.selectedBosses=bossRoll<5?List.of(switch(express){case BUNKER->GuardRole.FOREMAN;case WAREHOUSE->GuardRole.KILLA;case VILLAGE->GuardRole.RESHALA;case CITY->GuardRole.KILLA;}):List.of();
+        boolean urbanRoster=industrial||express==ExpressZone.BUNKER||express==ExpressZone.WAREHOUSE||express==ExpressZone.CITY;
+        var bossSelection=BossRoster.select(urbanRoster,ForestExpedition.isNightRaid(player),raid.seed);
+        raid.bossConvergence=bossSelection.convergence();
+        raid.selectedBosses=bossSelection.bosses();
         if(raid.bossConvergence){
             var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
             player.sendSystemMessage(warning);
