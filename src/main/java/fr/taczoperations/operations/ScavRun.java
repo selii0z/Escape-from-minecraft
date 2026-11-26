@@ -107,6 +107,8 @@ public final class ScavRun {
         if(!active(p))return true;
         if(!p.isAlive()||p.level().dimension().equals(ForestExpedition.FOREST))return false;
         try{
+            p.closeContainer();
+            if(!p.containerMenu.getCarried().isEmpty())return false;
             var account=SupplyContract.account(p);var saved=account.getCompound(ESCROW);
             var handlers=handlers(p);var originals=decode(p,saved.getList("slots",10),handlers);
             var current=readSlots(p,handlers);
@@ -117,8 +119,6 @@ public final class ScavRun {
                 if(queue.size()>LIMIT)throw new IllegalStateException("Scav loot reserve full");
             }
             // All stored stacks and slot addresses were validated before touching inventory.
-            p.closeContainer();
-            if(!p.containerMenu.getCarried().isEmpty())return false;
             for(var slot:current)set(p,handlers,slot.handler(),slot.slot(),ItemStack.EMPTY);
             for(var slot:originals)set(p,handlers,slot.handler(),slot.slot(),slot.stack());
             p.getInventory().selected=Math.clamp(saved.getInt("selected"),0,8);
