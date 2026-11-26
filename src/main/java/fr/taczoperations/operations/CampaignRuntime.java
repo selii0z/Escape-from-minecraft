@@ -270,6 +270,30 @@ final class CampaignRuntime {
             return new CampaignStorage.Session(s.player(),null);
         });
     }
+    static void gunEvent(ServerPlayer p,UUID raidId,String map,GuardRole role,String mode,String part,boolean bolt,double distance){
+        if(raidId==null||!Double.isFinite(distance)||distance<0)return;
+        change(p,raidId,s->{
+            if(!raidId.equals(s.raidId()))return null;
+            boolean changed=false;
+            for(var q:CATALOG.graph().quests().values()){
+                var progress=s.player().snapshot().get(q.id());
+                if(!q.implemented()||progress==null||progress.state()!=State.ACTIVE)continue;
+                for(var o:q.objectives()){
+                    if(!o.type().startsWith("gunshot:")||progress.counters().getOrDefault(o.id(),0)>=o.amount())continue;
+                    var a=o.type().split(":",-1);
+                    if(a.length!=8||!matches("kill:"+a[1]+":"+a[2],"kill",map,role)||!a[3].equals(mode)
+                        ||!a[4].equals("any")&&!a[4].equals(part)||a[5].equals("bolt")&&!bolt)continue;
+                    int target=Integer.parseInt(a[7]);
+                    boolean range=switch(a[6]){
+                        case "ge"->distance>=target;case "le"->distance<=target;
+                        case "gt"->distance>target;case "lt"->distance<target;default->false;
+                    };
+                    if(range)changed|=s.player().record(q.id(),o.id(),1);
+                }
+            }
+            return changed?s:null;
+        });
+    }
     private static boolean record(CampaignStorage.Session s,String event,String map,GuardRole role){
         boolean changed=false;
         for(var q:CATALOG.graph().quests().values()){
@@ -319,7 +343,15 @@ final class CampaignRuntime {
             }
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
-            if(parts[0].equals("quest-find-adapted")){
+            if(parts[0].equals("gunshot")){
+                if(parts.length!=8||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
+                    ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt").contains(parts[5])
+                    ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
+                    ||Integer.parseInt(parts[7])>1000)return false;
+                String role=parts[2];
+                if(!Set.of("any","pmc","scav","boss").contains(role)&&Arrays.stream(GuardRole.values())
+                    .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
+            }else if(parts[0].equals("quest-find-adapted")){
                 if(parts.length!=4||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")||
                     !parts[3].matches("[0-9a-f]{24}")||o.scope()!=Scope.SURVIVING_RAID||o.amount()!=1||
                     objectives.stream().filter(g->g.type().equals("quest-give-adapted:"+parts[3])).count()!=1)return false;
