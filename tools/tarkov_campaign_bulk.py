@@ -694,6 +694,33 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
              q["objectives"] and
              {o["type"] for o in q["objectives"]}<=FIELD_CORE}
     installed=[]
+    # Alternative recipient of the same extracted folder: reuse the reviewed
+    # exact EFM site, and let the existing symmetric conflict graph enforce
+    # the choice. Never grant two copies of the reward.
+    parent="596a0e1686f7741ddf17dbee"; alternative="596a101f86f7741ddb481582"
+    if parent in ready and alternative in pending:
+        source=tasks[alternative]; original=result[parent]
+        if (source.get("taskRequirements")==[{"task":parent,"status":["active"]}]
+            and len(source["objectives"])==1 and source["objectives"][0].get("questItem")=="5938878586f7741b797c562f"
+            and len(source.get("failConditions") or [])==1 and source["failConditions"][0].get("task")==parent
+            and source["failConditions"][0].get("status")==["complete"]
+            and original.get("adapter")=="quest-item-v1" and not original.get("conflicts") and not original["prerequisites"]):
+            from copy import deepcopy
+            reward=reward_plan(source)
+            material,errors=material_reward_plan(reward,mapped)
+            if not errors and not reward["additionalRewards"] and reward["xp"] is not None:
+                row=deepcopy(original)
+                row.update({"id":alternative,"name":display_name(source),"trader":"skier","dialogueTrader":None,
+                    "level":max(1,source.get("minPlayerLevel") or 0),"conflicts":[parent],
+                    "reward":{**{k:reward[k] for k in ("credits","xp","reputation")},**material},
+                    "reference":{"questItem":"5938878586f7741b797c562f","source":source["id"],"alternativeTo":parent}})
+                for o in row["objectives"]:
+                    o["id"]=source["objectives"][0]["id"] if o["type"].startswith("quest-give:") else hashlib.sha256((alternative+":"+o["id"]).encode()).hexdigest()[:24]
+                original=deepcopy(original)
+                original["conflicts"]=[alternative]
+                result[parent]=original;result[alternative]=row
+                ready.add(alternative);names.add(slug(row["name"]));installed.append(alternative)
+                pending.pop(alternative)
     while True:
         changed=False
         for qid,q in sorted(pending.items()):
@@ -1125,6 +1152,20 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     audit.append({"id":q["id"],"name":display_name(q),"changes":[{"type":"exclusive-document-recipient","reference":old}]})
     for qid,q in sorted(tasks.items()):
         changes=[]
+        if qid=="6834287b7559f4e6d50bc0fa" and q.get("experience") is None:
+            if q.get("taskRequirements")==[{"task":"683425dd8f5b18d29a05d9d1","status":["active"]}]:
+                q["taskRequirements"]=[{"task":"683425dd8f5b18d29a05d9d1","status":["complete"]}]
+                changes.append({"type":"reward-after-fence-choice"})
+            q["experience"]=0
+            changes.append({"type":"missing-source-experience-zero"})
+        if qid=="69c277f3ea6da9c23e07f8d2":
+            variable=next((o for o in q["objectives"] if o["id"]=="69c294f2bffe2159a3e4d56a"),None)
+            exit=next((o for o in q["objectives"] if o["id"]=="6a102713a973fbe02db53bf1"),None)
+            if variable and exit and variable.get("globalVariable")=={"value":2,"compareMethod":"==","id":"69c27860962c476e77937465"} and exit["count"]==1:
+                optional=[o for o in q["objectives"] if o["type"]=="findItem" and o.get("optional") and any(g["type"]=="giveItem" and set(g["items"])==set(o["items"]) and g["count"]==o["count"] and g["foundInRaid"]==o["foundInRaid"] for g in q["objectives"])]
+                q["objectives"]=[o for o in q["objectives"] if o is not variable and o not in optional]
+                exit["count"]=2
+                changes.append({"type":"unsupported-global-counter-to-two-extractions","reference":variable,"redundant-optional-finds":optional})
         if qid=="68341d7d7559f4e6d50bc0db":
             fail=q.get("failConditions") or []
             if q.get("restartable") and len(fail)==1 and fail[0].get("shotType")=="hit" and set(fail[0].get("targetNames") or [])=={"bossBoar","bossKolontay"} and fail[0].get("maps")==["5714dc692459777137212e12"] and not any((q.get("failureOutcome") or {}).values()):
