@@ -50,10 +50,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static final Area[] AREAS = {
         new Area("Forêt Noire", "forest", 2, "Forêt, collines et installations"),
         new Area("Zone industrielle", "industrial", 3, "Usines et entrepôts"),
-        new Area("Village abandonné", "village", 3, "Maisons et ruelles"),
-        new Area("Base militaire", "military", 4, "Caserne et postes de garde"),
+        new Area("Village express", "village", 3, "Maisons et ruelles"),
+        new Area("Entrepôt express", "industrial", 3, "Hangars et stockage"),
         new Area("Ville en quarantaine", "quarantine", 4, "Quartiers urbains"),
-        new Area("Complexe souterrain", "underground", 5, "Galeries et salles techniques")
+        new Area("Bunker express", "underground", 4, "Galeries et salles techniques")
     };
 
     private record Section(int tab, String title, String subtitle) {}
@@ -266,29 +266,32 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             widget(x, y, 190, 87, AREAS[i].title, () -> selectedArea = index,
                 () -> true, (g, hovered) -> mapCard(g, index, x, y, hovered));
         }
-        simple(582, 321, 54, 27, "☀ Jour", () -> night = false, () -> !night, () -> selectedArea <= 1);
-        simple(643, 321, 53, 27, "☾ Nuit", () -> night = true, () -> night, () -> selectedArea <= 1);
-        simple(711, 321, 40, 27, "Solo", () -> duo = false, () -> !duo, () -> selectedArea <= 1);
+        simple(582, 321, 54, 27, "☀ Jour", () -> night = false, () -> !night, () -> selectedArea != 4);
+        simple(643, 321, 53, 27, "☾ Nuit", () -> night = true, () -> night, () -> selectedArea != 4);
+        simple(711, 321, 40, 27, "Solo", () -> duo = false, () -> !duo, () -> selectedArea != 4);
         simple(756, 321, 63, 27, "Duo", () -> {
             if (menu.view().partner().isEmpty()) {
                 send(OperationsMenu.GROUP);
             } else {
                 duo = true;
             }
-        }, () -> duo, () -> selectedArea <= 1);
+        }, () -> duo, () -> selectedArea != 4);
         widget(580, 369, 240, 32, "Lancer l’opération", () -> {
             if (duo && menu.view().partner().isEmpty()) {
                 send(OperationsMenu.GROUP);
                 return;
             }
-            if (selectedArea == 1) {
+            if(selectedArea==2||selectedArea==3||selectedArea==5){
+                int map=selectedArea==5?1:selectedArea==3?2:3;
+                send(OperationsMenu.EXPRESS_FIRST+(map-1)*4+(night?1:0)+(duo?2:0));
+            }else if (selectedArea == 1) {
                 send(OperationsMenu.INDUSTRIAL_FIRST + (night ? 1 : 0) + (duo ? 2 : 0));
             } else {
                 send(duo ? (night ? OperationsMenu.DEPART_DUO_NIGHT : OperationsMenu.DEPART_DUO)
                     : (night ? OperationsMenu.DEPART_NIGHT : OperationsMenu.DEPART));
             }
-        }, () -> selectedArea <= 1, (g, hovered) -> {
-            boolean enabled = selectedArea <= 1;
+        }, () -> selectedArea != 4, (g, hovered) -> {
+            boolean enabled = selectedArea != 4;
             key(g, 580, 369, 240, 32, enabled, hovered, enabled);
             centered(g, enabled ? "⊕   LANCER L’OPÉRATION" : "ZONE INDISPONIBLE",
                 700, 378, 1.43F, enabled ? WHITE : SOFT, true);
@@ -415,21 +418,21 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     private void operationDetails(GuiGraphics g) {
         Area area = AREAS[selectedArea];
-        boolean open = selectedArea <= 1;
+        boolean open = selectedArea != 4;
         panel(g, 569, 85, 258, 83, 0xc5272e20);
         g.blit(area.texture(), 574, 91, 87, 69, 83, 0, 214, 170, 380, 170);
         g.renderOutline(572, 89, 91, 73, 0xffc4b68c);
         icon(g, selectedArea + 6, 668, 100, 16);
         text(g, upper(area.title), 685, 102, area.title.length() > 19 ? 1.00F : 1.25F, WHITE, true);
-        String[] lines = selectedArea == FOREST
+        String[] lines = selectedArea == 0
             ? new String[]{"Zone forestière dense, scierie", "abandonnée et camp militaire.", "Deux voies d’extraction."}
-            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Trois voies d’extraction.", "Or, clé industrielle ou crédits."}
-            : new String[]{area.environment, "Zone de déploiement à venir."};
+            : selectedArea == 1 ? new String[]{"Complexe de fret et ateliers", "Trois voies d’extraction.", "Checkpoint, clé ou crédits."}
+            : open?new String[]{area.environment,"Raid express · 15 minutes","Deux extractions gratuites."}:new String[]{area.environment, "Zone de déploiement à venir."};
         for (int i = 0; i < lines.length; i++) text(g, lines[i], 673, 124 + i * 11, .94F, SOFT, false);
 
         panel(g, 575, 173, 249, 63, DARK);
         detail(g, 179, "✦", "Difficulté", stars(area.difficulty));
-        detail(g, 193, "◷", "Durée", open ? "Exploration libre" : "À venir");
+        detail(g, 193, "◷", "Durée", open ? selectedArea==0?"45 minutes":selectedArea==1?"30 minutes":"15 minutes" : "À venir");
         detail(g, 207, "♠", "Environnement", area.environment);
         detail(g, 221, "⊕", "Menace", open ? "Gardes armés" : "À venir");
 
@@ -475,7 +478,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         text(g, upper(area.title), x + 35, y + 58, 1.16F, WHITE, true);
         text(g, "Difficulté", x + 35, y + 73, .84F, SOFT, false);
         text(g, stars(area.difficulty), x + 76, y + 72, .82F, GOLD, false);
-        text(g, index <= 1 ? "◷ Libre" : "À venir", x + 145, y + 73, .78F, WHITE, true);
+        text(g, index<=1?"Classique":index==4?"À venir":"15 min", x + 145, y + 73, .78F, WHITE, true);
         frame(g, x, y, 190, 87, selected, hovered);
     }
 
