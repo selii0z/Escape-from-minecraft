@@ -25,7 +25,10 @@ final class CampaignRuntime {
     private static final String SEARCH="5fd9fad9c1ce6b1a3b486d00", CHEMICAL="5a27bafb86f7741c73584017";
     private static final String CONVOY="5fd9fad9c1ce6b1a3b486d03", CAMP="5fd9fad9c1ce6b1a3b486d05";
     private static final String DEPOSIT="6a5c10e883a51e292d11b976", HOSE="59e35cbb86f7741778269d83";
-    private record Catalog(CampaignGraph graph,String revision){}
+    private static final String INTRO="5d2495a886f77425cd51e403", FILTH="600302d73b897b11364cd161", ULTRA="5ae448bf86f7744d733e55ee", ACQUAINTANCE="5d24b81486f77439c92d6ba8";
+    private static final String HUNT_VISIT="63ac18f4972364554162a25c", HUNT_FIND="5d249a6e86f774791546e952", HUNT_GIVE="5d249aa286f77475e8376399";
+    private record Meta(String name,String slug,Reward reward){}
+    private record Catalog(CampaignGraph graph,String revision,Map<String,Meta> meta){}
     private record Reward(int credits,int xp,int reputation){}
     private static Reward reward(String id){
         return switch(id){
@@ -34,7 +37,7 @@ final class CampaignRuntime {
             case SEARCH->new Reward(800,30,100);
             case CHEMICAL->new Reward(550,30,100);
             case FUEL->new Reward(550,30,100); // provisional: one reference USD per credit
-            default->throw new IllegalArgumentException("Unreviewed reward");
+            default->Objects.requireNonNull(CATALOG.meta().get(id).reward());
         };
     }
     // Provisional economy conversion: 100 reference rubles per EFM credit,
@@ -54,6 +57,7 @@ final class CampaignRuntime {
             var root=JsonParser.parseString(new String(bytes,StandardCharsets.UTF_8)).getAsJsonObject();
             if(root.get("schema").getAsInt()!=1)throw new IllegalArgumentException("Unknown catalog schema");
             var quests=new ArrayList<Quest>();
+            var meta=new LinkedHashMap<String,Meta>();
             for(var value:root.getAsJsonArray("quests")){
                 var q=value.getAsJsonObject();
                 String id=q.get("id").getAsString(),trader=CampaignTrader.byId(q.get("trader").getAsString()).id;
@@ -101,9 +105,29 @@ final class CampaignRuntime {
                     if(id.equals(CHEMICAL)&&trader.equals("peacekeeper"))reviewed=objectives.equals(List.of(
                         new Objective(DEPOSIT,"plant:customs:medical-deposit:"+HOSE,1,Scope.CAMPAIGN,false)));
                 }
+                if(q.has("implemented")&&q.get("implemented").getAsBoolean()&&prereqs.isEmpty()&&conflicts.isEmpty()&&q.get("level").getAsInt()==1){
+                    if(id.equals(INTRO)&&trader.equals("mechanic"))reviewed=objectives.equals(List.of(
+                        new Objective(HUNT_VISIT,"visit:woods:hunting-cabin",1,Scope.CAMPAIGN,false),
+                        new Objective(HUNT_FIND,"quest-find:woods:jaeger-message",1,Scope.SURVIVING_RAID,false),
+                        new Objective(HUNT_GIVE,"quest-give:jaeger-message",1,Scope.CAMPAIGN,false)));
+                    if(id.equals(FILTH)&&trader.equals("jaeger"))reviewed=objectives.equals(List.of(new Objective("600303250b79c6604058ce30","kill:woods,customs,interchange:scav",20,Scope.CAMPAIGN,false)));
+                    if(id.equals(ULTRA)&&trader.equals("ragman"))reviewed=objectives.equals(List.of(new Objective("5ae44ecd86f77414a13c970e","kill:interchange:any",10,Scope.CAMPAIGN,false)));
+                    if(id.equals(ACQUAINTANCE)&&trader.equals("jaeger")&&objectives.size()==1){
+                        var o=objectives.getFirst();reviewed=o.id().equals("5d24ba7886f77439c92d6baa")&&o.type().startsWith("turnin-any:")&&turnInRefs(o).size()==24&&o.amount()==10&&o.scope()==Scope.CAMPAIGN&&!o.optional();
+                    }
+                }
+                Reward reward=null;
+                if(q.has("reward")){
+                    var r=q.getAsJsonObject("reward");reward=new Reward(r.get("credits").getAsInt(),r.get("xp").getAsInt(),r.get("reputation").getAsInt());
+                    if(reward.credits()<0||reward.xp()<0||reward.reputation()<0)throw new IllegalArgumentException("Invalid reward");
+                }
+                String name=q.get("name").getAsString();
+                String slug=name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
+                if(meta.values().stream().anyMatch(x->x.slug().equals(slug)))throw new IllegalArgumentException("Duplicate quest slug");
+                meta.put(id,new Meta(name,slug,reward));
                 quests.add(new Quest(id,trader,q.get("level").getAsInt(),prereqs,objectives,conflicts,reviewed));
             }
-            return new Catalog(new CampaignGraph(quests),HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
+            return new Catalog(new CampaignGraph(quests),HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),Map.copyOf(meta));
         }catch(Exception e){
             LOG.log(System.Logger.Level.ERROR,"Campaign catalog rejected; legacy raids remain enabled",e);
             return null;
@@ -173,14 +197,27 @@ final class CampaignRuntime {
         };
     }
     private static Set<String> turnInRefs(Objective o){
-        if(!o.type().startsWith("turnin-fir:"))return Set.of();
+        if(!o.type().startsWith("turnin-fir:")&&!o.type().startsWith("turnin-any:"))return Set.of();
         var refs=new HashSet<String>();
-        for(var id:o.type().substring("turnin-fir:".length()).split(",",-1)){
+        for(var id:o.type().substring(o.type().indexOf(':')+1).split(",",-1)){
             if(!id.matches("[0-9a-f]{24}")||!refs.add(id))throw new IllegalArgumentException("Invalid item reference");
         }
         return Set.copyOf(refs);
     }
-    private static String label(String id){return switch(id){case DEBUT->"Debut";case FUEL->"Fuel Shortage";case REVEALED->"All Is Revealed";case SEARCH->"Search Mission";case CHEMICAL->"Chemical Experiments";default->id;};}
+    private static String label(String id){var m=CATALOG.meta().get(id);return m==null?id:m.name();}
+    static List<String> slugs(){return CATALOG==null?List.of():CATALOG.graph().quests().values().stream().filter(Quest::implemented).map(q->CATALOG.meta().get(q.id()).slug()).sorted().toList();}
+    static int acceptNamed(ServerPlayer p,String slug){String id=resolve(slug);return id==null?0:accept(p,id);}
+    static int claimNamed(ServerPlayer p,String slug){String id=resolve(slug);return id==null?0:claim(p,id);}
+    private static String resolve(String slug){
+        if(CATALOG==null)return null;
+        return CATALOG.meta().entrySet().stream().filter(e->e.getKey().equals(slug)||e.getValue().slug().equalsIgnoreCase(slug)).map(Map.Entry::getKey).findFirst().orElse(null);
+    }
+    static void traderDialogue(ServerPlayer p,CampaignTrader trader){
+        if(accessible(p)&&CampaignTraderAccount.unlocked(p,trader))SupplyContract.account(p).putBoolean("campaign_dialogue_"+trader.id,true);
+    }
+    private static boolean itemEligible(net.minecraft.world.item.ItemStack stack,Objective o){
+        return (!o.type().startsWith("turnin-fir:")||RaidOrigin.found(stack))&&CampaignSupplies.reference(stack).filter(turnInRefs(o)::contains).isPresent();
+    }
     private static boolean near(ServerPlayer p,net.minecraft.core.BlockPos pos,int radius){
         return pos.distToCenterSqr(p.position())<=radius*radius;
     }
@@ -188,6 +225,12 @@ final class CampaignRuntime {
         if(CATALOG==null||!map.equals("woods")||!ForestRaid.canContinue(p)||!p.isAlive())return;
         String objective=near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(484,570)),12)?CONVOY:
             near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(645,225)),20)?CAMP:null;
+        boolean cabin=near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(130,513)),8);
+        if(cabin)change(p,raidId,s->{
+            if(!raidId.equals(s.raidId())||s.player().state(INTRO,level(p))!=State.ACTIVE)return null;
+            if(s.player().snapshot().get(INTRO).counters().getOrDefault(HUNT_VISIT,0)>0)return null;
+            return s.player().record(INTRO,HUNT_VISIT,1)?s:null;
+        });
         if(objective==null)return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId())||s.player().state(SEARCH,level(p))!=State.ACTIVE)return null;
@@ -268,24 +311,27 @@ final class CampaignRuntime {
     static int acceptChemical(ServerPlayer p){return accept(p,CHEMICAL);}
     static int claimChemical(ServerPlayer p){return claim(p,CHEMICAL);}
     private static boolean eligible(ServerPlayer p,String id){
+        var q=CATALOG.graph().quests().get(id);
+        if(q==null||!CampaignTraderAccount.unlocked(p,CampaignTrader.byId(q.trader())))return false;
+        if(id.equals(INTRO)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_mechanic"))return false;
+        if(id.equals(ULTRA)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_ragman"))return false;
         return !id.equals(REVEALED)||CampaignTraderAccount.loyalty(p,CampaignTrader.THERAPIST)>=2;
     }
     static int search(ServerPlayer p,UUID raidId,String map){
-        if(CATALOG==null||raidId==null||!p.isAlive()||p.isCreative()||p.isSpectator()
-            ||!ForestRaid.canContinue(p)||!map.equals("factory"))return 0;
-        var pos=ExpressZone.BUNKER.pos(new fr.taczoperations.worldgen.ForestPlan.Point(52,54));
-        if(pos.distToCenterSqr(p.position())>9){say(p,"Aucun objet de mission à cet endroit.");return 0;}
+        if(CATALOG==null||raidId==null||!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.canContinue(p))return 0;
+        String quest,find;
+        if(map.equals("factory")&&near(p,ExpressZone.BUNKER.pos(new fr.taczoperations.worldgen.ForestPlan.Point(52,54)),3)){quest=REVEALED;find=SAMPLE_FIND;}
+        else if(map.equals("woods")&&near(p,ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(130,513)),5)){quest=INTRO;find=HUNT_FIND;}
+        else{say(p,"Aucun objet de mission à cet endroit.");return 0;}
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
-            if(!raidId.equals(s.raidId())||s.player().state(REVEALED,level(p))!=State.ACTIVE)return 0;
-            var progress=s.player().snapshot().get(REVEALED);
-            if(progress.counters().getOrDefault(SAMPLE_FIND,0)>0
-                ||s.player().checkpoint().pending().getOrDefault(REVEALED,Map.of()).getOrDefault(SAMPLE_FIND,0)>0){
-                say(p,"Échantillon déjà récupéré.");return 0;
-            }
-            if(!s.player().record(REVEALED,SAMPLE_FIND,1))return 0;
+            if(!raidId.equals(s.raidId())||s.player().state(quest,level(p))!=State.ACTIVE)return 0;
+            var progress=s.player().snapshot().get(quest);
+            if(progress.counters().getOrDefault(find,0)>0||s.player().checkpoint().pending().getOrDefault(quest,Map.of()).getOrDefault(find,0)>0){say(p,"Objet déjà récupéré.");return 0;}
+            if(quest.equals(INTRO))s.player().record(quest,HUNT_VISIT,1);
+            if(!s.player().record(quest,find,1))return 0;
             CampaignStorage.save(p,CATALOG.revision(),s);
-            say(p,"Échantillon chimique récupéré dans les objets de mission. Extrais-toi vivant.");
+            say(p,(quest.equals(INTRO)?"Message de Jaeger":"Échantillon chimique")+" récupéré. Extrais-toi vivant.");
             return 1;
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign search failed",e);return 0;}
     }
@@ -311,8 +357,8 @@ final class CampaignRuntime {
                     int count=progress==null?0:progress.counters().getOrDefault(o.id(),0);
                     var refs=turnInRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)
-                        count=CarriedStorage.of(p).count(stack->RaidOrigin.found(stack)&&CampaignSupplies.reference(stack).filter(refs::contains).isPresent());
-                    String title=o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
+                        count=CarriedStorage.of(p).count(stack->itemEligible(stack,o));
+                    String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
                     say(p,title+" : "+Math.min(count,o.amount())+"/"+o.amount());
                 }
                 if(q.id().equals(REVEALED))say(p,"Bunker · salle nord-ouest · fidélité Therapist 2 · /efm campagne fouiller à proximité.");
@@ -327,7 +373,7 @@ final class CampaignRuntime {
         if(!accessible(p))return 0;
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
-            if(!eligible(p,id)){say(p,"Fidélité 2 auprès de Therapist requise.");return 0;}
+            if(!eligible(p,id)){say(p,"Marchand, dialogue ou fidélité requis. Consulte /efm marchands.");return 0;}
             if(id.equals(SEARCH)&&p.getInventory().getFreeSlot()<0){say(p,"Libère une case pour la boussole.");return 0;}
             if(!s.player().accept(id,level(p))){say(p,"Quête indisponible ou déjà acceptée.");return 0;}
             CampaignStorage.save(p,CATALOG.revision(),s);
@@ -353,31 +399,35 @@ final class CampaignRuntime {
             var storage=CarriedStorage.of(p);
             var demands=new ArrayList<TurnInPlanner.Demand>();
             var stock=new TreeMap<String,Integer>();
+            boolean fir=q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-fir:"));
+            if(fir&&q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-any:")))return 0;
             for(var o:q.objectives()){
                 var refs=turnInRefs(o);
                 if(refs.isEmpty())continue;
                 demands.add(new TurnInPlanner.Demand(o.amount(),refs));
-                for(var ref:refs)stock.computeIfAbsent(ref,key->storage.count(stack->RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,key)));
+                for(var ref:refs)stock.computeIfAbsent(ref,key->storage.count(stack->(!fir||RaidOrigin.found(stack))&&CampaignSupplies.matches(stack,key)));
             }
             var plan=TurnInPlanner.plan(stock,demands);
             if(plan==null){say(p,"Objets trouvés en raid insuffisants. Aucun objet remis.");return 0;}
             for(var o:q.objectives())if(!turnInRefs(o).isEmpty())s.player().record(id,o.id(),o.amount());
-            if(id.equals(REVEALED)){
+            if(id.equals(REVEALED)||id.equals(INTRO)){
+                String find=id.equals(INTRO)?HUNT_FIND:SAMPLE_FIND,give=id.equals(INTRO)?HUNT_GIVE:SAMPLE_GIVE;
                 var progress=s.player().snapshot().get(id);
-                if(progress==null||progress.counters().getOrDefault(SAMPLE_FIND,0)<1){
+                if(progress==null||progress.counters().getOrDefault(find,0)<1){
                     say(p,"Récupère l'échantillon et extrais-toi vivant.");return 0;
                 }
-                s.player().record(id,SAMPLE_GIVE,1);
+                s.player().record(id,give,1);
             }
             if(!s.player().complete(id,level(p))){say(p,"Objectifs incomplets.");return 0;}
             // No mutation until the entire allocation and reward have been validated on the server thread.
             for(var entry:plan.entrySet())
-                if(!storage.consume(stack->RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,entry.getKey()),entry.getValue()))
+                if(!storage.consume(stack->(!fir||RaidOrigin.found(stack))&&CampaignSupplies.matches(stack,entry.getKey()),entry.getValue()))
                     throw new IllegalStateException("Inventory changed during turn-in");
             CampaignStorage.save(p,CATALOG.revision(),s);
             account.putInt("credits",credits+r.credits());
             account.putInt("contract_xp_bonus_v2",xp+r.xp());
             CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(q.trader()),r.reputation());
+            if(id.equals(INTRO))CampaignTraderAccount.unlockFromCompletedQuest(p,CampaignTrader.JAEGER,id);
             SupplyContract.rewardLevels(p);
             say(p,label(id)+" terminée · +"+r.credits()+" crédits · +"+r.xp()+" XP · +"+r.reputation()/1000d+" réputation.");
             return 1;
