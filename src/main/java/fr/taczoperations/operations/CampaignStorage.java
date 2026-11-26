@@ -11,6 +11,22 @@ import java.util.*;
 final class CampaignStorage {
     private static final String KEY="efm_campaign_v2";
     private static final int SCHEMA=1;
+    private static final String RETIRED_ARCHIVE="efm_campaign_retired_v1";
+    private static final Set<String> RETIRED=loadRetired();
+    private static Set<String> loadRetired(){
+        try(var in=CampaignStorage.class.getResourceAsStream("/data/taczoperations/campaign/campaign-retired-quests.json")){
+            if(in==null)return Set.of();
+            var root=com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            if(root.get("schema").getAsInt()!=1)throw new IllegalArgumentException("Invalid retired quest manifest");
+            var ids=new HashSet<String>();
+            for(var id:root.getAsJsonArray("quests")){
+                String value=id.getAsString();
+                if(!value.matches("[0-9a-f]{24}")||!ids.add(value))throw new IllegalArgumentException("Invalid retired quest ID");
+            }
+            return Set.copyOf(ids);
+        }catch(Exception e){throw new IllegalStateException("Cannot load retired campaign quests",e);}
+    }
+    static boolean retired(String id){return RETIRED.contains(id);}
     record Session(CampaignGraph.Player player,UUID raidId){}
 
     static Session load(ServerPlayer p,CampaignGraph graph,String revision,UUID currentRaid){
@@ -24,6 +40,13 @@ final class CampaignStorage {
         var quests=root.getCompound("quests");
         for(var id:quests.getAllKeys()){
             var entry=quests.getCompound(id);
+            if(!graph.quests().containsKey(id)&&retired(id)){
+                // Keep the original state and counters for support/rollback. Do not complete or reward it.
+                var archive=account.getCompound(RETIRED_ARCHIVE);
+                if(!archive.contains(id))archive.put(id,entry.copy());
+                account.put(RETIRED_ARCHIVE,archive);
+                continue;
+            }
             if(revised&&(!graph.quests().containsKey(id)||!graph.definitionFingerprint(id).equals(entry.getString("definition"))))
                 throw new IllegalStateException("Incompatible quest update: "+id+"; save preserved for migration");
             saved.put(id,new Progress(State.valueOf(entry.getString("state")),counters(entry.getCompound("counters"))));
@@ -33,7 +56,7 @@ final class CampaignStorage {
         boolean sameRaid=stored!=null&&stored.equals(currentRaid);
         if(sameRaid){
             var pendingTag=root.getCompound("pending");
-            for(var id:pendingTag.getAllKeys())pending.put(id,counters(pendingTag.getCompound(id)));
+            for(var id:pendingTag.getAllKeys())if(!retired(id)||graph.quests().containsKey(id))pending.put(id,counters(pendingTag.getCompound(id)));
         }
         return new Session(graph.restore(new Checkpoint(saved,sameRaid,pending)),sameRaid?stored:null);
     }
