@@ -65,6 +65,18 @@ public final class CampaignGraph {
     public Map<String,Quest> quests(){return quests;}
     /** Stable per-quest compatibility signature; adding another quest does not invalidate this one. */
     public String definitionFingerprint(String id){
+        return definitionFingerprint(id,false);
+    }
+    /** The sole approved additive migration adds a mutually exclusive alternative
+     * to Supply Plans. The original objective, level and prerequisite hash must match. */
+    public boolean compatibleDefinition(String id,String previous){
+        if(!quests.containsKey(id))return false;
+        if(definitionFingerprint(id).equals(previous))return true;
+        return id.equals("596a0e1686f7741ddf17dbee")
+            &&require(id).conflicts().equals(Set.of("596a101f86f7741ddb481582"))
+            &&definitionFingerprint(id,true).equals(previous);
+    }
+    private String definitionFingerprint(String id,boolean withoutSupplyPlansConflict){
         var q=require(id);
         var parts=new ArrayList<String>();
         parts.addAll(List.of(q.id(),q.trader(),Integer.toString(q.level()),Boolean.toString(q.implemented())));
@@ -75,7 +87,7 @@ public final class CampaignGraph {
             Collections.sort(requirements);groups.add(requirements.toString());
         }
         Collections.sort(groups);parts.add(groups.toString());
-        parts.add(q.conflicts().stream().sorted().toList().toString());
+        parts.add(withoutSupplyPlansConflict?"[]":q.conflicts().stream().sorted().toList().toString());
         q.objectives().stream().sorted(Comparator.comparing(Objective::id)).forEach(o->
             parts.add(o.id()+"|"+o.type()+"|"+o.amount()+"|"+o.scope()+"|"+o.optional()));
         try{
