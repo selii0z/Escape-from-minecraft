@@ -143,14 +143,14 @@ public final class ForestRaid extends SavedData {
         raid.participants.add(player.getUUID());
         if (partner != null) raid.participants.add(partner.getUUID());
         raid.reconnectDeadlines.clear();
-        raid.endsAt=level.getGameTime()+20L*60*(express!=null?ExpressZone.MINUTES:industrial?30:45);
+        raid.endsAt=level.getGameTime()+20L*60*(express!=null?express.minutes():industrial?30:45);
         raid.warningMask=0;
         raid.seed = level.getRandom().nextLong();
         int bossRoll=new Random(raid.seed^0x72c6aee3L).nextInt(100);
         raid.bossConvergence=express==null&&bossRoll<5;
         raid.selectedBosses=raid.bossConvergence?BossRoster.all():bossRoll<15?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,true)
             :bossRoll<80?BossRoster.normal(industrial,ForestExpedition.isNightRaid(player),raid.seed,false):List.of();
-        if(express!=null)raid.selectedBosses=bossRoll<5?List.of(switch(express){case BUNKER->GuardRole.FOREMAN;case WAREHOUSE->GuardRole.KILLA;case VILLAGE->GuardRole.RESHALA;}):List.of();
+        if(express!=null)raid.selectedBosses=bossRoll<5?List.of(switch(express){case BUNKER->GuardRole.FOREMAN;case WAREHOUSE->GuardRole.KILLA;case VILLAGE->GuardRole.RESHALA;case CITY->GuardRole.KILLA;}):List.of();
         if(raid.bossConvergence){
             var warning=Component.literal("ALERTE EXCEPTIONNELLE · Convergence des boss : tous les chefs sont présents sur cette carte.");
             player.sendSystemMessage(warning);
@@ -227,7 +227,7 @@ public final class ForestRaid extends SavedData {
         return raid!=null&&raid.owns(player)&&raid.exitOpen(index);
     }
     private void announceExits(ServerPlayer p){
-        String exits=express!=null?"Raid express · deux sorties gratuites, 15 minutes.":industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
+        String exits=express!=null?express.title+" · deux sorties gratuites, "+express.minutes()+" minutes.":industrial?"Sortie principale ouverte · clé : "+(exitOpen(1)?"disponible":"fermée")+" · payante : "+(exitOpen(2)?"disponible":"fermée")
             :"Sortie principale ouverte · relais : "+(exitOpen(0)?"activable":"indisponible pour ce raid");
         p.sendSystemMessage(Component.literal(exits));
         if(endsAt>0)announceRemaining(p);
@@ -952,7 +952,7 @@ public final class ForestRaid extends SavedData {
             BlockPos center=raid.position(point);
             if(center.distToCenterSqr(player.position())>160.0*160.0||!level.hasChunkAt(center))continue;
             int squad=guards.size()+Math.max(0,anchorIndex);
-            for(int member=0;member<=(raid.express!=null?0:BossRoster.escorts(boss))&&bossBudget>0;member++){
+            for(int member=0;member<=(raid.express!=null&&raid.express!=ExpressZone.CITY?0:BossRoster.escorts(boss))&&bossBudget>0;member++){
                 int slot=guards.size()*3+i*12+member;
                 if(raid.enemies.get(slot))continue;
                 var role=member==0?boss:BossRoster.escort(boss,member-1);
