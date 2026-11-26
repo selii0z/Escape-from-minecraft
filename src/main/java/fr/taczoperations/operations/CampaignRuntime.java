@@ -474,6 +474,17 @@ final class CampaignRuntime {
     }
     private static void say(ServerPlayer p,String text){p.sendSystemMessage(net.minecraft.network.chat.Component.literal(text));}
     record QuestView(String id,String name,String trader,State state,int level,List<String> lines,boolean claimable){}
+    static Set<String> completedQuests(ServerPlayer p){
+        if(!accessible(p))return Set.of();
+        try{
+            var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
+            var done=new HashSet<String>();
+            s.player().snapshot().forEach((id,progress)->{
+                if(progress.state()==State.COMPLETED)done.add(id);
+            });
+            return Set.copyOf(done);
+        }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign offer unlock check failed",e);return Set.of();}
+    }
     static List<QuestView> views(ServerPlayer p){
         if(!accessible(p))return List.of();
         try{
