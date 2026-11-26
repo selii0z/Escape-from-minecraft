@@ -257,6 +257,7 @@ TARGET_ADAPTERS = {
     frozenset(["Any"]):"any", frozenset(["AnyPmc"]):"pmc",
     frozenset(["Savage","Marksman","assaultGroup"]):"scav",
     frozenset(["Savage"]):"scav", frozenset(["Marksman"]):"marksman",
+    frozenset(["Bear"]):"bear", frozenset(["Usec"]):"usec",
     frozenset(["Marksman","bossBoarSniper"]):"marksman",
     frozenset(["bossBoar"]):"kaban", frozenset(["bossKolontay"]):"kollontay",
     frozenset(["bossKilla"]):"killa", frozenset(["bossTagilla"]):"foreman",
@@ -322,7 +323,7 @@ def combat_objective(o):
                     "notWearing","enemyHealthEffect","playerHealthEffect","zones","effects"):
             if o.get(key):blockers.add("combat-"+key)
         hours=(o.get("timeFromHour") or 0,o.get("timeUntilHour") or 0)
-        night=hours==(21,5)
+        night=hours in {(21,5),(21,6)}
         if hours!=(0,0) and not night:blockers.add("unsupported-combat-time-window")
         distance=o.get("distance") or {"value":0,"compareMethod":">="}
         value=distance.get("value")
@@ -334,7 +335,7 @@ def combat_objective(o):
         part="any"
         if body=={"Head"}:part="head"
         elif body=={"LeftLeg","RightLeg"}:part="legs"
-        elif body:blockers.add("combat-bodyParts")
+        elif body and body!={"Head","Chest","Stomach","LeftArm","RightArm","LeftLeg","RightLeg"}:blockers.add("combat-bodyParts")
         weapons=set(o.get("usingWeapon") or [])
         weapon=weapon_group(weapons)
         if weapon is None:
@@ -774,7 +775,8 @@ def supply_catalog(tasks,item_catalog,resources,out):
         sample="injectors" in types
         plate="armorPlate" in types
         wallet=ref in {"5783c43d2459774bbe137486","60b0f6c058e0b0481a09ad11"}
-        if not (key or provision or civilian or sample or plate or wallet) and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
+        salvage=ref in {"55d482194bdc2d1d4e8b456b","5c0126f40db834002a125382","601948682627df266209af05"}
+        if not (key or provision or civilian or sample or plate or wallet or salvage) and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
         name=item.get("normalizedName")
         if not isinstance(name,str) or not name.strip():continue
         name=name.replace("-"," ").replace("_"," ").strip().title()
@@ -799,6 +801,9 @@ def supply_catalog(tasks,item_catalog,resources,out):
             icon="iron_ingot"
             name="Plaque de récupération : "+name
         elif wallet:icon="leather"
+        elif salvage:
+            icon="iron_ingot"
+            name="Objet de récupération : "+name
         elif provision:
             icon="glass_bottle" if any(w in normalized for w in ("water","bottle","juice","drink","soda","milk","kvass","tea","coffee","whiskey","vodka","moonshine")) else "bread"
             name="Ration scellée : "+name
@@ -979,11 +984,30 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 if o.get("optional") and o["type"]=="visit":
                     changes.append({"type":"optional-reconnaissance-omitted","reference":o})
                     continue
+                if o.get("optional") and o["type"]=="findItem" and o.get("items") and all("keys" in item_catalog.get(ref,{}).get("types",[]) for ref in o["items"]):
+                    changes.append({"type":"optional-key-search-omitted","reference":o})
+                    continue
+                if o["type"]=="findQuestItem" and o.get("maps"):
+                    supported=[m for m in o["maps"] if m in MAP_ADAPTERS]
+                    if supported and len({MAP_ADAPTERS[m] for m in supported})==1 and supported!=o["maps"]:
+                        locations=[v for v in o.get("possibleLocations",[]) if v.get("map") in supported]
+                        if locations:
+                            changes.append({"type":"document-map-alternative","before":o["maps"],"after":supported})
+                            o["maps"]=supported
+                            o["possibleLocations"]=locations
                 if o["type"] in {"findQuestItem","visit"} and o.get("requiredKeys"):
                     changes.append({"type":"unavailable-door-gate-removed","reference":o["requiredKeys"],"objective":o["id"]})
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
+                    if all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-bear","double-dogtag-bear")) for ref in original):
+                        o["items"]=["59f32bb586f774757e1e8442"]
+                        changes.append({"type":"real-pmc-dogtag","objective":o["id"],"before":original,"after":o["items"]})
+                        original=o["items"]
+                    elif all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-usec","double-dogtag-usec")) for ref in original):
+                        o["items"]=["59f32c3b86f77472a31742f0"]
+                        changes.append({"type":"real-pmc-dogtag","objective":o["id"],"before":original,"after":o["items"]})
+                        original=o["items"]
                     if set(original)<=WEAPON_HANDOVERS.keys():
                         adapted=sorted({WEAPON_HANDOVERS[ref] for ref in original})
                         if adapted!=sorted(set(original)):
@@ -1001,6 +1025,11 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 kept.append(o)
             if kept:q["objectives"]=kept
             reward=q.get("finishRewards") or {}
+            skills=reward.get("skillLevelReward") or []
+            unsupported=[s for s in skills if s.get("skill") in {"Crafting","HideoutManagement"}]
+            if unsupported:
+                reward["skillLevelReward"]=[s for s in skills if s not in unsupported]
+                changes.append({"type":"unavailable-hideout-skill-bonus-omitted","reference":unsupported})
             items=[]
             converted=0
             for row in reward.get("items") or []:
@@ -1045,6 +1074,18 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 if {row["item"] for row in old}=={"5b8683a486f77467f2423114","629792f0fd6eda47d6466fe8"}:
                     start["items"]=[{"item":"5b8683a486f77467f2423114","count":1,"attributes":{}}]
                     changes.append({"type":"starter-rifles-to-one-efm-bolt-action","reference":old})
+            # Preserve the usable starter weapon; unsupported separate magazines/packs
+            # from these two exact starter kits are not required by the objective.
+            starter_adapters={
+                "671a59e43d73dac1360765cc":({"707265736574000000000051"},[{"item":"5a38e6bac4a2826c6e06d79b","count":1,"attributes":{}}]),
+                "68341846186efa3c5b07f989":({"6398636bb483a550805be5e5","62e7c98b550c8218d602cbb4","65702656c5d7d4cb4d078591"},[{"item":"5447a9cd4bdc2dbd208b4567","count":2,"attributes":{}}])
+            }
+            if qid in starter_adapters:
+                expected,replacement=starter_adapters[qid]
+                old=start.get("items") or []
+                if {row["item"] for row in old}==expected:
+                    start["items"]=replacement
+                    changes.append({"type":"starter-kit-base-weapon","reference":old,"replacement":replacement})
             q["startRewards"]=start
         else:
             # Collector is an explicitly reviewed exception: preserve all 44 FIR
@@ -1106,6 +1147,7 @@ def build(snapshot,out,resources):
     auto_names.update({"59e763f286f7742ee57895da":"Sac expédition EFM (Pilgrim)","59e7643b86f7742cbf2c109a":"Gilet tactique EFM (Wartech)","5648a69d4bdc2ded0b8b457b":"Gilet élite EFM (Blackrock)"})
     mapped.update({"59e7635f86f7742cbf2c1095","5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","5a38e6bac4a2826c6e06d79b"})
     auto_names.update({"59e7635f86f7742cbf2c1095":"Tunique PMC classe 2","5c0e655586f774045612eeb2":"Tunique PMC classe 4","5ab8e79e86f7742d8b372e78":"Tunique PMC classe 5","5a38e6bac4a2826c6e06d79b":"Fusil M870 EFM"})
+    mapped.update({"59f32bb586f774757e1e8442","59f32c3b86f77472a31742f0"})
     mapped.update(WEAPON_HANDOVERS.values())
     mapped.add("545cdb794bdc2d3a198b456a")
     auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
