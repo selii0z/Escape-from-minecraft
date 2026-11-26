@@ -693,6 +693,8 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
                 names_text=" / ".join(item_names.get(ref,ref) for ref in refs[:3])
                 if len(refs)>3:names_text+=" ou "+str(len(refs)-3)+" alternative(s)"
                 o["label"]=("Trouver" if o["type"].startswith("find-stock-") else "Remettre")+" : "+names_text+" ("+mode+")"
+            if qid in {"5bc4893c86f774626f5ebf3e","5c0be13186f7746f016734aa"}:
+                for o in row["objectives"]:o["label"]+=" · sans échec de raid (remise à zéro en cas d'échec)"
             result[qid]=row
             ready.add(qid);names.add(slug(name));installed.append(qid);changed=True
         for qid in installed:pending.pop(qid,None)
@@ -1008,6 +1010,14 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             audit.extend({"id":qid,"name":display_name(tasks[qid]),"changes":[{"type":"shipping-document-sequential"}]} for qid in (helping,shipping1,shipping2))
     for qid,q in sorted(tasks.items()):
         changes=[]
+        # These two reviewed challenges reset on any unsuccessful EFM raid.
+        # A fresh attempt starts automatically, with no reward or repeat-completion.
+        if qid in {"5bc4893c86f774626f5ebf3e","5c0be13186f7746f016734aa"}:
+            fail=q.get("failConditions") or []
+            if q.get("restartable") and len(fail)==1 and fail[0].get("type")=="extract" and fail[0].get("count")==1 and not fail[0].get("maps") and set(fail[0].get("exitStatus",[]))=={"ExpBonusKilled","ExpBonusMissingInAction","ExpBonusLeft"} and not any((q.get("failureOutcome") or {}).values()):
+                q["failConditions"]=[]
+                q["restartable"]=False
+                changes.append({"type":"reset-progress-on-failed-raid","reference":fail})
         if q.get("factionName") in {"USEC","BEAR"}:
             changes.append({"type":"faction-neutral-efm","reference":q["factionName"]})
             q["factionName"]="Any"
