@@ -306,6 +306,59 @@ def combat_objective(o):
     return {"id":o["id"],"type":event,"amount":o.get("count"),"scope":scope,
             "optional":o.get("optional",False),"label":label},blockers
 
+FIELD_CORE=CORE|{"visit","mark","plantItem"}
+
+def field_objective(o,mapped):
+    # A single reference zone (duplicated geometry is normal) on a supported map.
+    # Preserve the zone identity and use a deterministic EFM encounter anchor.
+    errors=set()
+    maps=o.get("maps") or []
+    zones=o.get("zones") or []
+    zone_ids={z.get("id") for z in zones}
+    if not maps or not set(maps)<=MAP_ADAPTERS.keys():errors.add("field-map-unavailable")
+    translated_maps={MAP_ADAPTERS[m] for m in maps if m in MAP_ADAPTERS}
+    if len(translated_maps)!=1 or len(zone_ids)!=1 or None in zone_ids or not zones:
+        errors.add("field-multiple-sites")
+    if set(maps)=={"59fc81d786f774390775787e"}:errors.add("night-factory-only")
+    if o.get("optional") is not False:errors.add("optional-field")
+    kind=o["type"]
+    count=o.get("count",1)
+    if not isinstance(count,int) or not 1<=count<=64:errors.add("field-count")
+    basic={"id","description","type","count","optional","maps","zones"}
+    zone=next(iter(zone_ids),None)
+    key=hashlib.sha256(str(zone).encode()).hexdigest()[:16]
+    map_name=next(iter(translated_maps),"unsupported")
+    if kind=="visit":
+        if set(o)-basic or count!=1:errors.add("visit-predicate")
+        typ="visit-adapted:"+map_name+":"+key
+        label="Reconnaître le secteur · "+map_name
+    else:
+        if kind=="mark":
+            ref=o.get("markerItem")
+            if set(o)-(basic|{"markerItem"}) or count!=1:errors.add("mark-predicate")
+        else:
+            refs=o.get("items") or []
+            ref=refs[0] if len(refs)==1 else None
+            if (set(o)-(basic|{"items","foundInRaid","dogTagLevel","maxDurability","minDurability"})
+                or o.get("foundInRaid") is not False or o.get("dogTagLevel",0)!=0
+                or o.get("minDurability",0)!=0 or o.get("maxDurability",100) not in (100,None)):
+                errors.add("plant-predicate")
+        if ref not in mapped:errors.add("field-item-mapping")
+        typ="plant-adapted:"+map_name+":"+key+":"+str(ref)
+        label=("Baliser" if kind=="mark" else "Déposer le matériel")+" · "+map_name
+    return {"id":o["id"],"type":typ,"amount":count,"scope":"CAMPAIGN","optional":o.get("optional",False),
+            "label":label,"sourceZone":zone},errors
+
+def test_field_adapter():
+    o={"id":"x","type":"visit","optional":False,"maps":["5704e3c2d2720bac5b8b4567"],"zones":[{"id":"camp"},{"id":"camp"}]}
+    row,errors=field_objective(o,set())
+    assert not errors and row["type"].startswith("visit-adapted:woods:") and row["amount"]==1
+    assert "field-multiple-sites" in field_objective(dict(o,zones=[{"id":"camp"},{"id":"other"}]),set())[1]
+    ref="a"*24
+    row,errors=field_objective(dict(o,type="mark",markerItem=ref,count=1),{ref})
+    assert not errors and row["type"].endswith(":"+ref)
+    assert "field-item-mapping" in field_objective(dict(o,type="mark",markerItem=ref,count=1),set())[1]
+
 def combat_draft(q,mapped,current):
     objectives=q["objectives"]
     # Reuse the stock validator for rewards and other gates, even when there is no handover.
@@ -315,7 +368,7 @@ def combat_draft(q,mapped,current):
     if not stock:blockers.discard("no-handover")
     for o in objectives:
         if o["type"] not in STOCK:
-            translated,errors=combat_objective(o)
+            translated,errors=field_objective(o,mapped) if o['type'] in FIELD_CORE-CORE else combat_objective(o)
             d["objectives"].append(translated);blockers.update(errors)
     if q.get("neededKeys"):blockers.add("required-key")
     d.update({"adapter":"bulk-combat-v1","blockers":sorted(blockers)})
@@ -395,7 +448,7 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
     names={slug(q["name"]) for q in current.values()}
     pending={qid:q for qid,q in tasks.items() if qid not in current and
              qid!="5c51aac186f77432ea65c552" and q["objectives"] and
-             {o["type"] for o in q["objectives"]}<=CORE}
+             {o["type"] for o in q["objectives"]}<=FIELD_CORE}
     installed=[]
     while True:
         changed=False
@@ -648,6 +701,7 @@ if __name__=="__main__":
     test_offer_plan()
     test_supply_catalog()
     test_starter_plan()
+    test_field_adapter()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
