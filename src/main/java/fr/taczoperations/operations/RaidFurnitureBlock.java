@@ -32,6 +32,7 @@ public final class RaidFurnitureBlock extends BaseEntityBlock {
         };
     }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,Player player,BlockHitResult hit){
+        if(fr.taczoperations.OperationsMod.DECOR.stream().anyMatch(b->state.is(b.get())))return InteractionResult.PASS;
         if(player instanceof ServerPlayer p&&level.getBlockEntity(pos) instanceof RaidFurnitureEntity furniture){
             if(ForestRaid.canSearchFurniture(p,furniture))p.openMenu(furniture);
             else p.displayClientMessage(net.minecraft.network.chat.Component.literal("Conteneur indisponible hors de ton raid."),true);
