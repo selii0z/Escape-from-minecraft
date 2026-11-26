@@ -20,7 +20,8 @@
     "client.RaidEnemyTextureMixin",
     "client.RaidEnemyModelMixin",
     "client.CobblemonPartyHudMixin",
-    "client.MenuCursorMixin"
+    "client.MenuCursorMixin",
+    "client.ImportedArmorMixin"
   ],
   "injectors": {
     "defaultRequire": 1
