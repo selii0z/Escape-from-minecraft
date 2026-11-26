@@ -35,8 +35,8 @@ final class CampaignRuntime {
     private record QuestSite(String map,int x,int z,int radius,String title,String find,String give){}
     private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels,String dialogue,QuestSite site,List<TraderRequirement> traderRequirements,Map<String,Integer> starters){}
     private record Catalog(CampaignGraph graph,String revision,Map<String,Meta> meta){}
-    private record Reward(int credits,int xp,int reputation,Map<String,Integer> items,Map<String,Integer> otherStanding){
-        Reward(int credits,int xp,int reputation){this(credits,xp,reputation,Map.of(),Map.of());}
+    private record Reward(int credits,int xp,int reputation,Map<String,Integer> items,Map<String,Integer> otherStanding,Map<PassiveSkills.Skill,Integer> skills){
+        Reward(int credits,int xp,int reputation){this(credits,xp,reputation,Map.of(),Map.of(),Map.of());}
     }
     private static Reward reward(String id){
         return switch(id){
@@ -139,7 +139,13 @@ final class CampaignRuntime {
                         if(owner.id.equals(trader)||delta< -100000||delta>100000)throw new IllegalArgumentException("Invalid secondary standing");
                         standing.put(owner.id,delta);
                     }
-                    reward=new Reward(r.get("credits").getAsInt(),r.get("xp").getAsInt(),r.get("reputation").getAsInt(),Map.copyOf(itemRewards),Map.copyOf(standing));
+                    var skills=new EnumMap<PassiveSkills.Skill,Integer>(PassiveSkills.Skill.class);
+                    if(r.has("skills"))for(var e:r.getAsJsonObject("skills").entrySet()){
+                        int count=e.getValue().getAsInt();
+                        if(count<1||count>50)throw new IllegalArgumentException("Invalid skill reward");
+                        skills.put(PassiveSkills.Skill.valueOf(e.getKey()),count);
+                    }
+                    reward=new Reward(r.get("credits").getAsInt(),r.get("xp").getAsInt(),r.get("reputation").getAsInt(),Map.copyOf(itemRewards),Map.copyOf(standing),Map.copyOf(skills));
                     if(reward.credits()<0||reward.xp()<0||reward.reputation()< -100000||reward.reputation()>100000)throw new IllegalArgumentException("Invalid reward");
                 }
                 int loyalty=q.has("loyalty")?q.get("loyalty").getAsInt():1;
@@ -302,6 +308,10 @@ final class CampaignRuntime {
             if(StockObjectives.find(o)||StockObjectives.give(o))continue;
             String[] parts=o.type().split(":",-1);
             if(o.optional()||parts.length<2)return false;
+            if(parts[0].equals("milestone")){
+                if(!milestoneValid(o))return false;
+                combat++;continue;
+            }
             if(parts[0].equals("quest-give-adapted")){
                 if(parts.length!=2||!parts[1].matches("[0-9a-f]{24}")||o.scope()!=Scope.CAMPAIGN||o.amount()!=1
                     ||objectives.stream().filter(f->f.type().startsWith("quest-find-adapted:")&&f.type().endsWith(":"+parts[1])).count()!=1)return false;
@@ -685,6 +695,7 @@ final class CampaignRuntime {
                 lines.add("Niveau "+q.level()+" · Fidélité "+CATALOG.meta().get(q.id()).loyalty()+" · "+stateLabel(state));
                 for(var o:q.objectives()){
                     int count=progress==null?0:progress.counters().getOrDefault(o.id(),0);
+                    if(state==State.ACTIVE&&o.type().startsWith("milestone:"))count=milestoneReached(p,s.player(),o)?1:0;
                     var refs=stockRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->itemEligible(stack,o));
                     String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
@@ -719,6 +730,7 @@ final class CampaignRuntime {
                 }
                 lines.add(r.credits()+" crédits · "+r.xp()+" XP · "+(r.reputation()>=0?"+":"")+r.reputation()/1000d+" réputation");
                 if(!r.items().isEmpty())lines.add(r.items().values().stream().mapToLong(Integer::longValue).sum()+" objet(s) en récompense");
+                r.skills().forEach((skill,amount)->lines.add(skill.title+" : +"+amount+" niveau(x)"));
                 for(var standing:r.otherStanding().entrySet())lines.add(CampaignTrader.byId(standing.getKey()).title+" : "+(standing.getValue()>=0?"+":"")+standing.getValue()/1000d+" réputation");
                 boolean claimable=state==State.READY||state==State.ACTIVE&&canClaimPreview(p,s,q,storage);
                 result.add(new QuestView(q.id(),label(q.id()),q.trader(),state,q.level(),List.copyOf(lines),claimable));
@@ -726,11 +738,50 @@ final class CampaignRuntime {
             return List.copyOf(result);
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign preview failed",e);return List.of();}
     }
+    private static boolean milestoneValid(Objective o){
+        if(o.scope()!=Scope.CAMPAIGN||o.amount()!=1||o.optional())return false;
+        String[] parts=o.type().split(":",-1);
+        try{
+            if(parts.length==3&&parts[1].equals("task"))return parts[2].matches("[0-9a-f]{24}");
+            if(parts.length!=4)return false;
+            int value=Integer.parseInt(parts[3]);
+            return switch(parts[1]){
+                case "loyalty"->CampaignTrader.byId(parts[2])!=null&&value>=1&&value<=4;
+                case "reputation"->CampaignTrader.byId(parts[2])!=null&&value>=-100000&&value<=100000;
+                case "skill"->PassiveSkills.Skill.valueOf(parts[2])!=null&&value>=1&&value<=50;
+                default->false;
+            };
+        }catch(RuntimeException e){return false;}
+    }
+    private static boolean milestoneReached(ServerPlayer p,CampaignGraph.Player progress,Objective o){
+        if(!milestoneValid(o))return false;
+        String[] parts=o.type().split(":");
+        if(parts[1].equals("task")){
+            var other=progress.snapshot().get(parts[2]);
+            return other!=null&&other.state()==State.COMPLETED;
+        }
+        int value=Integer.parseInt(parts[3]);
+        return switch(parts[1]){
+            case "loyalty"->CampaignTraderAccount.loyalty(p,CampaignTrader.byId(parts[2]))>=value;
+            case "reputation"->CampaignTraderAccount.reputation(p,CampaignTrader.byId(parts[2]))>=value;
+            case "skill"->PassiveSkills.level(p,PassiveSkills.Skill.valueOf(parts[2]))>=value;
+            default->false;
+        };
+    }
+    private static boolean markMilestones(ServerPlayer p,CampaignGraph.Player player,Quest q){
+        for(var o:q.objectives())if(o.type().startsWith("milestone:")&&!milestoneReached(p,player,o))return false;
+        for(var o:q.objectives())if(o.type().startsWith("milestone:")){
+            var progress=player.snapshot().get(q.id());
+            if(progress==null)return false;
+            if(progress.counters().getOrDefault(o.id(),0)==0&&!player.record(q.id(),o.id(),1))return false;
+        }
+        return true;
+    }
     private static boolean canClaimPreview(ServerPlayer p,CampaignStorage.Session s,Quest q,CarriedStorage storage){
         var trial=CATALOG.graph().restore(s.player().snapshot());
         if(planTurnIns(q,storage)==null)return false;
         for(var o:q.objectives())if(StockObjectives.give(o)||findStock(o))trial.record(q.id(),o.id(),o.amount());
-        if(!handOverQuestItem(trial,q))return false;
+        if(!markMilestones(p,trial,q)||!handOverQuestItem(trial,q))return false;
         return trial.state(q.id(),level(p))==State.READY;
     }
     static String stateLabel(State state){return switch(state){
@@ -779,6 +830,7 @@ final class CampaignRuntime {
             var plan=planTurnIns(q,storage);
             if(plan==null){say(p,"Objets requis insuffisants. Aucun objet remis.");return 0;}
             for(var o:q.objectives())if(!turnInRefs(o).isEmpty()||findStock(o))s.player().record(id,o.id(),o.amount());
+            if(!markMilestones(p,s.player(),q)){say(p,"Conditions de niveau, fidélité ou mission non remplies.");return 0;}
             if(!handOverQuestItem(s.player(),q)){say(p,"Récupère l’objet de mission et extrais-toi vivant.");return 0;}
             if(!s.player().complete(id,level(p))){say(p,"Objectifs incomplets.");return 0;}
             // No mutation until the entire allocation and reward have been validated on the server thread.
@@ -794,6 +846,7 @@ final class CampaignRuntime {
             CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(q.trader()),r.reputation());
             r.otherStanding().forEach((owner,delta)->CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(owner),delta));
             CampaignRewardInbox.queue(p,r.items());
+            r.skills().forEach((skill,amount)->PassiveSkills.questReward(p,skill,amount));
             if(!r.items().isEmpty())say(p,"Récompenses matérielles disponibles dans la réserve des marchands.");
             if(id.equals(INTRO))CampaignTraderAccount.unlockFromCompletedQuest(p,CampaignTrader.JAEGER,id);
             if(id.equals(EASY_MONEY))CampaignTraderAccount.unlockFromCompletedQuest(p,CampaignTrader.REF,id);
