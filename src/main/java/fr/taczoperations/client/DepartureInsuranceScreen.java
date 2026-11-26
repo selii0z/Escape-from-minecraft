@@ -42,7 +42,7 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
     }
     private String map(){return menu.express()!=null?menu.express().title:menu.industrial()?"Zone industrielle":"Forêt Noire";}
     private String time(){return menu.night()?"22 h 00 · Nuit":"09 h 30 · Jour";}
-    private String duration(){return menu.express()!=null?"15 minutes":menu.industrial()?"30 minutes":"45 minutes";}
+    private String duration(){return menu.express()!=null?menu.express().minutes()+" minutes":menu.industrial()?"30 minutes":"45 minutes";}
     private int cost(){return menu.selected()*DepartureInsuranceMenu.FEE;}
     private boolean affordable(){return cost()<=menu.balance();}
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
