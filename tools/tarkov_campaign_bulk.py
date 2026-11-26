@@ -261,6 +261,7 @@ TARGET_ADAPTERS = {
     frozenset(["Any"]):"any", frozenset(["AnyPmc"]):"pmc",
     frozenset(["Savage","Marksman","assaultGroup"]):"scav",
     frozenset(["Savage"]):"scav", frozenset(["Marksman"]):"marksman",
+    frozenset(["sectantPriest","sectantWarrior"]):"cultist",
     frozenset(["Bear"]):"bear", frozenset(["Usec"]):"usec",
     frozenset(["Marksman","bossBoarSniper"]):"marksman",
     frozenset(["bossBoar"]):"kaban", frozenset(["bossKolontay"]):"kollontay",
@@ -366,7 +367,7 @@ def combat_objective(o):
         if gear is None:
             blockers.add("combat-gear-unmapped")
             gear="any"
-        if o["id"]=="5d25c8c986f77443e47ad47a" and o.get("effects")==["Pain"] and (o.get("playerHealthEffect") or {}).get("effects")==["Pain"] and gear=="any":
+        if ((o["id"]=="5d25c8c986f77443e47ad47a" and o.get("effects")==["Pain"] and (o.get("playerHealthEffect") or {}).get("effects")==["Pain"]) or (o["id"]=="5d25d4e786f77442734d335d" and o.get("effects")==["Tremor"] and (o.get("playerHealthEffect") or {}).get("effects")==["Tremor"])) and gear=="any":
             blockers.discard("combat-effects");blockers.discard("combat-playerHealthEffect");gear="injured"
         hours=(o.get("timeFromHour") or 0,o.get("timeUntilHour") or 0)
         night=hours in {(21,4),(21,5),(21,6)}
@@ -383,7 +384,7 @@ def combat_objective(o):
         elif body=={"LeftLeg","RightLeg"}:part="legs"
         elif body and body!={"Head","Chest","Stomach","LeftArm","RightArm","LeftLeg","RightLeg"}:blockers.add("combat-bodyParts")
         weapons=set(o.get("usingWeapon") or [])
-        weapon=weapon_group(weapons)
+        weapon="shotgun" if o["id"]=="66632deea5607d352f3aa844" and weapons=={"5580223e4bdc2d1c128b457f","64748cb8de82c85eaf0a273a"} else weapon_group(weapons)
         if weapon is None:
             blockers.add("combat-usingWeapon")
             weapon="any"
@@ -896,6 +897,15 @@ def select_efm_campaign(reference):
         reasons=set()
         if qid=="6663148ca9290f9e0806cca1" and any(o.get("effects")==["Intoxication"] for o in q.get("objectives",[])):reasons.add("unavailable-intoxication-extraction")
         objectives=q.get("objectives") or []
+        # Explicit incompatible objectives: no stun status on NPCs, stimulant use,
+        # flare interaction or dialogue-only missions in the current EFM build.
+        retired_exact={
+            "5d25e2d886f77442734d335e":"unavailable-enemy-stun",
+            "5eaaaa7c93afa0558f3b5a1c":"unavailable-stimulant-effect",
+            "666314b8312343839d032d24":"unavailable-location-specific-flare",
+            "69c2a2d004de49c8f0055a3d":"dialogue-only"
+        }
+        if qid in retired_exact:reasons.add(retired_exact[qid])
         for o in objectives:
             if o["type"] in REMOVED_OBJECTIVES:reasons.add("excluded-objective:"+o["type"])
             if o["type"]=="shoot" and o.get("usingWeaponMods"):reasons.add("unavailable-weapon-attachment")
@@ -1081,6 +1091,10 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 q["neededKeys"]=[]
             kept=[]
             for o in q.get("objectives") or []:
+                if qid in {"60e71c11d54b755a3b53eb65","666314b2a9290f9e0806cca3"} and o["type"]=="shoot" and "59fc81d786f774390775787e" in (o.get("maps") or []) and len(o["maps"])>1:
+                    old=o["maps"]
+                    o["maps"]=[m for m in old if m!="59fc81d786f774390775787e"]
+                    changes.append({"type":"omit-night-only-factory-alternative","before":old,"after":o["maps"]})
                 if o.get("optional") and o["type"]=="visit":
                     changes.append({"type":"optional-reconnaissance-omitted","reference":o})
                     continue
@@ -1207,6 +1221,8 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             # Preserve the usable starter weapon; unsupported separate magazines/packs
             # from these two exact starter kits are not required by the objective.
             starter_adapters={
+                "6740a2c17e3818d5bb0648b6":({"66d9f1abb16d9aacf5068468"},[]),
+                "666314b2a9290f9e0806cca3":({"707265736574000000000047"},[{"item":"5a38e6bac4a2826c6e06d79b","count":1,"attributes":{}}]),
                 "666314bafd5ca9577902e03a":({"5b44abe986f774283e2e3512"},[{"item":"5448bd6b4bdc2dfc2f8b4569","count":1,"attributes":{}}]),
                 "666314b4d7f171c4c20226c3":({"65766adc234b9f6e050a431a","5645bc214bdc2d363b8b4571"},[{"item":"545cdb794bdc2d3a198b456a","count":1,"attributes":{}},{"item":"5645bc214bdc2d363b8b4571","count":1,"attributes":{}}]),
                 "5c0d4c12d09282029f539173":({"5aa7d03ae5b5b00016327db5","5ab8e4ed86f7742d8e50c7fa","707265736574000000000009","5aaa5dfee5b5b000140293d3"},[{"item":"5aa7d03ae5b5b00016327db5","count":1,"attributes":{}},{"item":"59e7635f86f7742cbf2c1095","count":1,"attributes":{}},{"item":"5447a9cd4bdc2dbd208b4567","count":1,"attributes":{}}]),
@@ -1364,7 +1380,7 @@ def build(snapshot,out,resources):
                 ref,name,_=line.split("|")
                 item_names[ref]=name
     # Collector and boss trophies remain raid-only, not merchant supplies.
-    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d","5e997f0b86f7741ac73993e2","609e860ebd219504d8507525","628baf0b967de16aab5a4f36","628bc7fb408e2b2e9c0801b1","628b9c7d45122232a872358f"}
+    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d","5e997f0b86f7741ac73993e2","609e860ebd219504d8507525","628baf0b967de16aab5a4f36","628bc7fb408e2b2e9c0801b1","628b9c7d45122232a872358f","5fc64ea372b0dd78d51159dc"}
     approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids|set(MEDICAL_EQUIVALENTS.values()),out)
     summary.update({"questOfferUnlocks":total_offers,"supportedQuestOfferUnlocks":supported_offers})
     summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names,approved_offers)
