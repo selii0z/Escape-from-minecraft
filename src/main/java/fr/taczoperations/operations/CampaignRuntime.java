@@ -601,6 +601,11 @@ final class CampaignRuntime {
         var q=CATALOG.graph().quests().get(id);
         if(q==null)return false;
         for(var o:q.objectives()){
+            // A city-only mission cannot be completed without the private city resources.
+            // Multi-map alternatives remain available on the other maps.
+            var type=o.type().split(":",-1);
+            if(type.length>=2&&Set.of("kill","extract","gunshot","visit-adapted","plant-adapted","quest-find-adapted","quest-find").contains(type[0])
+                &&type[1].equals("streets")&&!ExpressZone.CITY.available())return false;
             if(o.type().startsWith("visit-adapted:")||o.type().startsWith("plant-adapted:")||o.type().startsWith("quest-find-adapted:")){
                 var parts=o.type().split(":");
                 if(fieldAnchor(parts[1],parts[2])==null)return false;
