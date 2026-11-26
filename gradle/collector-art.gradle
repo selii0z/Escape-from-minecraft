@@ -3,6 +3,7 @@ def collectorSource=file('src/main/resources/data/taczoperations/campaign/collec
 def collectorModels=layout.buildDirectory.dir('generated/collectorModels')
 tasks.register('generateCollectorModels'){
     inputs.file(collectorSource)
+    inputs.file('gradle/collector-art.gradle')
     outputs.dir(collectorModels)
     doLast {
         collectorSource.readLines('UTF-8').findAll{!it.isBlank()}.each{ line ->
@@ -10,6 +11,13 @@ tasks.register('generateCollectorModels'){
             def model=new File(collectorModels.get().asFile,"assets/taczoperations/models/item/collector_"+fields[0]+".json")
             model.parentFile.mkdirs()
             model.text=groovy.json.JsonOutput.toJson([parent:'minecraft:item/generated',textures:[layer0:'minecraft:item/'+fields[2]]])
+        }
+
+        // Original case silhouette already packaged by raid-art; make variants distinguishable.
+        ['alpha','beta','epsilon','gamma','kappa'].each{ id ->
+            def model=new File(collectorModels.get().asFile,"assets/taczoperations/models/item/secure_"+id+".json")
+            model.parentFile.mkdirs()
+            model.text=groovy.json.JsonOutput.toJson([parent:'taczoperations:item/secure_case'])
         }
     }
 }
