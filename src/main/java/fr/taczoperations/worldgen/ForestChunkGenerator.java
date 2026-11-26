@@ -53,6 +53,15 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     @Override
     public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState random,
                                                        StructureManager structures, ChunkAccess chunk) {
+        for(ExpressZone map:ExpressZone.values()){
+            Painter express=new Painter(chunk,map.origin);
+            if(!express.intersects(0,0,map.size-1,map.size-1))continue;
+            return CompletableFuture.supplyAsync(()->{
+                map.generate(express);
+                Heightmap.primeHeightmaps(chunk,java.util.EnumSet.of(Heightmap.Types.OCEAN_FLOOR_WG,Heightmap.Types.WORLD_SURFACE_WG));
+                return chunk;
+            },Util.backgroundExecutor());
+        }
         Painter industrial = new Painter(chunk, IndustrialZone.ORIGIN);
         if (industrial.intersects(0, 0, IndustrialZone.SIZE - 1, IndustrialZone.SIZE - 1)) {
             return CompletableFuture.supplyAsync(() -> {
@@ -389,6 +398,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor level, RandomState random) {
+        if (ExpressZone.at(x,z)!=null)return ExpressZone.FLOOR+1;
         if (IndustrialZone.inside(x, z)) return IndustrialZone.FLOOR + 1;
         if (!ForestPlan.inside(x, z)) {
             return level.getMinBuildHeight();
@@ -400,7 +410,7 @@ public final class ForestChunkGenerator extends ChunkGenerator {
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor level, RandomState random) {
         BlockState[] column = new BlockState[level.getHeight()];
         Arrays.fill(column, Blocks.AIR.defaultBlockState());
-        if (ForestPlan.inside(x, z) || IndustrialZone.inside(x, z)) {
+        if (ForestPlan.inside(x, z) || IndustrialZone.inside(x, z) || ExpressZone.at(x,z)!=null) {
             int y = getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
             Arrays.fill(column, FOUNDATION - level.getMinBuildHeight(), y - level.getMinBuildHeight(),
                 Blocks.STONE.defaultBlockState());
