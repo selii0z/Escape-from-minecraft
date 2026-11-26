@@ -324,6 +324,23 @@ public final class ForestRaid extends SavedData {
 
     public static void onServerTick(ServerTickEvent.Post event) {
         CampaignRuntime.tickActions(event.getServer());
+        if(event.getServer().getTickCount()%5==0){
+            var level=event.getServer().getLevel(ForestExpedition.FOREST);
+            if(level!=null)for(var player:level.players()){
+                var raid=forPlayer(player);
+                ServerPlayer partner=null;
+                if(raid!=null&&raid.owns(player)&&player.isAlive()&&!player.isSpectator()){
+                    for(UUID id:raid.participants){
+                        if(id.equals(player.getUUID()))continue;
+                        var candidate=event.getServer().getPlayerList().getPlayer(id);
+                        if(candidate!=null&&raid.owns(candidate)&&candidate.isAlive()&&!candidate.isSpectator()){partner=candidate;break;}
+                    }
+                }
+                var packet=partner==null?new RaidPartnerPayload(false,"",0,0,0):new RaidPartnerPayload(true,
+                    partner.getGameProfile().getName(),partner.getX(),partner.getY()+partner.getBbHeight()+.25,partner.getZ());
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,packet);
+            }
+        }
         // One maintenance pass per second is sufficient for a ten-minute
         // grace period; avoid scanning the raid dimension 20 times a second.
         if (event.getServer().getTickCount() % 20 != 0) return;
