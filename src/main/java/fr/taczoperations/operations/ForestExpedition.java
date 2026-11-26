@@ -314,7 +314,7 @@ public final class ForestExpedition {
     }
 
     private static boolean canDepart(ServerPlayer player) {
-        return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping();
+        return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping() && !ScavRun.active(player);
     }
 
     private static boolean enter(ServerPlayer player, ServerLevel forest, BlockPos destination, boolean night, int weather, boolean industrial,ExpressZone express) {
