@@ -46,8 +46,9 @@ public final class CampaignSupplies {
     private static final Map<String,String> BASE_GUNS=Map.of("5644bd2b4bdc2d3b4c8b4572","ak47","5447a9cd4bdc2dbd208b4567","m4a1","5448bd6b4bdc2dfc2f8b4569","glock_17");
     private static final String THERMAL="5a1eaa87fcdbcb001865f75e",HELMET5="5ca20ee186f774799474abc2",AMMO556="60194943740c5d77f6705eea";
     private static final String EPSILON="59db794186f77448bc595262", HELMET3="5645bc214bdc2d363b8b4571";
-    static boolean rewardKnown(String id){return EPSILON.equals(id)||HELMET3.equals(id)|| THERMAL.equals(id)||HELMET5.equals(id)||AMMO556.equals(id)|| "5645bcc04bdc2d363b8b4572".equals(id)||"5aa7d03ae5b5b00016327db5".equals(id)||BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    static boolean rewardKnown(String id){return RaidGrenade.REFERENCE.equals(id)|| EPSILON.equals(id)||HELMET3.equals(id)|| THERMAL.equals(id)||HELMET5.equals(id)||AMMO556.equals(id)|| "5645bcc04bdc2d363b8b4572".equals(id)||"5aa7d03ae5b5b00016327db5".equals(id)||BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
     static ItemStack rewardStack(String id){
+        if(RaidGrenade.REFERENCE.equals(id))return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","raid_grenade")));
         if(EPSILON.equals(id)){
             var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","secure_epsilon"));
             return item instanceof SecureCaseItem s&&s.tier()==SecureCaseItem.Tier.EPSILON?new ItemStack(item):ItemStack.EMPTY;
@@ -81,6 +82,7 @@ public final class CampaignSupplies {
     }
     private static final String BEAR_TAG="59f32bb586f774757e1e8442", USEC_TAG="59f32c3b86f77472a31742f0";
     static Optional<String> reference(ItemStack stack){
+        if(stack.getItem() instanceof RaidGrenade)return Optional.of(RaidGrenade.REFERENCE);
         if(stack.getItem() instanceof SecureCaseItem c)
             return c.tier()==SecureCaseItem.Tier.EPSILON&&RaidSecurity.emptyCase(stack)?Optional.of(EPSILON):Optional.empty();
         if(BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.HEAD)==3)return Optional.of(HELMET3);
@@ -155,7 +157,13 @@ public final class CampaignSupplies {
         var free=new ArrayList<Integer>();
         for(int i=0;i<c.getContainerSize();i++)if(c.getItem(i).isEmpty())free.add(i);
         var ordinary=ENTRIES.stream().filter(e->!BOSS_TROPHIES.contains(e.id())).toList();
-        if(free.isEmpty()||ordinary.isEmpty())return;
+        if(free.isEmpty())return;
+        if(rng.nextInt(8)==0){
+            var stack=rewardStack(RaidGrenade.REFERENCE);
+            if(!stack.isEmpty()){stack.setCount(1+rng.nextInt(2));c.setItem(free.get(rng.nextInt(free.size())),stack);}
+            return;
+        }
+        if(ordinary.isEmpty())return;
         var e=ordinary.get(rng.nextInt(ordinary.size()));var item=ITEMS.get(e.id());
         if(item!=null)c.setItem(free.get(rng.nextInt(free.size())),new ItemStack(item.get(),1+rng.nextInt(2)));
     }
