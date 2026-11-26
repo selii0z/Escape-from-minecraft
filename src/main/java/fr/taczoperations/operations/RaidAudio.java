@@ -35,7 +35,8 @@ public final class RaidAudio {
             int radius=thunder?18+rng.nextInt(9):6+rng.nextInt(9);
             var pos=origin.offset((int)Math.round(Math.cos(a)*radius),rng.nextInt(5)-2,(int)Math.round(Math.sin(a)*radius));
             if(!level.hasChunkAt(pos)||level.isOutsideBuildHeight(pos))continue;
-            if(industrial?!fr.taczoperations.worldgen.IndustrialZone.inside(pos.getX(),pos.getZ())
+            var express=fr.taczoperations.worldgen.ExpressZone.at(listener.getBlockX(),listener.getBlockZ());
+            if(express!=null?!express.inside(pos.getX(),pos.getZ()):industrial?!fr.taczoperations.worldgen.IndustrialZone.inside(pos.getX(),pos.getZ())
                 :!fr.taczoperations.worldgen.ForestPlan.inside(pos.getX(),pos.getZ()))continue;
             if(!thunder&&!level.getBlockState(pos).isAir())continue;
             if(!thunder&&level.canSeeSky(pos)==indoor)continue;
