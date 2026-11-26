@@ -21,6 +21,10 @@ public final class ForestProtection {
 
     static boolean setVaultDoor(ServerLevel level,BlockPos pos,boolean closed) {
         if(!vaultDoor(pos))return false;
+        if(fr.taczoperations.worldgen.ForestVaults.door(pos)){
+            var old=level.getBlockState(pos);
+            if(!old.isAir()&&!old.is(Blocks.IRON_BLOCK)&&!old.is(Blocks.SPRUCE_DOOR))return false;
+        }
         RAID_EDIT.set(pos);
         try{
             BlockState state=(closed?Blocks.IRON_BLOCK:Blocks.AIR).defaultBlockState();
@@ -28,7 +32,7 @@ public final class ForestProtection {
         }finally{RAID_EDIT.remove();}
     }
     private static boolean vaultDoor(BlockPos pos) {
-        return fr.taczoperations.worldgen.IndustrialZone.VAULTS.stream().anyMatch(v->pos.equals(v.door())||pos.equals(v.door().above()));
+        return fr.taczoperations.worldgen.ForestVaults.door(pos)||fr.taczoperations.worldgen.IndustrialZone.VAULTS.stream().anyMatch(v->pos.equals(v.door())||pos.equals(v.door().above()));
     }
     public static boolean allowsRaidContainer(BlockPos pos, BlockState state) {
         return pos.equals(RAID_EDIT.get()) && (state.is(Blocks.BARREL) || state.is(Blocks.CHEST) || state.getBlock() instanceof RaidFurnitureBlock || state.isAir() || state.is(Blocks.IRON_BLOCK)&&vaultDoor(pos));
