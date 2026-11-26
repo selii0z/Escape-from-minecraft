@@ -15,7 +15,11 @@ final class CampaignTraderAccount {
             // No BTR vehicle is required for the retained scouting and hunting missions.
             case BTR_DRIVER->MilitaryProgression.level(SupplyContract.experienceEarned(p))>=10
                 ||SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
-            case JAEGER,LIGHTKEEPER->SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
+            // The island and its access chain are absent from EFM. The sole
+            // retained Lightkeeper challenge is an endgame hunting mission.
+            case LIGHTKEEPER->MilitaryProgression.level(SupplyContract.experienceEarned(p))>=42
+                ||SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
+            case JAEGER->SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
             default->true;
         };
     }
