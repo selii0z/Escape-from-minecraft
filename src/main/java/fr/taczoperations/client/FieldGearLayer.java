@@ -27,20 +27,35 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 public final class FieldGearLayer extends RenderLayer<AbstractClientPlayer,PlayerModel<AbstractClientPlayer>>{
     private FieldGearLayer(RenderLayerParent<AbstractClientPlayer,PlayerModel<AbstractClientPlayer>> parent){super(parent);}
     @SubscribeEvent public static void addLayers(EntityRenderersEvent.AddLayers event){
-        if(!ModList.get().isLoaded("curios"))return;
         for(var skin:event.getSkins()){
             if(event.getSkin(skin) instanceof PlayerRenderer renderer)renderer.addLayer(new FieldGearLayer(renderer));
         }
     }
     @Override public void render(PoseStack pose,MultiBufferSource buffers,int light,AbstractClientPlayer player,
             float limbSwing,float limbAmount,float partial,float age,float headYaw,float headPitch){
-        if(player.isInvisible()||player.isSpectator()||!ModList.get().isLoaded("curios"))return;
+        if(player.isInvisible()||player.isSpectator())return;
+        for(var slot:new net.minecraft.world.entity.EquipmentSlot[]{net.minecraft.world.entity.EquipmentSlot.HEAD,net.minecraft.world.entity.EquipmentSlot.CHEST}){
+            String id=ImportedGearModels.armorId(player.getItemBySlot(slot),slot);
+            if(ImportedGearModels.exists(id))drawImported(id,pose,buffers,light);
+        }
+        if(!ModList.get().isLoaded("curios"))return;
         var bag=FieldCurios.equipped(player,FieldInventoryMenu.BAG);
         var rig=FieldCurios.equipped(player,FieldInventoryMenu.RIG);
         if(bag.getItem() instanceof FieldPack pack&&!pack.rig())draw(pose,buffers,light,player,bag,true);
         if(rig.getItem() instanceof FieldPack pack&&pack.rig())draw(pose,buffers,light,player,rig,false);
+        if(FieldInventoryMenu.isHeadset(FieldCurios.equipped(player,FieldInventoryMenu.HEADSET)))drawImported("headset",pose,buffers,light);
+    }
+    private void drawImported(String id,PoseStack pose,MultiBufferSource buffers,int light){
+        var m=getParentModel();
+        for(String part:new String[]{"head","body","right_arm","left_arm"}){
+            pose.pushPose();
+            switch(part){case "head"->m.head.translateAndRotate(pose);case "body"->m.body.translateAndRotate(pose);case "right_arm"->m.rightArm.translateAndRotate(pose);case "left_arm"->m.leftArm.translateAndRotate(pose);}
+            ImportedGearModels.draw(id,part,pose,buffers,light);pose.popPose();
+        }
     }
     private void draw(PoseStack pose,MultiBufferSource buffers,int light,AbstractClientPlayer p,ItemStack item,boolean bag){
+        String id=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem()).getPath();
+        if(ImportedGearModels.exists(id)){drawImported(id,pose,buffers,light);return;}
         pose.pushPose();
         getParentModel().body.translateAndRotate(pose);
         pose.translate(0,.36,bag?.30:-.27);
