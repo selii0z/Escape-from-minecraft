@@ -20,12 +20,12 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /** Local page inside the original EFM operations screen. */
-final class CampaignDashboard {
+public final class CampaignDashboard {
     private static final int GOLD=0xffe5ce88,WHITE=0xfff5f3e8,SOFT=0xffbfc8b8,OLIVE=0xffa4c67c,ORANGE=0xffe3ab6e,FRAME=0xff716751;
     private static final ResourceLocation FONT=ResourceLocation.fromNamespaceAndPath("taczoperations","interface"),HEAD=ResourceLocation.fromNamespaceAndPath("taczoperations","heading");
     private static final Pattern PROGRESS=Pattern.compile("^(.*) : (\\d+)/(\\d+)$");
     private static final Item[] ICONS={Items.CROSSBOW,Items.GOLDEN_APPLE,Items.IRON_NUGGET,Items.GOLD_INGOT,Items.ANVIL,Items.LEATHER_CHESTPLATE,Items.COMPASS,Items.ENDER_CHEST,Items.TARGET,Items.LANTERN,Items.MINECART};
-    private static final int ROWS=10, LIST_X=169,LIST_Y=178,LIST_W=272,ROW=20,DETAIL_X=455,DETAIL_Y=245,DETAIL_W=361,DETAIL_ROWS=9;
+    private static final int ROWS=10, LIST_X=169,LIST_Y=178,LIST_W=272,ROW=20,DETAIL_X=455,DETAIL_Y=270,DETAIL_W=361,DETAIL_ROWS=7;
     private final int menuId;
     private final HashMap<Integer,CampaignTabData> cache=new HashMap<>();
     private int trader,filter,scroll,detailScroll;
@@ -34,6 +34,11 @@ final class CampaignDashboard {
     private long askedAt;
     private CampaignTabData last;
     private String message="";
+    private CampaignTabData.Quest detailCacheKey;
+    private List<Detail> detailCache=List.of();
+    private CampaignTabData visibleCacheKey;
+    private int visibleCacheFilter=-1;
+    private List<CampaignTabData.Quest> visibleCache=List.of();
     CampaignDashboard(int menuId){this.menuId=menuId;}
     public static void handle(CampaignTabData payload,IPayloadContext context){
         context.enqueueWork(()->{
@@ -47,7 +52,7 @@ final class CampaignDashboard {
     private CampaignTabData data(){return cache.get(trader);}
     private void request(int action,String id){
         waiting=true;askedAt=System.nanoTime();message="";
-        if(action>=1&&action<=4){changed=true;cache.clear();}
+        if(action>=1&&action<=4){changed=true;cache.keySet().removeIf(key->key!=trader);}
         PacketDistributor.sendToServer(new CampaignTabRequest(menuId,trader,action,id));
     }
     void receive(CampaignTabData data){
@@ -57,13 +62,16 @@ final class CampaignDashboard {
     }
     private List<CampaignTabData.Quest> visible(){
         var d=data();if(d==null)return List.of();
-        return d.quests().stream().filter(q->switch(filter){
+        if(d==visibleCacheKey&&filter==visibleCacheFilter)return visibleCache;
+        visibleCacheKey=d;visibleCacheFilter=filter;
+        visibleCache=d.quests().stream().filter(q->switch(filter){
             case 1->q.status().equals("Disponible");
             case 2->q.status().equals("En cours")||q.status().equals("À valider");
             case 3->q.status().equals("Terminée");
             case 4->q.status().equals("Verrouillée")||q.status().equals("Non jouable")||q.status().equals("Échouée");
             default->true;
         }).toList();
+        return visibleCache;
     }
     private void ensureSelection(){
         var list=visible();
@@ -111,7 +119,7 @@ final class CampaignDashboard {
     private int mx(int i){return 169+(i%6)*108;}
     private int my(int i){return 108+(i/6)*22;}
     void draw(GuiGraphics g,double x,double y){
-        if(waiting&&System.nanoTime()-askedAt>4_000_000_000L){waiting=false;message="Actualise pour relancer le chargement.";}
+        if(waiting&&System.nanoTime()-askedAt>10_000_000_000L){waiting=false;message="Actualise pour relancer le chargement.";}
         text(g,"CAMPAGNE  /  QUÊTES",170,82,1.5F,WHITE,true);
         text(g,"Contrats des marchands",565,86,1,SOFT,false);
         var loyalties=last==null?List.<Integer>of():last.loyalties();
@@ -150,7 +158,7 @@ final class CampaignDashboard {
         button(g,"Offres débloquées",258,402,122,22,x,y,!waiting,false);
         button(g,"Actualiser",386,402,69,22,x,y,!waiting,false);
         if(last!=null)text(g,last.inbox()+" objet(s) en réserve",169,432,.9F,SOFT,false);
-        if(!message.isEmpty())text(g,fit(message,350,false),460,432,.95F,GOLD,false);
+        if(waiting)text(g,"Synchronisation…",460,432,.95F,GOLD,false);else if(!message.isEmpty())text(g,fit(message,350,false),460,432,.95F,GOLD,false);
     }
     private record Detail(String label,int color,float progress){}
     private List<Detail> details(CampaignTabData.Quest q){
@@ -175,6 +183,7 @@ final class CampaignDashboard {
         return result;
     }
     private List<Detail> wrapped(CampaignTabData.Quest q){
+        if(q==detailCacheKey)return detailCache;
         var result=new ArrayList<Detail>();
         for(var line:details(q)){
             var split=font().split(styled(line.label(),false),DETAIL_W-10);
@@ -183,7 +192,7 @@ final class CampaignDashboard {
                 result.add(new Detail(out.toString(),line.color(),j==split.size()-1?line.progress():-1));
             }
         }
-        return result;
+        detailCacheKey=q;detailCache=List.copyOf(result);return detailCache;
     }
     private void drawQuest(GuiGraphics g,double x,double y){
         var q=current();
@@ -191,14 +200,16 @@ final class CampaignDashboard {
         text(g,fit(q.name(),355,true),460,160,1.12F,WHITE,true);
         text(g,q.status(),460,175,1,status(q.status()),true);
         text(g,fit(q.lines().isEmpty()?"":q.lines().getFirst(),355,false),460,190,.9F,SOFT,false);
-        art(g,q.art(),460,204,86,38);
-        text(g,"RAVITAILLEMENT",557,205,.88F,GOLD,true);
-        int limit=Math.min(8,q.rewards().size());
+        art(g,q.art(),460,202,140,63);
+        text(g,"RÉCOMPENSES MATÉRIELLES",610,203,.88F,GOLD,true);
+        int limit=Math.min(7,q.rewards().size());
         for(int i=0;i<limit;i++){
-            var stack=q.rewards().get(i);int ix=557+i*29;
-            tile(g,ix,218,25,24,false,hit(x,y,ix,218,25,24));item(g,stack,ix+4,221,1);
+            var stack=q.rewards().get(i);int ix=610+i*29;
+            tile(g,ix,216,25,26,false,hit(x,y,ix,216,25,26));item(g,stack,ix+4,218,1);
+            var lore=stack.get(DataComponents.LORE);if(lore!=null&&!lore.lines().isEmpty())text(g,"×"+lore.lines().getFirst().getString(),ix+2,235,.65F,WHITE,false);
         }
-        if(limit==0)text(g,"Récompenses ci-dessous",557,220,.9F,SOFT,false);
+        if(limit==0)text(g,"Crédits, XP et réputation",610,222,.9F,SOFT,false);
+        else if(q.rewards().size()>limit)text(g,"+"+(q.rewards().size()-limit)+" autre(s) objet(s)",610,246,.85F,SOFT,false);
         var lines=wrapped(q);int max=Math.max(0,lines.size()-DETAIL_ROWS);
         detailScroll=Math.clamp(detailScroll,0,max);
         for(int i=detailScroll;i<Math.min(lines.size(),detailScroll+DETAIL_ROWS);i++){
@@ -231,7 +242,7 @@ final class CampaignDashboard {
         var q=current();
         if(hit(x,y,169,402,83,22)){request(4,"");return true;}
         if(hit(x,y,258,402,122,22)){request(5,"");return true;}
-        if(hit(x,y,386,402,69,22)){cache.clear();request(0,"");return true;}
+        if(hit(x,y,386,402,69,22)){cache.keySet().removeIf(key->key!=trader);request(0,"");return true;}
         if(q!=null){
             if(hit(x,y,460,402,112,22)&&q.status().equals("Disponible"))request(1,q.id());
             else if(hit(x,y,577,402,112,22)&&q.status().equals("À valider"))request(2,q.id());

@@ -355,8 +355,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     private boolean active(int tab) {
         if(questMode)return tab==OperationsMenu.QUESTS;
-        return tab == menu.view().tab() || (tab == OperationsMenu.FOREST && menu.view().tab() == OperationsMenu.GROUP)
-            ||(tab==OperationsMenu.SHOP&&menu.view().tab()==OperationsMenu.PLAYER_MARKET);
+        return tab != OperationsMenu.QUESTS && (tab == menu.view().tab() || (tab == OperationsMenu.FOREST && menu.view().tab() == OperationsMenu.GROUP)
+            ||(tab==OperationsMenu.SHOP&&menu.view().tab()==OperationsMenu.PLAYER_MARKET));
     }
 
     @Override

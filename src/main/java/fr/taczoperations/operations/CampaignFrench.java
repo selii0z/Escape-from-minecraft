@@ -275,9 +275,7 @@ final class CampaignFrench {
         }
         return source;
     }
-    static String text(String source){
-        String s=source;
-        String[][] replacements={
+    private static final String[][] REPLACEMENTS={
             {"42 Signature Blend English tea","Thé anglais 42 Signature Blend"},
             {"6B34 Anti Fragmentation Glasses","Lunettes anti-éclats 6B34"},
             {"Aceso Xpress Semi Automatic Biochemical Analyzer","Analyseur biochimique semi-automatique Aceso Xpress"},
@@ -395,10 +393,11 @@ final class CampaignFrench {
             {"Metal fuel tank","Bidon métallique de carburant"},{"Expeditionary fuel tank","Bidon de carburant d'expédition"},
             {"Shyshka Christmas tree life extender","Produit de conservation pour sapin Shyshka"},{"TP-200 TNT brick","Bloc de TNT TP-200"}
         };
-        for(var pair:replacements){
-            // Exact word boundaries keep identifiers and French words intact.
-            s=java.util.regex.Pattern.compile("(?<![\\p{L}\\p{N}])"+java.util.regex.Pattern.quote(pair[0])+"(?![\\p{L}\\p{N}])",java.util.regex.Pattern.CASE_INSENSITIVE|java.util.regex.Pattern.UNICODE_CASE).matcher(s).replaceAll(java.util.regex.Matcher.quoteReplacement(pair[1]));
-        }
+    private static final java.util.List<java.util.regex.Pattern> PATTERNS=java.util.Arrays.stream(REPLACEMENTS)
+        .map(pair->java.util.regex.Pattern.compile("(?<![\\p{L}\\p{N}])"+java.util.regex.Pattern.quote(pair[0])+"(?![\\p{L}\\p{N}])",java.util.regex.Pattern.CASE_INSENSITIVE|java.util.regex.Pattern.UNICODE_CASE)).toList();
+    static String text(String source){
+        String s=source;
+        for(int i=0;i<REPLACEMENTS.length;i++)s=PATTERNS.get(i).matcher(s).replaceAll(java.util.regex.Matcher.quoteReplacement(REPLACEMENTS[i][1]));
         return s.replaceAll("(?i)Éliminer bear\\b","Éliminer des BEAR").replace(">= ","au moins ").replace("<= ","au plus ");
     }
     private CampaignFrench(){}
