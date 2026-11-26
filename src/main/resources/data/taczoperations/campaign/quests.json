@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "quests": [
+    {
+      "id": "5936d90786f7742b1420ba5b",
+      "name": "Debut",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5967379186f77463860dadd6",
+          "type": "kill:woods,customs,interchange:scav",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "excludedMaps": [
+          "ground-zero",
+          "ground-zero-21"
+        ]
+      }
+    }
+  ]
+}
