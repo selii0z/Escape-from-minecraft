@@ -839,6 +839,23 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
     Never change objective predicates or replace the Collector/Kappa reward."""
     rubles="5449016a4bdc2d6f028b456f"
     audit=[]
+    # Postman Pat shares a virtual letter across two merchants in the source.
+    # EFM records extraction in part 1, then validates the transfer at Therapist.
+    part1="59675ea386f77414b32bded2";part2="596760e186f7741e11214d58"
+    if part1 in tasks and part2 in tasks:
+        first,second=tasks[part1],tasks[part2]
+        find=next((o for o in first["objectives"] if o["type"]=="findQuestItem"),None)
+        gate=next((o for o in first["objectives"] if o["type"]=="taskStatus" and o.get("task")==part2),None)
+        give=next((o for o in second["objectives"] if o["type"]=="giveQuestItem"),None)
+        if find and gate and give and find["questItem"]==give["questItem"]:
+            first["objectives"]=[o for o in first["objectives"] if o is not gate]+[{"id":gate["id"],
+                "type":"giveQuestItem","count":1,"optional":False,"maps":[],"questItem":find["questItem"],
+                "description":"Transmission du courrier extrait"}]
+            second["objectives"]=[{"id":give["id"],"type":"taskStatus","task":part1,"status":["complete"],
+                "optional":False,"maps":[],"zones":[],"description":"Confirmer le courrier transmis"}]
+            second["taskRequirements"]=[{"task":part1,"status":["complete"]}]
+            audit.append({"id":part1,"name":display_name(first),"changes":[{"type":"cross-merchant-letter-sequential","reference":gate}]})
+            audit.append({"id":part2,"name":display_name(second),"changes":[{"type":"cross-merchant-letter-sequential","reference":give}]})
     for qid,q in sorted(tasks.items()):
         changes=[]
         old_level=q.get("minPlayerLevel") or 0
