@@ -7,6 +7,7 @@ import fr.taczoperations.campaign.CampaignGraph.*;
 import fr.taczoperations.campaign.CampaignTrader;
 import fr.taczoperations.campaign.TraderRequirement;
 import fr.taczoperations.campaign.TurnInPlanner;
+import fr.taczoperations.campaign.StockObjectives;
 import fr.taczoperations.campaign.FieldAction;
 import net.minecraft.server.level.ServerPlayer;
 import java.io.*;
@@ -240,34 +241,25 @@ final class CampaignRuntime {
             default->parts[2].equals(role.name().toLowerCase(Locale.ROOT));
         };
     }
-    private static boolean pairedStockValid(List<Objective> objectives){
-        if(objectives.isEmpty()||objectives.size()%2!=0)return false;
-        var seen=new HashSet<String>();
-        String provenance=null;
-        for(int i=0;i<objectives.size();i+=2){
-            var find=objectives.get(i);var give=objectives.get(i+1);
-            if(!find.type().matches("find-stock-(fir|any):[0-9a-f]{24}")||
-                !give.type().equals(find.type().replace("find-stock-","turnin-"))||
-                find.amount()!=give.amount()||find.scope()!=Scope.CAMPAIGN||give.scope()!=Scope.CAMPAIGN||
-                find.optional()||give.optional()||!seen.add(find.type()))return false;
-            String mode=find.type().startsWith("find-stock-fir:")?"fir":"any";
-            if(provenance!=null&&!provenance.equals(mode))return false;
-            provenance=mode;
+    private static boolean pairedStockValid(List<Objective> objectives){return StockObjectives.valid(objectives);}
+    private static boolean findStock(Objective o){return StockObjectives.find(o);}
+    private static Set<String> stockRefs(Objective o){return StockObjectives.refs(o);}
+    private static Set<String> turnInRefs(Objective o){return StockObjectives.give(o)?StockObjectives.refs(o):Set.of();}
+    /** Both the menu and the actual claim use the same physical stock allocation. */
+    private static Map<String,Integer> planTurnIns(Quest q,CarriedStorage storage){
+        var demands=new ArrayList<TurnInPlanner.Demand>();
+        var stock=new TreeMap<String,Integer>();
+        var refs=new TreeSet<String>();
+        for(var o:q.objectives())if(StockObjectives.give(o)){
+            demands.add(StockObjectives.demand(o));refs.addAll(StockObjectives.refs(o));
         }
-        return true;
-    }
-    private static boolean findStock(Objective o){return o.type().startsWith("find-stock-");}
-    private static Set<String> stockRefs(Objective o){
-        if(findStock(o))return Set.of(o.type().substring(o.type().indexOf(':')+1));
-        return turnInRefs(o);
-    }
-    private static Set<String> turnInRefs(Objective o){
-        if(!o.type().startsWith("turnin-fir:")&&!o.type().startsWith("turnin-any:"))return Set.of();
-        var refs=new HashSet<String>();
-        for(var id:o.type().substring(o.type().indexOf(':')+1).split(",",-1)){
-            if(!id.matches("[0-9a-f]{24}")||!refs.add(id))throw new IllegalArgumentException("Invalid item reference");
+        for(var ref:refs){
+            int found=storage.count(stack->RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,ref));
+            int ordinary=storage.count(stack->!RaidOrigin.found(stack)&&CampaignSupplies.matches(stack,ref));
+            stock.put(StockObjectives.key(ref,true),found);
+            stock.put(StockObjectives.key(ref,false),ordinary);
         }
-        return Set.copyOf(refs);
+        return TurnInPlanner.plan(stock,demands);
     }
     private static String label(String id){var m=CATALOG.meta().get(id);return m==null?id:m.name();}
     static List<String> slugs(){return CATALOG==null?List.of():CATALOG.graph().quests().values().stream().filter(Quest::implemented).map(q->CATALOG.meta().get(q.id()).slug()).sorted().toList();}
@@ -474,17 +466,8 @@ final class CampaignRuntime {
     }
     private static boolean canClaimPreview(ServerPlayer p,CampaignStorage.Session s,Quest q,CarriedStorage storage){
         var trial=CATALOG.graph().restore(s.player().snapshot());
-        var demands=new ArrayList<TurnInPlanner.Demand>();var stock=new TreeMap<String,Integer>();
-        boolean fir=q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-fir:"));
-        if(fir&&q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-any:")))return false;
-        for(var o:q.objectives()){
-            var refs=turnInRefs(o);if(refs.isEmpty())continue;
-            demands.add(new TurnInPlanner.Demand(o.amount(),refs));
-            for(var ref:refs)stock.computeIfAbsent(ref,key->storage.count(stack->(!fir||RaidOrigin.found(stack))&&CampaignSupplies.matches(stack,key)));
-            trial.record(q.id(),o.id(),o.amount());
-        }
-        if(TurnInPlanner.plan(stock,demands)==null)return false;
-        for(var o:q.objectives())if(findStock(o))trial.record(q.id(),o.id(),o.amount());
+        if(planTurnIns(q,storage)==null)return false;
+        for(var o:q.objectives())if(StockObjectives.give(o)||findStock(o))trial.record(q.id(),o.id(),o.amount());
         if(!handOverQuestItem(trial,q))return false;
         return trial.state(q.id(),level(p))==State.READY;
     }
@@ -526,25 +509,18 @@ final class CampaignRuntime {
             int credits=account.getInt("credits"),xp=Math.max(0,account.getInt("contract_xp_bonus_v2"));
             if((long)credits+r.credits()>Integer.MAX_VALUE||(long)xp+r.xp()>Integer.MAX_VALUE){say(p,"Solde maximal atteint.");return 0;}
             var storage=CarriedStorage.of(p);
-            var demands=new ArrayList<TurnInPlanner.Demand>();
-            var stock=new TreeMap<String,Integer>();
-            boolean fir=q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-fir:"));
-            if(fir&&q.objectives().stream().anyMatch(o->o.type().startsWith("turnin-any:")))return 0;
-            for(var o:q.objectives()){
-                var refs=turnInRefs(o);
-                if(refs.isEmpty())continue;
-                demands.add(new TurnInPlanner.Demand(o.amount(),refs));
-                for(var ref:refs)stock.computeIfAbsent(ref,key->storage.count(stack->(!fir||RaidOrigin.found(stack))&&CampaignSupplies.matches(stack,key)));
-            }
-            var plan=TurnInPlanner.plan(stock,demands);
-            if(plan==null){say(p,"Objets trouvés en raid insuffisants. Aucun objet remis.");return 0;}
+            var plan=planTurnIns(q,storage);
+            if(plan==null){say(p,"Objets requis insuffisants. Aucun objet remis.");return 0;}
             for(var o:q.objectives())if(!turnInRefs(o).isEmpty()||findStock(o))s.player().record(id,o.id(),o.amount());
             if(!handOverQuestItem(s.player(),q)){say(p,"Récupère l’objet de mission et extrais-toi vivant.");return 0;}
             if(!s.player().complete(id,level(p))){say(p,"Objectifs incomplets.");return 0;}
             // No mutation until the entire allocation and reward have been validated on the server thread.
-            for(var entry:plan.entrySet())
-                if(!storage.consume(stack->(!fir||RaidOrigin.found(stack))&&CampaignSupplies.matches(stack,entry.getKey()),entry.getValue()))
+            for(var entry:plan.entrySet()){
+                String reference=StockObjectives.reference(entry.getKey());
+                boolean found=StockObjectives.foundBucket(entry.getKey());
+                if(!storage.consume(stack->RaidOrigin.found(stack)==found&&CampaignSupplies.matches(stack,reference),entry.getValue()))
                     throw new IllegalStateException("Inventory changed during turn-in");
+            }
             CampaignStorage.save(p,CATALOG.revision(),s);
             account.putInt("credits",credits+r.credits());
             account.putInt("contract_xp_bonus_v2",xp+r.xp());
