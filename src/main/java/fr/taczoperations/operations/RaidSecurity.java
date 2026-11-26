@@ -153,6 +153,7 @@ public final class RaidSecurity {
     }
     public static void returnCases(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!p.isAlive()||p.tickCount%20!=0)return;
+        if(ScavRun.active(p))return;
         clearStaleInsurance(p);
         var account=SupplyContract.account(p);ListTag queue=account.getList(PROTECTED,10);
         boolean changed=false;
@@ -272,7 +273,7 @@ public final class RaidSecurity {
         return items.size()+" équipement(s) assuré(s) · -"+cost+" crédits.";
     }
     public static void onDeathDrops(LivingDropsEvent event) {
-        if(!(event.getEntity() instanceof ServerPlayer p)||event.isCanceled())return;
+        if(!(event.getEntity() instanceof ServerPlayer p)||event.isCanceled()||ScavRun.active(p))return;
         ListTag protectedCases=p.getPersistentData().getList(DEATH_CASES,10);
         var protectedIterator=event.getDrops().iterator();
         while(protectedIterator.hasNext()) {
