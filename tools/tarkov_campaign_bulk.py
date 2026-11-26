@@ -358,6 +358,20 @@ def combat_objective(o):
     basic={"id","description","type","count","optional","maps"}
     if o["type"]=="sellItem":
         refs=o.get("items") or []
+        sales={
+            "67519696567b9773f0811bae":("6eadb0b890cc2286d4401b915f3c1081445e0a312954c4f6e7605b2cf6edc023",50,"armorer","Armurier"),
+            "675196dff77c0b8436ec1ef5":("2d6452509695bc6739952864384ccccf277664adb0f12ab9b248acd8fa00409c",50,"salvager","Récupérateur"),
+            "673f637a1fbc23a60a72b743":("0df255050aed47cf1caf5df3f38fb462551ea89c8104845e17d32c7cb89a2775",50,"broker","Courtier"),
+            "675197664e610fc2b88e0bf3":("a4dd71dbcdb33e78322c86f6ccf50d47aad20747f71c997d11b3b588e3ed807e",75,"broker","Courtier")
+        }
+        if o["id"] in sales:
+            digest,amount,merchant,title=sales[o["id"]]
+            if (hashlib.sha256(",".join(sorted(refs)).encode()).hexdigest()!=digest or o.get("count")!=amount
+                or o.get("minDurability") not in (0,None) or o.get("maxDurability")!=100 or o.get("dogTagLevel")
+                or o.get("foundInRaid") is not False or maps or o.get("zones")):
+                blockers.add("unreviewed-sale-objective")
+            return {"id":o["id"],"type":"sale:merchant:"+merchant,"amount":amount,"scope":"CAMPAIGN","optional":o.get("optional",False),
+                    "label":"Vendre "+str(amount)+" objets au "+title},blockers
         if (o["id"]!="666973ee1d80fbbbfeaf46c9" or o.get("count")!=250
             or hashlib.sha256(",".join(sorted(refs)).encode()).hexdigest()!="7c3c600c5123e988214579a3f88553e279abc2906e9fc72c2ba25e49ec8cb6ae"
             or o.get("minDurability") not in (0,None) or o.get("maxDurability")!=100
@@ -967,6 +981,16 @@ def select_efm_campaign(reference):
             # The removed weapon-build part depended on The Good Times 1 being
             # active or complete; a sequential EFM chain requires completion.
             replacement=[dict(req,status=["complete"]) if req["task"]=="666314b4d7f171c4c20226c3" and set(req["status"])=={"active","complete"} else req for req in replacement]
+        # The alternate branches below were removed because their maps or
+        # fixed deposits are unavailable. Keep the compatible chains sequential.
+        sequential={"673f629c5b555b53460cf827","6745fae369a58fceba10343d","6744ab1def61d56e020b5c56"}
+        if qid in sequential:
+            replacement=[dict(req,status=["complete"]) if "complete" in req["status"] else req for req in replacement]
+        # Audit failure conditions that reference retired tasks: those events
+        # cannot happen, so remove only those exact task-status conditions.
+        failures=q.get("failConditions") or []
+        kept=[f for f in failures if not(f.get("type")=="taskStatus" and f.get("task") in excluded and f.get("status")==["complete"])]
+        if failures!=kept:q["failConditions"]=kept
         q["taskRequirements"]=replacement
         if original!=replacement:changes.append({"id":qid,"before":original,"after":replacement})
         # A kill/extraction allowed on multiple maps can be satisfied on the available subset.
@@ -1091,6 +1115,13 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 before=q["objectives"]
                 q["objectives"]=[{"id":visit["id"],"description":"Reconnaissance d’une extraction industrielle","type":"extract","count":1,"optional":False,"maps":["56f40101d2720b2a4d8b45d6"],"exitStatus":["ExpBonusSurvived"]}]
                 changes.append({"type":"industrial-extraction-equivalent","reference":before})
+        # Both battery deliveries remain independently completable. Their
+        # original branch conflict refers to a quest that was rewritten in EFM.
+        if qid=="6744a728352b4da8e003eda9":
+            fail=q.get("failConditions") or []
+            if len(fail)==1 and fail[0].get("type")=="taskStatus" and fail[0].get("task")=="6744a9dfef61d56e020b5c4a" and fail[0].get("status")==["complete"] and not any((q.get("failureOutcome") or {}).values()):
+                q["failConditions"]=[]
+                changes.append({"type":"independent-battery-deliveries","reference":fail})
         # These two reviewed challenges reset on any unsuccessful EFM raid.
         # A fresh attempt starts automatically, with no reward or repeat-completion.
         if qid in {"5bc4893c86f774626f5ebf3e","5c0be13186f7746f016734aa"}:
