@@ -1532,6 +1532,7 @@ public final class ForestRaid extends SavedData {
             if(guard.getRandom().nextInt(100)<12)corpse.put(23,FieldPack.create(true,2));
             corpse.put(20,BossLoot.spare(guard));
             corpse.put(21,BossLoot.bonus(guard));
+            corpse.put(26,CampaignSupplies.bossTrophy(role,guard.getRandom()));
         }
         if(role==GuardRole.PMC)corpse.put(25,MilitaryTag.create(guard,event.getSource().getEntity() instanceof ServerPlayer p&&raid.owns(p)?p:null));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
