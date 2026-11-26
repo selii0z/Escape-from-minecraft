@@ -41,12 +41,26 @@ public final class CampaignSupplies {
         return Optional.empty();
     }
     static boolean matches(ItemStack stack,String reference){return reference(stack).filter(reference::equals).isPresent();}
+    private static final Set<String> BOSS_TROPHIES=Set.of("5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6",
+        "60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf");
+    static ItemStack bossTrophy(GuardRole role,Random rng){
+        String id=switch(role){
+            case KILLA->rng.nextInt(20)==0?"6759af0f9c8a538dd70bfae6":"5c0e874186f7745dc7616606";
+            case FOREMAN->rng.nextInt(20)==0?"675aae1c26dc64e17800fee6":"60a7acf20c5cb24b01346648";
+            case KOLLONTAY->"6540d2162ae6d96b540afcaf";
+            default->null;
+        };
+        if(id==null)return ItemStack.EMPTY;
+        var item=ITEMS.get(id);
+        return item==null?ItemStack.EMPTY:new ItemStack(item.get());
+    }
     static void addLoot(Container c,Random rng,int chance){
         if(rng.nextInt(100)>=chance)return;
         var free=new ArrayList<Integer>();
         for(int i=0;i<c.getContainerSize();i++)if(c.getItem(i).isEmpty())free.add(i);
-        if(free.isEmpty()||ENTRIES.isEmpty())return;
-        var e=ENTRIES.get(rng.nextInt(ENTRIES.size()));var item=ITEMS.get(e.id());
+        var ordinary=ENTRIES.stream().filter(e->!BOSS_TROPHIES.contains(e.id())).toList();
+        if(free.isEmpty()||ordinary.isEmpty())return;
+        var e=ordinary.get(rng.nextInt(ordinary.size()));var item=ITEMS.get(e.id());
         if(item!=null)c.setItem(free.get(rng.nextInt(free.size())),new ItemStack(item.get(),1+rng.nextInt(2)));
     }
     private CampaignSupplies(){}
