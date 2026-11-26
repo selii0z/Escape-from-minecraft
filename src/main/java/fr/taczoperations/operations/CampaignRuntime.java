@@ -281,7 +281,7 @@ final class CampaignRuntime {
                 for(var o:q.objectives()){
                     if(!o.type().startsWith("gunshot:")||progress.counters().getOrDefault(o.id(),0)>=o.amount())continue;
                     var a=o.type().split(":",-1);
-                    if((a.length!=8&&a.length!=9)||a.length==9&&(!a[8].equals("night")||!ForestExpedition.isNightRaid(p))||!matches("kill:"+a[1]+":"+a[2],"kill",map,role,enemy)||!a[3].equals(mode)
+                    if((a.length<8||a.length>10)||a.length>=9&&a[8].equals("night")&&!ForestExpedition.isNightRaid(p)||a.length==10&&!CampaignGunEvents.matchesGear(p,a[9])||!matches("kill:"+a[1]+":"+a[2],"kill",map,role,enemy)||!a[3].equals(mode)
                         ||!a[4].equals("any")&&!a[4].equals(part)||!CampaignGunEvents.matchesWeapon(a[5],weapon))continue;
                     int target=Integer.parseInt(a[7]);
                     boolean range=switch(a[6]){
@@ -354,7 +354,7 @@ final class CampaignRuntime {
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
             if(parts[0].equals("gunshot")){
-                if((parts.length!=8&&parts.length!=9)||parts.length==9&&!parts[8].equals("night")||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
+                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
                     ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt","pistol","ak","western","rifle","smg","shotgun","lmg").contains(parts[5])
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
