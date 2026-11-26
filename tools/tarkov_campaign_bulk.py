@@ -306,7 +306,7 @@ def combat_objective(o):
     return {"id":o["id"],"type":event,"amount":o.get("count"),"scope":scope,
             "optional":o.get("optional",False),"label":label},blockers
 
-FIELD_CORE=CORE|{"visit","mark","plantItem","findQuestItem","giveQuestItem"}
+FIELD_CORE=CORE|{"visit","mark","plantItem","findQuestItem","giveQuestItem","traderLevel","traderStanding","skill","taskStatus"}
 
 def field_objective(o,mapped):
     # A single reference zone (duplicated geometry is normal) on a supported map.
@@ -359,6 +359,67 @@ def test_field_adapter():
     assert not errors and row["type"].endswith(":"+ref)
     assert "field-item-mapping" in field_objective(dict(o,type="mark",markerItem=ref,count=1),set())[1]
 
+# EFM consolidates Tarkov's individual skills into eight passive categories.
+SKILL_ADAPTERS={"Endurance":"ENDURANCE","Strength":"STRENGTH","Attention":"SEARCH","Search":"SEARCH",
+    "Perception":"SEARCH","Surgery":"MEDICINE","Vitality":"SURVIVAL","Health":"SURVIVAL",
+    "StressResistance":"SURVIVAL","Immunity":"SURVIVAL","Metabolism":"SURVIVAL",
+    "CovertMovement":"STEALTH","Charisma":"TRADE","AimDrills":"WEAPONS","TroubleShooting":"WEAPONS",
+    "WeaponTreatment":"WEAPONS","MagDrills":"WEAPONS","SMG":"WEAPONS","Shotgun":"WEAPONS",
+    "Sniper":"WEAPONS","Pistol":"WEAPONS","DMR":"WEAPONS","LMG":"WEAPONS","HMG":"WEAPONS",
+    "Revolver":"WEAPONS","Assault":"WEAPONS"}
+
+def milestone_objective(o,ready):
+    errors=set()
+    basic={"id","description","type","optional","count","zones","maps"}
+    if o.get("optional") is not False or o.get("maps") or o.get("zones") or o.get("count") not in (None,1):
+        errors.add("milestone-predicate")
+    kind=o["type"]
+    if kind=="traderLevel":
+        trader=TRADERS.get(o.get("trader"))
+        level=o.get("level")
+        if not trader or not isinstance(level,int) or not 1<=level<=4 or set(o)-(basic|{"trader","level"}):
+            errors.add("milestone-loyalty")
+        typ=f"milestone:loyalty:{trader}:{level}"
+        label=f"Atteindre la fidélité {level} · {trader}"
+    elif kind=="traderStanding":
+        trader=TRADERS.get(o.get("trader"))
+        value=o.get("value")
+        if not trader or not isinstance(value,(int,float)) or not -100<=value<=100 or o.get("compareMethod")!=">=" or set(o)-(basic|{"trader","value","compareMethod"}):
+            errors.add("milestone-reputation")
+        typ=f"milestone:reputation:{trader}:{round(value*1000) if isinstance(value,(int,float)) else 0}"
+        label=f"Atteindre {value} de réputation · {trader}"
+    elif kind=="skill":
+        skill=SKILL_ADAPTERS.get(o.get("skill"))
+        level=o.get("level")
+        if not skill or not isinstance(level,int) or not 1<=level<=50 or set(o)-(basic|{"skill","level"}):
+            errors.add("milestone-skill")
+        typ=f"milestone:skill:{skill}:{level}"
+        label=f"Compétence EFM {skill} · niveau {level}"
+    else:
+        task=o.get("task")
+        if task not in ready or o.get("status")!=["complete"] or set(o)-(basic|{"task","status"}):
+            errors.add("milestone-task-not-ready")
+        typ=f"milestone:task:{task}"
+        label="Terminer la mission associée"
+    return {"id":o["id"],"type":typ,"amount":1,"scope":"CAMPAIGN","optional":o.get("optional",False),"label":label},errors
+
+def skill_reward_plan(reward):
+    result={}
+    for entry in reward.get("skillLevelReward") or []:
+        skill=SKILL_ADAPTERS.get(entry.get("skill"))
+        level=entry.get("level")
+        if not skill or not isinstance(level,int) or not 1<=level<=50:return None
+        result[skill]=max(result.get(skill,0),level)
+    return result
+
+def test_milestones():
+    o={"id":"x","type":"traderLevel","optional":False,"trader":"54cb50c76803fa8b248b4571","level":3}
+    row,errors=milestone_objective(o,set())
+    assert not errors and row["type"]=="milestone:loyalty:prapor:3"
+    assert milestone_objective(dict(o,level=5),set())[1]
+    assert skill_reward_plan({"skillLevelReward":[{"skill":"Pistol","level":2},{"skill":"SMG","level":3}]})=={"WEAPONS":3}
+    assert skill_reward_plan({"skillLevelReward":[{"skill":"Unknown","level":1}]}) is None
+
 def quest_item_objective(o,objectives):
     errors=set()
     ref=o.get("questItem")
@@ -410,6 +471,7 @@ def combat_draft(q,mapped,current):
     for o in objectives:
         if o["type"] not in STOCK:
             if o["type"] in {"findQuestItem","giveQuestItem"}:translated,errors=quest_item_objective(o,objectives)
+            elif o["type"] in {"traderLevel","traderStanding","skill","taskStatus"}:translated,errors=milestone_objective(o,current)
             elif o["type"] in FIELD_CORE-CORE:translated,errors=field_objective(o,mapped)
             else:translated,errors=combat_objective(o)
             d["objectives"].append(translated);blockers.update(errors)
@@ -498,7 +560,11 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
         for qid,q in sorted(pending.items()):
             kinds={o["type"] for o in q["objectives"]}
             d=stock_draft(q,mapped,ready) if kinds<=STOCK else combat_draft(q,mapped,ready)
-            if approved_offers.get(qid) and set(d["reward"]["additionalRewards"])=={"offerUnlock"}:
+            additional=dict(d["reward"]["additionalRewards"])
+            if approved_offers.get(qid):additional.pop("offerUnlock",None)
+            skills=skill_reward_plan(additional)
+            if skills is not None:additional.pop("skillLevelReward",None)
+            if not additional:
                 d["blockers"]=[b for b in d["blockers"] if b!="additional-rewards"]
             dep=dependencies["quests"][qid]
             if d["blockers"] or dep["errors"] or d["prerequisites"]!=dep["groups"]:
@@ -520,6 +586,7 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
             material,errors=material_reward_plan(d["reward"],mapped)
             if errors:continue
             reward.update(material)
+            if skills:reward["skills"]=skills
             name=display_name(q)
             if not slug(name) or slug(name) in names:
                 continue
@@ -746,6 +813,7 @@ if __name__=="__main__":
     test_starter_plan()
     test_field_adapter()
     test_quest_item_adapter()
+    test_milestones()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
