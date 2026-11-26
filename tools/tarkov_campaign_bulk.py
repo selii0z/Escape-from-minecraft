@@ -178,6 +178,28 @@ def stock_draft(q, mapped, current):
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
             "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
             "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],**gates,"blockers":sorted(blockers)}
+def export_install_catalog(tasks,current,stock,dependencies,manifest,out):
+    """Minimal runtime preview, separate from the playable graph and its save revision."""
+    rows=[]
+    for qid,q in sorted(tasks.items()):
+        kinds=Counter(o.get("type","unknown") for o in q["objectives"])
+        rows.append({"id":qid,"name":q.get("name") or q["normalizedName"],"trader":TRADERS[q["trader"]],
+                     "level":max(1,q.get("minPlayerLevel") or 0),
+                     "kappa":q.get("kappaRequired") is True or qid=="5c51aac186f77432ea65c552",
+                     "objectiveKinds":dict(sorted(kinds.items())),
+                     "prerequisiteCount":len(dependencies["quests"][qid]["groups"]),
+                     "unresolvedPrerequisites":len(dependencies["quests"][qid]["errors"])})
+    if len(rows)!=manifest["audit"]["tasks"] or len({r["id"] for r in rows})!=len(rows):
+        raise ValueError("Incomplete or duplicate installation catalogue")
+    write(out/"campaign-install-index.json",{"schema":1,"mode":manifest["mode"],
+          "sourceHash":manifest["files"]["tasks"]["sha256"],"count":len(rows),"quests":rows})
+    # Export an explicit review queue, not a falsely approved gameplay file.
+    # Dependency requirements and reward limitations remain present on every candidate.
+    candidates=[q for q in stock if not q["alreadyRouted"] and not q["blockers"] and not q["unresolvedPrerequisites"]]
+    write(out/"bulk-install-candidates.json",{"schema":1,"sourceHash":manifest["files"]["tasks"]["sha256"],
+          "approvalRequired":True,"quests":candidates})
+    return len(candidates)
+
 def build(snapshot,out,resources):
     manifest=read(snapshot/"manifest.json")
     for n,info in manifest["files"].items():
@@ -248,6 +270,7 @@ def build(snapshot,out,resources):
                     "questsWithUnresolvedPrerequisites":sum(bool(q["errors"]) for q in dependencies["quests"].values()),
                     "kappaDependencyClosure":len(dependencies["kappa"]["dependencyClosure"]),
                     "kappaQuestsMissingFromGameplay":len(dependencies["kappa"]["missingFromGameplay"])})
+    summary["bulkInstallCandidates"]=export_install_catalog(tasks,current,stock,dependencies,manifest,out)
     write(out/"bulk-summary.json",summary)
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
