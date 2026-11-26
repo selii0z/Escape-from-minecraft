@@ -701,6 +701,161 @@
         "reputationMilli": 0,
         "foundInRaid": true
       }
+    },
+    {
+      "id": "596a0e1686f7741ddf17dbee",
+      "name": "Supply Plans",
+      "trader": "therapist",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "596a0e7086f7741ddf17dbef",
+          "type": "quest-find:woods:5938878586f7741b797c562f",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Dossier sécurisé 0052 récupéré"
+        },
+        {
+          "id": "596a0eaf86f774576d4c957f",
+          "type": "extract:woods",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Extraction réussie"
+        },
+        {
+          "id": "596a0e8086f7741ddd6c104c",
+          "type": "quest-give:5938878586f7741b797c562f",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Dossier sécurisé 0052 remis"
+        }
+      ],
+      "implemented": true,
+      "adapter": "quest-item-v1",
+      "loyalty": 1,
+      "dialogueTrader": "therapist",
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "adaptation": {
+        "map": "woods",
+        "localX": 338,
+        "localZ": 688,
+        "radius": 5,
+        "site": "Cabane forestière sud"
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "questItem": "5938878586f7741b797c562f"
+      }
+    },
+    {
+      "id": "669fa399033a3ce9870338a8",
+      "name": "Possessor",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "669fb4a56e66d3d79183a5c9",
+          "type": "quest-find:factory:66c0b90c8398582e4b0c2e27",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Carnet de bord du pilote récupéré"
+        },
+        {
+          "id": "669fb4b21f2e5268651cc96a",
+          "type": "quest-give:66c0b90c8398582e4b0c2e27",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Carnet de bord du pilote remis"
+        }
+      ],
+      "implemented": true,
+      "adapter": "quest-item-v1",
+      "loyalty": 1,
+      "dialogueTrader": null,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "adaptation": {
+        "map": "factory",
+        "localX": 172,
+        "localZ": 54,
+        "radius": 5,
+        "site": "Bunker · salle nord-est"
+      },
+      "reference": {
+        "level": 0,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "questItem": "66c0b90c8398582e4b0c2e27"
+      }
+    },
+    {
+      "id": "675c1570526ff496850895d9",
+      "name": "Passion for Ergonomics",
+      "trader": "mechanic",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "675c15916580a378dc0f012f",
+          "type": "quest-find:customs:675f80d4fe1b59cf490d3527",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Boîte d'outils améliorés récupéré"
+        },
+        {
+          "id": "675c1595a4c063af74ee5279",
+          "type": "quest-give:675f80d4fe1b59cf490d3527",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Boîte d'outils améliorés remis"
+        }
+      ],
+      "implemented": true,
+      "adapter": "quest-item-v1",
+      "loyalty": 1,
+      "dialogueTrader": "mechanic",
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "adaptation": {
+        "map": "customs",
+        "localX": 307,
+        "localZ": 333,
+        "radius": 5,
+        "site": "Atelier central de la Zone industrielle"
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "questItem": "675f80d4fe1b59cf490d3527"
+      }
     }
   ]
 }
