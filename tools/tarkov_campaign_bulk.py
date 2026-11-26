@@ -842,6 +842,10 @@ def select_efm_campaign(reference):
         objectives=q.get("objectives") or []
         for o in objectives:
             if o["type"] in REMOVED_OBJECTIVES:reasons.add("excluded-objective:"+o["type"])
+            if o["type"]=="shoot" and o.get("usingWeaponMods"):reasons.add("unavailable-weapon-attachment")
+            if o["type"]=="shoot" and o.get("zones"):reasons.add("unavailable-exact-combat-location")
+            if o["type"]=="extract" and o.get("exitName"):reasons.add("unavailable-exact-extraction")
+            if o["type"]=="visit" and not o.get("maps") and not o.get("zones"):reasons.add("unavailable-location-definition")
             maps=o.get("maps") or []
             if maps and not set(maps)&MAP_ADAPTERS.keys():reasons.add("map-unavailable")
         if reasons:excluded[qid]=sorted(reasons)
