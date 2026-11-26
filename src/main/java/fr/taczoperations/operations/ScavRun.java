@@ -37,6 +37,7 @@ public final class ScavRun {
         handlers.forEach((id,h)->{for(int i=0;i<h.getSlots();i++)values.add(new SlotValue(id,i,h.getStackInSlot(i)));});
         return values;
     }
+    private static String slotKey(SlotValue v){return v.handler()+"/"+v.slot();}
     private static void set(ServerPlayer p,Map<String,IItemHandlerModifiable> handlers,String id,int slot,ItemStack stack){
         if(id.isEmpty())p.getInventory().setItem(slot,stack);
         else handlers.get(id).setStackInSlot(slot,stack);
@@ -102,6 +103,7 @@ public final class ScavRun {
     static void markFinished(ServerPlayer p,boolean survived){
         if(!active(p))return;
         var saved=SupplyContract.account(p).getCompound(ESCROW);
+        if(saved.contains("recovery_slots",9))return;
         saved.putBoolean("finished",true);saved.putBoolean("survived",survived);
     }
     static boolean recover(ServerPlayer p){
@@ -114,14 +116,50 @@ public final class ScavRun {
             var handlers=handlers(p);var originals=decode(p,saved.getList("slots",10),handlers);
             var current=readSlots(p,handlers);
             boolean success=saved.getBoolean("finished")&&saved.getBoolean("survived");
-            var queue=account.getList(LOOT,10).copy();
-            if(success){
-                for(var slot:current)if(!slot.stack().isEmpty())queue.add(slot.stack().saveOptional(p.registryAccess()));
-                if(queue.size()>LIMIT)throw new IllegalStateException("Scav loot reserve full");
+            // Stage the loot once before any inventory mutation. A recovery retry
+            // must never capture already restored PMC equipment as Scav loot.
+            if(!saved.contains("recovery_slots",9)){
+                var queue=account.getList(LOOT,10).copy();
+                if(success){
+                    for(var slot:current)if(!slot.stack().isEmpty())queue.add(slot.stack().saveOptional(p.registryAccess()));
+                    if(queue.size()>LIMIT)throw new IllegalStateException("Scav loot reserve full");
+                }
+                saved.put("recovery_slots",encode(p,current));
+                saved.put("recovery_loot",queue);
+                saved.put("recovery_done",new CompoundTag());
             }
-            // All stored stacks and slot addresses were validated before touching inventory.
-            for(var slot:current)set(p,handlers,slot.handler(),slot.slot(),ItemStack.EMPTY);
-            for(var slot:originals)set(p,handlers,slot.handler(),slot.slot(),slot.stack());
+            var staged=decode(p,saved.getList("recovery_slots",10),handlers);
+            var expected=new HashMap<String,ItemStack>();
+            var targets=new HashMap<String,ItemStack>();
+            for(var v:staged)expected.put(slotKey(v),v.stack());
+            for(var v:originals)targets.put(slotKey(v),v.stack());
+            var done=saved.getCompound("recovery_done");
+            // If Curios changed its slot layout or inventory contents moved
+            // during a partial recovery, retain escrow and stop without clearing.
+            if(expected.size()!=current.size()||!expected.keySet().equals(targets.keySet()))
+                throw new IllegalStateException("Scav recovery slot layout changed");
+            for(var v:current){
+                String k=slotKey(v);
+                if(!targets.containsKey(k))throw new IllegalStateException("Unexpected Scav slot "+k);
+                var target=targets.get(k);
+                if(done.getBoolean(k)){
+                    if(!ItemStack.matches(v.stack(),target))throw new IllegalStateException("Restored PMC slot changed "+k);
+                }else if(!ItemStack.matches(v.stack(),expected.get(k))&&!ItemStack.matches(v.stack(),target))
+                    throw new IllegalStateException("Scav recovery inventory changed "+k);
+            }
+            for(var v:originals){
+                String k=slotKey(v);
+                if(done.getBoolean(k))continue;
+                set(p,handlers,v.handler(),v.slot(),v.stack().copy());
+                var actual=v.handler().isEmpty()?p.getInventory().getItem(v.slot()):handlers.get(v.handler()).getStackInSlot(v.slot());
+                if(!ItemStack.matches(actual,v.stack()))throw new IllegalStateException("PMC slot restoration rejected "+k);
+                done.putBoolean(k,true);
+                saved.put("recovery_done",done);
+            }
+            var finalSlots=readSlots(p,handlers(p));
+            if(finalSlots.size()!=targets.size()||finalSlots.stream().anyMatch(v->!targets.containsKey(slotKey(v))||!ItemStack.matches(v.stack(),targets.get(slotKey(v)))))
+                throw new IllegalStateException("PMC recovery final verification failed");
+            var queue=saved.getList("recovery_loot",10).copy();
             p.getInventory().selected=Math.clamp(saved.getInt("selected"),0,8);
             if(success)account.put(LOOT,queue);
             boolean trusted=success&&!saved.getBoolean("hostile");
