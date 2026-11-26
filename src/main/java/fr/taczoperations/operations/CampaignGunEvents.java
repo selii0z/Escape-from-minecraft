@@ -44,7 +44,7 @@ public final class CampaignGunEvents {
         var id=event.getGunId();
         var impact=new Impact(p.getUUID(),id,level.getGameTime(),part,p.distanceTo(guard));
         LAST.put(guard,impact);
-        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"hit",part,id,impact.distance());
+        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"hit",part,id,impact.distance(),guard.getUUID());
     }
     public static void kill(EntityKillByGunEvent event){
         if(event.getLogicalSide().isClient()||!(event.getAttacker() instanceof ServerPlayer p)
@@ -53,7 +53,7 @@ public final class CampaignGunEvents {
         var impact=LAST.remove(guard);
         if(impact==null||!impact.shooter().equals(p.getUUID())||!java.util.Objects.equals(impact.weapon(),event.getGunId())
             ||level.getGameTime()-impact.tick()>1)return;
-        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"kill",impact.part(),impact.weapon(),impact.distance());
+        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"kill",impact.part(),impact.weapon(),impact.distance(),guard.getUUID());
     }
     private CampaignGunEvents(){}
 }
