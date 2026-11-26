@@ -47,7 +47,7 @@ final class CampaignStorage {
                 account.put(RETIRED_ARCHIVE,archive);
                 continue;
             }
-            if(revised&&(!graph.quests().containsKey(id)||!graph.definitionFingerprint(id).equals(entry.getString("definition"))))
+            if(revised&&!graph.compatibleDefinition(id,entry.getString("definition")))
                 throw new IllegalStateException("Incompatible quest update: "+id+"; save preserved for migration");
             saved.put(id,new Progress(State.valueOf(entry.getString("state")),counters(entry.getCompound("counters"))));
         }
