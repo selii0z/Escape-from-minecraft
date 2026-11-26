@@ -834,6 +834,22 @@ def test_scope_selection():
     assert selected[c]["taskRequirements"]==[complete(a)] and ref[c]["taskRequirements"]==[complete(b)]
     assert len(changes)==1
 
+MEDICAL_EQUIVALENTS={
+    "544fb45d4bdc2dee738b4568":"544fb45d4bdc2dee738b4568",
+    "5755356824597772cb798962":"5755356824597772cb798962",
+    "590c661e86f7741e566b646a":"5755356824597772cb798962",
+    "590c678286f77426c9660122":"544fb45d4bdc2dee738b4568",
+    "590c657e86f77412b013051d":"544fb45d4bdc2dee738b4568",
+    "60098ad7c2240c0fe85c570a":"544fb45d4bdc2dee738b4568",
+    "544fb25a4bdc2dfb738b4567":"544fb25a4bdc2dfb738b4567",
+    "5751a25924597722c463c472":"544fb25a4bdc2dfb738b4567",
+    "544fb3364bdc2d34748b456a":"544fb3364bdc2d34748b456a",
+    "5af0454c86f7746bf20992e8":"544fb3364bdc2d34748b456a",
+    "6937ecf8628ee476240c07cb":"544fb3364bdc2d34748b456a",
+    "60098af40accd37ef2175f27":"60098af40accd37ef2175f27",
+    "5e831507ea0a7c419c2f9bd9":"60098af40accd37ef2175f27",
+    "5e8488fa988a8701445df1e4":"60098af40accd37ef2175f27",
+}
 def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
     """Explicit gameplay adaptations for mechanics that do not exist in EFM.
     Never change objective predicates or replace the Collector/Kappa reward."""
@@ -883,6 +899,16 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 if o["type"] in {"findQuestItem","visit"} and o.get("requiredKeys"):
                     changes.append({"type":"unavailable-door-gate-removed","reference":o["requiredKeys"],"objective":o["id"]})
                     o.pop("requiredKeys")
+                if o["type"] in STOCK and o.get("items"):
+                    original=o["items"]
+                    medical=[MEDICAL_EQUIVALENTS.get(ref,ref) for ref in original]
+                    # If the source allows a choice of medical items, keep the usable
+                    # equivalents; do not pretend surgical kits are bandages.
+                    if any(ref in MEDICAL_EQUIVALENTS for ref in original):
+                        usable=sorted(set(ref for ref in medical if ref in mapped))
+                        if usable and usable!=sorted(set(original)):
+                            o["items"]=usable
+                            changes.append({"type":"medical-alternatives-to-efm","objective":o["id"],"before":original,"after":usable})
                 kept.append(o)
             if kept:q["objectives"]=kept
             reward=q.get("finishRewards") or {}
@@ -989,6 +1015,9 @@ def build(snapshot,out,resources):
     mapped,auto_names,auto_count=supply_catalog(original_tasks,item_catalog,resources,out)
     mapped.update({"5c093ca986f7740a1867ab12","59e763f286f7742ee57895da","59e7643b86f7742cbf2c109a","5648a69d4bdc2ded0b8b457b","5b8683a486f77467f2423114"})
     auto_names.update({"59e763f286f7742ee57895da":"Sac expédition EFM (Pilgrim)","59e7643b86f7742cbf2c109a":"Gilet tactique EFM (Wartech)","5648a69d4bdc2ded0b8b457b":"Gilet élite EFM (Blackrock)"})
+    mapped.update(MEDICAL_EQUIVALENTS.values())
+    auto_names.update({"544fb45d4bdc2dee738b4568":"Salewa","5755356824597772cb798962":"Trousse de soins",
+        "544fb25a4bdc2dfb738b4567":"Bandage","544fb3364bdc2d34748b456a":"Attelle","60098af40accd37ef2175f27":"Hémostatique"})
     adaptation_count=adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
     dependencies=dependency_audit(tasks,current)
