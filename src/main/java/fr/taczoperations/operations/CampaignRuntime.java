@@ -502,7 +502,9 @@ final class CampaignRuntime {
                 if(q.id().equals(CHEMICAL))lines.add("Zone industrielle · dépôt logistique ouest");
                 if(q.id().equals(ULTRA))lines.add("Entrepôt");
                 var site=CATALOG.meta().get(q.id()).site();if(site!=null)lines.add(site.title()+" · fouiller puis extraire");
-                lines.add(r.credits()+" crédits · "+r.xp()+" XP · +"+r.reputation()/1000d+" réputation");
+                lines.add(r.credits()+" crédits · "+r.xp()+" XP · "+(r.reputation()>=0?"+":"")+r.reputation()/1000d+" réputation");
+                if(!r.items().isEmpty())lines.add(r.items().values().stream().mapToLong(Integer::longValue).sum()+" objet(s) en récompense");
+                for(var standing:r.otherStanding().entrySet())lines.add(CampaignTrader.byId(standing.getKey()).title+" : "+(standing.getValue()>=0?"+":"")+standing.getValue()/1000d+" réputation");
                 boolean claimable=state==State.READY||state==State.ACTIVE&&canClaimPreview(p,s,q,storage);
                 result.add(new QuestView(q.id(),label(q.id()),q.trader(),state,q.level(),List.copyOf(lines),claimable));
             }
