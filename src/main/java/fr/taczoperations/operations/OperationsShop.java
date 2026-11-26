@@ -95,6 +95,7 @@ public enum OperationsShop {
         var offers = new ArrayList<Offer>();
         switch (this) {
             case ARMORER -> {
+                offers.add(buy("Grenade de raid EFM",180,()->CampaignSupplies.rewardStack(RaidGrenade.REFERENCE),null,20));
                 offers.add(new Offer("Entretien · arme tenue en main",0,Action.REPAIR,()->new ItemStack(Items.IRON_INGOT),null,0));
                 // Build a single authoritative catalogue from the installed TaCZ packs.
                 // Each calibre inherits the lowest tier of a weapon using it, with
