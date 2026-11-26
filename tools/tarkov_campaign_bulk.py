@@ -265,7 +265,8 @@ TARGET_ADAPTERS = {
     frozenset(["Marksman","bossBoarSniper"]):"marksman",
     frozenset(["bossBoar"]):"kaban", frozenset(["bossKolontay"]):"kollontay",
     frozenset(["bossKilla"]):"killa", frozenset(["bossTagilla"]):"foreman",
-    frozenset(["bossBully"]):"reshala", frozenset(["bossKojaniy"]):"tracker",
+    frozenset(["bossBully"]):"reshala", frozenset(["followerBully"]):"reshala_escort", frozenset(["bossKojaniy"]):"tracker",
+    frozenset(["followerBigPipe","followerBirdEye","ExUsec","bossKnight"]):"goons",
     frozenset(["bossGluhar"]):"glukhar", frozenset(["bossSanitar"]):"sanitar",
     frozenset(["bossKnight"]):"knight", frozenset(["followerBigPipe"]):"big_pipe",
     frozenset(["followerBirdEye"]):"birdeye", frozenset(["bossPartisan"]):"partisan",
@@ -1063,6 +1064,10 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
+                    if qid=="5d25e43786f7740a212217fa" and set(original)=={"5ca2151486f774244a3b8d30","5e9dacf986f774054d6b89f4","545cdb794bdc2d3a198b456a","5b44d22286f774172b0c9de8","5ab8e79e86f7742d8b372e78","5c0e625a86f7742d77340f62","5f5f41476bdad616ad46d631"}:
+                        o["items"]=["5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","545cdb794bdc2d3a198b456a"]
+                        changes.append({"type":"heavy-armor-category-equivalent","objective":o["id"],"before":original,"after":o["items"]})
+                        original=o["items"]
                     if qid=="5c112d7e86f7740d6f647486":
                         # Preserve five distinct categories and all 75 FIR handovers.
                         scavenger={
@@ -1309,7 +1314,7 @@ def build(snapshot,out,resources):
                 ref,name,_=line.split("|")
                 item_names[ref]=name
     # Collector and boss trophies remain raid-only, not merchant supplies.
-    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf"}
+    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d"}
     approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids|set(MEDICAL_EQUIVALENTS.values()),out)
     summary.update({"questOfferUnlocks":total_offers,"supportedQuestOfferUnlocks":supported_offers})
     summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names,approved_offers)
