@@ -1089,7 +1089,7 @@ def build(snapshot,out,resources):
                 item_names[ref]=name
     # Collector and boss trophies remain raid-only, not merchant supplies.
     supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf"}
-    approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids,out)
+    approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids|set(MEDICAL_EQUIVALENTS.values()),out)
     summary.update({"questOfferUnlocks":total_offers,"supportedQuestOfferUnlocks":supported_offers})
     summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names,approved_offers)
     write(out/"bulk-summary.json",summary)
