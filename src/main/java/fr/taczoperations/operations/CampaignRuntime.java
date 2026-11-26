@@ -226,7 +226,7 @@ final class CampaignRuntime {
     }
     private interface Change {CampaignStorage.Session apply(CampaignStorage.Session session);}
     private static void change(ServerPlayer p,UUID raidId,Change change){
-        if(CATALOG==null||p.isCreative()||p.isSpectator())return;
+        if(CATALOG==null||ScavRun.active(p)||p.isCreative()||p.isSpectator())return;
         try{
             var session=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
             var updated=change.apply(session);
@@ -348,7 +348,7 @@ final class CampaignRuntime {
         return pos.distToCenterSqr(p.position())<=radius*radius;
     }
     static void visit(ServerPlayer p,UUID raidId,String map){
-        if(CATALOG==null||!ForestRaid.canContinue(p)||!p.isAlive())return;
+        if(CATALOG==null||ScavRun.active(p)||!ForestRaid.canContinue(p)||!p.isAlive())return;
         if(map.equals("factory")||map.equals("customs")){
             String id="66b38e144f2ab7cc530c3fe7";
             if(!CATALOG.graph().quests().containsKey(id))return;
@@ -420,7 +420,7 @@ final class CampaignRuntime {
             &&x.map().equals(action.map())&&x.item().equals(action.item())&&near(p,x.pos(),x.radius())).findFirst().orElse(null);
     }
     static int plant(ServerPlayer p,UUID raidId,String map){
-        if(CATALOG==null||raidId==null||!ForestRaid.canContinue(p)||!p.isAlive()||p.isCreative()||p.isSpectator())return 0;
+        if(CATALOG==null||ScavRun.active(p)||raidId==null||!ForestRaid.canContinue(p)||!p.isAlive()||p.isCreative()||p.isSpectator())return 0;
         if(ACTIONS.containsKey(p.getUUID())){say(p,"Une action de terrain est déjà en cours.");return 0;}
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
@@ -513,7 +513,7 @@ final class CampaignRuntime {
         };
     }
     static int search(ServerPlayer p,UUID raidId,String map){
-        if(CATALOG==null||raidId==null||!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.canContinue(p))return 0;
+        if(CATALOG==null||ScavRun.active(p)||raidId==null||!p.isAlive()||p.isCreative()||p.isSpectator()||!ForestRaid.canContinue(p))return 0;
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
             if(!raidId.equals(s.raidId()))return 0;
