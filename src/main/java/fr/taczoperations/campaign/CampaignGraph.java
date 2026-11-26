@@ -6,7 +6,7 @@ import java.util.*;
 public final class CampaignGraph {
     public enum State { AVAILABLE, LOCKED, ACTIVE, READY, COMPLETED, FAILED }
     public enum Scope { CAMPAIGN, SURVIVING_RAID, CURRENT_RAID }
-    public enum Outcome { COMPLETED, FAILED }
+    public enum Outcome { ACTIVE, COMPLETED, FAILED }
     public record Requirement(String quest, Set<Outcome> outcomes) {
         public Requirement { Objects.requireNonNull(quest); outcomes=Set.copyOf(outcomes); if(outcomes.isEmpty())throw new IllegalArgumentException("Empty outcomes"); }
     }
@@ -101,7 +101,9 @@ public final class CampaignGraph {
         public Checkpoint checkpoint(){return new Checkpoint(saved,inRaid,raid);}
         private boolean satisfies(Requirement r){
             var p=saved.get(r.quest());
-            return p!=null&&((p.state()==State.COMPLETED&&r.outcomes().contains(Outcome.COMPLETED))||(p.state()==State.FAILED&&r.outcomes().contains(Outcome.FAILED)));
+            return p!=null&&((p.state()==State.ACTIVE&&r.outcomes().contains(Outcome.ACTIVE))
+                ||(p.state()==State.COMPLETED&&r.outcomes().contains(Outcome.COMPLETED))
+                ||(p.state()==State.FAILED&&r.outcomes().contains(Outcome.FAILED)));
         }
         public State state(String id,int level){
             var q=require(id);var p=saved.get(id);
