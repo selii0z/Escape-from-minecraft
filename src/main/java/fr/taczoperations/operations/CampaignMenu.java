@@ -69,6 +69,8 @@ final class CampaignMenu {
                     open(p,trader,page);
                 });
             }
+            c.setItem(51,tile(Items.GOLD_INGOT,"Offres débloquées par les quêtes",ChatFormatting.GOLD,List.of("Quêtes terminées et fidélité requises")));
+            actions.put(51,()->CampaignUnlockShop.open(p,trader,0,()->open(p,trader,page)));
             if(page>0){c.setItem(45,tile(Items.ARROW,"Page précédente",ChatFormatting.YELLOW,List.of()));actions.put(45,()->open(p,trader,page-1));}
             if(page+1<pages){c.setItem(53,tile(Items.ARROW,"Page suivante",ChatFormatting.YELLOW,List.of()));actions.put(53,()->open(p,trader,page+1));}
             c.setItem(48,tile(Items.COMPASS,"Tous les marchands",ChatFormatting.AQUA,List.of()));actions.put(48,()->open(p));
