@@ -140,3 +140,4 @@
 628baf0b967de16aab5a4f36|Gilet de Knight (trophée)|leather
 628bc7fb408e2b2e9c0801b1|Sac de Birdeye (trophée)|leather
 628b9c7d45122232a872358f|Protection de Big Pipe (trophée)|iron_ingot
+5fc64ea372b0dd78d51159dc|Lame de cultiste (trophée)|iron_ingot
