@@ -44,8 +44,9 @@ public final class CampaignSupplies {
     private static final Map<String,Integer> ARMOR=Map.of("59e7635f86f7742cbf2c1095",2,"5c0e655586f774045612eeb2",4,"5ab8e79e86f7742d8b372e78",5,"545cdb794bdc2d3a198b456a",6);
     private static final String SHOTGUN="5a38e6bac4a2826c6e06d79b";
     private static final Map<String,String> BASE_GUNS=Map.of("5644bd2b4bdc2d3b4c8b4572","ak47","5447a9cd4bdc2dbd208b4567","m4a1","5448bd6b4bdc2dfc2f8b4569","glock_17");
-    static boolean rewardKnown(String id){return BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    static boolean rewardKnown(String id){return "5aa7d03ae5b5b00016327db5".equals(id)||BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
     static ItemStack rewardStack(String id){
+        if("5aa7d03ae5b5b00016327db5".equals(id))return BallisticVest.create(net.minecraft.world.entity.EquipmentSlot.HEAD,2,BallisticVest.classColor(2));
         if(BASE_GUNS.containsKey(id))return OperationsShop.weapon(BASE_GUNS.get(id),0);
         if(ARMOR.containsKey(id)){
             int tier=ARMOR.get(id);
