@@ -276,6 +276,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 duo = true;
             }
         }, () -> duo, () -> true);
+        simple(580,407,117,25,"Jouer Scav",()->{
+            int area=selectedArea<2?selectedArea:(selectedArea==4?4:selectedArea==5?1:selectedArea==3?2:3)+1;
+            send(OperationsMenu.SCAV_FIRST+area*2+(night?1:0));
+        },()->false,()->true);
+        simple(703,407,117,25,"Butin Scav",()->send(OperationsMenu.SCAV_COLLECT),()->false,()->true);
         widget(580, 369, 240, 32, "Lancer l’opération", () -> {
             if (duo && menu.view().partner().isEmpty()) {
                 send(OperationsMenu.GROUP);
