@@ -39,6 +39,7 @@ jobs:
           python3 tools/tarkov_campaign_snapshot.py --mode pve
           python3 tools/tarkov_campaign_bulk.py
           install -m 644 build/tarkov-review/campaign-install-index.json src/main/resources/data/taczoperations/campaign/campaign-install-index.json
+          install -m 644 build/tarkov-review/quests-development.json src/main/resources/data/taczoperations/campaign/quests.json
       - name: Upload bulk install review
         if: github.ref == 'refs/heads/feature/tarkov-campaign' || github.head_ref == 'feature/tarkov-campaign'
         uses: actions/upload-artifact@v4
@@ -47,6 +48,8 @@ jobs:
           path: |
             build/tarkov-review/campaign-install-index.json
             build/tarkov-review/bulk-install-candidates.json
+            build/tarkov-review/quests-development.json
+            build/tarkov-review/stock-activation-report.json
             build/tarkov-review/bulk-summary.json
             build/tarkov-reference/manifest.json
           if-no-files-found: error
