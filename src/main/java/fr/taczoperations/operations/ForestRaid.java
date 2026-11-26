@@ -1090,6 +1090,30 @@ public final class ForestRaid extends SavedData {
         return pos.distToCenterSqr(player.position()) <= 60 * 60;
     }
 
+    // An open doorway may have no DoorBlock at all (generated cabin archways).
+    private static boolean walkableLootCell(ServerLevel level,BlockPos p){
+        return level.hasChunkAt(p)&&level.getBlockState(p).isAir()&&level.getBlockState(p.above()).isAir()
+            &&level.getBlockState(p.below()).isFaceSturdy(level,p.below(),Direction.UP);
+    }
+    private static boolean passageWall(ServerLevel level,BlockPos p,Direction dir){
+        var side=p.relative(dir);
+        return level.getBlockState(side).isFaceSturdy(level,side,dir.getOpposite())
+            ||level.getBlockState(side.above()).isFaceSturdy(level,side.above(),dir.getOpposite());
+    }
+    private static boolean narrowPassage(ServerLevel level,BlockPos p){
+        if(!walkableLootCell(level,p))return false;
+        return passageWall(level,p,Direction.NORTH)&&passageWall(level,p,Direction.SOUTH)
+            ||passageWall(level,p,Direction.EAST)&&passageWall(level,p,Direction.WEST);
+    }
+    private static boolean nearDoorway(ServerLevel level,BlockPos p){
+        if(narrowPassage(level,p))return true;
+        for(var dir:Direction.Plane.HORIZONTAL){
+            var side=p.relative(dir);
+            if(narrowPassage(level,side)||level.getBlockState(side).getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                ||level.getBlockState(side.above()).getBlock() instanceof net.minecraft.world.level.block.DoorBlock)return true;
+        }
+        return false;
+    }
     // Prefer furniture against a wall with at least one accessible side.
     // Keep the search radius unchanged so cleanup and persisted anchor lookup agree.
     private static BlockPos findLootFloor(ServerLevel level,BlockPos center,int radius){
@@ -1110,7 +1134,7 @@ public final class ForestRaid extends SavedData {
                 if(state.isAir()&&level.getBlockState(side.above()).isAir()&&level.getBlockState(side.below()).isFaceSturdy(level,side.below(),Direction.UP))access++;
                 else if(state.isFaceSturdy(level,side,dir.getOpposite()))walls++;
             }
-            if(adjacentLoot||door||access<2)continue;
+            if(adjacentLoot||door||access<2||nearDoorway(level,pos))continue;
             int candidate=(walls==1?12:walls==2?15:0)-Math.abs(pos.getX()-center.getX())-Math.abs(pos.getZ()-center.getZ());
             if(candidate>score){score=candidate;best=pos.immutable();}
         }
