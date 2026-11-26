@@ -56,6 +56,7 @@ jobs:
             build/tarkov-review/bulk-summary.json
             build/tarkov-review/supplies-development.txt
             build/tarkov-review/auto-supply-review.json
+            build/tarkov-review/activation-blockers.json
             build/tarkov-reference/manifest.json
           if-no-files-found: error
       - name: Compile and capture diagnostics
