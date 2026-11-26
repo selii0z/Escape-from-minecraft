@@ -141,7 +141,7 @@ public final class DepartureInsuranceMenu extends AbstractContainerMenu {
     }
     private DepartureInsuranceMenu(int id,Inventory inv,BlockPos board,boolean night,boolean duo,boolean industrial,fr.taczoperations.worldgen.ExpressZone express,int balance,List<Entry> entries,int count,String partnerName){
         super(OperationsMod.DEPARTURE_INSURANCE.get(),id);
-        owner=inv.player;level=owner.level();expiresAt=level.getGameTime()+MAX_WAIT_TICKS;this.board=board.immutable();this.night=night;this.duo=duo;this.industrial=industrial;this.balance=balance;this.entries=List.copyOf(entries);this.partnerName=partnerName;
+        owner=inv.player;level=owner.level();expiresAt=level.getGameTime()+MAX_WAIT_TICKS;this.board=board.immutable();this.night=night;this.duo=duo;this.industrial=industrial;this.express=express;this.balance=balance;this.entries=List.copyOf(entries);this.partnerName=partnerName;
         addDataSlot(readiness);
         states=new DataSlot[count];
         var preview=new SimpleContainer(count);
