@@ -1549,7 +1549,7 @@ public final class ForestRaid extends SavedData {
             SupplyContract.kill(killer, role.elite(), role.boss());
             DetailedStats.kill(killer,role);
             StoryMissions.kill(killer,role);
-            CampaignRuntime.kill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role);
+            CampaignRuntime.kill(killer,raid.id,CampaignRuntime.map(raid.industrial,raid.express),role,guard.getUUID());
             PassiveSkills.kill(killer);
             if(isParticipant(killer))raid.reinforcementKills++;
             int xp = role.boss() ? 40 : role.elite() ? 12 : role == GuardRole.PMC ? 8 : 5;
