@@ -327,6 +327,380 @@
         "foundInRaid": false
       },
       "adaptation": {}
+    },
+    {
+      "id": "59c9392986f7742f6923add2",
+      "name": "Aid Stations",
+      "trader": "therapist",
+      "level": 5,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "59c93bdb86f7742a19140434",
+          "type": "find-stock-any:593aa4be86f77457f56379f8",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé chambre 303"
+        },
+        {
+          "id": "59c93d4e86f774496b698953",
+          "type": "turnin-any:593aa4be86f77457f56379f8",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé chambre 303"
+        },
+        {
+          "id": "59c93c1986f7742a424eaa33",
+          "type": "find-stock-any:591afe0186f77431bd616a11",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé ZB-014"
+        },
+        {
+          "id": "59c93d8086f7742a19140436",
+          "type": "turnin-any:591afe0186f77431bd616a11",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé ZB-014"
+        },
+        {
+          "id": "59c93cbb86f7742a19140435",
+          "type": "find-stock-any:5913915886f774123603c392",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé du poste militaire"
+        },
+        {
+          "id": "59c93d9c86f7742f6923add3",
+          "type": "turnin-any:5913915886f774123603c392",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé du poste militaire"
+        },
+        {
+          "id": "59c93cea86f7742a08623162",
+          "type": "find-stock-any:5913877a86f774432f15d444",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé réserve station-service"
+        },
+        {
+          "id": "59c93dbf86f7742a424eaa34",
+          "type": "turnin-any:5913877a86f774432f15d444",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé réserve station-service"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "reference": {
+        "level": 5,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "foundInRaid": false
+      }
+    },
+    {
+      "id": "5ac346a886f7744e1b083d67",
+      "name": "Rat Hunting",
+      "trader": "mechanic",
+      "level": 12,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5cb6f81d86f7740e9d452683",
+          "type": "find-stock-fir:573477e124597737dd42e191",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Processeur PC"
+        },
+        {
+          "id": "5ac5e79986f7747398341847",
+          "type": "turnin-fir:573477e124597737dd42e191",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Processeur PC"
+        },
+        {
+          "id": "5cb6f88d86f7747d215f09c1",
+          "type": "find-stock-fir:590a358486f77429692b2790",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Batterie rechargeable"
+        },
+        {
+          "id": "5ac5e88e86f7741c5804f9db",
+          "type": "turnin-fir:590a358486f77429692b2790",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Batterie rechargeable"
+        },
+        {
+          "id": "5cb6f8de86f7740e9d452685",
+          "type": "find-stock-fir:590a3b0486f7743954552bdb",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Circuit imprimé"
+        },
+        {
+          "id": "5ac5e98886f77479bc6ca201",
+          "type": "turnin-fir:590a3b0486f7743954552bdb",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Circuit imprimé"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "reference": {
+        "level": 12,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "5d25e4b786f77408251c4bfc",
+      "name": "Fishing Place",
+      "trader": "jaeger",
+      "level": 17,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5d2f375186f7745916404955",
+          "type": "find-stock-fir:5c94bbff86f7747ee735c08f",
+          "amount": 2,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Carte d'accès Labs"
+        },
+        {
+          "id": "5d8a09d386f77410b4225d13",
+          "type": "turnin-fir:5c94bbff86f7747ee735c08f",
+          "amount": 2,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Carte d'accès Labs"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 3,
+      "reward": {
+        "credits": 2750,
+        "xp": 280,
+        "reputation": 750
+      },
+      "reference": {
+        "level": 17,
+        "experience": 28000,
+        "rubles": 275000,
+        "reputationMilli": 750,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "5969f90786f77420d2328015",
+      "name": "Charity",
+      "trader": "therapist",
+      "level": 18,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5969f98286f774576d4c9542",
+          "type": "find-stock-fir:5c10c8fd86f7743d7d706df3",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Injecteur d'adrénaline"
+        },
+        {
+          "id": "5969f99286f77456630ea442",
+          "type": "turnin-fir:5c10c8fd86f7743d7d706df3",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Injecteur d'adrénaline"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 3,
+      "reward": {
+        "credits": 2750,
+        "xp": 280,
+        "reputation": 750
+      },
+      "reference": {
+        "level": 18,
+        "experience": 28000,
+        "rubles": 275000,
+        "reputationMilli": 750,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "60e71dc67fcf9c556f325056",
+      "name": "Booze",
+      "trader": "ragman",
+      "level": 27,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "60e73333465ea8368012cc5b",
+          "type": "find-stock-fir:5d40407c86f774318526545a",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Vodka Tarkovskaya"
+        },
+        {
+          "id": "60e73397479eef59b01b0bd5",
+          "type": "turnin-fir:5d40407c86f774318526545a",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Vodka Tarkovskaya"
+        },
+        {
+          "id": "60e733590367e10a450f7805",
+          "type": "find-stock-fir:5d403f9186f7743cac3f229b",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Whisky Dan Jackiel"
+        },
+        {
+          "id": "60e733b80367e10a450f7807",
+          "type": "turnin-fir:5d403f9186f7743cac3f229b",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Whisky Dan Jackiel"
+        },
+        {
+          "id": "60f028268b669d08a35bfad8",
+          "type": "find-stock-fir:5d1b33a686f7742523398398",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Eau purifiée"
+        },
+        {
+          "id": "60f0284e8b669d08a35bfada",
+          "type": "turnin-fir:5d1b33a686f7742523398398",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Eau purifiée"
+        },
+        {
+          "id": "62a700fb7230237f257cac2e",
+          "type": "find-stock-fir:62a09f32621468534a797acb",
+          "amount": 20,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Bière Pevko"
+        },
+        {
+          "id": "62a70110eb3cb46d9a0bba78",
+          "type": "turnin-fir:62a09f32621468534a797acb",
+          "amount": 20,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Bière Pevko"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 3,
+      "reward": {
+        "credits": 2750,
+        "xp": 280,
+        "reputation": 750
+      },
+      "reference": {
+        "level": 27,
+        "experience": 28000,
+        "rubles": 275000,
+        "reputationMilli": 750,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "69ce1de03e15cd80bd06f6c9",
+      "name": "Oil Change",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "69ce1e2614b1a16885f61da4",
+          "type": "find-stock-fir:699f09de81a6c812900a77b7",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Fluide hydraulique AMG-10"
+        },
+        {
+          "id": "69ce1e30e2c52320f2eba4ee",
+          "type": "turnin-fir:699f09de81a6c812900a77b7",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Fluide hydraulique AMG-10"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 1,
+      "reward": {
+        "credits": 3300,
+        "xp": 320,
+        "reputation": 0
+      },
+      "reference": {
+        "level": 0,
+        "experience": 32000,
+        "rubles": 330000,
+        "reputationMilli": 0,
+        "foundInRaid": true
+      }
     }
   ]
 }
