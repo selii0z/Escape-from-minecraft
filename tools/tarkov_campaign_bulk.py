@@ -306,7 +306,7 @@ def combat_objective(o):
     return {"id":o["id"],"type":event,"amount":o.get("count"),"scope":scope,
             "optional":o.get("optional",False),"label":label},blockers
 
-FIELD_CORE=CORE|{"visit","mark","plantItem"}
+FIELD_CORE=CORE|{"visit","mark","plantItem","findQuestItem","giveQuestItem"}
 
 def field_objective(o,mapped):
     # A single reference zone (duplicated geometry is normal) on a supported map.
@@ -359,6 +359,47 @@ def test_field_adapter():
     assert not errors and row["type"].endswith(":"+ref)
     assert "field-item-mapping" in field_objective(dict(o,type="mark",markerItem=ref,count=1),set())[1]
 
+def quest_item_objective(o,objectives):
+    errors=set()
+    ref=o.get("questItem")
+    if not isinstance(ref,str) or len(ref)!=24 or any(ch not in "0123456789abcdef" for ch in ref):
+        errors.add("quest-item-id")
+    if o.get("count")!=1 or o.get("optional") is not False:errors.add("quest-item-count")
+    finds=[v for v in objectives if v["type"]=="findQuestItem" and v.get("questItem")==ref]
+    gives=[v for v in objectives if v["type"]=="giveQuestItem" and v.get("questItem")==ref]
+    if len(finds)!=1 or len(gives)!=1:errors.add("quest-item-pair")
+    basic={"id","description","type","count","optional","maps","questItem"}
+    if o["type"]=="findQuestItem":
+        maps=o.get("maps") or []
+        translated={MAP_ADAPTERS[m] for m in maps if m in MAP_ADAPTERS}
+        if not maps or not set(maps)<=MAP_ADAPTERS.keys() or len(translated)!=1:errors.add("quest-item-map")
+        if set(maps)=={"59fc81d786f774390775787e"}:errors.add("night-factory-only")
+        locations=o.get("possibleLocations") or []
+        if not locations or any(v.get("map") not in maps or not v.get("positions") for v in locations):errors.add("quest-item-locations")
+        if set(o)-(basic|{"possibleLocations"}):errors.add("quest-item-predicate")
+        map_name=next(iter(translated),"unsupported")
+        key=hashlib.sha256(str(ref).encode()).hexdigest()[:16]
+        typ="quest-find-adapted:"+map_name+":"+key+":"+str(ref)
+        scope="SURVIVING_RAID"
+        label="Récupérer l'objet de mission · "+map_name
+    else:
+        if set(o)-basic or o.get("maps"):errors.add("quest-item-predicate")
+        typ="quest-give-adapted:"+str(ref)
+        scope="CAMPAIGN"
+        label="Remettre l'objet de mission extrait"
+    return {"id":o["id"],"type":typ,"amount":1,"scope":scope,"optional":o.get("optional",False),"label":label},errors
+
+def test_quest_item_adapter():
+    ref="a"*24
+    map_id="5704e3c2d2720bac5b8b4567"
+    f={"id":"f","type":"findQuestItem","count":1,"optional":False,"maps":[map_id],
+       "questItem":ref,"possibleLocations":[{"map":map_id,"positions":[{"x":0,"y":0,"z":0}]}]}
+    g={"id":"g","type":"giveQuestItem","count":1,"optional":False,"maps":[],"questItem":ref}
+    row,errors=quest_item_objective(f,[f,g])
+    assert not errors and row["scope"]=="SURVIVING_RAID" and row["type"].endswith(":"+ref)
+    assert not quest_item_objective(g,[f,g])[1]
+    assert "quest-item-pair" in quest_item_objective(f,[f])[1]
+
 def combat_draft(q,mapped,current):
     objectives=q["objectives"]
     # Reuse the stock validator for rewards and other gates, even when there is no handover.
@@ -368,7 +409,9 @@ def combat_draft(q,mapped,current):
     if not stock:blockers.discard("no-handover")
     for o in objectives:
         if o["type"] not in STOCK:
-            translated,errors=field_objective(o,mapped) if o['type'] in FIELD_CORE-CORE else combat_objective(o)
+            if o["type"] in {"findQuestItem","giveQuestItem"}:translated,errors=quest_item_objective(o,objectives)
+            elif o["type"] in FIELD_CORE-CORE:translated,errors=field_objective(o,mapped)
+            else:translated,errors=combat_objective(o)
             d["objectives"].append(translated);blockers.update(errors)
     if q.get("neededKeys"):blockers.add("required-key")
     d.update({"adapter":"bulk-combat-v1","blockers":sorted(blockers)})
@@ -702,6 +745,7 @@ if __name__=="__main__":
     test_supply_catalog()
     test_starter_plan()
     test_field_adapter()
+    test_quest_item_adapter()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
