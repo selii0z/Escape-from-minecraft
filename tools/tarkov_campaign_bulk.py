@@ -262,6 +262,7 @@ TARGET_ADAPTERS = {
     frozenset(["Savage","Marksman","assaultGroup"]):"scav",
     frozenset(["Savage"]):"scav", frozenset(["Marksman"]):"marksman",
     frozenset(["sectantPriest","sectantWarrior"]):"cultist",
+    frozenset(["bossBoar","bossBully","bossGluhar","bossKilla","bossKojaniy","bossKolontay","bossSanitar","bossTagilla","bossZryachiy","bossKillaAgro","bossTagillaAgro","infectedTagilla","tagillaHelperAgro"]):"classic_boss",
     frozenset(["Bear"]):"bear", frozenset(["Usec"]):"usec",
     frozenset(["Marksman","bossBoarSniper"]):"marksman",
     frozenset(["bossBoar"]):"kaban", frozenset(["bossKolontay"]):"kollontay",
@@ -313,6 +314,7 @@ def weapon_group(refs):
 
 # Exact reference sets with explicitly chosen equivalents in EFM.
 GEAR_REQUIRED={
+    "c8a228993a78b032d347888f0246f06bedbca74381cb7d1e3548fa4d017cf8d4":"elite_rig",
     "f29275ad30ac8ad850616910ae69898fe36eba733cc7adfa4f824e343caa5f5a":"scavuniform",
     "dcb1ada0a20d04ab3a0f1c6cdeb2cfec1e60dcd93e18cd43ed5e721992db7a4b":"heavyuniform",
     "d6e904eff6f3c50d8d49af80ced1320c6f093e5e5b0f20b0ef957a14304074ed":"uniform2",
@@ -326,7 +328,14 @@ GEAR_FORBIDDEN={
 def gear_requirement(o):
     required=o.get("wearing") or []
     forbidden=o.get("notWearing") or []
-    if required and forbidden:return None
+    if required and forbidden:
+        key=hashlib.sha256(",".join(sorted("+".join(sorted(x["id"] for x in group)) for group in required)).encode()).hexdigest()
+        denied=hashlib.sha256(",".join(sorted(x["id"] for x in forbidden)).encode()).hexdigest()
+        pairs={
+            ("912fe9e780735e34b8dd1bd7edf82c94b05e9428be6d710936a949f32c231ece","486dc1a03aab9c8badcdc361462c855b303da2abc6f21a9e0864db056e434e4b"):"headset_noarmor",
+            ("8278d31243dbde802193292fab1cf66aa1395891e6071d7db38d89252d3e0815","e05253590017f06b41cbbf87b42cb8cc798c608bdb875a12029b1a23bf0b4271"):"helmet_noheadset",
+        }
+        return pairs.get((key,denied))
     if required:
         key=hashlib.sha256(",".join(sorted("+".join(sorted(x["id"] for x in group)) for group in required)).encode()).hexdigest()
         return GEAR_REQUIRED.get(key)
@@ -400,7 +409,7 @@ def combat_objective(o):
             event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
             if night or gear!="any":event+=":"+("night" if night else "anytime")+":"+gear
             if night:label+=" · raid de nuit"
-            if gear!="any":label+=" · "+{"scavuniform":"casque en cuir et gilet léger","novision":"sans lunettes nocturnes ni thermiques","injured":"avec une blessure EFM active","heavyuniform":"tunique classe 6 et casque classe 3","uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
+            if gear!="any":label+=" · "+{"headset_noarmor":"casque audio tactique, sans armure ni gilet","helmet_noheadset":"casque classe 2, sans casque audio","elite_rig":"gilet élite EFM équipé","scavuniform":"casque en cuir et gilet léger","novision":"sans lunettes nocturnes ni thermiques","injured":"avec une blessure EFM active","heavyuniform":"tunique classe 6 et casque classe 3","uniform2":"casque et tunique classe 2","armor2":"tunique classe 2","noarmor":"sans armure ni gilet","unarmored":"sans protection ni gilet"}[gear]
             if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
             if weapon!="any":label+=" · "+{"civilianlong":"fusil à pompe, fusil à verrou ou AK EFM","bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM","lmg":"mitrailleuse EFM"}[weapon]
             if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
@@ -1225,6 +1234,7 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             # Preserve the usable starter weapon; unsupported separate magazines/packs
             # from these two exact starter kits are not required by the objective.
             starter_adapters={
+                "666314a31cd52e3d040a2e76":({"628baf0b967de16aab5a4f36"},[{"item":"5648a69d4bdc2ded0b8b457b","count":1,"attributes":{}}]),
                 "6740a2c17e3818d5bb0648b6":({"66d9f1abb16d9aacf5068468"},[]),
                 "666314b2a9290f9e0806cca3":({"707265736574000000000047"},[{"item":"5a38e6bac4a2826c6e06d79b","count":1,"attributes":{}}]),
                 "666314bafd5ca9577902e03a":({"5b44abe986f774283e2e3512"},[{"item":"5448bd6b4bdc2dfc2f8b4569","count":1,"attributes":{}}]),
