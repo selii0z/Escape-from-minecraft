@@ -55,3 +55,16 @@
 57347d8724597744596b4e76|Tartinade de courge|pumpkin_pie
 5bc9b156d4351e00367fbce9|Mayonnaise Devildog|glass_bottle
 635a758bfefc88a93f021b8a|Saucisse Salty Dog|cooked_beef
+593aa4be86f77457f56379f8|Clé chambre 303|tripwire_hook
+591afe0186f77431bd616a11|Clé ZB-014|tripwire_hook
+5913915886f774123603c392|Clé du poste militaire|tripwire_hook
+5913877a86f774432f15d444|Clé réserve station-service|tripwire_hook
+573477e124597737dd42e191|Processeur PC|iron_nugget
+590a358486f77429692b2790|Batterie rechargeable|iron_ingot
+590a3b0486f7743954552bdb|Circuit imprimé|green_dye
+5c94bbff86f7747ee735c08f|Carte d'accès Labs|paper
+5c10c8fd86f7743d7d706df3|Injecteur d'adrénaline|stick
+5d40407c86f774318526545a|Vodka Tarkovskaya|glass_bottle
+5d403f9186f7743cac3f229b|Whisky Dan Jackiel|glass_bottle
+5d1b33a686f7742523398398|Eau purifiée|water_bucket
+62a09f32621468534a797acb|Bière Pevko|glass_bottle
