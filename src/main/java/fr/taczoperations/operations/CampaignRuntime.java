@@ -361,6 +361,7 @@ final class CampaignRuntime {
             case "usec"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==0;
             case "bear"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==1;
             case "boss"->role.boss();
+            case "classic_boss"->Set.of(GuardRole.KABAN,GuardRole.RESHALA,GuardRole.GLUKHAR,GuardRole.KILLA,GuardRole.TRACKER,GuardRole.KOLLONTAY,GuardRole.SANITAR,GuardRole.FOREMAN,GuardRole.ZRYACHIY,GuardRole.VENGEFUL_KILLA,GuardRole.SHADOW_TAGILLA,GuardRole.INFECTED_TAGILLA).contains(role);
             case "cultist"->role==GuardRole.CULTIST_PRIEST||"CULTIST_PRIEST".equals(escortOf);
             case "reshala_escort"->"RESHALA".equals(escortOf)&&!role.boss();
             case "boss_escort"->!role.boss()&&Set.of("RESHALA","GLUKHAR","TRACKER","KABAN","KOLLONTAY","SANITAR").contains(escortOf);
@@ -401,12 +402,12 @@ final class CampaignRuntime {
             if(parts[0].equals("noheal")){
                 if(!o.id().equals("5d25d09286f77444001e284c")||!o.type().equals("noheal:woods:scav")||o.scope()!=Scope.CURRENT_RAID||o.amount()!=3)return false;
             }else if(parts[0].equals("gunshot")){
-                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored","heavyuniform","injured","novision","scavuniform").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
+                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored","heavyuniform","injured","novision","scavuniform","headset_noarmor","helmet_noheadset","elite_rig").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
                     ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt","pistol","ak","western","rifle","smg","shotgun","lmg","civilianlong").contains(parts[5])
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort","cultist").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort","cultist","classic_boss").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else if(parts[0].equals("quest-find-adapted")){
                 if(parts.length!=4||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")||
@@ -422,7 +423,7 @@ final class CampaignRuntime {
             }else if(parts[0].equals("kill")){
                 if(parts.length!=3||o.scope()!=Scope.CAMPAIGN)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort","cultist").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort","cultist","classic_boss").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else return false;
             combat++;
