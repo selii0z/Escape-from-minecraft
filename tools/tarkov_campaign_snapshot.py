@@ -8,7 +8,7 @@ import pathlib
 import urllib.request
 from collections import Counter
 
-BASE = "https://api.tarkov-stammtisch.de/api/v2"
+BASES = ("https://json.tarkov.dev", "https://api.tarkov-stammtisch.de/api/v2")
 FILES = ("tasks", "traders", "items", "maps")
 MAX_BYTES = 80 * 1024 * 1024
 COLLECTOR_ID = "5c51aac186f77432ea65c552"
@@ -19,10 +19,22 @@ def load(mode, name, directory, offline):
         raw = path.read_bytes()
         source = "local snapshot"
     else:
-        source = f"{BASE}/{mode}/{name}"
-        req = urllib.request.Request(source, headers={"User-Agent": "EFM-campaign-development/1.0", "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=60) as response:
-            raw = response.read(MAX_BYTES + 1)
+        errors = []
+        for base in BASES:
+            source = f"{base}/{mode}/{name}"
+            req = urllib.request.Request(source, headers={"User-Agent": "EFM-campaign-development/1.0", "Accept": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    raw = response.read(MAX_BYTES + 1)
+                if len(raw) > MAX_BYTES:
+                    raise ValueError("Response too large")
+                if not isinstance(json.loads(raw), (dict, list)):
+                    raise ValueError("Invalid JSON response")
+                break
+            except (OSError, ValueError) as exc:
+                errors.append(f"{source}: {exc}")
+        else:
+            raise RuntimeError("; ".join(errors))
     if len(raw) > MAX_BYTES:
         raise ValueError(f"{name}: unexpected response size")
     data = json.loads(raw)
@@ -89,7 +101,7 @@ def main():
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     meta = {"mode": args.mode, "utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-            "attribution": "tarkov.dev via Tarkovstammtisch v2 mirror", "files": {}}
+            "attribution": "Tarkov.dev JSON API or Tarkovstammtisch v2 mirror (see per-file source)", "files": {}}
     for name in FILES:
         data, info = load(args.mode, name, args.out, args.offline)
         meta["files"][name] = info
