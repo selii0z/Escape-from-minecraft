@@ -20,6 +20,15 @@ import java.util.Set;
 
 @EventBusSubscriber(modid="taczoperations",value=Dist.CLIENT)
 public final class DiscoveryClient {
+    private static final net.minecraft.client.KeyMapping INSPECT=new net.minecraft.client.KeyMapping(
+        "key.taczoperations.inspect",org.lwjgl.glfw.GLFW.GLFW_KEY_U,"key.categories.taczoperations");
+    @EventBusSubscriber(modid="taczoperations",value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
+    public static class Registration {
+        @SubscribeEvent public static void keys(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event){event.register(INSPECT);}
+    }
+    static boolean inspectKey(int key,int scan){return INSPECT.matches(key,scan);}
+    static boolean inspectMouse(int button){return button==2||INSPECT.matchesMouse(button);}
+    static String keyLabel(){return INSPECT.getTranslatedKeyMessage().getString();}
     private static final Set<String> KNOWN=new HashSet<>();
     public static void handle(DiscoveryState state,IPayloadContext context){
         context.enqueueWork(()->{if(state.replace())KNOWN.clear();KNOWN.addAll(state.keys());});
@@ -53,7 +62,7 @@ public final class DiscoveryClient {
         if(!unknown(event.getItemStack()))return;
         event.getToolTip().clear();
         event.getToolTip().add(Component.literal("Objet non identifié").withStyle(ChatFormatting.GOLD));
-        event.getToolTip().add(Component.literal("I ou clic molette pour examiner").withStyle(ChatFormatting.GRAY));
+        event.getToolTip().add(Component.literal(keyLabel()+" ou clic molette pour examiner").withStyle(ChatFormatting.GRAY));
     }
     @SubscribeEvent public static void logout(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event){KNOWN.clear();}
     private DiscoveryClient(){}
