@@ -253,6 +253,17 @@ final class CampaignRuntime {
             return new CampaignStorage.Session(s.player(),raidId);
         });
     }
+    private static final String TOUGH_GUY="5d25cf2686f77443e75488d4";
+    private static final String HEALED_RAID="efm_campaign_healed_raid";
+    static void medicalTreatment(ServerPlayer p){
+        UUID raidId=ForestRaid.campaignRaidId(p);
+        if(raidId==null||ScavRun.active(p)||!ForestRaid.isParticipant(p)||!"woods".equals(ForestRaid.campaignMap(p)))return;
+        p.getPersistentData().putUUID(HEALED_RAID,raidId);
+        change(p,raidId,s->{
+            if(!raidId.equals(s.raidId()))return null;
+            s.player().discardPending(TOUGH_GUY);return s;
+        });
+    }
     static void kill(ServerPlayer p,UUID raidId,String map,GuardRole role,UUID enemy,String escortOf){
         if(!ForestRaid.isParticipant(p)||!p.isAlive())return;
         change(p,raidId,s->{
@@ -262,7 +273,11 @@ final class CampaignRuntime {
                 reset|=s.player().resetActive("66631489acf8442f8b05319f");
             if(role.boss())reset|=s.player().resetActive("6663149196a9349baa021baa");
             if(reset)say(p,"Défi de chasse : progression remise à zéro après une élimination interdite.");
-            return (record(s,"kill",map,role,enemy,escortOf)|reset)?s:null;
+            var data=p.getPersistentData();
+            boolean healed=data.hasUUID(HEALED_RAID)&&raidId.equals(data.getUUID(HEALED_RAID));
+            boolean noheal=!healed&&map.equals("woods")&&matches("kill:woods:scav","kill",map,role,enemy,escortOf)
+                &&record(s,"noheal",map,role,enemy,escortOf);
+            return (record(s,"kill",map,role,enemy,escortOf)|reset|noheal)?s:null;
         });
     }
     static boolean resetFailedRaidChallenges(CampaignGraph.Player player){
@@ -339,7 +354,7 @@ final class CampaignRuntime {
         var allowed=Arrays.asList(parts[1].split(",",-1));
         if(!MAPS.containsAll(allowed)||!(allowed.contains("*")||allowed.contains(map)))return false;
         if(event.equals("extract"))return parts.length==2;
-        if(!event.equals("kill")||parts.length!=3||role==null)return false;
+        if(!(event.equals("kill")||event.equals("noheal"))||parts.length!=3||role==null)return false;
         return switch(parts[2]){
             case "any"->true;
             case "pmc"->role==GuardRole.PMC;
@@ -382,9 +397,11 @@ final class CampaignRuntime {
             }
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
-            if(parts[0].equals("gunshot")){
-                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored","heavyuniform").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
-                    ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt","pistol","ak","western","rifle","smg","shotgun","lmg").contains(parts[5])
+            if(parts[0].equals("noheal")){
+                if(!o.id().equals("5d25d09286f77444001e284c")||!o.type().equals("noheal:woods:scav")||o.scope()!=Scope.CURRENT_RAID||o.amount()!=3)return false;
+            }else if(parts[0].equals("gunshot")){
+                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored","heavyuniform","injured","novision","scavuniform").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
+                    ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt","pistol","ak","western","rifle","smg","shotgun","lmg","civilianlong").contains(parts[5])
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
                 String role=parts[2];
