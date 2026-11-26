@@ -29,7 +29,7 @@ public final class PassiveSkills {
         p.getPersistentData().remove(LIMITS);p.getPersistentData().remove(MOVE);p.getPersistentData().remove("efm_skill_extraction_awarded");
     }
     private static void gain(ServerPlayer p,Skill s,int amount,boolean extraction){
-        if(amount<=0||p.isCreative()||p.isSpectator()||(!extraction&&!RaidInjuries.active(p)))return;
+        if(amount<=0||ScavRun.active(p)||p.isCreative()||p.isSpectator()||(!extraction&&!RaidInjuries.active(p)))return;
         var root=p.getPersistentData();var limits=root.getCompound(LIMITS);int used=Math.clamp(limits.getInt(s.name()),0,s.cap);
         int grant=Math.min(amount,s.cap-used);if(grant<=0)return;
         limits.putInt(s.name(),used+grant);root.put(LIMITS,limits);award(p,s,grant);
