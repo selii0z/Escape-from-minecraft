@@ -178,6 +178,58 @@ def stock_draft(q, mapped, current):
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
             "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
             "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],**gates,"blockers":sorted(blockers)}
+def activate_stock_batch(tasks,current,mapped,dependencies,out):
+    """Build a separate development catalogue; never alter checked-in quests.
+    Only exact, supported handovers with all gates and rewards represented qualify."""
+    import re
+    def slug(name):
+        return re.sub(r"^-|-$","",re.sub(r"[^a-z0-9]+","-",name.lower()))
+    result=dict(current)
+    ready={qid for qid,q in current.items() if q.get("implemented") is True}
+    names={slug(q["name"]) for q in current.values()}
+    pending={qid:q for qid,q in tasks.items() if qid not in current and
+             qid!="5c51aac186f77432ea65c552" and q["objectives"] and
+             {o["type"] for o in q["objectives"]}<=STOCK}
+    installed=[]
+    while True:
+        changed=False
+        for qid,q in sorted(pending.items()):
+            d=stock_draft(q,mapped,ready)
+            dep=dependencies["quests"][qid]
+            if d["blockers"] or dep["errors"] or d["prerequisites"]!=dep["groups"]:
+                continue
+            if any(not any(r["quest"] in ready and r["outcomes"]==["COMPLETED"] for r in group)
+                   for group in d["prerequisites"]):
+                continue
+            if not d["objectives"] or len({o["id"] for o in d["objectives"]})!=len(d["objectives"]):
+                continue
+            if not re.fullmatch(r"[0-9a-f]{24}",qid) or any(
+                not re.fullmatch(r"[0-9a-f]{24}",ref)
+                for o in d["objectives"] for ref in o["type"].split(":",1)[1].split(",")):
+                continue
+            reward={k:d["reward"][k] for k in ("credits","xp","reputation")}
+            if any(not isinstance(v,int) or not 0<=v<=2147483647 for v in reward.values()):
+                continue
+            name=q.get("name") or d["name"]
+            if not slug(name) or slug(name) in names:
+                continue
+            # Explicitly limit this batch to the existing stock adapter.
+            row={**d,"name":name,"reward":reward,"implemented":True,
+                 "review":"approved","approvalMethod":"strict-stock-v2",
+                 "reference":{"level":q.get("minPlayerLevel"),"experience":q.get("experience"),
+                              "reward":d["reward"]}}
+            for o in row["objectives"]:
+                mode="trouvé en raid" if "-fir:" in o["type"] else "toute provenance"
+                o["label"]=("Trouver" if o["type"].startswith("find-stock-") else "Remettre")+" ("+mode+")"
+            result[qid]=row
+            ready.add(qid);names.add(slug(name));installed.append(qid);changed=True
+        for qid in installed:pending.pop(qid,None)
+        if not changed:break
+    write(out/"quests-development.json",{"schema":1,"quests":list(result.values())})
+    write(out/"stock-activation-report.json",{"schema":1,"base":len(current),
+          "added":installed,"total":len(result),"remainingStock":len(pending)})
+    return len(installed)
+
 def export_install_catalog(tasks,current,stock,dependencies,manifest,out):
     """Minimal runtime preview, separate from the playable graph and its save revision."""
     rows=[]
@@ -271,6 +323,7 @@ def build(snapshot,out,resources):
                     "kappaDependencyClosure":len(dependencies["kappa"]["dependencyClosure"]),
                     "kappaQuestsMissingFromGameplay":len(dependencies["kappa"]["missingFromGameplay"])})
     summary["bulkInstallCandidates"]=export_install_catalog(tasks,current,stock,dependencies,manifest,out)
+    summary["automaticallyActivatedStock"]=activate_stock_batch(tasks,current,mapped,dependencies,out)
     write(out/"bulk-summary.json",summary)
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
