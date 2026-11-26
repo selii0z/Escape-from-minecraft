@@ -14,7 +14,8 @@ public enum CampaignTrader {
     JAEGER("jaeger","Jaeger","Survie et chasse"),
     FENCE("fence","Fence","Marché et Collectionneur"),
     REF("ref","Ref","Défis"),
-    LIGHTKEEPER("lightkeeper","Lightkeeper","Renseignements de fin de jeu");
+    LIGHTKEEPER("lightkeeper","Lightkeeper","Renseignements de fin de jeu"),
+    BTR_DRIVER("btr-driver","BTR Driver","Transport et missions de terrain");
     public final String id,title,specialty;
     CampaignTrader(String id,String title,String specialty){this.id=id;this.title=title;this.specialty=specialty;}
     public static CampaignTrader byId(String id){
