@@ -40,6 +40,64 @@ def reward_plan(q):
             "unmappedItems":unresolved,
             "otherStanding":[r for r in standing if r["trader"]!=q["trader"]],
             "additionalRewards":{k:v for k,v in reward.items() if k not in ("items","traderStanding") and v}}
+# A reference task requirement is an AND of rows; statuses within a row are OR.
+# Never infer a completion status from an unknown value.
+OUTCOMES = {"active":"ACTIVE","started":"ACTIVE","complete":"COMPLETED","completed":"COMPLETED","success":"COMPLETED","fail":"FAILED","failed":"FAILED"}
+def dependency_groups(q, known):
+    groups, errors = [], []
+    for req in q.get("taskRequirements") or []:
+        if not isinstance(req,dict):
+            errors.append({"reason":"invalid-requirement","raw":req});continue
+        ref=req.get("task",req.get("taskId",req.get("id")))
+        if isinstance(ref,dict):ref=ref.get("id")
+        statuses=req.get("status",req.get("statuses"))
+        if isinstance(statuses,str):statuses=[statuses]
+        if not isinstance(ref,str) or ref not in known or ref==q.get("id"):
+            errors.append({"reason":"invalid-reference","raw":req});continue
+        if not isinstance(statuses,list) or not statuses or any(not isinstance(s,str) or s.lower() not in OUTCOMES for s in statuses):
+            errors.append({"reason":"unknown-status","raw":req});continue
+        groups.append([{"quest":ref,"outcomes":sorted({OUTCOMES[s.lower()] for s in statuses})}])
+    return groups,errors
+
+def dependency_audit(tasks,current):
+    rows={}
+    for qid,q in sorted(tasks.items()):
+        groups,errors=dependency_groups(q,tasks)
+        missing=sorted({r["quest"] for g in groups for r in g if r["quest"] not in current})
+        rows[qid]={"slug":q["normalizedName"],"groups":groups,"errors":errors,"missingFromGameplay":missing}
+    collector="5c51aac186f77432ea65c552"
+    seeds={qid for qid,q in tasks.items() if q.get("kappaRequired") is True}|{collector}
+    closure=set()
+    pending=list(seeds)
+    while pending:
+        qid=pending.pop()
+        if qid in closure or qid not in rows:continue
+        closure.add(qid)
+        pending.extend(r["quest"] for g in rows[qid]["groups"] for r in g)
+    def canonical(groups):
+        return sorted(tuple(sorted((r["quest"],tuple(sorted(r["outcomes"]))) for r in g)) for g in groups)
+    mismatches=[]
+    for qid,q in sorted(current.items()):
+        row=rows[qid]
+        if row["errors"] or canonical(q["prerequisites"])!=canonical(row["groups"]):
+            mismatches.append({"id":qid,"slug":row["slug"],"gameplay":q["prerequisites"],"reference":row["groups"],"errors":row["errors"]})
+    # Missing status rows can make the closure incomplete; report them explicitly.
+    return {"schema":1,"quests":rows,"routedPrerequisiteMismatches":mismatches,
+            "kappa":{"flaggedAndCollector":sorted(seeds),"dependencyClosure":sorted(closure),
+                     "missingFromGameplay":sorted(closure-set(current)),
+                     "unresolved":sorted(qid for qid in closure if rows[qid]["errors"])}}
+
+def test_dependencies():
+    a={"id":"a","normalizedName":"a","taskRequirements":[]}
+    b={"id":"b","normalizedName":"b","taskRequirements":[{"task":"a","status":["complete","fail"]}]}
+    tasks={"a":a,"b":b}
+    assert dependency_groups(b,tasks)==([[{"quest":"a","outcomes":["COMPLETED","FAILED"]}]],[])
+    bad=dict(b,taskRequirements=[{"task":"a","status":["unrecognized"]}])
+    assert dependency_groups(bad,tasks)[0]==[] and dependency_groups(bad,tasks)[1]
+    result=dependency_audit(tasks,{"b":{"prerequisites":[]}})
+    assert result["quests"]["b"]["missingFromGameplay"]==["a"]
+    assert len(result["routedPrerequisiteMismatches"])==1
+
 def stock_draft(q, mapped):
     blockers=set()
     translated=[]
@@ -102,6 +160,7 @@ def build(snapshot,out,resources):
     current={q["id"]:q for q in read(resources/"quests.json")["quests"]}
     mapped=ids(resources/"supplies.txt")|ids(resources/"collector-items.txt")
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
+    dependencies=dependency_audit(tasks,current)
     staged=[]
     stock=[]
     discrepancies=[]
@@ -113,6 +172,9 @@ def build(snapshot,out,resources):
         if kinds<=STOCK:
             draft=stock_draft(q,mapped)
             draft["alreadyRouted"]=qid in current
+            draft["prerequisites"]=dependencies["quests"][qid]["groups"]
+            draft["unresolvedPrerequisites"]=dependencies["quests"][qid]["errors"]
+            draft["missingPrerequisiteQuests"]=dependencies["quests"][qid]["missingFromGameplay"]
             stock.append(draft)
         if qid in current:
             adapted=current[qid]
@@ -144,9 +206,15 @@ def build(snapshot,out,resources):
              "stockDrafts":len(stock),"stockDraftsWithoutBlockers":sum(not q["blockers"] and not q["alreadyRouted"] for q in stock),
              "stockBlockers":dict(Counter(b for q in stock for b in q["blockers"])),
              "routedQuestsWithReviewNotes":len(discrepancies)}
+    write(out/"dependency-audit.json",dependencies)
+    summary.update({"routedPrerequisiteMismatches":len(dependencies["routedPrerequisiteMismatches"]),
+                    "questsWithUnresolvedPrerequisites":sum(bool(q["errors"]) for q in dependencies["quests"].values()),
+                    "kappaDependencyClosure":len(dependencies["kappa"]["dependencyClosure"]),
+                    "kappaQuestsMissingFromGameplay":len(dependencies["kappa"]["missingFromGameplay"])})
     write(out/"bulk-summary.json",summary)
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
+    test_dependencies()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
