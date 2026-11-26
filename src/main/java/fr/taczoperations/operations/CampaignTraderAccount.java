@@ -10,7 +10,9 @@ final class CampaignTraderAccount {
     private static final String UNLOCK="campaign_trader_unlock_";
     static boolean unlocked(ServerPlayer p,CampaignTrader trader){
         return switch(trader){
-            case JAEGER,REF,LIGHTKEEPER,BTR_DRIVER->SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
+            case REF->SupplyContract.account(p).getBoolean(UNLOCK+trader.id)
+                ||CampaignStorage.retired("6834145ebc1f443d7603c8a7")&&MilitaryProgression.level(SupplyContract.experienceEarned(p))>=10;
+            case JAEGER,LIGHTKEEPER,BTR_DRIVER->SupplyContract.account(p).getBoolean(UNLOCK+trader.id);
             default->true;
         };
     }
