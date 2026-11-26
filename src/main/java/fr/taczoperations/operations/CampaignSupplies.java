@@ -41,10 +41,12 @@ public final class CampaignSupplies {
         "544fb45d4bdc2dee738b4568","salewa","5755356824597772cb798962","medkit",
         "544fb25a4bdc2dfb738b4567","bandage","544fb3364bdc2d34748b456a","splint",
         "60098af40accd37ef2175f27","hemostat");
-    private static final Map<String,Integer> ARMOR=Map.of("59e7635f86f7742cbf2c1095",2,"5c0e655586f774045612eeb2",4,"5ab8e79e86f7742d8b372e78",5);
+    private static final Map<String,Integer> ARMOR=Map.of("59e7635f86f7742cbf2c1095",2,"5c0e655586f774045612eeb2",4,"5ab8e79e86f7742d8b372e78",5,"545cdb794bdc2d3a198b456a",6);
     private static final String SHOTGUN="5a38e6bac4a2826c6e06d79b";
-    static boolean rewardKnown(String id){return ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
+    private static final Map<String,String> BASE_GUNS=Map.of("5644bd2b4bdc2d3b4c8b4572","ak47","5447a9cd4bdc2dbd208b4567","m4a1","5448bd6b4bdc2dfc2f8b4569","glock_17");
+    static boolean rewardKnown(String id){return BASE_GUNS.containsKey(id)||ARMOR.containsKey(id)||SHOTGUN.equals(id)||MEDICINE.containsKey(id)||id.equals("5b8683a486f77467f2423114")||EQUIPMENT.containsKey(id)||KAPPA_REFERENCE.equals(id)||ENTRIES.stream().anyMatch(e->e.id().equals(id))||CollectorItems.rewardKnown(id);}
     static ItemStack rewardStack(String id){
+        if(BASE_GUNS.containsKey(id))return OperationsShop.weapon(BASE_GUNS.get(id),0);
         if(ARMOR.containsKey(id)){
             int tier=ARMOR.get(id);
             return BallisticVest.create(tier,BallisticVest.classColor(tier));
@@ -72,7 +74,10 @@ public final class CampaignSupplies {
         }
         if(stack.getItem() instanceof com.tacz.guns.api.item.IGun gun){
             var id=gun.getGunId(stack);
-            if(id.equals(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("tacz","m870")))return Optional.of(SHOTGUN);
+            if(id!=null&&id.getNamespace().equals("tacz")){
+                for(var e:BASE_GUNS.entrySet())if(id.getPath().equals(e.getValue()))return Optional.of(e.getKey());
+            }
+            if(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("tacz","m870").equals(id))return Optional.of(SHOTGUN);
         }
         if(stack.getItem() instanceof FieldMedicine){
             String key=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
