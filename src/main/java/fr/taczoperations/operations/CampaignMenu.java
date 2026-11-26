@@ -109,8 +109,8 @@ public final class CampaignMenu extends AbstractContainerMenu {
         if(action==BACK){p.closeContainer();if(board!=null&&p.serverLevel().isLoaded(board)&&p.serverLevel().getBlockState(board).is(OperationsMod.BOARD.get())&&board.distToCenterSqr(p.position())<=64)OperationsMenu.open(p,board,OperationsMenu.FOREST,0,"");else if(board==null&&Hideout.ownsPlot(p))HideoutMenu.open(p);return true;}
         if(action==LEGACY){p.closeContainer();ProgressionMenus.missions(p);return true;}
         if(action==SHOP){p.closeContainer();CampaignUnlockShop.open(p,t,0,()->open(p,t,selected,board));return true;}
-        if(action==COLLECT){p.closeContainer();int moved=CampaignRewardInbox.collect(p);p.sendSystemMessage(Component.literal(moved+" objet(s) récupéré(s) · "+CampaignRewardInbox.pending(p)+" en réserve"));open(p,t,selected);return true;}
-        if(action==REFRESH){p.closeContainer();open(p,t,selected);return true;}
+        if(action==COLLECT){p.closeContainer();int moved=CampaignRewardInbox.collect(p);p.sendSystemMessage(Component.literal(moved+" objet(s) récupéré(s) · "+CampaignRewardInbox.pending(p)+" en réserve"));open(p,t,selected,board);return true;}
+        if(action==REFRESH){p.closeContainer();open(p,t,selected,board);return true;}
         int kind=action/1000,index=action%1000;
         if(kind<1||kind>3||index<0||index>=serverQuests.size())return false;
         var q=serverQuests.get(index);

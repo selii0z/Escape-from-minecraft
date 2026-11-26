@@ -31,7 +31,7 @@ public final class CampaignSupplies {
     }
     public static void register(DeferredRegister.Items registry){
         for(var e:ENTRIES)ITEMS.put(e.id(),registry.registerItem("supply_"+e.id(),p->new Item(p){
-            @Override public Component getName(ItemStack stack){return Component.literal(e.name());}
+            @Override public Component getName(ItemStack stack){return Component.literal(CampaignFrench.text(e.name()));}
         },new Item.Properties().stacksTo(16)));
     }
     private static final String KAPPA_REFERENCE="5c093ca986f7740a1867ab12";

@@ -37,7 +37,7 @@ public final class CollectorItems {
         for(var entry:ENTRIES){
             ITEMS.put(entry.id(),registry.registerItem("collector_"+entry.id(),
                 props->new Item(props){
-                    @Override public Component getName(ItemStack stack){return Component.literal(entry.title());}
+                    @Override public Component getName(ItemStack stack){return Component.literal(CampaignFrench.text(entry.title()));}
                     @Override public void appendHoverText(ItemStack stack,TooltipContext context,
                         List<Component> text,net.minecraft.world.item.TooltipFlag flag){
                         text.add(Component.literal("Collectionneur · Objet de collection").withStyle(net.minecraft.ChatFormatting.GOLD));

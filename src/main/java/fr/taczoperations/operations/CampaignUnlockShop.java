@@ -73,7 +73,7 @@ final class CampaignUnlockShop {
             String name=item.getHoverName().getString();
             int slot=9+i-page*size;
             c.setItem(slot,tile(available?item:new ItemStack(Items.GRAY_DYE),name,List.of(
-                "Lot : "+o.count()+" · "+o.price()+" crédits","Quête : "+o.questName(),"Fidélité "+o.loyalty(),
+                "Lot : "+o.count()+" · "+o.price()+" crédits","Quête : "+CampaignFrench.title(o.questName()),"Fidélité "+o.loyalty(),
                 available?"Clic : acheter vers la réserve":"Verrouillé")));
             if(available)actions.put(slot,()->{p.sendSystemMessage(Component.literal(buy(p,o)));open(p,trader,page,back);});
         }
