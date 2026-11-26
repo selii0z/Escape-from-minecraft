@@ -107,3 +107,5 @@ tasks.register('campaignGraphTest', JavaExec) {
     mainClass = 'fr.taczoperations.campaign.CampaignGraphTest'
 }
 tasks.named('check') { dependsOn tasks.named('campaignGraphTest') }
+
+apply from: 'gradle/collector-art.gradle'
