@@ -40,6 +40,7 @@ jobs:
           python3 tools/tarkov_campaign_bulk.py
           install -m 644 build/tarkov-review/campaign-install-index.json src/main/resources/data/taczoperations/campaign/campaign-install-index.json
           install -m 644 build/tarkov-review/campaign-unlock-offers.json src/main/resources/data/taczoperations/campaign/campaign-unlock-offers.json
+          install -m 644 build/tarkov-review/campaign-retired-quests.json src/main/resources/data/taczoperations/campaign/campaign-retired-quests.json
           install -m 644 build/tarkov-review/supplies-development.txt src/main/resources/data/taczoperations/campaign/supplies.txt
           install -m 644 build/tarkov-review/quests-development.json src/main/resources/data/taczoperations/campaign/quests.json
       - name: Upload bulk install review
@@ -57,6 +58,8 @@ jobs:
             build/tarkov-review/supplies-development.txt
             build/tarkov-review/auto-supply-review.json
             build/tarkov-review/activation-blockers.json
+            build/tarkov-review/campaign-retired-quests.json
+            build/tarkov-review/campaign-scope-review.json
             build/tarkov-reference/manifest.json
           if-no-files-found: error
       - name: Compile and capture diagnostics
