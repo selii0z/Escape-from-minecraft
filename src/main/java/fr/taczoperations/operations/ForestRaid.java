@@ -423,6 +423,7 @@ public final class ForestRaid extends SavedData {
         };
     }
     private boolean createFieldCache(ServerLevel level,BlockPos pos,Random rng){
+        if(ExtractionRenovation.allowed(pos))return false;
         if(!level.getBlockState(pos).isAir())return false;
         int furniture=fieldEvent==1?0:fieldEvent==2?1:5;
         if(!ForestProtection.setRaidContainer(level,pos,OperationsMod.FURNITURE.get(furniture).get().defaultBlockState()))return false;
@@ -526,7 +527,7 @@ public final class ForestRaid extends SavedData {
                     !(industrial ? IndustrialZone.inside(x,z) : ForestPlan.inside(x,z))) continue;
                 int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x,z);
                 BlockPos p = new BlockPos(x,y,z);
-                if (y <= ForestPlan.WATER || !level.getBlockState(p).isAir()
+                if (ExtractionRenovation.allowed(p)||y <= ForestPlan.WATER || !level.getBlockState(p).isAir()
                     || !level.getBlockState(p.above()).isAir() || !level.canSeeSky(p)
                     || !level.getBlockState(p.below()).isFaceSturdy(level,p.below(),Direction.UP)
                     || level.getBlockState(p.below()).is(Blocks.GOLD_BLOCK)
@@ -1062,6 +1063,7 @@ public final class ForestRaid extends SavedData {
     private static BlockPos findLootFloor(ServerLevel level,BlockPos center,int radius){
         BlockPos best=null;int score=Integer.MIN_VALUE;
         for(BlockPos pos:BlockPos.withinManhattan(center,radius,0,radius)){
+            if(ExtractionRenovation.allowed(pos))continue;
             if(!level.hasChunkAt(pos)||(!ForestPlan.inside(pos.getX(),pos.getZ())&&!IndustrialZone.inside(pos.getX(),pos.getZ())))continue;
             if(!level.getBlockState(pos).isAir()||!level.getBlockState(pos.above()).isAir())continue;
             var floor=level.getBlockState(pos.below());
