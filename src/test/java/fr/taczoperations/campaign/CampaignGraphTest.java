@@ -24,7 +24,14 @@ public final class CampaignGraphTest {
         check(p.snapshot().get("a").counters().equals(Map.of("kills",3)));
         for(int i=0;i<2;i++){p.beginRaid();p.record("a","loot",1);p.record("a","single",1);p.endRaid(true);}
         check(p.state("a",1)==State.ACTIVE);
-        p.beginRaid();p.record("a","single",2);p.endRaid(true);
+        p.beginRaid();p.record("a","single",2);
+        // A reconnect during the same raid must retain its pending objectives.
+        var checkpoint=p.checkpoint();
+        var resumed=graph.restore(checkpoint);
+        check(resumed.checkpoint().inRaid());
+        check(resumed.checkpoint().pending().get("a").get("single")==2);
+        resumed.endRaid(true);
+        p=resumed;
         check(p.state("a",1)==State.READY);check(p.complete("a",1));check(!p.complete("a",1));
         var restored=graph.restore(p.snapshot());check(restored.state("b",1)==State.AVAILABLE);
         check(restored.accept("b",1));check(!restored.accept("c",1));
