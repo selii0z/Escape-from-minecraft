@@ -234,6 +234,11 @@ public final class ForestRaid extends SavedData {
         if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
+    static int campaignPlant(ServerPlayer player){
+        var raid=forPlayer(player);
+        if(raid==null||!isParticipant(player))return 0;
+        return CampaignRuntime.plant(player,raid.id,CampaignRuntime.map(raid.industrial,raid.express));
+    }
     static int campaignSearch(ServerPlayer player){
         var raid=forPlayer(player);
         if(raid==null||!isParticipant(player))return 0;
@@ -320,6 +325,10 @@ public final class ForestRaid extends SavedData {
         ServerLevel level = event.getServer().getLevel(ForestExpedition.FOREST);
         if (level == null) return;
         for(var raid:sessions(level))raid.maintain(level);
+        for(var player:level.players()){
+            var raid=forPlayer(player);
+            if(raid!=null&&isParticipant(player))CampaignRuntime.visit(player,raid.id,CampaignRuntime.map(raid.industrial,raid.express));
+        }
     }
 
     private void maintain(ServerLevel level){
