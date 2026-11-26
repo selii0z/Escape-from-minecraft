@@ -321,14 +321,19 @@ final class CampaignRuntime {
             return changed?s:null;
         });
     }
-    static void recordEquipmentSale(ServerPlayer p,int quantity){
+    static void recordMerchantSale(ServerPlayer p,String merchant,int quantity,boolean equipment){
         if(quantity<=0||!accessible(p))return;
         change(p,null,s->{
-            var q=CATALOG.graph().quests().get("6663149f1d3ec95634095e75");
-            if(q==null||!q.implemented())return null;
-            var progress=s.player().snapshot().get(q.id());
-            if(progress==null||progress.state()!=State.ACTIVE)return null;
-            return s.player().record(q.id(),"666973ee1d80fbbbfeaf46c9",quantity)?s:null;
+            boolean changed=false;
+            for(var q:CATALOG.graph().quests().values()){
+                if(!q.implemented())continue;
+                var progress=s.player().snapshot().get(q.id());
+                if(progress==null||progress.state()!=State.ACTIVE)continue;
+                for(var o:q.objectives())
+                    if(o.type().equals("sale:merchant:"+merchant)||equipment&&o.type().equals("sale:field-equipment"))
+                        changed|=s.player().record(q.id(),o.id(),quantity);
+            }
+            return changed?s:null;
         });
     }
     private static boolean record(CampaignStorage.Session s,String event,String map,GuardRole role,UUID enemy,String escortOf){
@@ -385,6 +390,17 @@ final class CampaignRuntime {
                 combat++;continue;
             }
             if(parts.length<2)return false;
+            if(parts[0].equals("sale")&&parts.length==3&&parts[1].equals("merchant")){
+                String expected=switch(o.id()){
+                    case "67519696567b9773f0811bae"->"armorer:50";
+                    case "675196dff77c0b8436ec1ef5"->"salvager:50";
+                    case "673f637a1fbc23a60a72b743"->"broker:50";
+                    case "675197664e610fc2b88e0bf3"->"broker:75";
+                    default->"";
+                };
+                if(o.scope()!=Scope.CAMPAIGN||!expected.equals(parts[2]+":"+o.amount()))return false;
+                combat++;continue;
+            }
             if(o.type().equals("sale:field-equipment")){
                 if(o.scope()!=Scope.CAMPAIGN||o.amount()!=250||!o.id().equals("666973ee1d80fbbbfeaf46c9"))return false;
                 combat++;continue;
