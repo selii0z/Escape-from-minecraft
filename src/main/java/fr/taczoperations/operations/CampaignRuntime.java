@@ -5,6 +5,7 @@ import fr.taczoperations.worldgen.ExpressZone;
 import fr.taczoperations.campaign.CampaignGraph;
 import fr.taczoperations.campaign.CampaignGraph.*;
 import fr.taczoperations.campaign.CampaignTrader;
+import fr.taczoperations.campaign.TraderRequirement;
 import fr.taczoperations.campaign.TurnInPlanner;
 import fr.taczoperations.campaign.FieldAction;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,7 +29,7 @@ final class CampaignRuntime {
     private static final String INTRO="5d2495a886f77425cd51e403", FILTH="600302d73b897b11364cd161", ULTRA="5ae448bf86f7744d733e55ee", ACQUAINTANCE="5d24b81486f77439c92d6ba8";
     private static final String HUNT_VISIT="63ac18f4972364554162a25c", HUNT_FIND="5d249a6e86f774791546e952", HUNT_GIVE="5d249aa286f77475e8376399";
     private record QuestSite(String map,int x,int z,int radius,String title,String find,String give){}
-    private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels,String dialogue,QuestSite site){}
+    private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels,String dialogue,QuestSite site,List<TraderRequirement> traderRequirements){}
     private record Catalog(CampaignGraph graph,String revision,Map<String,Meta> meta){}
     private record Reward(int credits,int xp,int reputation){}
     private static Reward reward(String id){
@@ -156,10 +157,18 @@ final class CampaignRuntime {
                         &&Set.of("596a0e1686f7741ddf17dbee","669fa399033a3ce9870338a8","675c1570526ff496850895d9").contains(id)
                         &&(dialogue==null||dialogue.equals(trader));
                 }
+                var traderRequirements=new ArrayList<TraderRequirement>();
+                if(q.has("traderRequirements"))for(var valueReq:q.getAsJsonArray("traderRequirements")){
+                    var req=valueReq.getAsJsonObject();
+                    var t=CampaignTrader.byId(req.get("trader").getAsString());
+                    var kind=TraderRequirement.Kind.valueOf(req.get("kind").getAsString());
+                    var operator=TraderRequirement.Operator.valueOf(req.get("operator").getAsString());
+                    traderRequirements.add(new TraderRequirement(t.id,kind,operator,req.get("value").getAsInt()));
+                }
                 String name=q.get("name").getAsString();
                 String slug=name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
                 if(meta.values().stream().anyMatch(x->x.slug().equals(slug)))throw new IllegalArgumentException("Duplicate quest slug");
-                meta.put(id,new Meta(name,slug,reward,loyalty,Map.copyOf(labels),dialogue,site));
+                meta.put(id,new Meta(name,slug,reward,loyalty,Map.copyOf(labels),dialogue,site,List.copyOf(traderRequirements)));
                 quests.add(new Quest(id,trader,q.get("level").getAsInt(),prereqs,objectives,conflicts,reviewed));
             }
             return new Catalog(new CampaignGraph(quests),HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),Map.copyOf(meta));
@@ -369,6 +378,10 @@ final class CampaignRuntime {
     private static boolean eligible(ServerPlayer p,String id){
         var q=CATALOG.graph().quests().get(id);
         if(q==null||CampaignTraderAccount.loyalty(p,CampaignTrader.byId(q.trader()))<CATALOG.meta().get(id).loyalty())return false;
+        for(var req:CATALOG.meta().get(id).traderRequirements()){
+            var trader=CampaignTrader.byId(req.trader());
+            if(!req.matches(CampaignTraderAccount.loyalty(p,trader),CampaignTraderAccount.reputation(p,trader)))return false;
+        }
         String dialogue=CATALOG.meta().get(id).dialogue();
         if(dialogue!=null&&!SupplyContract.account(p).getBoolean("campaign_dialogue_"+dialogue))return false;
         if(id.equals(INTRO)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_mechanic"))return false;
