@@ -236,6 +236,10 @@ public final class ForestRaid extends SavedData {
         if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
+    static String campaignMap(ServerPlayer player){
+        var raid=forPlayer(player);
+        return raid!=null&&raid.owns(player)?CampaignRuntime.map(raid.industrial,raid.express):"";
+    }
     static UUID campaignRaidId(ServerPlayer player){
         var raid=forPlayer(player);
         return raid!=null&&raid.owns(player)?raid.id:null;
@@ -1590,7 +1594,12 @@ public final class ForestRaid extends SavedData {
             corpse.put(26,CampaignSupplies.bossTrophy(role,guard.getRandom()));
         }
         if(role==GuardRole.PMC)corpse.put(25,MilitaryTag.create(guard,event.getSource().getEntity() instanceof ServerPlayer p&&raid.owns(p)?p:null));
-        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25)corpse.put(22,FieldPack.create(false,guard.getRandom().nextInt(3)));
+        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<25){
+            int tier=guard.getRandom().nextInt(100)<12?4:guard.getRandom().nextInt(3);
+            corpse.put(22,FieldPack.create(false,tier));
+        }
+        if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<18)
+            corpse.put(23,FieldPack.create(true,guard.getRandom().nextInt(100)<25?2:1));
         if(role==GuardRole.PMC&&guard.getRandom().nextInt(100)<7)corpse.put(24,new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations","tactical_headset"))));
         if(raid.express==null&&role.boss()&&role!=GuardRole.FOREMAN)corpse.put(19,raid.randomVaultKey(new Random(guard.getRandom().nextLong())));
         if (raid.express==null&&!role.boss() && guard.getRandom().nextInt(100)<3) corpse.put(19,raid.randomVaultKey(new Random(guard.getRandom().nextLong())));
