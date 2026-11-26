@@ -21,7 +21,7 @@ import net.minecraft.world.level.Level;
 public final class KeyRingItem extends Item {
     public KeyRingItem(Properties props){super(props.stacksTo(1).component(DataComponents.CONTAINER,ItemContainerContents.EMPTY));}
     @Override public boolean canFitInsideContainerItems(){return false;}
-    static boolean key(ItemStack s){return net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals("taczoperations:industrial_key");}
+    static boolean key(ItemStack s){return java.util.Set.of("taczoperations:industrial_key","taczoperations:forest_key").contains(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString());}
     static NonNullList<ItemStack> contents(ItemStack ring){
         var items=NonNullList.withSize(16,ItemStack.EMPTY);
         ring.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(items);
