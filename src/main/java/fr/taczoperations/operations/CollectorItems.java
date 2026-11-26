@@ -45,6 +45,8 @@ public final class CollectorItems {
                 },new Item.Properties().stacksTo(1).rarity(Rarity.RARE)));
         }
     }
+    static boolean rewardKnown(String id){return ENTRIES.stream().anyMatch(e->e.id().equals(id));}
+    static ItemStack rewardStack(String id){var item=ITEMS.get(id);return item==null?ItemStack.EMPTY:new ItemStack(item.get());}
     static Optional<String> reference(ItemStack stack){
         for(var row:ITEMS.entrySet())if(stack.is(row.getValue().get()))return Optional.of(row.getKey());
         return Optional.empty();
