@@ -122,10 +122,28 @@ public final class StoryMissions {
     }
     static void clear(ServerPlayer p){p.getPersistentData().remove(RUN);}
     public static void commands(RegisterCommandsEvent event){
+        event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("marchands")
+            .executes(ctx->CampaignCommerce.list(ctx.getSource().getPlayerOrException()))
+            .then(Commands.argument("marchand",com.mojang.brigadier.arguments.StringArgumentType.word())
+                .suggests((ctx,builder)->{
+                    for(var trader:fr.taczoperations.campaign.CampaignTrader.values())
+                        if(trader.id.startsWith(builder.getRemainingLowerCase()))builder.suggest(trader.id);
+                    return builder.buildFuture();
+                })
+                .executes(ctx->merchantPreview(ctx.getSource().getPlayerOrException(),com.mojang.brigadier.arguments.StringArgumentType.getString(ctx,"marchand"),1))
+                .then(Commands.argument("page",com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                    .executes(ctx->merchantPreview(ctx.getSource().getPlayerOrException(),com.mojang.brigadier.arguments.StringArgumentType.getString(ctx,"marchand"),com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx,"page")))))));
+
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("missions")
             .executes(ctx->{status(ctx.getSource().getPlayerOrException());return 1;})
             .then(Commands.literal("menu").executes(ctx->{ProgressionMenus.missions(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("accepter").executes(ctx->{accept(ctx.getSource().getPlayerOrException());return 1;}))));
+    }
+    private static int merchantPreview(ServerPlayer p,String id,int page){
+        fr.taczoperations.campaign.CampaignTrader trader;
+        try{trader=fr.taczoperations.campaign.CampaignTrader.byId(id);}
+        catch(IllegalArgumentException e){say(p,"Marchand inconnu.");return 0;}
+        return CampaignCommerce.preview(p,trader,page);
     }
     private StoryMissions(){}
 }
