@@ -813,6 +813,51 @@ final class CampaignRuntime {
     record QuestView(String id,String name,String trader,State state,int level,List<String> lines,boolean claimable){}
 
     // Presentation only: expose existing catalogue data without touching progression or rewards.
+    private static String objectiveTitle(Quest q,Objective o,Set<String> refs){
+                    String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
+                    title=CATALOG.meta().get(q.id()).labels().getOrDefault(o.id(),title);
+        return title;
+    }
+    /** Read-only progress. Pending counters are never saved by the HUD. */
+    static RaidQuestPayload trackedRaidView(ServerPlayer p){
+        if(CATALOG==null||!p.isAlive()||p.isCreative()||p.isSpectator()||ScavRun.active(p)||!ForestRaid.isParticipant(p))
+            return RaidQuestPayload.EMPTY;
+        String id=SupplyContract.account(p).getString(CampaignMenu.TRACKED);
+        var q=CATALOG.graph().quests().get(id);
+        if(q==null||!q.implemented())return RaidQuestPayload.EMPTY;
+        UUID raidId=ForestRaid.campaignRaidId(p);
+        if(raidId==null)return RaidQuestPayload.EMPTY;
+        try{
+            var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
+            if(!raidId.equals(s.raidId()))return RaidQuestPayload.EMPTY;
+            var checkpoint=s.player().checkpoint();
+            var progress=checkpoint.saved().get(id);
+            if(progress==null||progress.state()!=State.ACTIVE)return RaidQuestPayload.EMPTY;
+            var pending=checkpoint.pending().getOrDefault(id,Map.of());
+            var objectives=new ArrayList<RaidQuestPayload.Objective>();
+            for(var o:q.objectives()){
+                if(objectives.size()>=5)break;
+                int saved=Math.clamp(progress.counters().getOrDefault(o.id(),0),0,o.amount());
+                int tentative=Math.clamp(pending.getOrDefault(o.id(),0),0,o.amount()-saved);
+                var refs=stockRefs(o);
+                boolean atBase=!refs.isEmpty()||o.type().equals("pay-credits")||o.type().startsWith("milestone:");
+                if(!refs.isEmpty()&&saved<o.amount()){
+                    var storage=CarriedStorage.of(p);
+                    tentative=Math.clamp(storage.count(stack->stockCondition(q,stack)&&itemEligible(stack,o)),0,o.amount()-saved);
+                }
+                objectives.add(new RaidQuestPayload.Objective(objectiveTitle(q,o,refs),saved,tentative,o.amount(),atBase,o.optional()));
+            }
+            return new RaidQuestPayload(CampaignTrader.byId(q.trader()).title,label(id),objectives,Math.max(0,q.objectives().size()-objectives.size()));
+        }catch(RuntimeException e){
+            LOG.log(System.Logger.Level.DEBUG,"Cannot display tracked campaign progress",e);
+            return RaidQuestPayload.EMPTY;
+        }
+    }
+    static void sendTrackedRaidView(ServerPlayer p){
+        if(!SupplyContract.account(p).getString(CampaignMenu.TRACKED).isEmpty())
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,trackedRaidView(p));
+    }
+
     static int objectiveCount(String id){
         var q=CATALOG==null?null:CATALOG.graph().quests().get(id);
         return q==null||!q.implemented()?0:q.objectives().size();
@@ -893,8 +938,7 @@ final class CampaignRuntime {
                     if(state==State.ACTIVE&&o.type().equals("pay-credits"))count=Math.max(0,SupplyContract.account(p).getInt("credits"));
                     var refs=stockRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->stockCondition(q,stack)&&itemEligible(stack,o));
-                    String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
-                    title=CATALOG.meta().get(q.id()).labels().getOrDefault(o.id(),title);
+                    String title=objectiveTitle(q,o,refs);
                     lines.add(title+" : "+Math.min(count,o.amount())+"/"+o.amount());
                 }
                 if(q.id().equals(REVEALED))lines.add("Bunker · salle nord-ouest · fidélité Therapist 2");

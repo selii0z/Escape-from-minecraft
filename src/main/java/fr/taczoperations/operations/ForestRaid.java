@@ -356,6 +356,7 @@ public final class ForestRaid extends SavedData {
         for(var player:level.players()){
             var raid=forPlayer(player);
             if(raid!=null&&isParticipant(player))CampaignRuntime.visit(player,raid.id,CampaignRuntime.map(raid.industrial,raid.express));
+            CampaignRuntime.sendTrackedRaidView(player);
         }
     }
 

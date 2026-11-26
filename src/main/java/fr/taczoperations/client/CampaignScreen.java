@@ -244,7 +244,7 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
         button(g,line(s,3).equals("1")?"Ne plus suivre":"Suivre",707,405,110,22,mx,my,follow,line(s,3).equals("1"));
     }
     @Override protected void renderLabels(GuiGraphics g,int mx,int my){}
-    private void send(int action){if(minecraft!=null&&minecraft.gameMode!=null)minecraft.gameMode.handleInventoryButtonClick(menu.containerId,action);}
+    private void send(int action){if(minecraft!=null&&minecraft.gameMode!=null)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.CampaignAction(menu.containerId,action));}
     @Override public boolean mouseClicked(double mx,double my,int button){
         if(button!=0)return super.mouseClicked(mx,my,button);
         double x=(mx-leftPos)/scale,y=(my-topPos)/scale;

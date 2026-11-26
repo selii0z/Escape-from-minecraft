@@ -139,7 +139,18 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("31");
+        var registrar = event.registrar("32");
+        registrar.playToServer(fr.taczoperations.operations.CampaignAction.TYPE,fr.taczoperations.operations.CampaignAction.CODEC,
+            (message,context)->context.enqueueWork(()->{
+                if(context.player() instanceof net.minecraft.server.level.ServerPlayer p
+                    &&p.containerMenu instanceof fr.taczoperations.operations.CampaignMenu menu&&menu.containerId==message.menuId())
+                    menu.clickMenuButton(p,message.action());
+            }));
+        registrar.playToClient(fr.taczoperations.operations.RaidQuestPayload.TYPE,fr.taczoperations.operations.RaidQuestPayload.CODEC,
+            (message,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.RaidQuestHud.handle(message,context);
+            });
         registrar.playToServer(fr.taczoperations.operations.WipeAccount.TYPE,fr.taczoperations.operations.WipeAccount.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p)

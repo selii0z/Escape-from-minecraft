@@ -27,7 +27,7 @@ public final class CampaignMenu extends AbstractContainerMenu {
     public static final int TRADERS=CampaignTrader.values().length, INBOX=TRADERS, FIRST=TRADERS+1;
     public static final int COLLECT=100, LEGACY=101, BACK=102, SHOP=103, REFRESH=104;
     public static final int ACCEPT=1000, CLAIM=2000, FOLLOW=3000;
-    private static final String TRACKED="campaign_followed_quest";
+    static final String TRACKED="campaign_followed_quest";
     private final Player owner;
     private final int trader,selected,count;
     private final List<CampaignRuntime.QuestView> serverQuests;
