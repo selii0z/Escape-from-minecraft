@@ -270,7 +270,7 @@ final class CampaignRuntime {
             return new CampaignStorage.Session(s.player(),null);
         });
     }
-    static void gunEvent(ServerPlayer p,UUID raidId,String map,GuardRole role,String mode,String part,boolean bolt,double distance){
+    static void gunEvent(ServerPlayer p,UUID raidId,String map,GuardRole role,String mode,String part,net.minecraft.resources.ResourceLocation weapon,double distance){
         if(raidId==null||!Double.isFinite(distance)||distance<0)return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId()))return null;
@@ -282,7 +282,7 @@ final class CampaignRuntime {
                     if(!o.type().startsWith("gunshot:")||progress.counters().getOrDefault(o.id(),0)>=o.amount())continue;
                     var a=o.type().split(":",-1);
                     if(a.length!=8||!matches("kill:"+a[1]+":"+a[2],"kill",map,role)||!a[3].equals(mode)
-                        ||!a[4].equals("any")&&!a[4].equals(part)||a[5].equals("bolt")&&!bolt)continue;
+                        ||!a[4].equals("any")&&!a[4].equals(part)||!CampaignGunEvents.matchesWeapon(a[5],weapon))continue;
                     int target=Integer.parseInt(a[7]);
                     boolean range=switch(a[6]){
                         case "ge"->distance>=target;case "le"->distance<=target;
@@ -350,7 +350,7 @@ final class CampaignRuntime {
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
             if(parts[0].equals("gunshot")){
                 if(parts.length!=8||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
-                    ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt").contains(parts[5])
+                    ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt","pistol","ak","western","rifle","smg","shotgun").contains(parts[5])
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
                 String role=parts[2];
