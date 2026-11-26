@@ -196,10 +196,12 @@ public final class ForestRaid extends SavedData {
         }
         player.getPersistentData().putUUID(PLAYER, raid.id);
         RaidSurvival.begin(player);
-        SupplyContract.departure(player);
-        StoryMissions.begin(player,industrial);
-        CampaignRuntime.begin(player,raid.id);
-        PassiveSkills.begin(player);
+        if(!ScavRun.active(player)){
+            SupplyContract.departure(player);
+            StoryMissions.begin(player,industrial);
+            CampaignRuntime.begin(player,raid.id);
+            PassiveSkills.begin(player);
+        }
         raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
@@ -676,6 +678,18 @@ public final class ForestRaid extends SavedData {
         // Raid deaths must not affect the vanilla Minecraft death statistic.
         // The vanilla death has already been counted when the clone event fires.
         ForestRaid deathRaid=forPlayer(original);
+        if(ScavRun.active(original)){
+            var root=respawned.getPersistentData();
+            var persisted=root.getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+            persisted.put("taczoperations",SupplyContract.account(original).copy());
+            root.put(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG,persisted);
+            ScavRun.markFinished(respawned,false);
+            var deaths=net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.DEATHS);
+            respawned.getStats().setValue(respawned,deaths,Math.max(0,respawned.getStats().getValue(deaths)-1));
+            clearPlayer(respawned);ForestExpedition.clearReturnPoint(respawned);RaidLootValue.clear(respawned);
+            finishParticipant(original);clearPlayer(original);cleanupWhenEmpty(original.serverLevel());
+            return;
+        }
         if (deathRaid!=null) {
             // Explicitly transfer Escape progression before applying the penalty:
             // a respawned player may not yet have the original persistent account.
