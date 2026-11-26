@@ -374,7 +374,7 @@ public enum OperationsShop {
             if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
-            if(this==SALVAGER&&(stack.getItem() instanceof FieldPack||BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.CHEST)>0))CampaignRuntime.recordEquipmentSale(player,quantity);
+            CampaignRuntime.recordMerchantSale(player,name().toLowerCase(java.util.Locale.ROOT),quantity,this==SALVAGER&&(stack.getItem() instanceof FieldPack||BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.CHEST)>0));
             PassiveSkills.trade(player,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }
