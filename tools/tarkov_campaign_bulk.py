@@ -209,7 +209,10 @@ def stock_draft(q, mapped, current):
             blockers.add("invalid-stock-objective");continue
         if o.get("maps") or o.get("zones"):
             blockers.add("location-restricted-stock")
-        if (o.get("dogTagLevel") or 0)!=0 or (o.get("minDurability") or 0)!=0 or o.get("maxDurability",100) not in (100,None):
+        rank=o.get("dogTagLevel") or 0
+        reviewed_rank=(q["id"]=="60e71ccb5688f6424c7bfec4" and rank==20 and o["type"]=="giveItem"
+            and len(items)==1 and items[0] in {"59f32bb586f774757e1e8442","59f32c3b86f77472a31742f0"})
+        if (rank!=0 and not reviewed_rank) or (o.get("minDurability") or 0)!=0 or o.get("maxDurability",100) not in (100,None):
             blockers.add("stock-condition-or-dogtag-level")
         if set(o)-{"id","description","type","count","optional","items","dogTagLevel","maxDurability","minDurability","foundInRaid","maps","zones"}:
             blockers.add("unknown-stock-predicate")
@@ -227,6 +230,7 @@ def stock_draft(q, mapped, current):
             blockers.add("item-mapping-required")
         translated.append({"id":o["id"],"type":prefix+("fir:" if fir else "any:")+",".join(sorted(items)),
                            "amount":o["count"],"scope":"CAMPAIGN","optional":o.get("optional",False)})
+        if reviewed_rank:translated[-1]["label"]="Remettre des plaques "+("BEAR" if items[0]=="59f32bb586f774757e1e8442" else "USEC")+" · niveau 20 minimum"
     # Mixed provenance is supported by the disjoint-stock allocator.
     if not give:
         blockers.add("no-handover")
@@ -988,6 +992,20 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             second["taskRequirements"]=[{"task":part1,"status":["complete"]}]
             audit.append({"id":part1,"name":display_name(first),"changes":[{"type":"cross-merchant-letter-sequential","reference":gate}]})
             audit.append({"id":part2,"name":display_name(second),"changes":[{"type":"cross-merchant-letter-sequential","reference":give}]})
+    # This source chain uses an active parent and a cross-trader document.
+    # EFM uses three sequential missions; the first really requires extraction.
+    helping="6752f6d83038f7df520c83e8"; shipping1="673f348dd3346c21670217e7"; shipping2="673f2cd5d3346c2167020484"
+    if all(qid in tasks for qid in (helping,shipping1,shipping2)):
+        first=tasks[helping]; second=tasks[shipping1]; third=tasks[shipping2]
+        find=next((o for o in first["objectives"] if o["type"]=="findQuestItem"),None)
+        gate=next((o for o in first["objectives"] if o["type"]=="taskStatus" and o.get("task")==shipping1),None)
+        give=next((o for o in second["objectives"] if o["type"]=="giveQuestItem"),None)
+        if find and gate and give and find["questItem"]==give["questItem"] and len(second["objectives"])==1:
+            first["objectives"]=[o for o in first["objectives"] if o is not gate]+[dict(give,id=gate["id"])]
+            second["objectives"]=[{"id":give["id"],"type":"taskStatus","task":helping,"status":["complete"],"optional":False,"maps":[],"zones":[],"description":"Confirmer la transmission du document extrait"}]
+            second["taskRequirements"]=[{"task":helping,"status":["complete"]}]
+            third["taskRequirements"]=[dict(req,status=["complete"]) if req["task"]==helping else req for req in third.get("taskRequirements",[])]
+            audit.extend({"id":qid,"name":display_name(tasks[qid]),"changes":[{"type":"shipping-document-sequential"}]} for qid in (helping,shipping1,shipping2))
     for qid,q in sorted(tasks.items()):
         changes=[]
         if q.get("factionName") in {"USEC","BEAR"}:
@@ -1038,6 +1056,10 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     elif all(item_catalog.get(ref,{}).get("normalizedName","").startswith(("dogtag-usec","double-dogtag-usec")) for ref in original):
                         o["items"]=["59f32c3b86f77472a31742f0"]
                         changes.append({"type":"real-pmc-dogtag","objective":o["id"],"before":original,"after":o["items"]})
+                        original=o["items"]
+                    if qid=="69ce21e990144e437802b1e0" and set(original)=={"68947a4be4bf255d1b0ca746","689479eb30cc5ba7be00f5ff","689479cb47e5acd1e10be986","689479a4a733b1602007e2eb"}:
+                        o["items"]=["5648a69d4bdc2ded0b8b457b"]
+                        changes.append({"type":"elite-rig-equivalent","objective":o["id"],"before":original,"after":o["items"]})
                         original=o["items"]
                     if set(original)<=WEAPON_HANDOVERS.keys():
                         adapted=sorted({WEAPON_HANDOVERS[ref] for ref in original})
