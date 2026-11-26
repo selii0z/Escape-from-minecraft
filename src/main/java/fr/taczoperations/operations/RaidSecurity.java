@@ -111,6 +111,34 @@ public final class RaidSecurity {
             owner.getInventory().setChanged();
         }
     }
+    /** Internal reward adapter; only a successfully validated campaign reward may call it.
+     * Replace exactly one carried case in place, preserving all its saved contents.
+     * No public command, recipe or vendor grants a higher tier.
+     */
+    static boolean grantCaseUpgrade(ServerPlayer p,SecureCaseItem.Tier target){
+        if(!available(p)||p.isCreative()||p.level().dimension().equals(ForestExpedition.FOREST)
+            ||ForestExpedition.hasReturnPoint(p)||!p.containerMenu.getCarried().isEmpty())return false;
+        int found=-1;
+        var inv=p.getInventory();
+        for(int i=0;i<inv.getContainerSize();i++){
+            if(!(inv.getItem(i).getItem() instanceof SecureCaseItem))continue;
+            if(found>=0)return false;
+            found=i;
+        }
+        if(!SupplyContract.account(p).getList(PROTECTED,10).isEmpty()
+            ||!p.getPersistentData().getList(DEATH_CASES,10).isEmpty())return false;
+        if(found<0)return false;
+        var previous=inv.getItem(found);
+        if(SecureCaseItem.capacity(previous)>=target.capacity)return false;
+        var registered=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",target.id));
+        if(!(registered instanceof SecureCaseItem next)||next.tier()!=target)return false;
+        p.closeContainer();
+        var replacement=new ItemStack(registered);
+        replacement.set(DataComponents.CUSTOM_DATA,CustomData.of(tag(previous)));
+        inv.setItem(found,replacement);inv.setChanged();
+        return true;
+    }
     // Store only real drops that have been removed from the death event.
     // This also protects the physical case from death outside a raid.
     private static final String PROTECTED="secure_cases_pending";
