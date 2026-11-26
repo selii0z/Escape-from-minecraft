@@ -26,7 +26,6 @@ final class CampaignMenu {
     static void open(ServerPlayer p){open(p,null,0);}
     private static void open(ServerPlayer p,CampaignTrader trader,int requested){
         if(!ProgressionMenus.available(p)||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty())return;
-        if(trader!=null)CampaignRuntime.traderDialogue(p,trader);
         var live=CampaignRuntime.views(p);
         var all=CampaignPreview.merge(live);
         var liveIds=live.stream().map(CampaignRuntime.QuestView::id).collect(java.util.stream.Collectors.toSet());
