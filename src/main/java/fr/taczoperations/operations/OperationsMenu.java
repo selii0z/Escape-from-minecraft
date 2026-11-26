@@ -355,7 +355,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
             || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET || button==DETAILED_STATS) {
             tab = button;
             page = 0;
-        } else if(tab==FOREST&&button>=EXPRESS_FIRST&&button<EXPRESS_FIRST+12){
+        } else if(tab==FOREST&&button>=EXPRESS_FIRST&&button<EXPRESS_FIRST+16){
             int mode=button-EXPRESS_FIRST;
             var map=fr.taczoperations.worldgen.ExpressZone.byId(1+mode/4);
             if(map==null)return false;
