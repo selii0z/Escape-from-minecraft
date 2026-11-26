@@ -51,6 +51,20 @@ public final class CampaignGraphTest {
         check(TurnInPlanner.plan(Map.of("a",1),demands)==null);
         check(TurnInPlanner.plan(Map.of("a",5),List.of(new TurnInPlanner.Demand(3,Set.of("a")))).equals(Map.of("a",3)));
         check(TurnInPlanner.plan(Map.of(),List.of()).isEmpty());
-        System.out.println("Campaign graph and turn-in checks passed");
+        var sampleGraph=new CampaignGraph(List.of(q("sample",List.of(),List.of(
+            new Objective("find","quest-find",1,Scope.SURVIVING_RAID,false),
+            new Objective("give","quest-give",1,Scope.CAMPAIGN,false)),Set.of(),true)));
+        var sample=sampleGraph.newPlayer();
+        check(sample.accept("sample",1));
+        sample.beginRaid();sample.record("sample","find",1);sample.endRaid(false);
+        check(sample.snapshot().get("sample").counters().isEmpty());
+        check(!sample.complete("sample",1));
+        sample.beginRaid();sample.record("sample","find",1);
+        var reconnected=sampleGraph.restore(sample.checkpoint());reconnected.endRaid(true);
+        check(reconnected.snapshot().get("sample").counters().get("find")==1);
+        check(!reconnected.complete("sample",1));
+        reconnected.record("sample","give",1);check(reconnected.complete("sample",1));
+        check(!reconnected.complete("sample",1));
+        System.out.println("Campaign graph, turn-in and quest-item checks passed");
     }
 }
