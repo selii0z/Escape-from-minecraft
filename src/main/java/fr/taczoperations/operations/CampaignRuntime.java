@@ -27,7 +27,7 @@ final class CampaignRuntime {
     private static final String DEPOSIT="6a5c10e883a51e292d11b976", HOSE="59e35cbb86f7741778269d83";
     private static final String INTRO="5d2495a886f77425cd51e403", FILTH="600302d73b897b11364cd161", ULTRA="5ae448bf86f7744d733e55ee", ACQUAINTANCE="5d24b81486f77439c92d6ba8";
     private static final String HUNT_VISIT="63ac18f4972364554162a25c", HUNT_FIND="5d249a6e86f774791546e952", HUNT_GIVE="5d249aa286f77475e8376399";
-    private record Meta(String name,String slug,Reward reward){}
+    private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels){}
     private record Catalog(CampaignGraph graph,String revision,Map<String,Meta> meta){}
     private record Reward(int credits,int xp,int reputation){}
     private static Reward reward(String id){
@@ -121,10 +121,23 @@ final class CampaignRuntime {
                     var r=q.getAsJsonObject("reward");reward=new Reward(r.get("credits").getAsInt(),r.get("xp").getAsInt(),r.get("reputation").getAsInt());
                     if(reward.credits()<0||reward.xp()<0||reward.reputation()<0)throw new IllegalArgumentException("Invalid reward");
                 }
+                int loyalty=q.has("loyalty")?q.get("loyalty").getAsInt():1;
+                if(loyalty<1||loyalty>4)throw new IllegalArgumentException("Invalid loyalty");
+                var labels=new HashMap<String,String>();
+                for(var valueLabel:q.getAsJsonArray("objectives")){
+                    var o=valueLabel.getAsJsonObject();
+                    if(o.has("label"))labels.put(o.get("id").getAsString(),o.get("label").getAsString());
+                }
+                if(q.has("adapter")&&q.get("adapter").getAsString().equals("paired-stock-v1")){
+                    reviewed=q.get("implemented").getAsBoolean()&&reward!=null&&prereqs.isEmpty()&&conflicts.isEmpty()
+                        &&Set.of("59c9392986f7742f6923add2","5ac346a886f7744e1b083d67","5d25e4b786f77408251c4bfc",
+                            "5969f90786f77420d2328015","60e71dc67fcf9c556f325056","69ce1de03e15cd80bd06f6c9").contains(id)
+                        &&pairedStockValid(objectives);
+                }
                 String name=q.get("name").getAsString();
                 String slug=name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
                 if(meta.values().stream().anyMatch(x->x.slug().equals(slug)))throw new IllegalArgumentException("Duplicate quest slug");
-                meta.put(id,new Meta(name,slug,reward));
+                meta.put(id,new Meta(name,slug,reward,loyalty,Map.copyOf(labels)));
                 quests.add(new Quest(id,trader,q.get("level").getAsInt(),prereqs,objectives,conflicts,reviewed));
             }
             return new Catalog(new CampaignGraph(quests),HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),Map.copyOf(meta));
@@ -196,6 +209,27 @@ final class CampaignRuntime {
             default->parts[2].equals(role.name().toLowerCase(Locale.ROOT));
         };
     }
+    private static boolean pairedStockValid(List<Objective> objectives){
+        if(objectives.isEmpty()||objectives.size()%2!=0)return false;
+        var seen=new HashSet<String>();
+        String provenance=null;
+        for(int i=0;i<objectives.size();i+=2){
+            var find=objectives.get(i);var give=objectives.get(i+1);
+            if(!find.type().matches("find-stock-(fir|any):[0-9a-f]{24}")||
+                !give.type().equals(find.type().replace("find-stock-","turnin-"))||
+                find.amount()!=give.amount()||find.scope()!=Scope.CAMPAIGN||give.scope()!=Scope.CAMPAIGN||
+                find.optional()||give.optional()||!seen.add(find.type()))return false;
+            String mode=find.type().startsWith("find-stock-fir:")?"fir":"any";
+            if(provenance!=null&&!provenance.equals(mode))return false;
+            provenance=mode;
+        }
+        return true;
+    }
+    private static boolean findStock(Objective o){return o.type().startsWith("find-stock-");}
+    private static Set<String> stockRefs(Objective o){
+        if(findStock(o))return Set.of(o.type().substring(o.type().indexOf(':')+1));
+        return turnInRefs(o);
+    }
     private static Set<String> turnInRefs(Objective o){
         if(!o.type().startsWith("turnin-fir:")&&!o.type().startsWith("turnin-any:"))return Set.of();
         var refs=new HashSet<String>();
@@ -216,7 +250,7 @@ final class CampaignRuntime {
         if(accessible(p)&&CampaignTraderAccount.unlocked(p,trader))SupplyContract.account(p).putBoolean("campaign_dialogue_"+trader.id,true);
     }
     private static boolean itemEligible(net.minecraft.world.item.ItemStack stack,Objective o){
-        return (!o.type().startsWith("turnin-fir:")||RaidOrigin.found(stack))&&CampaignSupplies.reference(stack).filter(turnInRefs(o)::contains).isPresent();
+        return (!(o.type().startsWith("turnin-fir:")||o.type().startsWith("find-stock-fir:"))||RaidOrigin.found(stack))&&CampaignSupplies.reference(stack).filter(stockRefs(o)::contains).isPresent();
     }
     private static boolean near(ServerPlayer p,net.minecraft.core.BlockPos pos,int radius){
         return pos.distToCenterSqr(p.position())<=radius*radius;
@@ -312,7 +346,7 @@ final class CampaignRuntime {
     static int claimChemical(ServerPlayer p){return claim(p,CHEMICAL);}
     private static boolean eligible(ServerPlayer p,String id){
         var q=CATALOG.graph().quests().get(id);
-        if(q==null||!CampaignTraderAccount.unlocked(p,CampaignTrader.byId(q.trader())))return false;
+        if(q==null||CampaignTraderAccount.loyalty(p,CampaignTrader.byId(q.trader()))<CATALOG.meta().get(id).loyalty())return false;
         if(id.equals(INTRO)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_mechanic"))return false;
         if(id.equals(ULTRA)&&!SupplyContract.account(p).getBoolean("campaign_dialogue_ragman"))return false;
         return !id.equals(REVEALED)||CampaignTraderAccount.loyalty(p,CampaignTrader.THERAPIST)>=2;
@@ -356,12 +390,13 @@ final class CampaignRuntime {
                 var progress=s.player().snapshot().get(q.id());
                 var r=reward(q.id());
                 var lines=new ArrayList<String>();
-                lines.add("Niveau "+q.level()+" · "+stateLabel(state));
+                lines.add("Niveau "+q.level()+" · Fidélité "+CATALOG.meta().get(q.id()).loyalty()+" · "+stateLabel(state));
                 for(var o:q.objectives()){
                     int count=progress==null?0:progress.counters().getOrDefault(o.id(),0);
-                    var refs=turnInRefs(o);
+                    var refs=stockRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->itemEligible(stack,o));
                     String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
+                    title=CATALOG.meta().get(q.id()).labels().getOrDefault(o.id(),title);
                     lines.add(title+" : "+Math.min(count,o.amount())+"/"+o.amount());
                 }
                 if(q.id().equals(REVEALED))lines.add("Bunker · salle nord-ouest · fidélité Therapist 2");
@@ -388,6 +423,7 @@ final class CampaignRuntime {
             trial.record(q.id(),o.id(),o.amount());
         }
         if(TurnInPlanner.plan(stock,demands)==null)return false;
+        for(var o:q.objectives())if(findStock(o))trial.record(q.id(),o.id(),o.amount());
         if(q.id().equals(INTRO)||q.id().equals(REVEALED)){
             String find=q.id().equals(INTRO)?HUNT_FIND:SAMPLE_FIND,give=q.id().equals(INTRO)?HUNT_GIVE:SAMPLE_GIVE;
             if(trial.snapshot().get(q.id()).counters().getOrDefault(find,0)<1)return false;
@@ -445,7 +481,7 @@ final class CampaignRuntime {
             }
             var plan=TurnInPlanner.plan(stock,demands);
             if(plan==null){say(p,"Objets trouvés en raid insuffisants. Aucun objet remis.");return 0;}
-            for(var o:q.objectives())if(!turnInRefs(o).isEmpty())s.player().record(id,o.id(),o.amount());
+            for(var o:q.objectives())if(!turnInRefs(o).isEmpty()||findStock(o))s.player().record(id,o.id(),o.amount());
             if(id.equals(REVEALED)||id.equals(INTRO)){
                 String find=id.equals(INTRO)?HUNT_FIND:SAMPLE_FIND,give=id.equals(INTRO)?HUNT_GIVE:SAMPLE_GIVE;
                 var progress=s.player().snapshot().get(id);
