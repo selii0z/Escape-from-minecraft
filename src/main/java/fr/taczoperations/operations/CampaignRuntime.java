@@ -26,6 +26,9 @@ final class CampaignRuntime {
     private static final String SAMPLE_GIVE="66a7eebed6bac3ecc16f7d6b";
     private static final String SEARCH="5fd9fad9c1ce6b1a3b486d00", CHEMICAL="5a27bafb86f7741c73584017";
     private static final String CONVOY="5fd9fad9c1ce6b1a3b486d03", CAMP="5fd9fad9c1ce6b1a3b486d05";
+    private static final String BLACK_SWAN="669fa39b91b0a8c9680fc467", CHUMMING="5b4795fb86f7745876267770", EASY_MONEY="6834145ebc1f443d7603c8a7";
+    private static final String MARKER="5991b51486f77447b112d44f", POSTER="675a0288c3102563bd01c9c3", GOLD_CHAIN="5734758f24597738025ee253";
+    private static final String BLACK_SWAN_MARK="669fb647a5be751be095da27", CHUMMING_CUSTOMS="5b4796c086f7745877352c2c", CHUMMING_WOODS="5b47971086f774587877ad34", EASY_MONEY_PLANT="6834145ebc1f443d7603c8ab";
     private static final String DEPOSIT="6a5c10e883a51e292d11b976", HOSE="59e35cbb86f7741778269d83";
     private static final String INTRO="5d2495a886f77425cd51e403", FILTH="600302d73b897b11364cd161", ULTRA="5ae448bf86f7744d733e55ee", ACQUAINTANCE="5d24b81486f77439c92d6ba8";
     private static final String HUNT_VISIT="63ac18f4972364554162a25c", HUNT_FIND="5d249a6e86f774791546e952", HUNT_GIVE="5d249aa286f77475e8376399";
@@ -188,6 +191,18 @@ final class CampaignRuntime {
                     reviewed=q.get("implemented").getAsBoolean()&&reward!=null&&objectives.equals(List.of(
                         new Objective("66b38e144f2ab7cc530c3fe8","visit:factory:mine-check",1,Scope.CAMPAIGN,false),
                         new Objective("66b38e144f2ab7cc530c3fea","visit:customs:mine-check",1,Scope.CAMPAIGN,false)));
+                }
+                if(q.has("adapter")&&q.get("adapter").getAsString().equals("field-deposit-v2")){
+                    var expected=switch(id){
+                        case BLACK_SWAN->List.of(new Objective(BLACK_SWAN_MARK,"plant:factory:black-swan:"+MARKER,1,Scope.CAMPAIGN,false));
+                        case CHUMMING->List.of(new Objective(CHUMMING_CUSTOMS,"plant:customs:chumming:"+GOLD_CHAIN,3,Scope.CAMPAIGN,false),
+                            new Objective(CHUMMING_WOODS,"plant:woods:chumming:"+GOLD_CHAIN,3,Scope.CAMPAIGN,false));
+                        case EASY_MONEY->List.of(new Objective(EASY_MONEY_PLANT,"plant:customs:arena-poster:"+POSTER,1,Scope.CAMPAIGN,false));
+                        default->List.<Objective>of();
+                    };
+                    String owner=switch(id){case BLACK_SWAN->"mechanic";case CHUMMING,EASY_MONEY->"skier";default->"";};
+                    reviewed=q.get("implemented").getAsBoolean()&&reward!=null&&prereqs.isEmpty()&&conflicts.isEmpty()
+                        &&trader.equals(owner)&&!expected.isEmpty()&&objectives.equals(expected)&&starterItems(id).keySet().stream().allMatch(CampaignSupplies::rewardKnown);
                 }
                 var traderRequirements=new ArrayList<TraderRequirement>();
                 if(q.has("traderRequirements"))for(var valueReq:q.getAsJsonArray("traderRequirements")){
@@ -371,9 +386,35 @@ final class CampaignRuntime {
     // Server thread only; each player can perform one uninterrupted terrain action.
     private record Site(String quest,String objective,String map,String item,net.minecraft.core.BlockPos pos,int radius,int duration){}
     private static final Map<UUID,FieldAction> ACTIONS=new HashMap<>();
-    private static final List<Site> SITES=List.of(new Site(CHEMICAL,DEPOSIT,"customs",HOSE,
-        new net.minecraft.core.BlockPos(fr.taczoperations.worldgen.IndustrialZone.ORIGIN+95,
-            fr.taczoperations.worldgen.IndustrialZone.FLOOR+1,fr.taczoperations.worldgen.IndustrialZone.ORIGIN+425),3,200));
+    private static net.minecraft.core.BlockPos industrialPoint(int x,int z){
+        return new net.minecraft.core.BlockPos(fr.taczoperations.worldgen.IndustrialZone.ORIGIN+x,
+            fr.taczoperations.worldgen.IndustrialZone.FLOOR+1,fr.taczoperations.worldgen.IndustrialZone.ORIGIN+z);
+    }
+    private static final List<Site> SITES=List.of(
+        new Site(CHEMICAL,DEPOSIT,"customs",HOSE,industrialPoint(95,425),3,200),
+        new Site(BLACK_SWAN,BLACK_SWAN_MARK,"factory",MARKER,
+            ExpressZone.BUNKER.pos(new fr.taczoperations.worldgen.ForestPlan.Point(112,112)),4,200),
+        new Site(CHUMMING,CHUMMING_CUSTOMS,"customs",GOLD_CHAIN,industrialPoint(350,520),5,200),
+        new Site(CHUMMING,CHUMMING_WOODS,"woods",GOLD_CHAIN,
+            ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(645,225)),6,200),
+        new Site(EASY_MONEY,EASY_MONEY_PLANT,"customs",POSTER,industrialPoint(125,540),5,200));
+    private static Map<String,Integer> starterItems(String id){
+        return switch(id){
+            case BLACK_SWAN->Map.of(MARKER,1);
+            case CHUMMING->Map.of(GOLD_CHAIN,4);
+            case EASY_MONEY->Map.of(POSTER,3);
+            default->Map.of();
+        };
+    }
+    private static int fieldTarget(Site x){
+        var q=CATALOG.graph().quests().get(x.quest());
+        if(q==null||!q.implemented())return 0;
+        return q.objectives().stream().filter(o->o.id().equals(x.objective())).mapToInt(Objective::amount).findFirst().orElse(0);
+    }
+    private static String supplyTitle(String id){
+        var stack=CampaignSupplies.rewardStack(id);
+        return stack.isEmpty()?id:stack.getHoverName().getString();
+    }
     private static Site site(FieldAction action,ServerPlayer p){
         return SITES.stream().filter(x->x.quest().equals(action.quest())&&x.objective().equals(action.objective())
             &&x.map().equals(action.map())&&x.item().equals(action.item())&&near(p,x.pos(),x.radius())).findFirst().orElse(null);
@@ -386,14 +427,15 @@ final class CampaignRuntime {
             if(!raidId.equals(s.raidId()))return 0;
             for(var x:SITES){
                 if(!x.map().equals(map)||!near(p,x.pos(),x.radius()))continue;
-                if(s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
+                int target=fieldTarget(x);
+                if(target<=0||s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
                 var progress=s.player().snapshot().get(x.quest());
-                if(progress.counters().getOrDefault(x.objective(),0)>0)continue;
+                if(progress.counters().getOrDefault(x.objective(),0)>=target)continue;
                 if(CarriedStorage.of(p).count(stack->CampaignSupplies.matches(stack,x.item()))<1){
-                    say(p,"Objet de mission requis : "+(x.item().equals(HOSE)?"tuyau annelé":x.item()));return 0;
+                    say(p,"Objet de mission requis : "+supplyTitle(x.item()));return 0;
                 }
                 ACTIONS.put(p.getUUID(),new FieldAction(raidId,x.quest(),x.objective(),x.map(),x.item(),x.duration(),0));
-                say(p,"Dépôt en cours · reste dans la zone pendant "+(x.duration()/20)+" secondes.");
+                say(p,(x.item().equals(MARKER)?"Balisage":"Dépôt")+" en cours · reste dans la zone pendant "+(x.duration()/20)+" secondes.");
                 return 1;
             }
             say(p,"Aucun dépôt de mission disponible ici.");return 0;
@@ -421,15 +463,17 @@ final class CampaignRuntime {
             iterator.remove();
             try{
                 var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raid);
-                if(!raid.equals(s.raidId())||s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
+                int target=fieldTarget(x);
+                if(target<=0||!raid.equals(s.raidId())||s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
                 var progress=s.player().snapshot().get(x.quest());
-                if(progress.counters().getOrDefault(x.objective(),0)>0)continue;
+                int previous=progress.counters().getOrDefault(x.objective(),0);
+                if(previous>=target)continue;
                 var storage=CarriedStorage.of(p);
                 if(storage.count(stack->CampaignSupplies.matches(stack,x.item()))<1){say(p,"Dépôt annulé : objet manquant.");continue;}
                 if(!s.player().record(x.quest(),x.objective(),1))continue;
                 if(!storage.consume(stack->CampaignSupplies.matches(stack,x.item()),1))continue;
                 CampaignStorage.save(p,CATALOG.revision(),s);
-                say(p,label(x.quest())+" · dépôt terminé.");
+                say(p,label(x.quest())+" · "+(x.item().equals(MARKER)?"balise posée":"objet déposé")+" ("+(previous+1)+"/"+target+").");
             }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign action failed",e);}
         }
     }
@@ -548,6 +592,11 @@ final class CampaignRuntime {
                 if(q.id().equals(SEARCH))lines.add("Forêt Noire · convoi et camp");
                 if(q.id().equals(CHEMICAL))lines.add("Zone industrielle · dépôt logistique ouest");
                 if(q.id().equals(ULTRA))lines.add("Entrepôt");
+                for(var field:SITES)if(field.quest().equals(q.id())&&!q.id().equals(CHEMICAL)){
+                    lines.add((field.item().equals(MARKER)?"Baliser":"Déposer")+" : "+supplyTitle(field.item())+" · "+field.map());
+                    lines.add("Coordonnées de raid : "+field.pos().getX()+", "+field.pos().getY()+", "+field.pos().getZ());
+                }
+                if(!starterItems(q.id()).isEmpty()&&state==State.AVAILABLE)lines.add("Matériel de départ fourni via la réserve");
                 var site=CATALOG.meta().get(q.id()).site();if(site!=null){
                     lines.add(site.title()+" · fouiller puis extraire");
                     if(site.map().equals("streets")){
@@ -588,9 +637,13 @@ final class CampaignRuntime {
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),null);
             if(!eligible(p,id)){say(p,"Marchand ou fidélité requis. Consulte /efm marchands.");return 0;}
             if(id.equals(SEARCH)&&p.getInventory().getFreeSlot()<0){say(p,"Libère une case pour la boussole.");return 0;}
+            var starters=starterItems(id);
+            if(!CampaignRewardInbox.canQueue(p,starters)){say(p,"Réserve de matériel saturée.");return 0;}
             if(!s.player().accept(id,level(p))){say(p,"Quête indisponible ou déjà acceptée.");return 0;}
             CampaignStorage.save(p,CATALOG.revision(),s);
             if(id.equals(SEARCH))p.getInventory().add(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COMPASS));
+            CampaignRewardInbox.queue(p,starters);
+            if(!starters.isEmpty())say(p,"Matériel de départ disponible dans la réserve des marchands.");
             say(p,label(id)+" acceptée.");
             return 1;
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign accept failed",e);return 0;}
@@ -631,6 +684,7 @@ final class CampaignRuntime {
             CampaignRewardInbox.queue(p,r.items());
             if(!r.items().isEmpty())say(p,"Récompenses matérielles disponibles dans la réserve des marchands.");
             if(id.equals(INTRO))CampaignTraderAccount.unlockFromCompletedQuest(p,CampaignTrader.JAEGER,id);
+            if(id.equals(EASY_MONEY))CampaignTraderAccount.unlockFromCompletedQuest(p,CampaignTrader.REF,id);
             SupplyContract.rewardLevels(p);
             say(p,label(id)+" terminée · +"+r.credits()+" crédits · +"+r.xp()+" XP · +"+r.reputation()/1000d+" réputation.");
             return 1;
