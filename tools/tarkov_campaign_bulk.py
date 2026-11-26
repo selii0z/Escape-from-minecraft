@@ -8,7 +8,7 @@ from collections import Counter
 from pathlib import Path
 
 STOCK = {"findItem", "giveItem"}
-CORE = STOCK | {"shoot", "extract"}
+CORE = STOCK | {"shoot", "extract", "sellItem"}
 FIELD = CORE | {"findQuestItem", "giveQuestItem", "visit"}
 CURRENCY = {"5449016a4bdc2d6f028b456f": 100, "5696686a4bdc2da3298b456a": 1, "569668774bdc2da2298b4568": 1}
 TRADERS = {
@@ -341,6 +341,15 @@ def combat_objective(o):
     if not isinstance(o.get("count"),int) or o["count"]<1 or o.get("optional") is not False:
         blockers.add("invalid-or-optional-combat-objective")
     basic={"id","description","type","count","optional","maps"}
+    if o["type"]=="sellItem":
+        refs=o.get("items") or []
+        if (o["id"]!="666973ee1d80fbbbfeaf46c9" or o.get("count")!=250
+            or hashlib.sha256(",".join(sorted(refs)).encode()).hexdigest()!="7c3c600c5123e988214579a3f88553e279abc2906e9fc72c2ba25e49ec8cb6ae"
+            or o.get("minDurability") not in (0,None) or o.get("maxDurability")!=100
+            or o.get("dogTagLevel") or maps or o.get("zones")):
+            blockers.add("unreviewed-sale-objective")
+        return {"id":o["id"],"type":"sale:field-equipment","amount":o["count"],"scope":"CAMPAIGN","optional":o.get("optional",False),
+                "label":"Vendre sacs, gilets et protections EFM au Récupérateur"},blockers
     if o["type"]=="shoot":
         known=basic|{"shotType","bodyParts","usingWeapon","usingWeaponMods","distance","timeFromHour","timeUntilHour",
                       "wearing","notWearing","enemyHealthEffect","targetNames","playerHealthEffect","zones","effects"}
@@ -1341,7 +1350,7 @@ def build(snapshot,out,resources):
                 ref,name,_=line.split("|")
                 item_names[ref]=name
     # Collector and boss trophies remain raid-only, not merchant supplies.
-    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d"}
+    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf","5b3b713c5acfc4330140bd8d","5e997f0b86f7741ac73993e2","609e860ebd219504d8507525","628baf0b967de16aab5a4f36","628bc7fb408e2b2e9c0801b1","628b9c7d45122232a872358f"}
     approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids|set(MEDICAL_EQUIVALENTS.values()),out)
     summary.update({"questOfferUnlocks":total_offers,"supportedQuestOfferUnlocks":supported_offers})
     summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names,approved_offers)
