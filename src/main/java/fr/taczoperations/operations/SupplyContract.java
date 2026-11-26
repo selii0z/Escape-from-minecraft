@@ -452,11 +452,13 @@ public enum SupplyContract {
         player.getPersistentData().putLong("taczoperations_run_started", player.server.overworld().getGameTime());
         CompoundTag baseline = new CompoundTag();
         for (RaidRelic relic : RaidRelic.values()) {
-            baseline.putInt(relic.id, count(player, relic.item()));
+            baseline.putInt(relic.id, countRelic(player,relic));
         }
         player.getPersistentData().put("taczoperations_relic_baseline", baseline);
     }
 
+    private static int countRelic(ServerPlayer player,RaidRelic relic){return CarriedStorage.of(player).count(stack->matchesRelic(stack,relic));}
+    private static boolean matchesRelic(ItemStack stack,RaidRelic relic){return stack.is(relic.item())||relic==RaidRelic.PLAQUE&&MilitaryTag.isTag(stack);}
     private static int count(ServerPlayer player, Item item) {
         return CarriedStorage.of(player).count(stack->stack.is(item));
     }
@@ -478,8 +480,8 @@ public enum SupplyContract {
             if ((contract.objective == Objective.RELIC
                 || contract.objective == Objective.BOSS_INTEL && player.getPersistentData().getBoolean("taczoperations_raid_boss"))
                 && baseline.contains(contract.relic.id)
-                && count(player, contract.relic.item()) - baseline.getInt(contract.relic.id) >= contract.amount
-                && consumeRaidOrigin(player, contract.relic.item(), contract.amount)) {
+                && countRelic(player, contract.relic) - baseline.getInt(contract.relic.id) >= contract.amount
+                && CarriedStorage.of(player).consume(stack->matchesRelic(stack,contract.relic)&&RaidOrigin.found(stack),contract.amount)) {
                 contract.finish(player);
             }
         }
