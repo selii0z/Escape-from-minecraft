@@ -14,8 +14,21 @@ import java.util.WeakHashMap;
 public final class CampaignGunEvents {
     private record Impact(UUID shooter,ResourceLocation weapon,long tick,String part,double distance){}
     private static final WeakHashMap<Pillager,Impact> LAST=new WeakHashMap<>();
-    static boolean bolt(ResourceLocation id){
-        return id!=null&&id.getNamespace().equals("tacz")&&id.getPath().equals("ai_awp");
+    /** Explicit stock TaCZ IDs only; no guessing from display names or attachments. */
+    static boolean matchesWeapon(String group,ResourceLocation id){
+        if(group.equals("any"))return true;
+        if(id==null||!id.getNamespace().equals("tacz"))return false;
+        String gun=id.getPath();
+        return switch(group){
+            case "bolt"->gun.equals("ai_awp");
+            case "pistol"->gun.equals("glock_17");
+            case "ak"->gun.equals("ak47");
+            case "western"->gun.equals("m4a1");
+            case "rifle"->java.util.Set.of("ak47","m4a1").contains(gun);
+            case "smg"->gun.equals("hk_mp5a5");
+            case "shotgun"->gun.equals("m870");
+            default->false;
+        };
     }
     private static boolean eligible(ServerPlayer p,Pillager guard,ServerLevel level){
         return p.isAlive()&&!p.isCreative()&&!p.isSpectator()&&!ScavRun.active(p)
@@ -30,7 +43,7 @@ public final class CampaignGunEvents {
         var id=event.getGunId();
         var impact=new Impact(p.getUUID(),id,level.getGameTime(),part,p.distanceTo(guard));
         LAST.put(guard,impact);
-        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"hit",part,bolt(id),impact.distance());
+        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"hit",part,id,impact.distance());
     }
     public static void kill(EntityKillByGunEvent event){
         if(event.getLogicalSide().isClient()||!(event.getAttacker() instanceof ServerPlayer p)
@@ -39,7 +52,7 @@ public final class CampaignGunEvents {
         var impact=LAST.remove(guard);
         if(impact==null||!impact.shooter().equals(p.getUUID())||!java.util.Objects.equals(impact.weapon(),event.getGunId())
             ||level.getGameTime()-impact.tick()>1)return;
-        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"kill",impact.part(),bolt(impact.weapon()),impact.distance());
+        CampaignRuntime.gunEvent(p,ForestRaid.campaignRaidId(p),ForestRaid.campaignMap(p),GuardRole.get(guard),"kill",impact.part(),impact.weapon(),impact.distance());
     }
     private CampaignGunEvents(){}
 }
