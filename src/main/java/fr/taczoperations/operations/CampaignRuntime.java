@@ -32,7 +32,9 @@ final class CampaignRuntime {
     private record QuestSite(String map,int x,int z,int radius,String title,String find,String give){}
     private record Meta(String name,String slug,Reward reward,int loyalty,Map<String,String> labels,String dialogue,QuestSite site,List<TraderRequirement> traderRequirements){}
     private record Catalog(CampaignGraph graph,String revision,Map<String,Meta> meta){}
-    private record Reward(int credits,int xp,int reputation){}
+    private record Reward(int credits,int xp,int reputation,Map<String,Integer> items,Map<String,Integer> otherStanding){
+        Reward(int credits,int xp,int reputation){this(credits,xp,reputation,Map.of(),Map.of());}
+    }
     private static Reward reward(String id){
         return switch(id){
             case DEBUT->new Reward(DEBUT_CREDITS,DEBUT_XP,DEBUT_REP);
@@ -121,8 +123,21 @@ final class CampaignRuntime {
                 }
                 Reward reward=null;
                 if(q.has("reward")){
-                    var r=q.getAsJsonObject("reward");reward=new Reward(r.get("credits").getAsInt(),r.get("xp").getAsInt(),r.get("reputation").getAsInt());
-                    if(reward.credits()<0||reward.xp()<0||reward.reputation()<0)throw new IllegalArgumentException("Invalid reward");
+                    var r=q.getAsJsonObject("reward");
+                    var itemRewards=new TreeMap<String,Integer>();
+                    if(r.has("items"))for(var e:r.getAsJsonObject("items").entrySet()){
+                        int count=e.getValue().getAsInt();
+                        if(count<=0||!CampaignSupplies.rewardKnown(e.getKey()))throw new IllegalArgumentException("Invalid material reward");
+                        itemRewards.put(e.getKey(),count);
+                    }
+                    var standing=new TreeMap<String,Integer>();
+                    if(r.has("otherStanding"))for(var e:r.getAsJsonObject("otherStanding").entrySet()){
+                        var owner=CampaignTrader.byId(e.getKey());int delta=e.getValue().getAsInt();
+                        if(owner.id.equals(trader)||delta< -100000||delta>100000)throw new IllegalArgumentException("Invalid secondary standing");
+                        standing.put(owner.id,delta);
+                    }
+                    reward=new Reward(r.get("credits").getAsInt(),r.get("xp").getAsInt(),r.get("reputation").getAsInt(),Map.copyOf(itemRewards),Map.copyOf(standing));
+                    if(reward.credits()<0||reward.xp()<0||reward.reputation()< -100000||reward.reputation()>100000)throw new IllegalArgumentException("Invalid reward");
                 }
                 int loyalty=q.has("loyalty")?q.get("loyalty").getAsInt():1;
                 if(loyalty<0||loyalty>4)throw new IllegalArgumentException("Invalid loyalty");
@@ -538,6 +553,7 @@ final class CampaignRuntime {
             var account=SupplyContract.account(p);
             int credits=account.getInt("credits"),xp=Math.max(0,account.getInt("contract_xp_bonus_v2"));
             if((long)credits+r.credits()>Integer.MAX_VALUE||(long)xp+r.xp()>Integer.MAX_VALUE){say(p,"Solde maximal atteint.");return 0;}
+            if(!CampaignRewardInbox.canQueue(p,r.items())){say(p,"Réserve de récompenses saturée ou objet indisponible.");return 0;}
             var storage=CarriedStorage.of(p);
             var plan=planTurnIns(q,storage);
             if(plan==null){say(p,"Objets requis insuffisants. Aucun objet remis.");return 0;}
@@ -555,6 +571,9 @@ final class CampaignRuntime {
             account.putInt("credits",credits+r.credits());
             account.putInt("contract_xp_bonus_v2",xp+r.xp());
             CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(q.trader()),r.reputation());
+            r.otherStanding().forEach((owner,delta)->CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(owner),delta));
+            CampaignRewardInbox.queue(p,r.items());
+            if(!r.items().isEmpty())say(p,"Récompenses matérielles disponibles dans la réserve des marchands.");
             if(id.equals(INTRO))CampaignTraderAccount.unlockFromCompletedQuest(p,CampaignTrader.JAEGER,id);
             SupplyContract.rewardLevels(p);
             say(p,label(id)+" terminée · +"+r.credits()+" crédits · +"+r.xp()+" XP · +"+r.reputation()/1000d+" réputation.");
