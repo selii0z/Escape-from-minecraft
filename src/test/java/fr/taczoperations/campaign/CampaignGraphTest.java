@@ -46,6 +46,11 @@ public final class CampaignGraphTest {
                 q("y",List.of(List.of(new Requirement("x",Set.of(Outcome.COMPLETED)))),List.of(kills),Set.of(),true)));
             throw new AssertionError("Cycle accepted");
         }catch(IllegalArgumentException expected){}
-        System.out.println("Campaign graph checks passed");
+        var demands=List.of(new TurnInPlanner.Demand(1,Set.of("a","b")),new TurnInPlanner.Demand(1,Set.of("a")));
+        check(TurnInPlanner.plan(Map.of("a",1,"b",1),demands).equals(Map.of("a",1,"b",1)));
+        check(TurnInPlanner.plan(Map.of("a",1),demands)==null);
+        check(TurnInPlanner.plan(Map.of("a",5),List.of(new TurnInPlanner.Demand(3,Set.of("a")))).equals(Map.of("a",3)));
+        check(TurnInPlanner.plan(Map.of(),List.of()).isEmpty());
+        System.out.println("Campaign graph and turn-in checks passed");
     }
 }
