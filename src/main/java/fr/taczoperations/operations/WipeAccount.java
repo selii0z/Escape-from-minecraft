@@ -19,6 +19,7 @@ public record WipeAccount(int menuId,String confirmation) implements CustomPacke
             ||ForestRaid.isParticipant(p)||ForestExpedition.hasReturnPoint(p)||p.isPassenger()||p.isSleeping())
             return "Wipe uniquement dans le monde principal, hors raid.";
         if(!p.containerMenu.getCarried().isEmpty())return "Range d'abord l'objet tenu par le curseur.";
+        if(ScavRun.active(p)||ScavRun.pending(p)>0)return "Récupère d'abord ton équipement et ton butin Scav.";
         if(PlayerMarket.of(p).hasPending(p))return "Retire tes annonces et crédits du marché avant le wipe.";
         if(!SupplyContract.account(p).getList("secure_cases_pending",10).isEmpty()
             ||!p.getPersistentData().getList("secure_cases_death",10).isEmpty())return "Récupère d'abord ton coffre sécurisé.";
