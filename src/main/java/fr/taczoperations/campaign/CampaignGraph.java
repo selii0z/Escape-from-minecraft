@@ -187,6 +187,7 @@ public final class CampaignGraph {
             return true;
         }
         /** Server-verified unsuccessful attempt; remain accepted, clear all progress. */
+        public void discardPending(String id){raid.remove(id);}
         public boolean resetActive(String id){
             var p=saved.get(id);
             if(p==null||p.state()!=State.ACTIVE||!require(id).implemented())return false;
