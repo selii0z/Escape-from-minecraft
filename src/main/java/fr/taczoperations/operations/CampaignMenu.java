@@ -73,6 +73,14 @@ final class CampaignMenu {
             if(page+1<pages){c.setItem(53,tile(Items.ARROW,"Page suivante",ChatFormatting.YELLOW,List.of()));actions.put(53,()->open(p,trader,page+1));}
             c.setItem(48,tile(Items.COMPASS,"Tous les marchands",ChatFormatting.AQUA,List.of()));actions.put(48,()->open(p));
         }
+        long pending=CampaignRewardInbox.pending(p);
+        c.setItem(46,tile(Items.CHEST,"Récompenses à récupérer",ChatFormatting.GOLD,List.of(
+            pending+" objet(s) en réserve","Clic : récupérer les objets disponibles","Les objets sans place restent en réserve")));
+        actions.put(46,()->{
+            int moved=CampaignRewardInbox.collect(p);
+            p.sendSystemMessage(Component.literal(moved+" objet(s) récupéré(s) · "+CampaignRewardInbox.pending(p)+" en réserve"));
+            open(p,trader,requested);
+        });
         c.setItem(49,tile(Items.BARRIER,"Fermer",ChatFormatting.RED,List.of()));
         actions.put(49,()->{if(Hideout.ownsPlot(p))HideoutMenu.open(p);});
         p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new ChestMenu(MenuType.GENERIC_9x6,id,inv,c,6){
