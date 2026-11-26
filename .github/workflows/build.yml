@@ -31,6 +31,25 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Package complete PvE quest catalogue (campaign branch)
+        if: github.ref == 'refs/heads/feature/tarkov-campaign' || github.head_ref == 'feature/tarkov-campaign'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/tarkov_campaign_snapshot.py --mode pve
+          python3 tools/tarkov_campaign_bulk.py
+          install -m 644 build/tarkov-review/campaign-install-index.json src/main/resources/data/taczoperations/campaign/campaign-install-index.json
+      - name: Upload bulk install review
+        if: github.ref == 'refs/heads/feature/tarkov-campaign' || github.head_ref == 'feature/tarkov-campaign'
+        uses: actions/upload-artifact@v4
+        with:
+          name: campaign-install-review
+          path: |
+            build/tarkov-review/campaign-install-index.json
+            build/tarkov-review/bulk-install-candidates.json
+            build/tarkov-review/bulk-summary.json
+            build/tarkov-reference/manifest.json
+          if-no-files-found: error
       - name: Compile and capture diagnostics
         shell: bash
         run: |
