@@ -124,6 +124,7 @@ public final class StoryMissions {
     public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("campagne")
             .executes(ctx->CampaignRuntime.status(ctx.getSource().getPlayerOrException()))
+            .then(Commands.literal("menu").executes(ctx->{CampaignMenu.open(ctx.getSource().getPlayerOrException());return 1;}))
             .then(Commands.literal("fouiller").executes(ctx->ForestRaid.campaignSearch(ctx.getSource().getPlayerOrException())))
             .then(Commands.literal("deposer").executes(ctx->ForestRaid.campaignPlant(ctx.getSource().getPlayerOrException())))
             .then(Commands.literal("accepter").then(Commands.argument("quete",com.mojang.brigadier.arguments.StringArgumentType.word())
