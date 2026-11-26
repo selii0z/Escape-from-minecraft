@@ -265,6 +265,11 @@ def display_name(q):
     # The mirror's name fields are untranslated localization keys.
     return q["normalizedName"].replace("-"," ").title()
 
+# Known bolt-action reference set used by the Shooter chains; EFM uses its AWP class.
+BOLT_REFERENCE={"627e14b21713922ded6f2c15","5bfd297f0db834001a669119","5ae08f0a5acfc408fb1398a1",
+    "55801eed4bdc2d89578b4588","588892092459774ac91d4b11","5de652c31b7e3716273428be",
+    "5df24cf80dee1b22f862e9bc","5bfea6e90db834001b7347f3","61f7c9e189e6fb1a5e3ea78d",
+    "673cab3e03c6a20581028bc1","67c6de3ce39861860909e8e5"}
 def combat_objective(o):
     blockers=set()
     maps=o.get("maps") or []
@@ -280,17 +285,36 @@ def combat_objective(o):
         known=basic|{"shotType","bodyParts","usingWeapon","usingWeaponMods","distance","timeFromHour","timeUntilHour",
                       "wearing","notWearing","enemyHealthEffect","targetNames","playerHealthEffect","zones","effects"}
         if set(o)-known:blockers.add("unknown-combat-predicate")
-        if o.get("shotType")!="kill":blockers.add("hit-tracking-required")
-        for key in ("bodyParts","usingWeapon","usingWeaponMods","timeFromHour","timeUntilHour","wearing",
+        mode=o.get("shotType")
+        if mode not in {"kill","hit"}:blockers.add("hit-tracking-required")
+        for key in ("usingWeaponMods","timeFromHour","timeUntilHour","wearing",
                     "notWearing","enemyHealthEffect","playerHealthEffect","zones","effects"):
             if o.get(key):blockers.add("combat-"+key)
-        if o.get("distance") not in (None,{"value":0,"compareMethod":">="}):
+        distance=o.get("distance") or {"value":0,"compareMethod":">="}
+        value=distance.get("value")
+        compare={">=":"ge","<=":"le",">":"gt","<":"lt"}.get(distance.get("compareMethod"))
+        if not isinstance(value,int) or not 0<=value<=1000 or not compare:
             blockers.add("distance-restriction")
+            value=0;compare="ge"
+        body={p.rsplit("/",1)[-1] for p in (o.get("bodyParts") or [])}
+        part="any"
+        if body=={"Head"}:part="head"
+        elif body=={"LeftLeg","RightLeg"}:part="legs"
+        elif body:blockers.add("combat-bodyParts")
+        weapons=set(o.get("usingWeapon") or [])
+        weapon="any"
+        if weapons and weapons<=BOLT_REFERENCE:weapon="bolt"
+        elif weapons:blockers.add("combat-usingWeapon")
         role=TARGET_ADAPTERS.get(frozenset(o.get("targetNames") or []))
         if role is None:blockers.add("unmapped-target")
         event="kill:"+map_value+":"+(role or "unsupported")
         scope="CAMPAIGN"
-        label="Éliminer "+({"any":"des ennemis","pmc":"des PMC","scav":"des Scavs"}.get(role,role or "cible à adapter"))
+        label=("Toucher " if mode=="hit" else "Éliminer ")+({"any":"des ennemis","pmc":"des PMC","scav":"des Scavs"}.get(role,role or "cible à adapter"))
+        if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge":
+            event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
+            if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
+            if weapon=="bolt":label+=" · fusil à verrou EFM"
+            if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
     else:
         if set(o)-(basic|{"exitStatus","exitName","healthEffect","bodyParts","effects"}):
             blockers.add("unknown-extraction-predicate")
@@ -884,6 +908,11 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 if start.get(key):
                     changes.append({"type":"unsupported-start-bonus-omitted","key":key,"reference":start[key]})
                     start[key]=[]
+            if qid=="5bc4776586f774512d07cf05":
+                old=start.get("items") or []
+                if {row["item"] for row in old}=={"5b8683a486f77467f2423114","629792f0fd6eda47d6466fe8"}:
+                    start["items"]=[{"item":"5b8683a486f77467f2423114","count":1,"attributes":{}}]
+                    changes.append({"type":"starter-rifles-to-one-efm-bolt-action","reference":old})
             q["startRewards"]=start
         else:
             # Collector is an explicitly reviewed exception: preserve all 44 FIR
@@ -941,7 +970,7 @@ def build(snapshot,out,resources):
     print(json.dumps({"scopeOriginal":len(original_tasks),"scopeRetained":len(tasks),"scopeExcluded":len(excluded),"rewiredChains":len(rewired)},indent=2))
     item_catalog=read(snapshot/"items.json")["data"]["items"]
     mapped,auto_names,auto_count=supply_catalog(original_tasks,item_catalog,resources,out)
-    mapped.update({"5c093ca986f7740a1867ab12","59e763f286f7742ee57895da","59e7643b86f7742cbf2c109a","5648a69d4bdc2ded0b8b457b"})
+    mapped.update({"5c093ca986f7740a1867ab12","59e763f286f7742ee57895da","59e7643b86f7742cbf2c109a","5648a69d4bdc2ded0b8b457b","5b8683a486f77467f2423114"})
     auto_names.update({"59e763f286f7742ee57895da":"Sac expédition EFM (Pilgrim)","59e7643b86f7742cbf2c109a":"Gilet tactique EFM (Wartech)","5648a69d4bdc2ded0b8b457b":"Gilet élite EFM (Blackrock)"})
     adaptation_count=adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
