@@ -134,3 +134,4 @@
 5991b51486f77447b112d44f|Balise MS2000|redstone
 675a0288c3102563bd01c9c3|Affiche publicitaire Arena|paper
 5ab8f20c86f7745cdb629fb2|Cagoule civile de récupération|leather_helmet
+5b3b713c5acfc4330140bd8d|Pistolet doré de Reshala (trophée)|gold_ingot
