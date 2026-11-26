@@ -135,3 +135,8 @@
 675a0288c3102563bd01c9c3|Affiche publicitaire Arena|paper
 5ab8f20c86f7745cdb629fb2|Cagoule civile de récupération|leather_helmet
 5b3b713c5acfc4330140bd8d|Pistolet doré de Reshala (trophée)|gold_ingot
+5e997f0b86f7741ac73993e2|Sac de Sanitar (trophée)|leather
+609e860ebd219504d8507525|Gilet de Tagilla (trophée)|iron_ingot
+628baf0b967de16aab5a4f36|Gilet de Knight (trophée)|leather
+628bc7fb408e2b2e9c0801b1|Sac de Birdeye (trophée)|leather
+628b9c7d45122232a872358f|Protection de Big Pipe (trophée)|iron_ingot
