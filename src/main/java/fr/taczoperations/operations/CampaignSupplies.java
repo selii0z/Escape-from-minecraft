@@ -67,7 +67,16 @@ public final class CampaignSupplies {
         }
         var item=ITEMS.get(id);return item==null?CollectorItems.rewardStack(id):new ItemStack(item.get());
     }
+    private static final String BEAR_TAG="59f32bb586f774757e1e8442", USEC_TAG="59f32c3b86f77472a31742f0";
     static Optional<String> reference(ItemStack stack){
+        if(MilitaryTag.isTag(stack)){
+            var custom=stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+            if(custom==null)return Optional.empty();
+            var data=custom.copyTag();
+            if(!data.hasUUID("operator")||data.getInt("rank")<1)return Optional.empty();
+            String faction=data.getString("faction");
+            return switch(faction){case "BEAR"->Optional.of(BEAR_TAG);case "USEC"->Optional.of(USEC_TAG);default->Optional.empty();};
+        }
         int armorClass=BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.CHEST);
         if(armorClass>0){
             for(var e:ARMOR.entrySet())if(e.getValue()==armorClass)return Optional.of(e.getKey());
@@ -89,7 +98,7 @@ public final class CampaignSupplies {
         }
         var collector=CollectorItems.reference(stack);
         if(collector.isPresent())return collector;
-        for(var row:ITEMS.entrySet())if(stack.is(row.getValue().get()))return Optional.of(row.getKey());
+        for(var row:ITEMS.entrySet())if(stack.is(row.getValue().get())&&!row.getKey().equals(BEAR_TAG)&&!row.getKey().equals(USEC_TAG))return Optional.of(row.getKey());
         return Optional.empty();
     }
     static boolean matches(ItemStack stack,String reference){return reference(stack).filter(reference::equals).isPresent();}
