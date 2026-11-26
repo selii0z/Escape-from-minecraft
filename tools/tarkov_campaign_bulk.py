@@ -372,6 +372,7 @@ def combat_objective(o):
             blockers.add("combat-usingWeapon")
             weapon="any"
         role=TARGET_ADAPTERS.get(frozenset(o.get("targetNames") or []))
+        if role is None and hashlib.sha256(",".join(sorted(o.get("targetNames") or [])).encode()).hexdigest()=="7b34312db838c04340030ca40de6b233fafc037b517a3e96f815fd0b9fe433c6":role="boss_escort"
         if role is None:blockers.add("unmapped-target")
         event="kill:"+map_value+":"+(role or "unsupported")
         scope="CAMPAIGN"
@@ -697,6 +698,8 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
                 o["label"]=("Trouver" if o["type"].startswith("find-stock-") else "Remettre")+" : "+names_text+" ("+mode+")"
             if qid in {"5bc4893c86f774626f5ebf3e","5c0be13186f7746f016734aa"}:
                 for o in row["objectives"]:o["label"]+=" · sans échec de raid (remise à zéro en cas d'échec)"
+            if qid in {"66631489acf8442f8b05319f","6663149196a9349baa021baa"}:
+                for o in row["objectives"]:o["label"]+=" · remise à zéro si "+("Scav ou boss interdit éliminé" if qid=="66631489acf8442f8b05319f" else "boss interdit éliminé")
             result[qid]=row
             ready.add(qid);names.add(slug(name));installed.append(qid);changed=True
         for qid in installed:pending.pop(qid,None)
@@ -873,6 +876,7 @@ def select_efm_campaign(reference):
     excluded={k:["duplicate-faction-chain"] for k in duplicates}
     for qid,q in tasks.items():
         reasons=set()
+        if qid=="6663148ca9290f9e0806cca1" and any(o.get("effects")==["Intoxication"] for o in q.get("objectives",[])):reasons.add("unavailable-intoxication-extraction")
         objectives=q.get("objectives") or []
         for o in objectives:
             if o["type"] in REMOVED_OBJECTIVES:reasons.add("excluded-objective:"+o["type"])
@@ -1024,6 +1028,14 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                 q["failConditions"]=[]
                 q["restartable"]=False
                 changes.append({"type":"reset-progress-on-failed-raid","reference":fail})
+        restricted_kills={"66631489acf8442f8b05319f":"06e9eb1f9e04148ea4752b918d6d0a89f455ee4728eafc75620c2927d5369c6f",
+                          "6663149196a9349baa021baa":"0b2156b029eb0dcecb3964218c7c2cf5f44c14ad3f4f3dff6361ed6678ae0a0b"}
+        if qid in restricted_kills:
+            fail=q.get("failConditions") or []
+            if q.get("restartable") and len(fail)==1 and fail[0].get("type")=="shoot" and fail[0].get("shotType")=="kill" and fail[0].get("count")==1 and hashlib.sha256(",".join(sorted(fail[0].get("targetNames") or [])).encode()).hexdigest()==restricted_kills[qid] and not any((q.get("failureOutcome") or {}).values()):
+                q["failConditions"]=[]
+                q["restartable"]=False
+                changes.append({"type":"reset-on-forbidden-kill","reference":fail})
         if q.get("factionName") in {"USEC","BEAR"}:
             changes.append({"type":"faction-neutral-efm","reference":q["factionName"]})
             q["factionName"]="Any"
