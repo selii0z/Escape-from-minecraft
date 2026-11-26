@@ -199,6 +199,12 @@ def stock_draft(q, mapped, current):
     for o in objectives:
         items=o.get("items",[])
         fir=o.get("foundInRaid")
+        if len(items)==1 and items[0] in CURRENCY and o["type"]=="giveItem" and fir is False and not o.get("optional") and not o.get("maps") and not o.get("zones") and not o.get("dogTagLevel") and not o.get("minDurability") and o.get("maxDurability",100) in (100,None):
+            amount=o.get("count")
+            if isinstance(amount,int) and 1<=amount<=2147483647:
+                cost=max(1,(amount+CURRENCY[items[0]]-1)//CURRENCY[items[0]])
+                translated.append({"id":o["id"],"type":"pay-credits","amount":cost,"scope":"CAMPAIGN","optional":False,"label":"Verser "+str(cost)+" crédits"})
+                continue
         if not items or not isinstance(fir,bool) or not isinstance(o.get("count"),int) or o["count"]<1:
             blockers.add("invalid-stock-objective");continue
         if o.get("maps") or o.get("zones"):
@@ -241,7 +247,7 @@ def stock_draft(q, mapped, current):
     # Supported dependency and trader predicates are preserved in gates.
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
             "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
-            "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],"starterItems":starters,**gates,"blockers":sorted(blockers)}
+            "implemented":False,"adapter":"bulk-combat-v1" if any(o["type"]=="pay-credits" for o in translated) else "bulk-stock-v2","conflicts":[],"starterItems":starters,**gates,"blockers":sorted(blockers)}
 MAP_ADAPTERS = {
     "55f2d3fd4bdc2d5f408b4567":"factory", "56f40101d2720b2a4d8b45d6":"customs",
     "5704e3c2d2720bac5b8b4567":"woods", "5714dbc024597771384a510d":"interchange",
@@ -731,7 +737,11 @@ def supply_catalog(tasks,item_catalog,resources,out):
         types=set(item.get("types") or [])
         # Unknown, equipment, quest-only and currency IDs remain review-only.
         key="keys" in types
-        if not key and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
+        # Consumable drinks/food are represented as sealed mission provisions,
+        # not as medicines or simulated survival effects.
+        provision="provisions" in types and not types&{"gun","weapon","ammo","armor","helmet","rig","backpack","mods","quest","currency","meds","injectors","grenade"}
+        civilian=ref in {"5aa2b9ede5b5b000137b758b","59e7708286f7742cbd762753","6937f02dfd6488bb27024839","6937efd50543dcc2560a2c81"}
+        if not (key or provision or civilian) and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
         name=item.get("normalizedName")
         if not isinstance(name,str) or not name.strip():continue
         name=name.replace("-"," ").replace("_"," ").strip().title()
@@ -748,9 +758,13 @@ def supply_catalog(tasks,item_catalog,resources,out):
             (("book","document","manual","paper","magazine"),"paper")):
             if any(word in normalized for word in words):icon=candidate;break
         if key:icon="tripwire_hook"
+        elif civilian:icon="leather_helmet"
+        elif provision:
+            icon="glass_bottle" if any(w in normalized for w in ("water","bottle","juice","drink","soda","milk","kvass","tea","coffee","whiskey","vodka","moonshine")) else "bread"
+            name="Ration scellée : "+name
         rows.append((ref,name,icon))
     (out/"supplies-development.txt").write_text(existing.rstrip()+"\n"+"".join("|".join(row)+"\n" for row in rows),encoding="utf-8")
-    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"mission-key-loot" if i=="tripwire_hook" else "inert-barter-loot"} for r,n,i in rows])
+    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"mission-key-loot" if i=="tripwire_hook" else "sealed-provision-loot" if n.startswith("Ration scellée : ") else "inert-barter-loot"} for r,n,i in rows])
     return known|{r for r,n,i in rows},{r:n for r,n,i in rows},len(rows)
 
 def test_supply_catalog():
@@ -821,6 +835,15 @@ def select_efm_campaign(reference):
             if o["type"] in {"shoot","extract"} and o.get("maps"):
                 o["maps"]=[m for m in o["maps"] if m in MAP_ADAPTERS]
     return {qid:q for qid,q in tasks.items() if qid not in excluded},excluded,changes
+
+def test_credit_objective():
+    q={"id":"a"*24,"normalizedName":"test-payment","trader":"54cb50c76803fa8b248b4571","experience":100,
+       "objectives":[{"id":"b"*24,"type":"giveItem","items":["5696686a4bdc2da3298b456a"],"count":5000,"foundInRaid":False,"optional":False,"maxDurability":100}]}
+    row=stock_draft(q,set(),set())
+    assert row["adapter"]=="bulk-combat-v1" and row["objectives"][0]["type"]=="pay-credits"
+    assert row["objectives"][0]["amount"]==5000
+    q["objectives"][0]["foundInRaid"]=True
+    assert "item-mapping-required" in stock_draft(q,set(),set())["blockers"]
 
 def test_scope_selection():
     a,b,c,d,e=("a"*24,"b"*24,"c"*24,"d"*24,"e"*24)
@@ -1015,6 +1038,8 @@ def build(snapshot,out,resources):
     mapped,auto_names,auto_count=supply_catalog(original_tasks,item_catalog,resources,out)
     mapped.update({"5c093ca986f7740a1867ab12","59e763f286f7742ee57895da","59e7643b86f7742cbf2c109a","5648a69d4bdc2ded0b8b457b","5b8683a486f77467f2423114"})
     auto_names.update({"59e763f286f7742ee57895da":"Sac expédition EFM (Pilgrim)","59e7643b86f7742cbf2c109a":"Gilet tactique EFM (Wartech)","5648a69d4bdc2ded0b8b457b":"Gilet élite EFM (Blackrock)"})
+    mapped.update({"59e7635f86f7742cbf2c1095","5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","5a38e6bac4a2826c6e06d79b"})
+    auto_names.update({"59e7635f86f7742cbf2c1095":"Tunique PMC classe 2","5c0e655586f774045612eeb2":"Tunique PMC classe 4","5ab8e79e86f7742d8b372e78":"Tunique PMC classe 5","5a38e6bac4a2826c6e06d79b":"Fusil M870 EFM"})
     mapped.update(MEDICAL_EQUIVALENTS.values())
     auto_names.update({"544fb45d4bdc2dee738b4568":"Salewa","5755356824597772cb798962":"Trousse de soins",
         "544fb25a4bdc2dfb738b4567":"Bandage","544fb3364bdc2d34748b456a":"Attelle","60098af40accd37ef2175f27":"Hémostatique"})
@@ -1107,6 +1132,7 @@ if __name__=="__main__":
     test_quest_item_adapter()
     test_milestones()
     test_scope_selection()
+    test_credit_objective()
     test_efm_adaptations()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
