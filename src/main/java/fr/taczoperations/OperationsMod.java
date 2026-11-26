@@ -101,6 +101,11 @@ public final class OperationsMod {
         }
         ITEMS.registerItem("tactical_headset",net.minecraft.world.item.Item::new,new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("secure_case", fr.taczoperations.operations.SecureCaseItem::new, new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        for(var tier:fr.taczoperations.operations.SecureCaseItem.Tier.values()){
+            if(tier==fr.taczoperations.operations.SecureCaseItem.Tier.LEGACY)continue;
+            ITEMS.registerItem(tier.id,props->new fr.taczoperations.operations.SecureCaseItem(props,tier),
+                new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        }
         for(String medical : new String[]{"bandage","hemostat","splint","medkit","salewa"}) {
             ITEMS.registerItem(medical,props -> new fr.taczoperations.operations.FieldMedicine(props,medical),new net.minecraft.world.item.Item.Properties().stacksTo(8));
         }
