@@ -10,7 +10,7 @@ from pathlib import Path
 STOCK = {"findItem", "giveItem"}
 CORE = STOCK | {"shoot", "extract"}
 FIELD = CORE | {"findQuestItem", "giveQuestItem", "visit"}
-CURRENCY = {"5449016a4bdc2d6f028b456f": 100, "5696686a4bdc2da3298b456a": 1}
+CURRENCY = {"5449016a4bdc2d6f028b456f": 100, "5696686a4bdc2da3298b456a": 1, "569668774bdc2da2298b4568": 1}
 TRADERS = {
     "54cb50c76803fa8b248b4571":"prapor", "54cb57776803fa99248b456e":"therapist",
     "58330581ace78e27b8b10cee":"skier", "5935c25fb3acc3127c3d8cd9":"peacekeeper",
@@ -98,7 +98,36 @@ def test_dependencies():
     assert result["quests"]["b"]["missingFromGameplay"]==["a"]
     assert len(result["routedPrerequisiteMismatches"])==1
 
-def stock_draft(q, mapped):
+def normalize_gates(q, current):
+    blockers=set()
+    prerequisites=[]
+    statuses={"active":"ACTIVE","complete":"COMPLETED","failed":"FAILED"}
+    for r in q.get("taskRequirements") or []:
+        outcomes=[statuses[v] for v in r["status"] if v in statuses]
+        if len(outcomes)!=len(r["status"]) or not outcomes:
+            blockers.add("unknown-dependency-status")
+        prerequisites.append([{"quest":r["task"],"outcomes":outcomes}])
+        if r["task"] not in current: blockers.add("dependency-not-routed")
+    trader_requirements=[]
+    operations={">=":"GE","<=":"LE","<":"LT",">":"GT","==":"EQ"}
+    for r in q.get("traderRequirements") or []:
+        if r["requirementType"] not in ("level","reputation") or r["compareMethod"] not in operations:
+            blockers.add("unknown-trader-requirement");continue
+        value=r["value"]
+        if r["requirementType"]=="reputation":value=round(value*1000)
+        elif int(value)!=value or not 0<=value<=4:
+            blockers.add("unsupported-loyalty");continue
+        trader_requirements.append({"trader":TRADERS[r["trader"]],"kind":r["requirementType"].upper(),
+                                    "operator":operations[r["compareMethod"]],"value":int(value)})
+    dialogue=None
+    for r in q.get("otherRequirements") or []:
+        if r["type"]=="dialogue" and r.get("traders")==[q["trader"]]:
+            dialogue=TRADERS[q["trader"]]
+        else:
+            blockers.add("unsupported-"+r["type"]+"-requirement")
+    return {"prerequisites":prerequisites,"traderRequirements":trader_requirements,"dialogueTrader":dialogue},blockers
+
+def stock_draft(q, mapped, current):
     blockers=set()
     translated=[]
     objectives=q["objectives"]
@@ -129,8 +158,7 @@ def stock_draft(q, mapped):
             blockers.add("item-mapping-required")
         translated.append({"id":o["id"],"type":prefix+("fir:" if fir else "any:")+",".join(sorted(items)),
                            "amount":o["count"],"scope":"CAMPAIGN","optional":o.get("optional",False)})
-    if len(modes)>1:
-        blockers.add("mixed-provenance-handover")
+    # Mixed provenance is supported by the disjoint-stock allocator.
     if not give:
         blockers.add("no-handover")
     # Keep every original condition and reward alongside the adapter draft.
@@ -141,15 +169,15 @@ def stock_draft(q, mapped):
     if reward["otherStanding"]:blockers.add("cross-trader-reputation")
     if any((q.get("startRewards") or {}).values()):blockers.add("start-rewards")
     if any((q.get("failureOutcome") or {}).values()) or q.get("failConditions"):blockers.add("failure-handling")
-    if q.get("otherRequirements"):blockers.add("other-requirements")
+    gates,gate_blockers=normalize_gates(q,current)
+    blockers.update(gate_blockers)
     if q.get("availableDelaySecondsMin") or q.get("availableDelaySecondsMax"):blockers.add("quest-delay")
     if q.get("restartable"):blockers.add("repeatable")
     if q.get("factionName","Any")!="Any":blockers.add("faction")
-    if q.get("taskRequirements"):blockers.add("dependency-graph")
-    if q.get("traderRequirements"):blockers.add("trader-requirements")
+    # Supported dependency and trader predicates are preserved in gates.
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
             "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
-            "implemented":False,"blockers":sorted(blockers)}
+            "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],**gates,"blockers":sorted(blockers)}
 def build(snapshot,out,resources):
     manifest=read(snapshot/"manifest.json")
     for n,info in manifest["files"].items():
@@ -163,14 +191,19 @@ def build(snapshot,out,resources):
     dependencies=dependency_audit(tasks,current)
     staged=[]
     stock=[]
+    missing_items={}
     discrepancies=[]
     for qid,q in sorted(tasks.items()):
         kinds={o["type"] for o in q["objectives"]}
         bucket="stock" if kinds<=STOCK else "combat-extract" if kinds<=CORE else "field" if kinds<=FIELD else "special"
+        gates,gate_blockers=normalize_gates(q,current)
         staged.append({"id":qid,"slug":q["normalizedName"],"trader":TRADERS[q["trader"]],"batch":bucket,
-                       "routed":qid in current,"reference":q})
+                       "routed":qid in current,"reference":q,"normalizedGates":gates,"gateBlockers":sorted(gate_blockers)})
         if kinds<=STOCK:
-            draft=stock_draft(q,mapped)
+            draft=stock_draft(q,mapped,current)
+            for o in q["objectives"]:
+                for item in o.get("items",[]):
+                    if item not in mapped:missing_items.setdefault(item,set()).add(qid)
             draft["alreadyRouted"]=qid in current
             draft["prerequisites"]=dependencies["quests"][qid]["groups"]
             draft["unresolvedPrerequisites"]=dependencies["quests"][qid]["errors"]
@@ -201,9 +234,13 @@ def build(snapshot,out,resources):
     out.mkdir(parents=True,exist_ok=True)
     write(out/"bulk-campaign-reference.json",{"schema":1,"snapshot":manifest,"quests":staged})
     write(out/"bulk-stock-drafts.json",{"schema":1,"quests":stock})
+    item_catalog=read(snapshot/"items.json")["data"]["items"]
+    write(out/"bulk-stock-item-worklist.json",[{"id":id,"name":item_catalog.get(id,{}).get("normalizedName"),
+        "types":item_catalog.get(id,{}).get("types",[]),"quests":sorted(qids),"mapping":None}
+        for id,qids in sorted(missing_items.items())])
     write(out/"routed-quest-review.json",discrepancies)
     summary={"referenceQuests":len(tasks),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
-             "stockDrafts":len(stock),"stockDraftsWithoutBlockers":sum(not q["blockers"] and not q["alreadyRouted"] for q in stock),
+             "stockDrafts":len(stock),"unmappedStockItemIDs":len(missing_items),"stockDraftsWithoutBlockers":sum(not q["blockers"] and not q["alreadyRouted"] for q in stock),
              "stockBlockers":dict(Counter(b for q in stock for b in q["blockers"])),
              "routedQuestsWithReviewNotes":len(discrepancies)}
     write(out/"dependency-audit.json",dependencies)
