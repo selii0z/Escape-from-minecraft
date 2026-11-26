@@ -27,12 +27,14 @@ final class CampaignMenu {
     private static void open(ServerPlayer p,CampaignTrader trader,int requested){
         if(!ProgressionMenus.available(p)||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty())return;
         if(trader!=null)CampaignRuntime.traderDialogue(p,trader);
-        var all=CampaignRuntime.views(p);
+        var live=CampaignRuntime.views(p);
+        var all=CampaignPreview.merge(live);
+        var liveIds=live.stream().map(CampaignRuntime.QuestView::id).collect(java.util.stream.Collectors.toSet());
         var c=new SimpleContainer(54);
         var actions=new java.util.HashMap<Integer,Runnable>();
         if(trader==null){
             c.setItem(4,tile(Items.WRITTEN_BOOK,"Campagne Tarkov",ChatFormatting.GOLD,List.of(
-                all.size()+" quêtes raccordées","Sélectionne un marchand")));
+                live.size()+" quêtes jouables · "+all.size()+" recensées","Sélectionne un marchand")));
             var traders=CampaignTrader.values();
             for(int i=0;i<traders.length;i++){
                 var t=traders[i];
@@ -41,7 +43,7 @@ final class CampaignMenu {
                 boolean unlocked=CampaignTraderAccount.unlocked(p,t);
                 int slot=10+i/7*9+i%7;
                 c.setItem(slot,tile(unlocked?icon(t):Items.GRAY_DYE,t.title,unlocked?ChatFormatting.GOLD:ChatFormatting.GRAY,
-                    List.of(unlocked?"Fidélité "+CampaignTraderAccount.loyalty(p,t):"Marchand verrouillé",completed+"/"+list.size()+" quêtes intégrées terminées",t.questCount+" quêtes dans le catalogue de référence")));
+                    List.of(unlocked?"Fidélité "+CampaignTraderAccount.loyalty(p,t):"Marchand verrouillé",completed+"/"+list.stream().filter(q->liveIds.contains(q.id())).count()+" quêtes jouables terminées",t.questCount+" quêtes dans le catalogue de référence")));
                 actions.put(slot,()->open(p,t,0));
             }
             c.setItem(48,tile(Items.MAP,"Anciennes opérations",ChatFormatting.YELLOW,List.of("Campagne militaire originale")));
@@ -52,7 +54,7 @@ final class CampaignMenu {
             int page=Math.max(0,Math.min(requested,pages-1));
             c.setItem(4,tile(icon(trader),trader.title+" · "+(page+1)+"/"+pages,ChatFormatting.GOLD,List.of(
                 CampaignTraderAccount.unlocked(p,trader)?"Fidélité "+CampaignTraderAccount.loyalty(p,trader):"Marchand verrouillé",
-                list.size()+" quêtes intégrées sur "+trader.questCount)));
+                list.stream().filter(q->liveIds.contains(q.id())).count()+" jouables · "+list.size()+" affichées")));
             for(int i=page*PAGE_SIZE;i<Math.min(list.size(),(page+1)*PAGE_SIZE);i++){
                 var q=list.get(i);int slot=9+i-page*PAGE_SIZE;
                 var lines=new ArrayList<>(q.lines());
