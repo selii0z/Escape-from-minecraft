@@ -65,6 +65,13 @@ public final class CampaignGraphTest {
         check(!reconnected.complete("sample",1));
         reconnected.record("sample","give",1);check(reconnected.complete("sample",1));
         check(!reconnected.complete("sample",1));
+        var actionRaid=java.util.UUID.randomUUID();
+        var action=new FieldAction(actionRaid,"q","o","woods","item",200,0);
+        for(int tick=0;tick<199;tick++)action=action.tick(actionRaid,true);
+        check(!action.finished());
+        check(action.tick(actionRaid,false)==null);
+        check(action.tick(java.util.UUID.randomUUID(),true)==null);
+        check(action.tick(actionRaid,true).finished());
         System.out.println("Campaign graph, turn-in and quest-item checks passed");
     }
 }
