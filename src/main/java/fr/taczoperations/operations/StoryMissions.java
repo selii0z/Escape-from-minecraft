@@ -125,14 +125,19 @@ public final class StoryMissions {
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("campagne")
             .executes(ctx->CampaignRuntime.status(ctx.getSource().getPlayerOrException()))
             .then(Commands.literal("fouiller").executes(ctx->ForestRaid.campaignSearch(ctx.getSource().getPlayerOrException())))
+            .then(Commands.literal("deposer").executes(ctx->ForestRaid.campaignPlant(ctx.getSource().getPlayerOrException())))
             .then(Commands.literal("accepter")
                 .then(Commands.literal("debut").executes(ctx->CampaignRuntime.acceptDebut(ctx.getSource().getPlayerOrException())))
                 .then(Commands.literal("fuel-shortage").executes(ctx->CampaignRuntime.acceptFuel(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("all-is-revealed").executes(ctx->CampaignRuntime.acceptRevealed(ctx.getSource().getPlayerOrException()))))
+                .then(Commands.literal("all-is-revealed").executes(ctx->CampaignRuntime.acceptRevealed(ctx.getSource().getPlayerOrException())))
+                .then(Commands.literal("search-mission").executes(ctx->CampaignRuntime.acceptSearch(ctx.getSource().getPlayerOrException())))
+                .then(Commands.literal("chemical-experiments").executes(ctx->CampaignRuntime.acceptChemical(ctx.getSource().getPlayerOrException()))))
             .then(Commands.literal("recompense")
                 .then(Commands.literal("debut").executes(ctx->CampaignRuntime.claimDebut(ctx.getSource().getPlayerOrException())))
                 .then(Commands.literal("fuel-shortage").executes(ctx->CampaignRuntime.claimFuel(ctx.getSource().getPlayerOrException())))
-                .then(Commands.literal("all-is-revealed").executes(ctx->CampaignRuntime.claimRevealed(ctx.getSource().getPlayerOrException()))))));
+                .then(Commands.literal("all-is-revealed").executes(ctx->CampaignRuntime.claimRevealed(ctx.getSource().getPlayerOrException())))
+                .then(Commands.literal("search-mission").executes(ctx->CampaignRuntime.claimSearch(ctx.getSource().getPlayerOrException())))
+                .then(Commands.literal("chemical-experiments").executes(ctx->CampaignRuntime.claimChemical(ctx.getSource().getPlayerOrException()))))));
 
         event.getDispatcher().register(Commands.literal("efm").then(Commands.literal("marchands")
             .executes(ctx->CampaignCommerce.list(ctx.getSource().getPlayerOrException()))
