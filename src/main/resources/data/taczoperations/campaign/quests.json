@@ -59,6 +59,50 @@
         "dollars": 550,
         "reputationMilli": 100
       }
+    },
+    {
+      "id": "669fa39ee749756c920d02c8",
+      "name": "All Is Revealed",
+      "trader": "therapist",
+      "level": 5,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "669fb6c859bdae826f7325d4",
+          "type": "quest-find:factory:chemical-sample",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false
+        },
+        {
+          "id": "66a7eebed6bac3ecc16f7d6b",
+          "type": "quest-give:chemical-sample",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 5,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "traderLoyalty": 2,
+        "questItem": "669fac549b0ce3feae01a137",
+        "mapIds": [
+          "55f2d3fd4bdc2d5f408b4567",
+          "59fc81d786f774390775787e"
+        ]
+      },
+      "adaptation": {
+        "map": "factory",
+        "site": "Bunker, salle nord-ouest",
+        "localX": 52,
+        "localZ": 54,
+        "radius": 3
+      }
     }
   ]
 }
