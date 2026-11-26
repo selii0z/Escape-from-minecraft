@@ -304,7 +304,12 @@ final class CampaignRuntime {
             if(o.optional()||parts.length<2)return false;
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
-            if(parts[0].equals("extract")){
+            if(parts[0].equals("visit-adapted")||parts[0].equals("plant-adapted")){
+                boolean plant=parts[0].equals("plant-adapted");
+                if(parts.length!=(plant?4:3)||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")
+                    ||o.scope()!=Scope.CAMPAIGN||(!plant&&o.amount()!=1)
+                    ||(plant&&(!parts[3].matches("[0-9a-f]{24}")||!CampaignSupplies.rewardKnown(parts[3]))))return false;
+            }else if(parts[0].equals("extract")){
                 if(parts.length!=2||o.scope()!=Scope.SURVIVING_RAID)return false;
             }else if(parts[0].equals("kill")){
                 if(parts.length!=3||o.scope()!=Scope.CAMPAIGN)return false;
@@ -355,6 +360,7 @@ final class CampaignRuntime {
     }
     static void visit(ServerPlayer p,UUID raidId,String map){
         if(CATALOG==null||ScavRun.active(p)||!ForestRaid.canContinue(p)||!p.isAlive())return;
+        visitAdapted(p,raidId,map);
         if(map.equals("factory")||map.equals("customs")){
             String id="66b38e144f2ab7cc530c3fe7";
             if(!CATALOG.graph().quests().containsKey(id))return;
@@ -389,6 +395,46 @@ final class CampaignRuntime {
             return s;
         });
     }
+    // Generic field adapters use known encounter anchors, not Tarkov's unrelated coordinates.
+    private static net.minecraft.core.BlockPos fieldAnchor(String map,String key){
+        List<fr.taczoperations.worldgen.ForestPlan.Point> points;
+        ExpressZone express=null;
+        switch(map){
+            case "woods" -> points=fr.taczoperations.worldgen.ForestRaidAnchors.ENEMIES;
+            case "customs" -> points=fr.taczoperations.worldgen.IndustrialZone.GUARDS;
+            case "factory" -> {express=ExpressZone.BUNKER;points=express.encounters();}
+            case "interchange" -> {express=ExpressZone.WAREHOUSE;points=express.encounters();}
+            case "village" -> {express=ExpressZone.VILLAGE;points=express.encounters();}
+            case "streets" -> {express=ExpressZone.CITY;if(!express.available())return null;points=express.encounters();}
+            default -> {return null;}
+        }
+        if(express!=null){
+            final ExpressZone area=express;
+            points=points.stream().filter(area::valid).distinct().toList();
+        }
+        if(points.isEmpty())return null;
+        int n=(int)Long.remainderUnsigned(Long.parseUnsignedLong(key,16),points.size());
+        var point=points.get(n);
+        return express!=null?express.pos(point):map.equals("woods")?ForestLandmarks.position(point):industrialPoint(point.x(),point.z());
+    }
+    private static void visitAdapted(ServerPlayer p,UUID raidId,String map){
+        change(p,raidId,s->{
+            if(!raidId.equals(s.raidId()))return null;
+            boolean changed=false;
+            for(var q:CATALOG.graph().quests().values()){
+                var progress=s.player().snapshot().get(q.id());
+                if(!q.implemented()||progress==null||progress.state()!=State.ACTIVE)continue;
+                for(var o:q.objectives()){
+                    if(!o.type().startsWith("visit-adapted:"+map+":")||progress.counters().getOrDefault(o.id(),0)>=o.amount())continue;
+                    var point=fieldAnchor(map,o.type().split(":")[2]);
+                    if(point!=null&&near(p,point,6)&&s.player().record(q.id(),o.id(),1)){
+                        changed=true;say(p,label(q.id())+" · secteur reconnu.");
+                    }
+                }
+            }
+            return changed?s:null;
+        });
+    }
     // Server thread only; each player can perform one uninterrupted terrain action.
     private record Site(String quest,String objective,String map,String item,net.minecraft.core.BlockPos pos,int radius,int duration){}
     private static final Map<UUID,FieldAction> ACTIONS=new HashMap<>();
@@ -404,6 +450,19 @@ final class CampaignRuntime {
         new Site(CHUMMING,CHUMMING_WOODS,"woods",GOLD_CHAIN,
             ForestLandmarks.position(new fr.taczoperations.worldgen.ForestPlan.Point(645,225)),6,200),
         new Site(EASY_MONEY,EASY_MONEY_PLANT,"customs",POSTER,industrialPoint(125,540),5,200));
+    private static List<Site> allSites(){
+        var result=new ArrayList<>(SITES);
+        if(CATALOG!=null)for(var q:CATALOG.graph().quests().values()){
+            if(!q.implemented())continue;
+            for(var o:q.objectives()){
+                if(!o.type().startsWith("plant-adapted:"))continue;
+                var parts=o.type().split(":");
+                var point=fieldAnchor(parts[1],parts[2]);
+                if(point!=null)result.add(new Site(q.id(),o.id(),parts[1],parts[3],point,5,200));
+            }
+        }
+        return result;
+    }
     private static Map<String,Integer> starterItems(String id){
         return switch(id){
             case BLACK_SWAN->Map.of(MARKER,1);
@@ -422,7 +481,7 @@ final class CampaignRuntime {
         return stack.isEmpty()?id:stack.getHoverName().getString();
     }
     private static Site site(FieldAction action,ServerPlayer p){
-        return SITES.stream().filter(x->x.quest().equals(action.quest())&&x.objective().equals(action.objective())
+        return allSites().stream().filter(x->x.quest().equals(action.quest())&&x.objective().equals(action.objective())
             &&x.map().equals(action.map())&&x.item().equals(action.item())&&near(p,x.pos(),x.radius())).findFirst().orElse(null);
     }
     static int plant(ServerPlayer p,UUID raidId,String map){
@@ -431,7 +490,7 @@ final class CampaignRuntime {
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
             if(!raidId.equals(s.raidId()))return 0;
-            for(var x:SITES){
+            for(var x:allSites()){
                 if(!x.map().equals(map)||!near(p,x.pos(),x.radius()))continue;
                 int target=fieldTarget(x);
                 if(target<=0||s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
@@ -490,6 +549,12 @@ final class CampaignRuntime {
     private static boolean eligible(ServerPlayer p,String id){
         var q=CATALOG.graph().quests().get(id);
         if(q==null)return false;
+        for(var o:q.objectives()){
+            if(o.type().startsWith("visit-adapted:")||o.type().startsWith("plant-adapted:")){
+                var parts=o.type().split(":");
+                if(fieldAnchor(parts[1],parts[2])==null)return false;
+            }
+        }
         var questSite=CATALOG.meta().get(id).site();
         if(questSite!=null&&questSite.map().equals("streets")&&sitePos(questSite)==null)return false;
         var owner=CampaignTrader.byId(q.trader());
@@ -598,7 +663,11 @@ final class CampaignRuntime {
                 if(q.id().equals(SEARCH))lines.add("Forêt Noire · convoi et camp");
                 if(q.id().equals(CHEMICAL))lines.add("Zone industrielle · dépôt logistique ouest");
                 if(q.id().equals(ULTRA))lines.add("Entrepôt");
-                for(var field:SITES)if(field.quest().equals(q.id())&&!q.id().equals(CHEMICAL)){
+                for(var o:q.objectives())if(o.type().startsWith("visit-adapted:")){
+                    var parts=o.type().split(":");var point=fieldAnchor(parts[1],parts[2]);
+                    if(point!=null)lines.add("Secteur à reconnaître · "+parts[1]+" · X "+point.getX()+" Z "+point.getZ());
+                }
+                for(var field:allSites())if(field.quest().equals(q.id())&&!q.id().equals(CHEMICAL)){
                     lines.add((field.item().equals(MARKER)?"Baliser":"Déposer")+" : "+supplyTitle(field.item())+" · "+field.map());
                     lines.add("Coordonnées de raid : "+field.pos().getX()+", "+field.pos().getY()+", "+field.pos().getZ());
                 }
