@@ -131,3 +131,5 @@
 6389c70ca33d8c4cdf4932c6|Composants électroniques|green_dye
 6389c8c5dbfd5e4b95197e6b|Dossiers bleus TerraGroup|paper
 59e36c6f86f774176c10a2a7|Câble d'alimentation|string
+5991b51486f77447b112d44f|Balise MS2000|redstone
+675a0288c3102563bd01c9c3|Affiche publicitaire Arena|paper
