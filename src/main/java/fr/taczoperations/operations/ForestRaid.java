@@ -234,6 +234,10 @@ public final class ForestRaid extends SavedData {
         if(endsAt>0)announceRemaining(p);
     }
     // Offline players retain their raid slot for a limited reconnection window.
+    static UUID campaignRaidId(ServerPlayer player){
+        var raid=forPlayer(player);
+        return raid!=null&&raid.owns(player)?raid.id:null;
+    }
     static int campaignPlant(ServerPlayer player){
         var raid=forPlayer(player);
         if(raid==null||!isParticipant(player))return 0;
@@ -319,6 +323,7 @@ public final class ForestRaid extends SavedData {
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
+        CampaignRuntime.tickActions(event.getServer());
         // One maintenance pass per second is sufficient for a ten-minute
         // grace period; avoid scanning the raid dimension 20 times a second.
         if (event.getServer().getTickCount() % 20 != 0) return;
