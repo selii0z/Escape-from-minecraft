@@ -287,6 +287,7 @@ BOLT_REFERENCE={"627e14b21713922ded6f2c15","5bfd297f0db834001a669119","5ae08f0a5
 # Audited source alternative sets; unexpected sets stay blocked.
 # EFM equivalents are base weapon families, without attachments or presets.
 WEAPON_GROUPS={
+    "31138b3b113877fef665f246e685b9bb641134cec8ba7e92a4ac93f38256df5f":"rifle",
     "bbc5f2ca6ae8680227195cc1dff458757c116c88c8fba686f7aee18c09653b1b":"lmg",
     "82f6d52e4acd11319bb5814c922f2a17ad53f647deaaecdac94e9ff666e8edf8":"smg",
     "93d8779d1ce20c8b7062e3434da7c04861e4f1cc81f68c3663e411dae882215b":"ak",
@@ -1064,6 +1065,14 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
+                    if qid=="67af4c169d95ad16e004fd86":
+                        safety={"5c0e625a86f7742d77340f62":"5ab8e79e86f7742d8b372e78",
+                            "5c0e842486f77443a74d2976":"5c0e874186f7745dc7616606"}
+                        adapted=[safety.get(ref,ref) for ref in original]
+                        if adapted!=original:
+                            o["items"]=adapted
+                            changes.append({"type":"heavy-protection-equivalent","objective":o["id"],"before":original,"after":adapted})
+                            original=adapted
                     if qid=="5d25e43786f7740a212217fa" and set(original)=={"5ca2151486f774244a3b8d30","5e9dacf986f774054d6b89f4","545cdb794bdc2d3a198b456a","5b44d22286f774172b0c9de8","5ab8e79e86f7742d8b372e78","5c0e625a86f7742d77340f62","5f5f41476bdad616ad46d631"}:
                         o["items"]=["5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","545cdb794bdc2d3a198b456a"]
                         changes.append({"type":"heavy-armor-category-equivalent","objective":o["id"],"before":original,"after":o["items"]})
@@ -1238,6 +1247,8 @@ def build(snapshot,out,resources):
     mapped.update({"59f32bb586f774757e1e8442","59f32c3b86f77472a31742f0"})
     mapped.update({"5aa7d03ae5b5b00016327db5","5645bcc04bdc2d363b8b4572"})
     auto_names.update({"5aa7d03ae5b5b00016327db5":"Casque PMC classe 2","5645bcc04bdc2d363b8b4572":"Casque audio tactique"})
+    mapped.update({"5a1eaa87fcdbcb001865f75e","5ca20ee186f774799474abc2","60194943740c5d77f6705eea"})
+    auto_names.update({"5a1eaa87fcdbcb001865f75e":"Lunettes thermiques EFM","5ca20ee186f774799474abc2":"Casque PMC classe 5","60194943740c5d77f6705eea":"Munitions TaCZ 5,56"})
     mapped.update(WEAPON_HANDOVERS.values())
     mapped.add("545cdb794bdc2d3a198b456a")
     auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
