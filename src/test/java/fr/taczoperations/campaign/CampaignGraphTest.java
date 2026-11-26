@@ -94,6 +94,21 @@ public final class CampaignGraphTest {
         check(TurnInPlanner.plan(Map.of(StockObjectives.key(refA,true),1),mixed)==null);
         check(TurnInPlanner.plan(Map.of(StockObjectives.key(refA,true),1,StockObjectives.key(refA,false),1),mixed)
             .equals(Map.of(StockObjectives.key(refA,true),1,StockObjectives.key(refA,false),1)));
-        System.out.println("Campaign graph, turn-in and quest-item checks passed");
+        // Additive catalogue upgrades preserve definition signatures and saved counters.
+        var oldQuest=q("stable",List.of(),List.of(kills,loot),Set.of(),true);
+        var oldGraph=new CampaignGraph(List.of(oldQuest));
+        var oldPlayer=oldGraph.newPlayer();
+        check(oldPlayer.accept("stable",1));oldPlayer.record("stable","kills",2);
+        var expanded=new CampaignGraph(List.of(
+            q("stable",List.of(),List.of(loot,kills),Set.of(),true),
+            q("new",List.of(List.of(new Requirement("stable",Set.of(Outcome.COMPLETED)))),List.of(kills),Set.of(),true)));
+        check(oldPlayer.definitionFingerprint("stable").equals(expanded.definitionFingerprint("stable")));
+        var upgraded=expanded.restore(oldPlayer.snapshot());
+        check(upgraded.snapshot().get("stable").counters().get("kills")==2);
+        check(upgraded.state("new",1)==State.LOCKED);
+        var changed=new CampaignGraph(List.of(q("stable",List.of(),List.of(
+            new Objective("kills","kill",4,Scope.CAMPAIGN,false),loot),Set.of(),true)));
+        check(!oldPlayer.definitionFingerprint("stable").equals(changed.definitionFingerprint("stable")));
+        System.out.println("Campaign graph, turn-in, quest-item and upgrade checks passed");
     }
 }
