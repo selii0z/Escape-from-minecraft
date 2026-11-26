@@ -89,6 +89,7 @@ public final class OperationsMod {
         RaidRelic.register(ITEMS);
         fr.taczoperations.operations.TradeLoot.register(ITEMS);
         fr.taczoperations.operations.CollectorItems.register(ITEMS);
+        fr.taczoperations.operations.CampaignSupplies.register(ITEMS);
         ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         for(int i=0;i<fr.taczoperations.operations.FieldPack.BAGS.length;i++){
