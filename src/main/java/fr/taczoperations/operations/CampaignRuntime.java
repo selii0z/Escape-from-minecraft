@@ -331,7 +331,12 @@ final class CampaignRuntime {
         for(var o:objectives){
             if(StockObjectives.find(o)||StockObjectives.give(o))continue;
             String[] parts=o.type().split(":",-1);
-            if(o.optional()||parts.length<2)return false;
+            if(o.optional())return false;
+            if(o.type().equals("pay-credits")){
+                if(o.scope()!=Scope.CAMPAIGN||o.amount()<=0)return false;
+                combat++;continue;
+            }
+            if(parts.length<2)return false;
             if(parts[0].equals("milestone")){
                 if(!milestoneValid(o))return false;
                 combat++;continue;
@@ -733,6 +738,7 @@ final class CampaignRuntime {
                 for(var o:q.objectives()){
                     int count=progress==null?0:progress.counters().getOrDefault(o.id(),0);
                     if(state==State.ACTIVE&&o.type().startsWith("milestone:"))count=milestoneReached(p,s.player(),o)?1:0;
+                    if(state==State.ACTIVE&&o.type().equals("pay-credits"))count=Math.max(0,SupplyContract.account(p).getInt("credits"));
                     var refs=stockRefs(o);
                     if(!refs.isEmpty()&&state==State.ACTIVE)count=storage.count(stack->itemEligible(stack,o));
                     String title=o.id().equals(HUNT_VISIT)?"Cabane de chasse localisée":o.id().equals(HUNT_FIND)?"Message de Jaeger extrait":o.id().equals(HUNT_GIVE)?"Message remis":o.type().startsWith("turnin-any:")?"Provisions":o.type().endsWith(":any")?"Ennemis":o.id().equals(CONVOY)?"Convoi localisé":o.id().equals(CAMP)?"Camp localisé":o.id().equals(DEPOSIT)?"Tuyau annelé déposé":o.id().equals(SAMPLE_FIND)?"Échantillon chimique extrait":o.id().equals(SAMPLE_GIVE)?"Échantillon remis":refs.isEmpty()?"Scavs":o.amount()==5?"Fournitures d'entretien":"Combustibles et fournitures techniques";
@@ -814,9 +820,20 @@ final class CampaignRuntime {
         }
         return true;
     }
+    private static long creditCost(Quest q){
+        return q.objectives().stream().filter(o->o.type().equals("pay-credits")).mapToLong(Objective::amount).sum();
+    }
+    private static boolean recordPayment(CampaignGraph.Player player,Quest q){
+        for(var o:q.objectives())if(o.type().equals("pay-credits")){
+            var progress=player.snapshot().get(q.id());
+            if(progress==null)return false;
+            if(progress.counters().getOrDefault(o.id(),0)<o.amount()&&!player.record(q.id(),o.id(),o.amount()))return false;
+        }
+        return true;
+    }
     private static boolean canClaimPreview(ServerPlayer p,CampaignStorage.Session s,Quest q,CarriedStorage storage){
         var trial=CATALOG.graph().restore(s.player().snapshot());
-        if(planTurnIns(q,storage)==null)return false;
+        if(planTurnIns(q,storage)==null||creditCost(q)>Math.max(0,SupplyContract.account(p).getInt("credits"))||!recordPayment(trial,q))return false;
         for(var o:q.objectives())if(StockObjectives.give(o)||findStock(o))trial.record(q.id(),o.id(),o.amount());
         if(!markMilestones(p,trial,q)||!handOverQuestItem(trial,q))return false;
         return trial.state(q.id(),level(p))==State.READY;
@@ -861,12 +878,15 @@ final class CampaignRuntime {
             var r=reward(id);
             var account=SupplyContract.account(p);
             int credits=account.getInt("credits"),xp=Math.max(0,account.getInt("contract_xp_bonus_v2"));
-            if((long)credits+r.credits()>Integer.MAX_VALUE||(long)xp+r.xp()>Integer.MAX_VALUE){say(p,"Solde maximal atteint.");return 0;}
+            long cost=creditCost(q);
+            if(cost>Math.max(0,credits)){say(p,"Crédits insuffisants · "+cost+" requis. Aucun débit.");return 0;}
+            if((long)credits-cost+r.credits()>Integer.MAX_VALUE||(long)xp+r.xp()>Integer.MAX_VALUE){say(p,"Solde maximal atteint.");return 0;}
             if(!CampaignRewardInbox.canQueue(p,r.items())){say(p,"Réserve de récompenses saturée ou objet indisponible.");return 0;}
             var storage=CarriedStorage.of(p);
             var plan=planTurnIns(q,storage);
             if(plan==null){say(p,"Objets requis insuffisants. Aucun objet remis.");return 0;}
             for(var o:q.objectives())if(!turnInRefs(o).isEmpty()||findStock(o))s.player().record(id,o.id(),o.amount());
+            if(!recordPayment(s.player(),q))return 0;
             if(!markMilestones(p,s.player(),q)){say(p,"Conditions de niveau, fidélité ou mission non remplies.");return 0;}
             if(!handOverQuestItem(s.player(),q)){say(p,"Récupère l’objet de mission et extrais-toi vivant.");return 0;}
             if(!s.player().complete(id,level(p))){say(p,"Objectifs incomplets.");return 0;}
@@ -878,7 +898,8 @@ final class CampaignRuntime {
                     throw new IllegalStateException("Inventory changed during turn-in");
             }
             CampaignStorage.save(p,CATALOG.revision(),s);
-            account.putInt("credits",credits+r.credits());
+            account.putInt("credits",(int)(credits-cost+r.credits()));
+            if(cost>0)say(p,"Paiement de mission · "+cost+" crédits.");
             account.putInt("contract_xp_bonus_v2",xp+r.xp());
             CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(q.trader()),r.reputation());
             r.otherStanding().forEach((owner,delta)->CampaignTraderAccount.applyReputation(p,CampaignTrader.byId(owner),delta));
