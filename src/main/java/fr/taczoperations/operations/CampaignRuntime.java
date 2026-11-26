@@ -302,9 +302,18 @@ final class CampaignRuntime {
             if(StockObjectives.find(o)||StockObjectives.give(o))continue;
             String[] parts=o.type().split(":",-1);
             if(o.optional()||parts.length<2)return false;
+            if(parts[0].equals("quest-give-adapted")){
+                if(parts.length!=2||!parts[1].matches("[0-9a-f]{24}")||o.scope()!=Scope.CAMPAIGN||o.amount()!=1
+                    ||objectives.stream().filter(f->f.type().startsWith("quest-find-adapted:")&&f.type().endsWith(":"+parts[1])).count()!=1)return false;
+                combat++;continue;
+            }
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
-            if(parts[0].equals("visit-adapted")||parts[0].equals("plant-adapted")){
+            if(parts[0].equals("quest-find-adapted")){
+                if(parts.length!=4||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")||
+                    !parts[3].matches("[0-9a-f]{24}")||o.scope()!=Scope.SURVIVING_RAID||o.amount()!=1||
+                    objectives.stream().filter(g->g.type().equals("quest-give-adapted:"+parts[3])).count()!=1)return false;
+            }else if(parts[0].equals("visit-adapted")||parts[0].equals("plant-adapted")){
                 boolean plant=parts[0].equals("plant-adapted");
                 if(parts.length!=(plant?4:3)||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")
                     ||o.scope()!=Scope.CAMPAIGN||(!plant&&o.amount()!=1)
@@ -550,7 +559,7 @@ final class CampaignRuntime {
         var q=CATALOG.graph().quests().get(id);
         if(q==null)return false;
         for(var o:q.objectives()){
-            if(o.type().startsWith("visit-adapted:")||o.type().startsWith("plant-adapted:")){
+            if(o.type().startsWith("visit-adapted:")||o.type().startsWith("plant-adapted:")||o.type().startsWith("quest-find-adapted:")){
                 var parts=o.type().split(":");
                 if(fieldAnchor(parts[1],parts[2])==null)return false;
             }
@@ -590,6 +599,19 @@ final class CampaignRuntime {
             if(!raidId.equals(s.raidId()))return 0;
             for(var q:CATALOG.graph().quests().values()){
                 if(!q.implemented()||s.player().state(q.id(),level(p))!=State.ACTIVE)continue;
+                for(var o:q.objectives()){
+                    if(!o.type().startsWith("quest-find-adapted:"+map+":"))continue;
+                    var parts=o.type().split(":");
+                    var position=fieldAnchor(map,parts[2]);
+                    if(position==null||!near(p,position,5))continue;
+                    var progress=s.player().snapshot().get(q.id());
+                    if(progress.counters().getOrDefault(o.id(),0)>0||
+                        s.player().checkpoint().pending().getOrDefault(q.id(),Map.of()).getOrDefault(o.id(),0)>0)continue;
+                    if(!s.player().record(q.id(),o.id(),1))continue;
+                    CampaignStorage.save(p,CATALOG.revision(),s);
+                    say(p,label(q.id())+" · objet de mission récupéré. Extrais-toi vivant.");
+                    return 1;
+                }
                 QuestSite site=CATALOG.meta().get(q.id()).site();
                 if(q.id().equals(REVEALED))site=new QuestSite("factory",52,54,3,"Échantillon chimique",SAMPLE_FIND,SAMPLE_GIVE);
                 if(q.id().equals(INTRO))site=new QuestSite("woods",130,513,5,"Message de Jaeger",HUNT_FIND,HUNT_GIVE);
@@ -608,6 +630,17 @@ final class CampaignRuntime {
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign search failed",e);return 0;}
     }
     private static boolean handOverQuestItem(CampaignGraph.Player player,Quest q){
+        var saved=player.snapshot().get(q.id());
+        for(var give:q.objectives()){
+            if(!give.type().startsWith("quest-give-adapted:"))continue;
+            String ref=give.type().substring("quest-give-adapted:".length());
+            var find=q.objectives().stream().filter(o->o.type().startsWith("quest-find-adapted:")&&o.type().endsWith(":"+ref)).findFirst().orElse(null);
+            if(find==null||saved==null||saved.counters().getOrDefault(find.id(),0)<1)return false;
+        }
+        for(var give:q.objectives()){
+            if(give.type().startsWith("quest-give-adapted:")&&saved.counters().getOrDefault(give.id(),0)<1
+                &&!player.record(q.id(),give.id(),1))return false;
+        }
         QuestSite site=CATALOG.meta().get(q.id()).site();
         if(q.id().equals(INTRO))site=new QuestSite("woods",130,513,5,"",HUNT_FIND,HUNT_GIVE);
         if(q.id().equals(REVEALED))site=new QuestSite("factory",52,54,3,"",SAMPLE_FIND,SAMPLE_GIVE);
@@ -663,6 +696,10 @@ final class CampaignRuntime {
                 if(q.id().equals(SEARCH))lines.add("Forêt Noire · convoi et camp");
                 if(q.id().equals(CHEMICAL))lines.add("Zone industrielle · dépôt logistique ouest");
                 if(q.id().equals(ULTRA))lines.add("Entrepôt");
+                for(var o:q.objectives())if(o.type().startsWith("quest-find-adapted:")){
+                    var parts=o.type().split(":");var point=fieldAnchor(parts[1],parts[2]);
+                    if(point!=null)lines.add("Objet de mission · "+parts[1]+" · X "+point.getX()+" Z "+point.getZ()+" · /efm fouiller");
+                }
                 for(var o:q.objectives())if(o.type().startsWith("visit-adapted:")){
                     var parts=o.type().split(":");var point=fieldAnchor(parts[1],parts[2]);
                     if(point!=null)lines.add("Secteur à reconnaître · "+parts[1]+" · X "+point.getX()+" Z "+point.getZ());
