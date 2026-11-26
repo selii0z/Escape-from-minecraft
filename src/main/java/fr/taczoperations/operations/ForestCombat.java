@@ -25,10 +25,33 @@ public final class ForestCombat {
         float used;
     }
 
-    // Balance NPC damage only; player-fired TaCZ weapons keep their original stats.
+    // Raid-only game balance: NPC damage caps and player headshot bonuses.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
         if (event.getLogicalSide().isClient()) return;
         DetailedStats.hit(event);
+        // Only genuine TaCZ headshot events on current non-boss raid NPCs.
+        // Protective helmets retain their mitigation; body shots and PvP are unchanged.
+        if(event.isHeadShot()&&event.getAttacker() instanceof ServerPlayer shooter
+            &&event.getHurtEntity() instanceof Pillager target&&target.level() instanceof ServerLevel raidLevel
+            &&ForestRaid.currentGuard(raidLevel,target)&&ForestRaid.sameSession(raidLevel,target,shooter)
+            &&!GuardRole.get(target).boss()&&shooter.getMainHandItem().getItem() instanceof IGun gun){
+            var held=shooter.getMainHandItem();
+            var id=gun.getGunId(held);
+            String name=id.getPath().toLowerCase(java.util.Locale.ROOT);
+            boolean pistol=name.matches(".*(glock|m1911|p226|p320|m9|beretta|makarov|usp|cz75|pistol|revolver|deagle).*");
+            boolean eligible=TimelessAPI.getCommonGunIndex(id).map(index->{
+                var data=index.getGunData();
+                return data!=null&&data.getAmmoId()!=null
+                    &&OperationsShop.weaponTier(id,data.getAmmoId(),data.getAmmoAmount())>=2;
+            }).orElse(false);
+            if(!pistol&&eligible&&Float.isFinite(event.getBaseAmount())&&event.getBaseAmount()>0){
+                var helmet=target.getItemBySlot(EquipmentSlot.HEAD);
+                if(helmet.isEmpty()||java.util.Set.of("taczoperations:night_vision_goggles","taczoperations:thermal_goggles").contains(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(helmet.getItem()).toString())){
+                    event.setHeadshotMultiplier(Math.max(1F,event.getHeadshotMultiplier()));
+                    event.setBaseAmount(Math.max(event.getBaseAmount(),target.getHealth()*3F+10F));
+                }else event.setBaseAmount(event.getBaseAmount()*1.5F);
+            }
+        }
         // Apply localized ballistic protection to both players and guards.
         if (!(event.getAttacker() instanceof Pillager guard)
             || !(event.getHurtEntity() instanceof ServerPlayer player)
