@@ -1,0 +1,17 @@
+// Temporary vanilla icons until original Collector artwork is finished.
+def collectorSource=file('src/main/resources/data/taczoperations/campaign/collector-items.txt')
+def collectorModels=layout.buildDirectory.dir('generated/collectorModels')
+tasks.register('generateCollectorModels'){
+    inputs.file(collectorSource)
+    outputs.dir(collectorModels)
+    doLast {
+        collectorSource.readLines('UTF-8').findAll{!it.isBlank()}.each{ line ->
+            def fields=line.split('[|]',-1)
+            def model=new File(collectorModels.get().asFile,"assets/taczoperations/models/item/collector_"+fields[0]+".json")
+            model.parentFile.mkdirs()
+            model.text=groovy.json.JsonOutput.toJson([parent:'minecraft:item/generated',textures:[layer0:'minecraft:item/'+fields[2]]])
+        }
+    }
+}
+sourceSets.main.resources.srcDir(collectorModels)
+tasks.named('processResources'){dependsOn tasks.named('generateCollectorModels')}
