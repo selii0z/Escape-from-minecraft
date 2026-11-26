@@ -113,6 +113,17 @@ public final class ScavRun {
             p.closeContainer();
             if(!p.containerMenu.getCarried().isEmpty())return false;
             var account=SupplyContract.account(p);var saved=account.getCompound(ESCROW);
+            // A command teleport or reconnect outside the raid can leave a
+            // Scav starting-inventory snapshot behind. Never apply that
+            // snapshot to restored PMC items on the next departure.
+            if(ForestExpedition.hasReturnPoint(p)||ForestRaid.hasRaidToken(p)){
+                ForestRaid.finishParticipant(p);
+                ForestExpedition.clearReturnPoint(p);
+                ForestRaid.clearPlayer(p);
+                StoryMissions.clear(p);
+                SupplyContract.abortRun(p);
+                RaidLootValue.clear(p);
+            }
             var handlers=handlers(p);var originals=decode(p,saved.getList("slots",10),handlers);
             var current=readSlots(p,handlers);
             boolean success=saved.getBoolean("finished")&&saved.getBoolean("survived");
