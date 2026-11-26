@@ -361,6 +361,7 @@ final class CampaignRuntime {
             case "usec"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==0;
             case "bear"->role==GuardRole.PMC&&enemy!=null&&(enemy.getLeastSignificantBits()&1)==1;
             case "boss"->role.boss();
+            case "cultist"->role==GuardRole.CULTIST_PRIEST||"CULTIST_PRIEST".equals(escortOf);
             case "reshala_escort"->"RESHALA".equals(escortOf)&&!role.boss();
             case "boss_escort"->!role.boss()&&Set.of("RESHALA","GLUKHAR","TRACKER","KABAN","KOLLONTAY","SANITAR").contains(escortOf);
             case "goons"->role==GuardRole.KNIGHT||role==GuardRole.BIG_PIPE||role==GuardRole.BIRDEYE;
@@ -405,7 +406,7 @@ final class CampaignRuntime {
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort","cultist").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else if(parts[0].equals("quest-find-adapted")){
                 if(parts.length!=4||maps.size()!=1||maps.contains("*")||!parts[2].matches("[0-9a-f]{16}")||
@@ -421,7 +422,7 @@ final class CampaignRuntime {
             }else if(parts[0].equals("kill")){
                 if(parts.length!=3||o.scope()!=Scope.CAMPAIGN)return false;
                 String role=parts[2];
-                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort").contains(role)&&Arrays.stream(GuardRole.values())
+                if(!Set.of("any","pmc","scav","boss","usec","bear","reshala_escort","goons","boss_escort","cultist").contains(role)&&Arrays.stream(GuardRole.values())
                     .noneMatch(x->x.name().toLowerCase(Locale.ROOT).equals(role)))return false;
             }else return false;
             combat++;
