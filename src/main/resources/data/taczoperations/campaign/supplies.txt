@@ -1,0 +1,32 @@
+577e1c9d2459773cd707c525|Printer paper|paper
+59faf98186f774067b6be103|Alkaline cleaner for heat exchangers|glass_bottle
+59e3596386f774176c10a2a2|PAID antiroach spray|glass_bottle
+59e3556c86f7741776641ac2|OX bleach|glass_bottle
+5e2af02c86f7746d420957d4|Pack of chlorine|paper
+5e2af00086f7746d3f3c33f7|Smoked Chimney drain cleaner|glass_bottle
+5e2aef7986f7746d3f3c33f5|Repellent|glass_bottle
+62a09ee4cf4a99369e262453|Can of white salt|sugar
+5d40412b86f7743cb332ac3a|Schaman shampoo|glass_bottle
+5c13cd2486f774072c757944|Soap|white_dye
+59e35abd86f7741778269d82|Pack of sodium bicarbonate|paper
+5c13cef886f774072e618e82|Toilet paper|paper
+5d4041f086f7743cac3f22a7|Ortodontox toothpaste|white_dye
+67586c61a0c49554ed0bb4a8|Shyshka Christmas tree life extender|glass_bottle
+59e358a886f7741776641ac3|Clin window cleaner|glass_bottle
+57347c93245977448d35f6e3|Toothpaste|white_dye
+60391b0fb847c71012789415|TP-200 TNT brick|brick
+56742c284bdc2d98058b456d|Crickent lighter|flint
+67586bee39b1b82b0d0f9d06|Special 40-degree fuel|glass_bottle
+59fafb5d86f774067a6f2084|Propane tank 5L|iron_ingot
+5e2af2bc86f7746d3f3c33fc|Hunting matches|stick
+5e2af37686f774755a234b65|SurvL survivor lighter|flint
+60391a8b3364dc22b04d0ce5|Can of thermite|iron_ingot
+590c5bbd86f774785762df04|WD-40 100ml|glass_bottle
+590c5c9f86f77477c91c36e7|WD-40 400ml|glass_bottle
+57347b8b24597737dd42e192|Classic matches|stick
+56742c2e4bdc2d95058b456d|Zibbo lighter|flint
+699f09de81a6c812900a77b7|AMG-10 hydraulic fluid|glass_bottle
+590a373286f774287540368b|Dry fuel|coal
+5b43575a86f77424f443fe62|Fuel conditioner|glass_bottle
+5d1b36a186f7742523398433|Metal fuel tank|iron_ingot
+5d1b371186f774253763a656|Expeditionary fuel tank|iron_ingot
