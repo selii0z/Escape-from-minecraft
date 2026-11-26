@@ -22,7 +22,22 @@ final class CampaignTraderAccount {
     static int loyalty(ServerPlayer p,CampaignTrader trader){
         return trader.loyaltyLevel(MilitaryProgression.level(SupplyContract.experienceEarned(p)),reputation(p,trader),unlocked(p,trader));
     }
-    // Called only by future validated quest reward transactions.
+    /** Small supplementary standing reward for an actual successful PMC raid.
+     * Never affects Fence karma, never bypasses an unlock, never exceeds LL4.
+     * Awarded once by the existing raid-XP finalization path. */
+    static void successfulPmcRaid(ServerPlayer p,int seconds,int kills,int crates){
+        if(ScavRun.active(p)||p.isCreative()||p.isSpectator()||seconds<300||(kills<=0&&crates<=0))return;
+        int awarded=0;
+        for(var trader:java.util.List.of(CampaignTrader.PRAPOR,CampaignTrader.THERAPIST,CampaignTrader.SKIER,
+            CampaignTrader.PEACEKEEPER,CampaignTrader.MECHANIC,CampaignTrader.RAGMAN,CampaignTrader.JAEGER,CampaignTrader.REF)){
+            if(!unlocked(p,trader))continue;
+            int cap=trader.loyalty.getLast().reputationMilli();
+            int delta=Math.max(0,Math.min(25,cap-reputation(p,trader)));
+            if(delta>0){applyReputation(p,trader,delta);awarded++;}
+        }
+        if(awarded>0)p.sendSystemMessage(net.minecraft.network.chat.Component.literal("Raid PMC réussi : réputation +0,025 auprès des marchands débloqués (jusqu'au dernier palier)."));
+    }
+    // Called only by validated quest or raid reward transactions.
     static void applyReputation(ServerPlayer p,CampaignTrader trader,int deltaMilli){
         var a=SupplyContract.account(p);
         a.putInt(REP+trader.id,(int)Math.clamp((long)reputation(p,trader)+deltaMilli,-100_000L,100_000L));
