@@ -298,7 +298,7 @@ def combat_objective(o):
             blockers.add("specific-extraction-condition")
         # EFM only reports successful extraction, not run-through or map transitions.
         statuses=set(o.get("exitStatus") or [])
-        if statuses!={"ExpBonusSurvived"}:blockers.add("unsupported-extraction-status")
+        if "ExpBonusSurvived" not in statuses:blockers.add("unsupported-extraction-status")
         event="extract:"+map_value
         scope="SURVIVING_RAID"
         label="Extractions réussies"
@@ -360,7 +360,7 @@ def test_field_adapter():
     assert "field-item-mapping" in field_objective(dict(o,type="mark",markerItem=ref,count=1),set())[1]
 
 # EFM consolidates Tarkov's individual skills into eight passive categories.
-SKILL_ADAPTERS={"Endurance":"ENDURANCE","Strength":"STRENGTH","Attention":"SEARCH","Search":"SEARCH",
+SKILL_ADAPTERS={"Intellect":"SEARCH","LightVests":"SURVIVAL","HeavyVests":"SURVIVAL","Endurance":"ENDURANCE","Strength":"STRENGTH","Attention":"SEARCH","Search":"SEARCH",
     "Perception":"SEARCH","Surgery":"MEDICINE","Vitality":"SURVIVAL","Health":"SURVIVAL",
     "StressResistance":"SURVIVAL","Immunity":"SURVIVAL","Metabolism":"SURVIVAL",
     "CovertMovement":"STEALTH","Charisma":"TRADE","AimDrills":"WEAPONS","TroubleShooting":"WEAPONS",
@@ -706,7 +706,8 @@ def supply_catalog(tasks,item_catalog,resources,out):
         item=item_catalog.get(ref,{})
         types=set(item.get("types") or [])
         # Unknown, equipment, quest-only and currency IDs remain review-only.
-        if "barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}:continue
+        key="keys" in types
+        if not key and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
         name=item.get("normalizedName")
         if not isinstance(name,str) or not name.strip():continue
         name=name.replace("-"," ").replace("_"," ").strip().title()
@@ -722,9 +723,10 @@ def supply_catalog(tasks,item_catalog,resources,out):
             (("bottle","liquid","solvent","cleaner","fluid"),"glass_bottle"),
             (("book","document","manual","paper","magazine"),"paper")):
             if any(word in normalized for word in words):icon=candidate;break
+        if key:icon="tripwire_hook"
         rows.append((ref,name,icon))
     (out/"supplies-development.txt").write_text(existing.rstrip()+"\n"+"".join("|".join(row)+"\n" for row in rows),encoding="utf-8")
-    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"inert-barter-loot"} for r,n,i in rows])
+    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"mission-key-loot" if i=="tripwire_hook" else "inert-barter-loot"} for r,n,i in rows])
     return known|{r for r,n,i in rows},{r:n for r,n,i in rows},len(rows)
 
 def test_supply_catalog():
@@ -827,6 +829,21 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
         q["otherRequirements"]=gates
         if level!=old_level:q["minPlayerLevel"]=level
         if qid!="5c51aac186f77432ea65c552":
+            # The imported documents are at accessible EFM sites, not behind Tarkov's doors.
+            # Explicit collection/handover objectives for keys remain intact.
+            if q.get("neededKeys"):
+                changes.append({"type":"unavailable-door-gate-removed","reference":q["neededKeys"]})
+                q["neededKeys"]=[]
+            kept=[]
+            for o in q["objectives"]:
+                if o.get("optional") and o["type"]=="visit":
+                    changes.append({"type":"optional-reconnaissance-omitted","reference":o})
+                    continue
+                if o["type"] in {"findQuestItem","visit"} and o.get("requiredKeys"):
+                    changes.append({"type":"unavailable-door-gate-removed","reference":o["requiredKeys"],"objective":o["id"]})
+                    o.pop("requiredKeys")
+                kept.append(o)
+            if kept:q["objectives"]=kept
             reward=q.get("finishRewards") or {}
             items=[]
             converted=0
@@ -924,7 +941,8 @@ def build(snapshot,out,resources):
     print(json.dumps({"scopeOriginal":len(original_tasks),"scopeRetained":len(tasks),"scopeExcluded":len(excluded),"rewiredChains":len(rewired)},indent=2))
     item_catalog=read(snapshot/"items.json")["data"]["items"]
     mapped,auto_names,auto_count=supply_catalog(original_tasks,item_catalog,resources,out)
-    mapped.add("5c093ca986f7740a1867ab12")
+    mapped.update({"5c093ca986f7740a1867ab12","59e763f286f7742ee57895da","59e7643b86f7742cbf2c109a","5648a69d4bdc2ded0b8b457b"})
+    auto_names.update({"59e763f286f7742ee57895da":"Sac expédition EFM (Pilgrim)","59e7643b86f7742cbf2c109a":"Gilet tactique EFM (Wartech)","5648a69d4bdc2ded0b8b457b":"Gilet élite EFM (Blackrock)"})
     adaptation_count=adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
     dependencies=dependency_audit(tasks,current)
