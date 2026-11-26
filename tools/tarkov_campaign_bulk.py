@@ -256,6 +256,8 @@ MAP_ADAPTERS = {
 TARGET_ADAPTERS = {
     frozenset(["Any"]):"any", frozenset(["AnyPmc"]):"pmc",
     frozenset(["Savage","Marksman","assaultGroup"]):"scav",
+    frozenset(["Savage"]):"scav", frozenset(["Marksman"]):"marksman",
+    frozenset(["Marksman","bossBoarSniper"]):"marksman",
     frozenset(["bossBoar"]):"kaban", frozenset(["bossKolontay"]):"kollontay",
     frozenset(["bossKilla"]):"killa", frozenset(["bossTagilla"]):"foreman",
     frozenset(["bossBully"]):"reshala", frozenset(["bossKojaniy"]):"tracker",
@@ -279,6 +281,11 @@ BOLT_REFERENCE={"627e14b21713922ded6f2c15","5bfd297f0db834001a669119","5ae08f0a5
 # Audited source alternative sets; unexpected sets stay blocked.
 # EFM equivalents are base weapon families, without attachments or presets.
 WEAPON_GROUPS={
+    "bbc5f2ca6ae8680227195cc1dff458757c116c88c8fba686f7aee18c09653b1b":"lmg",
+    "82f6d52e4acd11319bb5814c922f2a17ad53f647deaaecdac94e9ff666e8edf8":"smg",
+    "93d8779d1ce20c8b7062e3434da7c04861e4f1cc81f68c3663e411dae882215b":"ak",
+    "55f6e3d2de618613b75f9d4adcd4b5143191c160d4444b4bf87f32a4536ae227":"shotgun",
+    "2380c3b1d003e9cdd8c863d105f20bfa9bf94845e046a19eb709d4c41e6d0f74":"shotgun",
     "16880dc6d37b6bd36de325bdaf279faab8229bd0bede2c4920cdbc0546b35544":"pistol",
     "e07953c49fbab21dbf2e3b381487e79d911d50d8ae3e6f02683167abad8824e6":"pistol",
     "23426ad30af586b87349f02579a9cfc0f961096bc3047c2cabbfe81b6024b4ac":"ak",
@@ -311,9 +318,12 @@ def combat_objective(o):
         if set(o)-known:blockers.add("unknown-combat-predicate")
         mode=o.get("shotType")
         if mode not in {"kill","hit"}:blockers.add("hit-tracking-required")
-        for key in ("usingWeaponMods","timeFromHour","timeUntilHour","wearing",
+        for key in ("usingWeaponMods","wearing",
                     "notWearing","enemyHealthEffect","playerHealthEffect","zones","effects"):
             if o.get(key):blockers.add("combat-"+key)
+        hours=(o.get("timeFromHour") or 0,o.get("timeUntilHour") or 0)
+        night=hours==(21,5)
+        if hours!=(0,0) and not night:blockers.add("unsupported-combat-time-window")
         distance=o.get("distance") or {"value":0,"compareMethod":">="}
         value=distance.get("value")
         compare={">=":"ge","<=":"le",">":"gt","<":"lt"}.get(distance.get("compareMethod"))
@@ -335,10 +345,11 @@ def combat_objective(o):
         event="kill:"+map_value+":"+(role or "unsupported")
         scope="CAMPAIGN"
         label=("Toucher " if mode=="hit" else "Éliminer ")+({"any":"des ennemis","pmc":"des PMC","scav":"des Scavs"}.get(role,role or "cible à adapter"))
-        if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge":
+        if mode=="hit" or part!="any" or weapon!="any" or value or compare!="ge" or night:
             event="gunshot:"+map_value+":"+(role or "unsupported")+":"+str(mode)+":"+part+":"+weapon+":"+compare+":"+str(value)
+            if night:event+=":night";label+=" · raid de nuit"
             if part!="any":label+=" · "+("tête" if part=="head" else "jambes")
-            if weapon!="any":label+=" · "+{"bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM"}[weapon]
+            if weapon!="any":label+=" · "+{"bolt":"fusil à verrou EFM","pistol":"pistolet EFM","ak":"AK EFM","western":"M4 EFM","smg":"PM EFM","rifle":"fusil d’assaut EFM","shotgun":"fusil à pompe EFM","lmg":"mitrailleuse EFM"}[weapon]
             if value:label+=" · "+distance["compareMethod"]+" "+str(value)+" blocs"
     else:
         if set(o)-(basic|{"exitStatus","exitName","healthEffect","bodyParts","effects"}):
@@ -892,6 +903,17 @@ def test_scope_selection():
     assert selected[c]["taskRequirements"]==[complete(a)] and ref[c]["taskRequirements"]==[complete(b)]
     assert len(changes)==1
 
+WEAPON_HANDOVERS={
+    "5644bd2b4bdc2d3b4c8b4572":"5644bd2b4bdc2d3b4c8b4572",
+    "5ac4cd105acfc40016339859":"5644bd2b4bdc2d3b4c8b4572",
+    "5ab8e9fcd8ce870019439434":"5644bd2b4bdc2d3b4c8b4572",
+    "5bf3e03b0db834001d2c4a9c":"5644bd2b4bdc2d3b4c8b4572",
+    "5bf3e0490db83400196199af":"5644bd2b4bdc2d3b4c8b4572",
+    "5447a9cd4bdc2dbd208b4567":"5447a9cd4bdc2dbd208b4567",
+    "5bb2475ed4351e00853264e3":"5447a9cd4bdc2dbd208b4567",
+    "5448bd6b4bdc2dfc2f8b4569":"5448bd6b4bdc2dfc2f8b4569",
+    "579204f224597773d619e051":"5448bd6b4bdc2dfc2f8b4569",
+}
 MEDICAL_EQUIVALENTS={
     "544fb45d4bdc2dee738b4568":"544fb45d4bdc2dee738b4568",
     "5755356824597772cb798962":"5755356824597772cb798962",
@@ -962,6 +984,12 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
+                    if set(original)<=WEAPON_HANDOVERS.keys():
+                        adapted=sorted({WEAPON_HANDOVERS[ref] for ref in original})
+                        if adapted!=sorted(set(original)):
+                            o["items"]=adapted
+                            changes.append({"type":"base-weapon-handover-equivalent","objective":o["id"],"before":original,"after":adapted})
+                        original=o["items"]
                     medical=[MEDICAL_EQUIVALENTS.get(ref,ref) for ref in original]
                     # If the source allows a choice of medical items, keep the usable
                     # equivalents; do not pretend surgical kits are bandages.
@@ -1078,6 +1106,9 @@ def build(snapshot,out,resources):
     auto_names.update({"59e763f286f7742ee57895da":"Sac expédition EFM (Pilgrim)","59e7643b86f7742cbf2c109a":"Gilet tactique EFM (Wartech)","5648a69d4bdc2ded0b8b457b":"Gilet élite EFM (Blackrock)"})
     mapped.update({"59e7635f86f7742cbf2c1095","5c0e655586f774045612eeb2","5ab8e79e86f7742d8b372e78","5a38e6bac4a2826c6e06d79b"})
     auto_names.update({"59e7635f86f7742cbf2c1095":"Tunique PMC classe 2","5c0e655586f774045612eeb2":"Tunique PMC classe 4","5ab8e79e86f7742d8b372e78":"Tunique PMC classe 5","5a38e6bac4a2826c6e06d79b":"Fusil M870 EFM"})
+    mapped.update(WEAPON_HANDOVERS.values())
+    mapped.add("545cdb794bdc2d3a198b456a")
+    auto_names.update({"5644bd2b4bdc2d3b4c8b4572":"AK EFM","5447a9cd4bdc2dbd208b4567":"M4 EFM","5448bd6b4bdc2dfc2f8b4569":"Pistolet EFM","545cdb794bdc2d3a198b456a":"Tunique PMC classe 6"})
     mapped.update(MEDICAL_EQUIVALENTS.values())
     auto_names.update({"544fb45d4bdc2dee738b4568":"Salewa","5755356824597772cb798962":"Trousse de soins",
         "544fb25a4bdc2dfb738b4567":"Bandage","544fb3364bdc2d34748b456a":"Attelle","60098af40accd37ef2175f27":"Hémostatique"})
