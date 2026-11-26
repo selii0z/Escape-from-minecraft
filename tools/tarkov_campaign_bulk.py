@@ -26,7 +26,7 @@ def write(p,v):
 def ids(p):
     return {line.split("|")[0] for line in p.read_text(encoding="utf-8").splitlines() if line.strip()}
 def reward_plan(q):
-    reward=q["finishRewards"]
+    reward=q.get("finishRewards") or {}
     credits=0
     unresolved=[]
     for r in reward.get("items",[]):
@@ -35,7 +35,7 @@ def reward_plan(q):
         else:
             unresolved.append(r)
     standing=reward.get("traderStanding",[])
-    return {"credits":credits,"xp":q["experience"]//100,
+    return {"credits":credits,"xp":q["experience"]//100 if isinstance(q.get("experience"),int) else None,
             "reputation":round(1000*sum(r["standing"] for r in standing if r["trader"]==q["trader"])),
             "unmappedItems":unresolved,
             "otherStanding":[r for r in standing if r["trader"]!=q["trader"]],
@@ -53,7 +53,7 @@ def stock_draft(q, mapped):
             blockers.add("invalid-stock-objective");continue
         if o.get("maps") or o.get("zones"):
             blockers.add("location-restricted-stock")
-        if o.get("dogTagLevel",0)!=0 or o.get("minDurability",0)!=0 or o.get("maxDurability",100)!=100:
+        if (o.get("dogTagLevel") or 0)!=0 or (o.get("minDurability") or 0)!=0 or o.get("maxDurability",100) not in (100,None):
             blockers.add("stock-condition-or-dogtag-level")
         if set(o)-{"id","description","type","count","optional","items","dogTagLevel","maxDurability","minDurability","foundInRaid","maps","zones"}:
             blockers.add("unknown-stock-predicate")
@@ -77,11 +77,12 @@ def stock_draft(q, mapped):
         blockers.add("no-handover")
     # Keep every original condition and reward alongside the adapter draft.
     reward=reward_plan(q)
+    if reward["xp"] is None:blockers.add("unknown-experience")
     if reward["unmappedItems"]:blockers.add("item-rewards")
     if reward["additionalRewards"]:blockers.add("additional-rewards")
     if reward["otherStanding"]:blockers.add("cross-trader-reputation")
-    if any(q.get("startRewards",{}).values()):blockers.add("start-rewards")
-    if any(q.get("failureOutcome",{}).values()) or q.get("failConditions"):blockers.add("failure-handling")
+    if any((q.get("startRewards") or {}).values()):blockers.add("start-rewards")
+    if any((q.get("failureOutcome") or {}).values()) or q.get("failConditions"):blockers.add("failure-handling")
     if q.get("otherRequirements"):blockers.add("other-requirements")
     if q.get("availableDelaySecondsMin") or q.get("availableDelaySecondsMax"):blockers.add("quest-delay")
     if q.get("restartable"):blockers.add("repeatable")
@@ -89,7 +90,7 @@ def stock_draft(q, mapped):
     if q.get("taskRequirements"):blockers.add("dependency-graph")
     if q.get("traderRequirements"):blockers.add("trader-requirements")
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
-            "level":max(1,q["minPlayerLevel"]),"objectives":translated,"reward":reward,
+            "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
             "implemented":False,"blockers":sorted(blockers)}
 def build(snapshot,out,resources):
     manifest=read(snapshot/"manifest.json")
