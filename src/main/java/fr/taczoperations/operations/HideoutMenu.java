@@ -39,7 +39,7 @@ final class HideoutMenu {
         icons.setItem(34,repairTile(p));
         icons.setItem(35,restTile(p));
         icons.setItem(37,tile(Items.TARGET,"Entrer dans le stand de tir",ChatFormatting.AQUA));
-        icons.setItem(39,tile(Items.WRITABLE_BOOK,"Campagne militaire",ChatFormatting.GOLD));
+        icons.setItem(39,tile(Items.WRITABLE_BOOK,"Campagne Tarkov",ChatFormatting.GOLD));
         icons.setItem(41,tile(Items.EXPERIENCE_BOTTLE,"Compétences passives",ChatFormatting.GREEN));
         icons.setItem(43,tile(Items.PAINTING,"Décoration : "+HideoutDecor.current(p).label+" · clic pour changer",ChatFormatting.AQUA));
         icons.setItem(45,tile(Items.REDSTONE,"Énergie : "+HideoutPower.energy(p)+"/"+Hideout.tier(p,Hideout.Station.GENERATEUR)*24,ChatFormatting.YELLOW));
@@ -62,7 +62,7 @@ final class HideoutMenu {
             case 34->HideoutPower.repair(p);
             case 35->HideoutPower.rest(p);
             case 37->HideoutRange.toggle(p);
-            case 39->ProgressionMenus.missions(p);
+            case 39->CampaignMenu.open(p);
             case 41->ProgressionMenus.skills(p);
             case 43->HideoutDecor.cycle(p);
             case 49->Hideout.leave(p);
