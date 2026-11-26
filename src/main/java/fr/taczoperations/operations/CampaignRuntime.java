@@ -369,7 +369,7 @@ final class CampaignRuntime {
             var maps=Arrays.asList(parts[1].split(",",-1));
             if(!MAPS.containsAll(maps)||maps.contains("*")&&maps.size()!=1)return false;
             if(parts[0].equals("gunshot")){
-                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
+                if((parts.length<8||parts.length>10)||parts.length>=9&&!Set.of("night","anytime").contains(parts[8])||parts.length==10&&!Set.of("any","uniform2","armor2","noarmor","unarmored","heavyuniform").contains(parts[9])||o.scope()!=Scope.CAMPAIGN||!Set.of("hit","kill").contains(parts[3])
                     ||!Set.of("any","head","legs").contains(parts[4])||!Set.of("any","bolt","pistol","ak","western","rifle","smg","shotgun","lmg").contains(parts[5])
                     ||!Set.of("ge","le","gt","lt").contains(parts[6])||!parts[7].matches("[0-9]{1,4}")
                     ||Integer.parseInt(parts[7])>1000)return false;
