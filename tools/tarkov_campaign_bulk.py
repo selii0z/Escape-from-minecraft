@@ -759,8 +759,11 @@ def supply_catalog(tasks,item_catalog,resources,out):
         # Consumable drinks/food are represented as sealed mission provisions,
         # not as medicines or simulated survival effects.
         provision="provisions" in types and not types&{"gun","weapon","ammo","armor","helmet","rig","backpack","mods","quest","currency","meds","injectors","grenade"}
-        civilian=ref in {"5aa2b9ede5b5b000137b758b","59e7708286f7742cbd762753","6937f02dfd6488bb27024839","6937efd50543dcc2560a2c81"}
-        if not (key or provision or civilian) and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
+        civilian=ref in {"5aa2b9ede5b5b000137b758b","59e7708286f7742cbd762753","6937f02dfd6488bb27024839","6937efd50543dcc2560a2c81","59e7715586f7742ee5789605"}
+        sample="injectors" in types
+        plate="armorPlate" in types
+        wallet=ref in {"5783c43d2459774bbe137486","60b0f6c058e0b0481a09ad11"}
+        if not (key or provision or civilian or sample or plate or wallet) and ("barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}):continue
         name=item.get("normalizedName")
         if not isinstance(name,str) or not name.strip():continue
         name=name.replace("-"," ").replace("_"," ").strip().title()
@@ -778,12 +781,19 @@ def supply_catalog(tasks,item_catalog,resources,out):
             if any(word in normalized for word in words):icon=candidate;break
         if key:icon="tripwire_hook"
         elif civilian:icon="leather_helmet"
+        elif sample:
+            icon="glass_bottle"
+            name="Échantillon médical scellé : "+name
+        elif plate:
+            icon="iron_ingot"
+            name="Plaque de récupération : "+name
+        elif wallet:icon="leather"
         elif provision:
             icon="glass_bottle" if any(w in normalized for w in ("water","bottle","juice","drink","soda","milk","kvass","tea","coffee","whiskey","vodka","moonshine")) else "bread"
             name="Ration scellée : "+name
         rows.append((ref,name,icon))
     (out/"supplies-development.txt").write_text(existing.rstrip()+"\n"+"".join("|".join(row)+"\n" for row in rows),encoding="utf-8")
-    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"mission-key-loot" if i=="tripwire_hook" else "sealed-provision-loot" if n.startswith("Ration scellée : ") else "inert-barter-loot"} for r,n,i in rows])
+    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"mission-key-loot" if i=="tripwire_hook" else "sealed-provision-loot" if n.startswith("Ration scellée : ") else "sealed-medical-sample" if n.startswith("Échantillon médical scellé : ") else "salvage-armor-plate" if n.startswith("Plaque de récupération : ") else "inert-barter-loot"} for r,n,i in rows])
     return known|{r for r,n,i in rows},{r:n for r,n,i in rows},len(rows)
 
 def test_supply_catalog():
@@ -806,7 +816,11 @@ def select_efm_campaign(reference):
     Reconnect completion dependencies through excluded nodes, without granting their rewards."""
     from copy import deepcopy
     tasks=deepcopy(reference)
-    excluded={}
+    # Both textile variants have identical handovers; keep one two-part chain.
+    duplicates={"5e383a6386f77465910ce1f3":"5e381b0286f77420e3417a74",
+                "5e4d515e86f77438b2195244":"5e4d4ac186f774264f758336"}
+    duplicates={k:v for k,v in duplicates.items() if k in tasks and v in tasks}
+    excluded={k:["duplicate-faction-chain"] for k in duplicates}
     for qid,q in tasks.items():
         reasons=set()
         objectives=q.get("objectives") or []
@@ -830,6 +844,8 @@ def select_efm_campaign(reference):
                 changed=True
     def expand(req,trail):
         ref=req["task"]
+        if ref in duplicates and duplicates[ref] not in excluded:
+            return [dict(req,task=duplicates[ref])]
         if ref not in excluded:return [req]
         if ref in trail or "complete" not in req.get("status",[]):raise ValueError("Unresolvable retired quest dependency "+ref)
         result=[]
@@ -916,6 +932,9 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             audit.append({"id":part2,"name":display_name(second),"changes":[{"type":"cross-merchant-letter-sequential","reference":give}]})
     for qid,q in sorted(tasks.items()):
         changes=[]
+        if q.get("factionName") in {"USEC","BEAR"}:
+            changes.append({"type":"faction-neutral-efm","reference":q["factionName"]})
+            q["factionName"]="Any"
         old_level=q.get("minPlayerLevel") or 0
         level=old_level
         gates=[]
