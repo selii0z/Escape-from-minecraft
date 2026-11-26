@@ -201,6 +201,7 @@ public final class ForestExpedition {
     static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial){return departureProblem(player,board,duo,industrial,null);}
     private static boolean insideMap(int x,int z,boolean industrial,ExpressZone express){return express!=null?express.inside(x,z):industrial?IndustrialZone.inside(x,z):ForestPlan.inside(x,z);}
     static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial,ExpressZone express){
+        if(ScavRun.active(player))return "Récupération du matériel PMC en cours.";
         if(express!=null&&!express.available())return "Les ressources de cette carte sont absentes du serveur.";
         ServerLevel forest=player.server.getLevel(FOREST);
         if(forest==null||!(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator))
@@ -273,6 +274,28 @@ public final class ForestExpedition {
             return "";
         }
         ForestRaid.begin(forest, player, partner, industrial,express);
+        return "";
+    }
+
+    static String departScav(ServerPlayer player,BlockPos board,boolean night,boolean industrial,ExpressZone express){
+        String problem=departureProblem(player,board,false,industrial,express);
+        if(!problem.isEmpty())return problem;
+        problem=ScavRun.problem(player);if(!problem.isEmpty())return problem;
+        clearStaleDeparture(player);
+        var forest=player.server.getLevel(FOREST);
+        if(forest==null)return "Dimension indisponible.";
+        var random=forest.getRandom();
+        var entry=express!=null?express.pos(express.entry()):industrial?industrialPosition(IndustrialZone.ENTRY):
+            ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
+        int roll=random.nextInt(100),weather=roll<50?0:roll<85?1:2;
+        problem=ScavRun.prepare(player);
+        if(!problem.isEmpty()){if(ScavRun.active(player))ScavRun.recover(player);return problem;}
+        if(!enter(player,forest,entry,night,weather,industrial,express)){
+            ScavRun.markFinished(player,false);ScavRun.recover(player);return "Départ Scav annulé.";
+        }
+        ForestRaid.begin(forest,player,null,industrial,express);
+        ScavRun.started(player);
+        player.sendSystemMessage(Component.literal("Raid Scav · équipement prêté · Scavs neutres tant que tu ne les attaques pas. Prochain départ dans 45 minutes."));
         return "";
     }
 
@@ -378,7 +401,7 @@ public final class ForestExpedition {
         BlockPos feet = player.blockPosition();
         if(express==null&&player.tickCount%20==0)ExtractionRenovation.near(player,industrial);
         if(player.tickCount%20==0)syncExits(player,industrial,relayAvailable,relay,primary,secondary);
-        if(industrial && !player.isSpectator() && player.onGround()){
+        if(industrial && !ScavRun.active(player) && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
             BlockPos paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
             boolean key=inExtraction(feet,keyExit);
@@ -528,7 +551,11 @@ public final class ForestExpedition {
             ForestRaid.campaignEnd(player,extracted);
             ForestRaid.finishParticipant(player);
         }
-        if (!extracted) {
+        boolean scav=ScavRun.active(player);
+        if(scav){
+            ScavRun.markFinished(player,extracted);
+            StoryMissions.clear(player);SupplyContract.abortRun(player);
+        }else if (!extracted) {
             StoryMissions.clear(player);
             recoverInterruptedInventory(player);
             if(leavingRaid)SupplyContract.interrupted(player,point.getBoolean("industrial"));
@@ -536,6 +563,7 @@ public final class ForestExpedition {
         }
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
+        if(scav)ScavRun.recover(player);
         if (leavingRaid) {
             ForestRaid.cleanupWhenEmpty(raidLevel);
         }
