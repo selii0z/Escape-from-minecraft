@@ -5,6 +5,7 @@ on:
     paths:
       - tools/tarkov_campaign_snapshot.py
       - tools/tarkov_campaign_index.py
+      - tools/tarkov_campaign_items.py
       - 'src/main/java/fr/taczoperations/campaign/**'
       - 'src/test/java/fr/taczoperations/campaign/**'
       - .github/workflows/tarkov-reference.yml
@@ -35,6 +36,8 @@ jobs:
         run: python3 tools/tarkov_campaign_snapshot.py --mode pve
       - name: Build review index
         run: python3 tools/tarkov_campaign_index.py
+      - name: Resolve quest items, loyalty and Collector
+        run: python3 tools/tarkov_campaign_items.py
       - name: Upload audit manifest
         uses: actions/upload-artifact@v4
         with:
