@@ -11,6 +11,14 @@ public final class FieldCurios {
         return CuriosApi.getCuriosInventory(player).flatMap(inv->inv.getStacksHandler(id))
             .map(h->(IItemHandlerModifiable)h.getStacks()).filter(h->h.getSlots()>0).orElse(null);
     }
+    public static java.util.Map<String,IItemHandlerModifiable> scavHandlers(LivingEntity player){
+        var result=new java.util.TreeMap<String,IItemHandlerModifiable>();
+        CuriosApi.getCuriosInventory(player).ifPresent(inv->inv.getCurios().forEach((id,h)->{
+            result.put("equipment:"+id,h.getStacks());
+            result.put("cosmetic:"+id,h.getCosmeticStacks());
+        }));
+        return result;
+    }
     public static ItemStack equipped(LivingEntity player,String id){
         var h=handler(player,id);return h==null?ItemStack.EMPTY:h.getStackInSlot(0);
     }
