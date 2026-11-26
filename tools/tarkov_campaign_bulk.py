@@ -606,6 +606,31 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
             ready.add(qid);names.add(slug(name));installed.append(qid);changed=True
         for qid in installed:pending.pop(qid,None)
         if not changed:break
+    remaining=[]
+    for qid,q in sorted(tasks.items()):
+        if qid in ready:continue
+        kinds={o["type"] for o in q["objectives"]}
+        if not kinds or not kinds<=FIELD_CORE:
+            blockers=["unsupported-objective:"+k for k in sorted(kinds-FIELD_CORE)] or ["empty-objectives"]
+        else:
+            d=stock_draft(q,mapped,ready) if kinds<=STOCK else combat_draft(q,mapped,ready)
+            blockers=list(d["blockers"])
+            additional=dict(d["reward"]["additionalRewards"])
+            if approved_offers.get(qid):additional.pop("offerUnlock",None)
+            if skill_reward_plan(additional) is not None:additional.pop("skillLevelReward",None)
+            if not additional:blockers=[b for b in blockers if b!="additional-rewards"]
+            elif "additional-rewards" in blockers:
+                blockers.remove("additional-rewards")
+                blockers.extend("reward:"+key for key in sorted(additional))
+            if qid=="5c51aac186f77432ea65c552":blockers.append("collector-kappa-adapter")
+            if not blockers:blockers.append("dependency-or-final-validation")
+        remaining.append({"id":qid,"name":display_name(q),"trader":TRADERS[q["trader"]],
+                          "kappa":qid in dependencies["kappa"]["dependencyClosure"],"blockers":sorted(set(blockers))})
+    write(out/"activation-blockers.json",{"schema":1,"remaining":len(remaining),
+        "counts":dict(Counter(b for row in remaining for b in row["blockers"])),
+        "kappaRemaining":[row for row in remaining if row["kappa"]],"quests":remaining})
+    print(json.dumps({"remainingCampaignBlockers":dict(Counter(b for row in remaining for b in row["blockers"])),
+                      "remainingKappaQuests":sum(row["kappa"] for row in remaining)},indent=2))
     write(out/"quests-development.json",{"schema":1,"quests":list(result.values())})
     write(out/"stock-activation-report.json",{"schema":1,"base":len(current),
           "added":installed,"total":len(result),"remainingStock":len(pending)})
