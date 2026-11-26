@@ -476,6 +476,61 @@ def export_install_catalog(tasks,current,stock,dependencies,manifest,out):
           "approvalRequired":True,"quests":candidates})
     return len(candidates)
 
+def supply_catalog(tasks,item_catalog,resources,out):
+    """Expand only ordinary barter loot; never synthesize functional equipment.
+    IDs are stable; reviewed hand-authored items retain their exact appearance."""
+    import re
+    existing=(resources/"supplies.txt").read_text(encoding="utf-8")
+    known=ids(resources/"supplies.txt")|ids(resources/"collector-items.txt")
+    wanted=set()
+    for q in tasks.values():
+        for o in q["objectives"]:
+            if o["type"] in STOCK:wanted.update(o.get("items") or [])
+        for stage in ("startRewards","finishRewards"):
+            reward=q.get(stage) or {}
+            for entry in reward.get("items",[]):wanted.add(entry.get("item"))
+        for entry in (q.get("finishRewards") or {}).get("offerUnlock",[]):wanted.add(entry.get("item"))
+    rows=[]
+    for ref in sorted(wanted-known-{None}):
+        if not isinstance(ref,str) or not re.fullmatch(r"[0-9a-f]{24}",ref):continue
+        item=item_catalog.get(ref,{})
+        types=set(item.get("types") or [])
+        # Unknown, equipment, quest-only and currency IDs remain review-only.
+        if "barter" not in types or types & {"gun","weapon","ammo","armor","helmet","rig","backpack","container","keys","mods","quest","currency","meds","injectors","grenade","provisions"}:continue
+        name=item.get("normalizedName")
+        if not isinstance(name,str) or not name.strip():continue
+        name=name.replace("-"," ").replace("_"," ").strip().title()
+        if not name or len(name)>100 or any(c in name for c in "|\r\n"):continue
+        normalized=name.lower()
+        icon="paper"
+        for words,candidate in (
+            (("battery","metal","motor","steel","bolt","screw","tool","bearing","gear"),"iron_ingot"),
+            (("cable","wire","cord","rope"),"string"),
+            (("gold","silver","chain","ring","coin"),"gold_nugget"),
+            (("electronic","circuit","processor","ram","graphics","capacitor","transistor"),"redstone"),
+            (("fabric","cloth","fleece","textile","tape"),"white_dye"),
+            (("bottle","liquid","solvent","cleaner","fluid"),"glass_bottle"),
+            (("book","document","manual","paper","magazine"),"paper")):
+            if any(word in normalized for word in words):icon=candidate;break
+        rows.append((ref,name,icon))
+    (out/"supplies-development.txt").write_text(existing.rstrip()+"\n"+"".join("|".join(row)+"\n" for row in rows),encoding="utf-8")
+    write(out/"auto-supply-review.json",[{"id":r,"name":n,"icon":i,"adaptation":"inert-barter-loot"} for r,n,i in rows])
+    return known|{r for r,n,i in rows},{r:n for r,n,i in rows},len(rows)
+
+def test_supply_catalog():
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory() as tmp:
+        folder=Path(tmp)
+        (folder/"supplies.txt").write_text("a"*24+"|Existing|paper\n")
+        (folder/"collector-items.txt").write_text("")
+        barter="b"*24; gun="c"*24
+        tasks={"q":{"objectives":[{"type":"giveItem","items":[barter,gun]}]}}
+        catalog={barter:{"types":["barter"],"normalizedName":"test-cable"},gun:{"types":["gun"],"normalizedName":"test-gun"}}
+        mapped,names,count=supply_catalog(tasks,catalog,folder,folder)
+        assert count==1 and barter in mapped and gun not in mapped
+        assert names[barter]=="Test Cable"
+        assert "|Test Cable|string" in (folder/"supplies-development.txt").read_text()
+
 def build(snapshot,out,resources):
     manifest=read(snapshot/"manifest.json")
     for n,info in manifest["files"].items():
@@ -484,7 +539,9 @@ def build(snapshot,out,resources):
     tasks=read(snapshot/"tasks.json")["data"]["tasks"]
     if len(tasks)!=manifest["audit"]["tasks"]:raise ValueError("Task count mismatch")
     current={q["id"]:q for q in read(resources/"quests.json")["quests"]}
-    mapped=ids(resources/"supplies.txt")|ids(resources/"collector-items.txt")
+    out.mkdir(parents=True,exist_ok=True)
+    item_catalog=read(snapshot/"items.json")["data"]["items"]
+    mapped,auto_names,auto_count=supply_catalog(tasks,item_catalog,resources,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
     dependencies=dependency_audit(tasks,current)
     staged=[]
@@ -537,7 +594,7 @@ def build(snapshot,out,resources):
         "types":item_catalog.get(id,{}).get("types",[]),"quests":sorted(qids),"mapping":None}
         for id,qids in sorted(missing_items.items())])
     write(out/"routed-quest-review.json",discrepancies)
-    summary={"referenceQuests":len(tasks),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
+    summary={"generatedBarterSupplies":auto_count,"referenceQuests":len(tasks),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
              "stockDrafts":len(stock),"unmappedStockItemIDs":len(missing_items),"stockDraftsWithoutBlockers":sum(not q["blockers"] and not q["alreadyRouted"] for q in stock),
              "stockBlockers":dict(Counter(b for q in stock for b in q["blockers"])),
              "routedQuestsWithReviewNotes":len(discrepancies)}
@@ -547,14 +604,14 @@ def build(snapshot,out,resources):
                     "kappaDependencyClosure":len(dependencies["kappa"]["dependencyClosure"]),
                     "kappaQuestsMissingFromGameplay":len(dependencies["kappa"]["missingFromGameplay"])})
     summary["bulkInstallCandidates"]=export_install_catalog(tasks,current,stock,dependencies,manifest,out)
-    item_names={}
+    item_names=dict(auto_names)
     for filename in ("supplies.txt","collector-items.txt"):
         for line in (resources/filename).read_text(encoding="utf-8").splitlines():
             if line.strip():
                 ref,name,_=line.split("|")
                 item_names[ref]=name
     # Collector and boss trophies remain raid-only, not merchant supplies.
-    supply_ids=ids(resources/"supplies.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf"}
+    supply_ids=ids(out/"supplies-development.txt")-{"5c0e874186f7745dc7616606","6759af0f9c8a538dd70bfae6","60a7acf20c5cb24b01346648","675aae1c26dc64e17800fee6","6540d2162ae6d96b540afcaf"}
     approved_offers,total_offers,supported_offers=offer_plan(tasks,item_catalog,supply_ids,out)
     summary.update({"questOfferUnlocks":total_offers,"supportedQuestOfferUnlocks":supported_offers})
     summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names,approved_offers)
@@ -567,6 +624,7 @@ if __name__=="__main__":
     test_combat_adapter()
     test_material_rewards()
     test_offer_plan()
+    test_supply_catalog()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
