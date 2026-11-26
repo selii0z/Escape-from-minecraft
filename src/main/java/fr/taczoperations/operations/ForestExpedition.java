@@ -308,6 +308,7 @@ public final class ForestExpedition {
         player.getPersistentData().put(RETURN_POINT, point);
         player.closeContainer();
         snapshotInventory(player);
+        if(express!=null)forest.getChunk(destination);
         Vec3 spawn = Vec3.atBottomCenterOf(destination);
         if (!standingRoom(player, forest, spawn)) {
             spawn = safeSpawn(player, forest, destination);
@@ -371,7 +372,7 @@ public final class ForestExpedition {
         ForestRaid.populateNear(player);
         BlockPos primary = express!=null?express.pos(express.exitA()):industrial ? industrialPosition(IndustrialZone.EXIT) : ForestLandmarks.position(ForestPlan.EXTRACTION);
         BlockPos secondary = express!=null?express.pos(express.exitB()):industrial ? primary : ForestLandmarks.position(ForestPlan.CONDITIONAL_EXIT);
-        boolean relayAvailable=!industrial&&ForestRaid.secondaryOpen(player,0);
+        boolean relayAvailable=express!=null||!industrial&&ForestRaid.secondaryOpen(player,0);
         boolean relay = express!=null || relayAvailable && point.getBoolean("relay");
         BlockPos feet = player.blockPosition();
         if(express==null&&player.tickCount%20==0)ExtractionRenovation.near(player,industrial);
