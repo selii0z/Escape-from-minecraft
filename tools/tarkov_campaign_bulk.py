@@ -169,6 +169,27 @@ def test_material_rewards():
     reward["unmappedItems"][0]["attributes"]={"durability":50}
     assert "item-rewards" in material_reward_plan(reward,{ref})[1]
 
+def starter_plan(q,mapped):
+    start=q.get("startRewards") or {}
+    blockers=set()
+    items={}
+    if any(v for k,v in start.items() if k!="items"):blockers.add("unsupported-start-reward")
+    for row in start.get("items") or []:
+        ref,count=row.get("item"),row.get("count")
+        if ref not in mapped or not isinstance(count,int) or not 1<=count<=2147483647 or row.get("attributes") or row.get("contains"):
+            blockers.add("start-rewards");continue
+        items[ref]=items.get(ref,0)+count
+        if items[ref]>2147483647:blockers.add("start-rewards")
+    return items,blockers
+
+def test_starter_plan():
+    ref="a"*24
+    q={"startRewards":{"items":[{"item":ref,"count":3},{"item":ref,"count":2}]}}
+    assert starter_plan(q,{ref})==({ref:5},set())
+    assert "start-rewards" in starter_plan(q,set())[1]
+    q["startRewards"]["items"][0]["attributes"]={"durability":50}
+    assert "start-rewards" in starter_plan(q,{ref})[1]
+
 def stock_draft(q, mapped, current):
     blockers=set()
     translated=[]
@@ -209,7 +230,8 @@ def stock_draft(q, mapped, current):
     _,material_blockers=material_reward_plan(reward,mapped)
     blockers.update(material_blockers)
     if reward["additionalRewards"]:blockers.add("additional-rewards")
-    if any((q.get("startRewards") or {}).values()):blockers.add("start-rewards")
+    starters,starter_blockers=starter_plan(q,mapped)
+    blockers.update(starter_blockers)
     if any((q.get("failureOutcome") or {}).values()) or q.get("failConditions"):blockers.add("failure-handling")
     gates,gate_blockers=normalize_gates(q,current)
     blockers.update(gate_blockers)
@@ -219,7 +241,7 @@ def stock_draft(q, mapped, current):
     # Supported dependency and trader predicates are preserved in gates.
     return {"id":q["id"],"name":q["normalizedName"],"trader":TRADERS[q["trader"]],
             "level":max(1,q.get("minPlayerLevel") or 0),"objectives":translated,"reward":reward,
-            "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],**gates,"blockers":sorted(blockers)}
+            "implemented":False,"adapter":"bulk-stock-v2","conflicts":[],"starterItems":starters,**gates,"blockers":sorted(blockers)}
 MAP_ADAPTERS = {
     "55f2d3fd4bdc2d5f408b4567":"factory", "56f40101d2720b2a4d8b45d6":"customs",
     "5704e3c2d2720bac5b8b4567":"woods", "5714dbc024597771384a510d":"interchange",
@@ -625,6 +647,7 @@ if __name__=="__main__":
     test_material_rewards()
     test_offer_plan()
     test_supply_catalog()
+    test_starter_plan()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
