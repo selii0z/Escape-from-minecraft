@@ -12,6 +12,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 
 final class MilitaryTag {
+    static boolean isTag(ItemStack stack){return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals("taczoperations:military_tag");}
     static ItemStack create(Pillager guard,ServerPlayer killer){
         var item=BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("taczoperations","military_tag"));
         ItemStack stack=new ItemStack(item);
