@@ -6,6 +6,7 @@ import fr.taczoperations.campaign.CampaignGraph;
 import fr.taczoperations.campaign.CampaignGraph.*;
 import fr.taczoperations.campaign.CampaignTrader;
 import fr.taczoperations.campaign.TurnInPlanner;
+import fr.taczoperations.campaign.FieldAction;
 import net.minecraft.server.level.ServerPlayer;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -118,6 +119,7 @@ final class CampaignRuntime {
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign save/event rejected for "+p.getUUID(),e);}
     }
     static void begin(ServerPlayer p,UUID raidId){
+        ACTIONS.remove(p.getUUID());
         change(p,raidId,s->{
             if(s.player().checkpoint().inRaid())return null;
             s.player().beginRaid();
@@ -132,6 +134,7 @@ final class CampaignRuntime {
         });
     }
     static void end(ServerPlayer p,UUID raidId,String map,boolean success){
+        ACTIONS.remove(p.getUUID());
         if(raidId==null)return;
         change(p,raidId,s->{
             if(!raidId.equals(s.raidId()))return null;
@@ -195,23 +198,70 @@ final class CampaignRuntime {
             return s;
         });
     }
+    // Server thread only; each player can perform one uninterrupted terrain action.
+    private record Site(String quest,String objective,String map,String item,net.minecraft.core.BlockPos pos,int radius,int duration){}
+    private static final Map<UUID,FieldAction> ACTIONS=new HashMap<>();
+    private static final List<Site> SITES=List.of(new Site(CHEMICAL,DEPOSIT,"customs",HOSE,
+        new net.minecraft.core.BlockPos(fr.taczoperations.worldgen.IndustrialZone.ORIGIN+95,
+            fr.taczoperations.worldgen.IndustrialZone.FLOOR+1,fr.taczoperations.worldgen.IndustrialZone.ORIGIN+425),3,200));
+    private static Site site(FieldAction action,ServerPlayer p){
+        return SITES.stream().filter(x->x.quest().equals(action.quest())&&x.objective().equals(action.objective())
+            &&x.map().equals(action.map())&&x.item().equals(action.item())&&near(p,x.pos(),x.radius())).findFirst().orElse(null);
+    }
     static int plant(ServerPlayer p,UUID raidId,String map){
-        if(CATALOG==null||raidId==null||!map.equals("customs")||!ForestRaid.canContinue(p)||!p.isAlive()||p.isCreative()||p.isSpectator())return 0;
-        var pos=new net.minecraft.core.BlockPos(fr.taczoperations.worldgen.IndustrialZone.ORIGIN+95,fr.taczoperations.worldgen.IndustrialZone.FLOOR+1,fr.taczoperations.worldgen.IndustrialZone.ORIGIN+425);
-        if(!near(p,pos,3)){say(p,"Rejoins le dépôt dans le bâtiment logistique ouest.");return 0;}
+        if(CATALOG==null||raidId==null||!ForestRaid.canContinue(p)||!p.isAlive()||p.isCreative()||p.isSpectator())return 0;
+        if(ACTIONS.containsKey(p.getUUID())){say(p,"Une action de terrain est déjà en cours.");return 0;}
         try{
             var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raidId);
-            if(!raidId.equals(s.raidId())||s.player().state(CHEMICAL,level(p))!=State.ACTIVE)return 0;
-            var progress=s.player().snapshot().get(CHEMICAL);
-            if(progress.counters().getOrDefault(DEPOSIT,0)>0)return 0;
-            var storage=CarriedStorage.of(p);
-            if(storage.count(stack->CampaignSupplies.matches(stack,HOSE))<1){say(p,"Tuyau annelé requis.");return 0;}
-            if(!s.player().record(CHEMICAL,DEPOSIT,1))return 0;
-            if(!storage.consume(stack->CampaignSupplies.matches(stack,HOSE),1))return 0;
-            CampaignStorage.save(p,CATALOG.revision(),s);
-            say(p,"Chemical Experiments · tuyau déposé.");
-            return 1;
+            if(!raidId.equals(s.raidId()))return 0;
+            for(var x:SITES){
+                if(!x.map().equals(map)||!near(p,x.pos(),x.radius()))continue;
+                if(s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
+                var progress=s.player().snapshot().get(x.quest());
+                if(progress.counters().getOrDefault(x.objective(),0)>0)continue;
+                if(CarriedStorage.of(p).count(stack->CampaignSupplies.matches(stack,x.item()))<1){
+                    say(p,"Objet de mission requis : "+(x.item().equals(HOSE)?"tuyau annelé":x.item()));return 0;
+                }
+                ACTIONS.put(p.getUUID(),new FieldAction(raidId,x.quest(),x.objective(),x.map(),x.item(),x.duration(),0));
+                say(p,"Dépôt en cours · reste dans la zone pendant "+(x.duration()/20)+" secondes.");
+                return 1;
+            }
+            say(p,"Aucun dépôt de mission disponible ici.");return 0;
         }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign plant failed",e);return 0;}
+    }
+    static void tickActions(net.minecraft.server.MinecraftServer server){
+        if(ACTIONS.isEmpty())return;
+        var iterator=ACTIONS.entrySet().iterator();
+        while(iterator.hasNext()){
+            var entry=iterator.next();
+            var p=server.getPlayerList().getPlayer(entry.getKey());
+            var action=entry.getValue();
+            if(p==null){iterator.remove();continue;}
+            var x=site(action,p);
+            UUID raid=ForestRaid.campaignRaidId(p);
+            boolean valid=x!=null&&p.isAlive()&&!p.isCreative()&&!p.isSpectator()&&ForestRaid.canContinue(p);
+            var next=action.tick(raid,valid);
+            if(next==null){iterator.remove();say(p,"Dépôt interrompu. Objet conservé.");continue;}
+            if(!next.finished()){
+                entry.setValue(next);
+                if(next.elapsed()%20==0)p.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                    "Dépôt · "+(next.duration()-next.elapsed())/20+" s"),true);
+                continue;
+            }
+            iterator.remove();
+            try{
+                var s=CampaignStorage.load(p,CATALOG.graph(),CATALOG.revision(),raid);
+                if(!raid.equals(s.raidId())||s.player().state(x.quest(),level(p))!=State.ACTIVE)continue;
+                var progress=s.player().snapshot().get(x.quest());
+                if(progress.counters().getOrDefault(x.objective(),0)>0)continue;
+                var storage=CarriedStorage.of(p);
+                if(storage.count(stack->CampaignSupplies.matches(stack,x.item()))<1){say(p,"Dépôt annulé : objet manquant.");continue;}
+                if(!s.player().record(x.quest(),x.objective(),1))continue;
+                if(!storage.consume(stack->CampaignSupplies.matches(stack,x.item()),1))continue;
+                CampaignStorage.save(p,CATALOG.revision(),s);
+                say(p,label(x.quest())+" · dépôt terminé.");
+            }catch(RuntimeException e){LOG.log(System.Logger.Level.ERROR,"Campaign action failed",e);}
+        }
     }
     static int acceptSearch(ServerPlayer p){return accept(p,SEARCH);}
     static int claimSearch(ServerPlayer p){return claim(p,SEARCH);}
