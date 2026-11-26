@@ -35,6 +35,15 @@ public final class CampaignGraph {
             if(counters.values().stream().anyMatch(v->v<0))throw new IllegalArgumentException("Negative counter");
         }
     }
+    public record Checkpoint(Map<String,Progress> saved,boolean inRaid,Map<String,Map<String,Integer>> pending) {
+        public Checkpoint {
+            saved=Map.copyOf(saved);
+            var copy=new HashMap<String,Map<String,Integer>>();
+            pending.forEach((id,counters)->copy.put(id,Map.copyOf(counters)));
+            pending=Map.copyOf(copy);
+            if(!inRaid&&!pending.isEmpty())throw new IllegalArgumentException("Pending progress outside raid");
+        }
+    }
     private final Map<String,Quest> quests;
     public CampaignGraph(Collection<Quest> definitions) {
         var map=new LinkedHashMap<String,Quest>();
@@ -56,6 +65,22 @@ public final class CampaignGraph {
     public Map<String,Quest> quests(){return quests;}
     public Player newPlayer(){return new Player(Map.of());}
     public Player restore(Map<String,Progress> saved){return new Player(saved);}
+    public Player restore(Checkpoint checkpoint){
+        var player=new Player(checkpoint.saved());
+        if(checkpoint.inRaid()){
+            player.beginRaid();
+            for(var entry:checkpoint.pending().entrySet()){
+                var q=require(entry.getKey());var progress=player.saved.get(q.id());
+                if(progress==null||progress.state()!=State.ACTIVE)throw new IllegalArgumentException("Pending quest not active");
+                for(var count:entry.getValue().entrySet()){
+                    var o=objective(q,count.getKey());
+                    if(o.scope()==Scope.CAMPAIGN||count.getValue()<0||count.getValue()>o.amount())throw new IllegalArgumentException("Invalid pending counter");
+                }
+                player.raid.put(q.id(),new HashMap<>(entry.getValue()));
+            }
+        }
+        return player;
+    }
 
     public final class Player {
         private final Map<String,Progress> saved=new HashMap<>();
@@ -73,6 +98,7 @@ public final class CampaignGraph {
             }
         }
         public Map<String,Progress> snapshot(){return Map.copyOf(saved);}
+        public Checkpoint checkpoint(){return new Checkpoint(saved,inRaid,raid);}
         private boolean satisfies(Requirement r){
             var p=saved.get(r.quest());
             return p!=null&&((p.state()==State.COMPLETED&&r.outcomes().contains(Outcome.COMPLETED))||(p.state()==State.FAILED&&r.outcomes().contains(Outcome.FAILED)));
