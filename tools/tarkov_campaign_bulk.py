@@ -282,7 +282,8 @@ def test_combat_adapter():
     assert "specific-extraction-condition" in combat_objective(dict(e,exitName="gate"))[1]
     assert "unsupported-extraction-status" in combat_objective(dict(e,exitStatus=["marathon Name"]))[1]
 
-def activate_stock_batch(tasks,current,mapped,dependencies,out):
+def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None):
+    item_names=item_names or {}
     """Build a separate development catalogue; never alter checked-in quests.
     Only exact, supported handovers with all gates and rewards represented qualify."""
     import re
@@ -327,7 +328,10 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out):
             for o in row["objectives"]:
                 if "label" in o:continue
                 mode="trouvé en raid" if "-fir:" in o["type"] else "toute provenance"
-                o["label"]=("Trouver" if o["type"].startswith("find-stock-") else "Remettre")+" ("+mode+")"
+                refs=o["type"].split(":",1)[1].split(",")
+                names_text=" / ".join(item_names.get(ref,ref) for ref in refs[:3])
+                if len(refs)>3:names_text+=" ou "+str(len(refs)-3)+" alternative(s)"
+                o["label"]=("Trouver" if o["type"].startswith("find-stock-") else "Remettre")+" : "+names_text+" ("+mode+")"
             result[qid]=row
             ready.add(qid);names.add(slug(name));installed.append(qid);changed=True
         for qid in installed:pending.pop(qid,None)
@@ -458,7 +462,13 @@ def build(snapshot,out,resources):
                     "kappaDependencyClosure":len(dependencies["kappa"]["dependencyClosure"]),
                     "kappaQuestsMissingFromGameplay":len(dependencies["kappa"]["missingFromGameplay"])})
     summary["bulkInstallCandidates"]=export_install_catalog(tasks,current,stock,dependencies,manifest,out)
-    summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out)
+    item_names={}
+    for filename in ("supplies.txt","collector-items.txt"):
+        for line in (resources/filename).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                ref,name,_=line.split("|")
+                item_names[ref]=name
+    summary["automaticallyActivatedCore"]=activate_stock_batch(tasks,current,mapped,dependencies,out,item_names)
     write(out/"bulk-summary.json",summary)
     print(json.dumps(summary,indent=2))
 if __name__=="__main__":
