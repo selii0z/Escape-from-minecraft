@@ -675,7 +675,7 @@ def export_install_catalog(tasks,current,stock,dependencies,manifest,out):
                      "objectiveKinds":dict(sorted(kinds.items())),
                      "prerequisiteCount":len(dependencies["quests"][qid]["groups"]),
                      "unresolvedPrerequisites":len(dependencies["quests"][qid]["errors"])})
-    if len(rows)!=manifest["audit"]["tasks"] or len({r["id"] for r in rows})!=len(rows):
+    if len(rows)!=len(tasks) or len({r["id"] for r in rows})!=len(rows):
         raise ValueError("Incomplete or duplicate installation catalogue")
     write(out/"campaign-install-index.json",{"schema":1,"mode":manifest["mode"],
           "sourceHash":manifest["files"]["tasks"]["sha256"],"count":len(rows),"quests":rows})
@@ -741,6 +741,73 @@ def test_supply_catalog():
         assert names[barter]=="Test Cable"
         assert "|Test Cable|string" in (folder/"supplies-development.txt").read_text()
 
+REMOVED_OBJECTIVES={"buildWeapon","plantItem","plantQuestItem","mark"}
+def select_efm_campaign(reference):
+    """EFM scope: omit weapon builds, fixed deposits and quests requiring absent maps.
+    Reconnect completion dependencies through excluded nodes, without granting their rewards."""
+    from copy import deepcopy
+    tasks=deepcopy(reference)
+    excluded={}
+    for qid,q in tasks.items():
+        reasons=set()
+        objectives=q.get("objectives") or []
+        for o in objectives:
+            if o["type"] in REMOVED_OBJECTIVES:reasons.add("excluded-objective:"+o["type"])
+            maps=o.get("maps") or []
+            if maps and not set(maps)&MAP_ADAPTERS.keys():reasons.add("map-unavailable")
+        if reasons:excluded[qid]=sorted(reasons)
+    # A removed quest cannot supply an ACTIVE/FAILED state, or an explicit task objective.
+    # Exclude these dependent missions rather than fabricating progress.
+    changed=True
+    while changed:
+        changed=False
+        for qid,q in tasks.items():
+            if qid in excluded:continue
+            impossible=any(r.get("task") in excluded and "complete" not in r.get("status",[])
+                           for r in q.get("taskRequirements") or [])
+            impossible|=any(o.get("type")=="taskStatus" and o.get("task") in excluded for o in q.get("objectives") or [])
+            if impossible:
+                excluded[qid]=["excluded-required-task-state"]
+                changed=True
+    def expand(req,trail):
+        ref=req["task"]
+        if ref not in excluded:return [req]
+        if ref in trail or "complete" not in req.get("status",[]):raise ValueError("Unresolvable retired quest dependency "+ref)
+        result=[]
+        for prior in tasks[ref].get("taskRequirements") or []:
+            # An excluded branch cannot be required as active or failed; no artificial completion.
+            if prior["task"] in excluded and "complete" not in prior.get("status",[]):continue
+            result.extend(expand(prior,trail|{ref}))
+        return result
+    changes=[]
+    for qid,q in tasks.items():
+        if qid in excluded:continue
+        original=q.get("taskRequirements") or []
+        replacement=[]
+        for req in original:
+            for prior in expand(req,{qid}):
+                if prior not in replacement:replacement.append(prior)
+        q["taskRequirements"]=replacement
+        if original!=replacement:changes.append({"id":qid,"before":original,"after":replacement})
+        # A kill/extraction allowed on multiple maps can be satisfied on the available subset.
+        # Leave other predicates intact; they remain subject to strict adapter validation.
+        for o in q.get("objectives") or []:
+            if o["type"] in {"shoot","extract"} and o.get("maps"):
+                o["maps"]=[m for m in o["maps"] if m in MAP_ADAPTERS]
+    return {qid:q for qid,q in tasks.items() if qid not in excluded},excluded,changes
+
+def test_scope_selection():
+    a,b,c,d,e=("a"*24,"b"*24,"c"*24,"d"*24,"e"*24)
+    def task(kind,req=None,maps=None):
+        return {"objectives":[{"type":kind,"maps":maps or []}],"taskRequirements":[req] if req else []}
+    complete=lambda x:{"task":x,"status":["complete"]}
+    ref={a:task("shoot"),b:task("buildWeapon",complete(a)),c:task("shoot",complete(b)),
+         d:task("visit",maps=["unavailable"]),e:task("shoot",{"task":b,"status":["active"]})}
+    selected,excluded,changes=select_efm_campaign(ref)
+    assert set(selected)=={a,c} and set(excluded)=={b,d,e}
+    assert selected[c]["taskRequirements"]==[complete(a)] and ref[c]["taskRequirements"]==[complete(b)]
+    assert len(changes)==1
+
 def build(snapshot,out,resources):
     manifest=read(snapshot/"manifest.json")
     for n,info in manifest["files"].items():
@@ -748,8 +815,15 @@ def build(snapshot,out,resources):
             raise ValueError("Snapshot hash mismatch: "+n)
     tasks=read(snapshot/"tasks.json")["data"]["tasks"]
     if len(tasks)!=manifest["audit"]["tasks"]:raise ValueError("Task count mismatch")
-    current={q["id"]:q for q in read(resources/"quests.json")["quests"]}
+    original_tasks=tasks
+    tasks,excluded,rewired=select_efm_campaign(original_tasks)
+    current={q["id"]:q for q in read(resources/"quests.json")["quests"] if q["id"] not in excluded}
     out.mkdir(parents=True,exist_ok=True)
+    write(out/"campaign-retired-quests.json",{"schema":1,"quests":sorted(excluded)})
+    write(out/"campaign-scope-review.json",{"schema":1,"originalCount":len(original_tasks),"retainedCount":len(tasks),
+          "excluded":[{"id":qid,"name":display_name(original_tasks[qid]),"reasons":why} for qid,why in sorted(excluded.items())],
+          "rewired":rewired})
+    print(json.dumps({"scopeOriginal":len(original_tasks),"scopeRetained":len(tasks),"scopeExcluded":len(excluded),"rewiredChains":len(rewired)},indent=2))
     item_catalog=read(snapshot/"items.json")["data"]["items"]
     mapped,auto_names,auto_count=supply_catalog(tasks,item_catalog,resources,out)
     if not set(current)<=set(tasks):raise ValueError("Unknown quest in gameplay catalogue")
@@ -804,7 +878,7 @@ def build(snapshot,out,resources):
         "types":item_catalog.get(id,{}).get("types",[]),"quests":sorted(qids),"mapping":None}
         for id,qids in sorted(missing_items.items())])
     write(out/"routed-quest-review.json",discrepancies)
-    summary={"generatedBarterSupplies":auto_count,"referenceQuests":len(tasks),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
+    summary={"generatedBarterSupplies":auto_count,"referenceQuests":len(original_tasks),"retainedQuests":len(tasks),"excludedQuests":len(excluded),"rewiredChains":len(rewired),"routedQuests":len(current),"batches":dict(Counter(q["batch"] for q in staged)),
              "stockDrafts":len(stock),"unmappedStockItemIDs":len(missing_items),"stockDraftsWithoutBlockers":sum(not q["blockers"] and not q["alreadyRouted"] for q in stock),
              "stockBlockers":dict(Counter(b for q in stock for b in q["blockers"])),
              "routedQuestsWithReviewNotes":len(discrepancies)}
@@ -839,6 +913,7 @@ if __name__=="__main__":
     test_field_adapter()
     test_quest_item_adapter()
     test_milestones()
+    test_scope_selection()
     p=argparse.ArgumentParser()
     p.add_argument("--snapshot",type=Path,default=Path("build/tarkov-reference"))
     p.add_argument("--out",type=Path,default=Path("build/tarkov-review"))
