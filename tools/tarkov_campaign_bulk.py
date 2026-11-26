@@ -261,6 +261,8 @@ TARGET_ADAPTERS = {
     frozenset(["Any"]):"any", frozenset(["AnyPmc"]):"pmc",
     frozenset(["Savage","Marksman","assaultGroup"]):"scav",
     frozenset(["Savage"]):"scav", frozenset(["Marksman"]):"marksman",
+    frozenset(["bossBoarSniper","followerBoarClose1","followerBoarClose2","followerBoar","followerKolontayAssault","followerKolontaySecurity"]):"city_escort",
+    frozenset(["ExUsec","exUsecFree","followerBigPipe","followerBirdEye","bossKnight"]):"goons",
     frozenset(["Marksman","followerKojaniy","followerGluharScout","bossBoarSniper","bossKojaniy"]):"longrange_targets",
     frozenset(["sectantPriest","sectantWarrior"]):"cultist",
     frozenset(["bossBoar","bossBully","bossGluhar","bossKilla","bossKojaniy","bossKolontay","bossSanitar","bossTagilla","bossZryachiy","bossKillaAgro","bossTagillaAgro","infectedTagilla","tagillaHelperAgro"]):"classic_boss",
@@ -743,10 +745,17 @@ def activate_stock_batch(tasks,current,mapped,dependencies,out,item_names=None,a
                 for o in row["objectives"]:o["label"]+=" · sans échec de raid (remise à zéro en cas d'échec)"
             if qid in {"66631489acf8442f8b05319f","6663149196a9349baa021baa"}:
                 for o in row["objectives"]:o["label"]+=" · remise à zéro si "+("Scav ou boss interdit éliminé" if qid=="66631489acf8442f8b05319f" else "boss interdit éliminé")
+            if qid=="68341d7d7559f4e6d50bc0db":
+                for o in row["objectives"]:o["label"]+=" · remise à zéro si Kaban ou Kollontay touché"
             result[qid]=row
             ready.add(qid);names.add(slug(name));installed.append(qid);changed=True
         for qid in installed:pending.pop(qid,None)
         if not changed:break
+    pair=("683425dd8f5b18d29a05d9d1","6834254f2f0e2a7eb90b62ef")
+    if all(qid in ready for qid in pair):
+        for left,right in (pair,pair[::-1]):result[left]["conflicts"]=[right]
+    elif any(qid in ready for qid in pair):
+        raise ValueError("Both mutually exclusive document choices must be routed together")
     remaining=[]
     for qid,q in sorted(tasks.items()):
         if qid in ready:continue
@@ -1100,8 +1109,30 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
             first["availableDelaySecondsMin"]=first["availableDelaySecondsMax"]=0
             audit.append({"id":sensory1,"name":display_name(first),"changes":[{"type":"sequential-reconnaissance-before-item-handover","reference":before}]})
             audit.append({"id":sensory2,"name":display_name(second),"changes":[{"type":"complete-reconnaissance-before-handover"}]})
+    # Keep two available recipients of the same extracted document as a
+    # genuine mutually exclusive choice, rather than awarding it twice.
+    fence_choice="683425dd8f5b18d29a05d9d1"; ref_choice="6834254f2f0e2a7eb90b62ef"
+    if fence_choice in tasks and ref_choice in tasks:
+        first,second=tasks[fence_choice],tasks[ref_choice]
+        def doc(q):
+            return {o.get("questItem") for o in q["objectives"] if o["type"] in {"findQuestItem","giveQuestItem"}}
+        if doc(first)==doc(second)=={"664fce7a90294949fe2d81cb"} and second.get("taskRequirements")==[{"task":fence_choice,"status":["active"]}] and all(not any((q.get("failureOutcome") or {}).values()) for q in (first,second)):
+            second["taskRequirements"]=[dict(req) for req in first["taskRequirements"]]
+            for q in (first,second):
+                old=q.get("failConditions") or []
+                if all(f.get("type")=="taskStatus" and f.get("task") in {fence_choice,ref_choice,"683427418f5b18d29a05d9e3"} and f.get("status")==["complete"] for f in old):
+                    q["failConditions"]=[]
+                    audit.append({"id":q["id"],"name":display_name(q),"changes":[{"type":"exclusive-document-recipient","reference":old}]})
     for qid,q in sorted(tasks.items()):
         changes=[]
+        if qid=="68341d7d7559f4e6d50bc0db":
+            fail=q.get("failConditions") or []
+            if q.get("restartable") and len(fail)==1 and fail[0].get("shotType")=="hit" and set(fail[0].get("targetNames") or [])=={"bossBoar","bossKolontay"} and fail[0].get("maps")==["5714dc692459777137212e12"] and not any((q.get("failureOutcome") or {}).values()):
+                q["failConditions"]=[];q["restartable"]=False
+                changes.append({"type":"reset-on-hit-to-city-boss","reference":fail})
+        if qid=="6613f307fca4f2f386029409" and q.get("restartable") and not q.get("failConditions") and not any((q.get("failureOutcome") or {}).values()):
+            q["restartable"]=False
+            changes.append({"type":"one-time-goons-challenge"})
         if qid=="6396701b9113f06a7c3b2379" and q.get("availableDelaySecondsMin")==q.get("availableDelaySecondsMax")==36000:
             for o in q["objectives"]:
                 if o["id"]=="6397ac912e519e69d2139b26" and o.get("distance")=={"value":200,"compareMethod":">="}:
@@ -1188,6 +1219,10 @@ def adapt_efm_rewards_and_gates(tasks,mapped,item_catalog,out):
                     o.pop("requiredKeys")
                 if o["type"] in STOCK and o.get("items"):
                     original=o["items"]
+                    if qid=="6613f307fca4f2f386029409" and o["id"]=="661681edabe376e7d6eab98f" and o["count"]==50 and len(original)==12 and "628baf0b967de16aab5a4f36" in original:
+                        o["items"]=["5648a69d4bdc2ded0b8b457b"]
+                        changes.append({"type":"elite-rig-equivalent","before":original,"after":o["items"]})
+                        original=o["items"]
                     if qid=="67af4c169d95ad16e004fd86":
                         safety={"5c0e625a86f7742d77340f62":"5ab8e79e86f7742d8b372e78",
                             "5c0e842486f77443a74d2976":"5c0e874186f7745dc7616606"}
