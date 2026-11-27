@@ -274,6 +274,7 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestRaid::onRespawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::deliverReport);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.BallisticVest::normalizePlayerEquipment);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.BallisticVest::onAttributes);
         NeoForge.EVENT_BUS.addListener(SupplyContract::assaultKill);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
         NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
