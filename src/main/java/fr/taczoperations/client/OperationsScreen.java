@@ -118,7 +118,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
 
     @Override
     protected void init() {
-        scale = Math.min(width / (float) WIDTH, height / (float) HEIGHT);
+        scale = Math.min(width / (float) WIDTH, height / (float) HEIGHT)*.95f;
         imageWidth = Math.round(WIDTH * scale);
         imageHeight = Math.round(HEIGHT * scale);
         offsetX = (width - imageWidth) / 2;
@@ -128,12 +128,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         for (int row = 0; row < SECTIONS.length; row++) {
             Section section = SECTIONS[row];
             int iconIndex = row>2?row-1:row;
-            int y = 83 + row * 40;
-            widget(8, y, 139, 36, section.title, () -> send(section.tab),
+            int y = 81 + row * 39;
+            widget(12, y, 136, 34, section.title, () -> send(section.tab),
                 () -> true, (g, hovered) -> {
                     TacticalSkin.tile(g, 12, y, 136, 34, active(section.tab), hovered);
                     if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 4, 25);
-                    text(g, section.title, 52, y + 12, 1.15F, WHITE, true);
+                    text(g, section.title, 52, y + 11, 1.16F, WHITE, false);
                 });
         }
         if(questMode)return;
@@ -1155,9 +1155,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private static void panel(GuiGraphics g, int x, int y, int w, int h, int color) {
-        g.fill(x, y, x + w, y + h, color);
-        g.renderOutline(x, y, w, h, FRAME);
-        g.fill(x + 2, y + 1, x + w - 2, y + 2, 0x6469634b);
+        if(w>=14&&h>=14)TacticalSkin.panel(g,x,y,w,h);
+        else{g.fill(x,y,x+w,y+h,color);g.renderOutline(x,y,w,h,FRAME);}
     }
 
     private static void key(GuiGraphics g, int x, int y, int w, int h, boolean selected, boolean hover, boolean enabled) {
@@ -1165,12 +1164,12 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     }
 
     private static void frame(GuiGraphics g, int x, int y, int w, int h, boolean selected, boolean hover) {
-        int border = selected ? LIME : hover ? GOLD : FRAME;
+        int border = selected ? TacticalSkin.ORANGE : hover ? GOLD : FRAME;
         if (selected || hover) {
-            g.renderOutline(x - 1, y - 1, w + 2, h + 2, selected ? 0x9fb3ca5f : 0x707e6b3a);
+            g.renderOutline(x - 1, y - 1, w + 2, h + 2, selected ? 0x9fc27431 : 0x707e6b3a);
         }
         g.renderOutline(x, y, w, h, border);
-        g.fill(x + 2, y + 1, x + w - 2, y + 2, selected ? 0x8ae4f6a0 : 0x527c7257);
+        g.fill(x + 2, y + 1, x + w - 2, y + 2, selected ? 0x8affbd75 : 0x527c7257);
     }
 
     private static void progress(GuiGraphics g, int x, int y, int width, int height, int xp) {
