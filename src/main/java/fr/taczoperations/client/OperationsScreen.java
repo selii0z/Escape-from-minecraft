@@ -917,6 +917,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             return n>=(all?2:1)&&(long)v.credits()+(long)shopPrice(o)*(all?n:1)<=Integer.MAX_VALUE;
         }
         if(all)return false;
+        if(o.action()==OperationsShop.Action.REPAIR){var quote=vendor().repairQuote(minecraft.player,o);return quote.cost()>0&&v.credits()>=quote.cost();}
         if(o.action()==OperationsShop.Action.UNLOCK)return !unlocked(o.key());
         return !shopLocked(o)&&v.credits()>=(long)shopPrice(o)*(o.action()==OperationsShop.Action.BUY?shopLots:1);
     }
@@ -944,7 +945,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 int top=tier>=4?0xff42374b:tier==3?0xff32434a:0xff354030;
                 g.fillGradient(x,y,x+SHOP_CELL,y+SHOP_CELL,top,0xff1c211d);
                 frame(g,x,y,SHOP_CELL,SHOP_CELL,shopSelection==row,hover);
-                discoveryItem(g,stack,x+5,y+8,1.5F);
+                if(o.action()==OperationsShop.Action.REPAIR)item(g,stack,x+5,y+8,1.5F);else discoveryItem(g,stack,x+5,y+8,1.5F);
                 String cost=o.action()==OperationsShop.Action.UNLOCK?"Accès":o.action()==OperationsShop.Action.REPAIR?"Répar.":numberLong(shopPrice(o));
                 text(g,fit(cost,43),x+2,y+2,.72F,GOLD,true);
                 if(shopLocked(o))text(g,"F"+tier,x+21,y+25,.7F,0xffe5a9a0,true);
@@ -959,14 +960,14 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         simple(421,344,124,25,"Marché joueurs",()->send(OperationsMenu.PLAYER_MARKET));
         simple(169,376,184,22,"Transactions",()->send(OperationsMenu.TRADE_JOURNAL));
         simple(358,376,187,22,"Commandes",()->send(OperationsMenu.MERCHANT_ORDERS));
-        widget(581,215,147,26,"Confirmer",()->{rememberShop();if(shopOffer(shopSelection)!=null&&DiscoveryClient.unknown(shopOffer(shopSelection).stack().get()))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())||shopCanTrade(false)),(g,hover)->{
-            var o=shopOffer(shopSelection);boolean unknown=o!=null&&DiscoveryClient.unknown(o.stack().get());boolean ok=unknown||shopCanTrade(false);
+        widget(581,215,147,26,"Confirmer",()->{rememberShop();if(shopOffer(shopSelection)!=null&&shopUnknown(shopOffer(shopSelection)))inspectSelected(shopSelection);else if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.BUY)net.neoforged.neoforge.network.PacketDistributor.sendToServer(new fr.taczoperations.operations.ShopBuy(menu.containerId,shopSelection,shopLots));else send(OperationsMenu.TRADE_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&(shopUnknown(shopOffer(shopSelection))||shopCanTrade(false)),(g,hover)->{
+            var o=shopOffer(shopSelection);boolean unknown=o!=null&&shopUnknown(o);boolean ok=unknown||shopCanTrade(false);
             key(g,581,215,147,26,ok,hover,ok);
             centered(g,o==null?"Indisponible":unknown?"Examiner":o.action().label+(o.action()==OperationsShop.Action.SELL?" x1":o.action()==OperationsShop.Action.BUY?" x"+shopLots:""),654,223,1,ok?WHITE:SOFT,true);
         });
-        widget(733,215,83,26,"Tout vendre",()->{rememberShop();send(OperationsMenu.SELL_ALL_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get())&&shopCanTrade(true),(g,hover)->{
+        widget(733,215,83,26,"Tout vendre",()->{rememberShop();send(OperationsMenu.SELL_ALL_FIRST+shopSelection);},()->shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL&&!shopUnknown(shopOffer(shopSelection))&&shopCanTrade(true),(g,hover)->{
             if(shopOffer(shopSelection)!=null&&shopOffer(shopSelection).action()==OperationsShop.Action.SELL){
-                boolean enabled=shopCanTrade(true)&&!DiscoveryClient.unknown(shopOffer(shopSelection).stack().get());
+                boolean enabled=shopCanTrade(true)&&!shopUnknown(shopOffer(shopSelection));
                 key(g,733,215,83,26,false,hover,enabled);centered(g,"Tout vendre",774,223,.9F,enabled?WHITE:SOFT,true);
             }
         });
@@ -982,6 +983,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 });
         }
     }
+    private boolean shopUnknown(OperationsShop.Offer o){return o!=null&&o.action()!=OperationsShop.Action.REPAIR&&DiscoveryClient.unknown(o.stack().get());}
     private boolean canAdjustLots(){var o=shopOffer(shopSelection);return o!=null&&o.action()==OperationsShop.Action.BUY&&!DiscoveryClient.unknown(o.stack().get());}
     private void drawShop(GuiGraphics g){
         var v=menu.view();var merchant=vendor();
@@ -1012,12 +1014,21 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var o=shopOffer(shopSelection);
         if(o!=null){
             var stack=o.stack().get();
+            if(o.action()==OperationsShop.Action.REPAIR){
+                var quote=merchant.repairQuote(minecraft.player,o);
+                item(g,quote.target().isEmpty()?stack:quote.target(),585,151,3F);
+                text(g,fit(quote.target().isEmpty()?o.title():quote.target().getHoverName().getString(),174),640,149,.91F,WHITE,true);
+                text(g,quote.target().isEmpty()?"Aucun équipement compatible":"État : "+quote.condition()+" %",640,163,.83F,SOFT,false);
+                text(g,quote.target().isEmpty()?"Place l'objet dans ton inventaire":quote.cost()==0?"Déjà en parfait état":numberLong(quote.cost())+" crédits · réparation complète",640,177,.9F,GOLD,true);
+                text(g,quote.cost()>v.credits()?"Crédits insuffisants":"Remise à neuf · 100 %",640,191,.82F,SOFT,false);
+            }else{
             discoveryItem(g,stack,585,151,3F);
             text(g,fit(discoveredName(stack,o.title()),174),640,149,.91F,WHITE,true);
             text(g,fit(o.requirement(),174),640,163,.83F,SOFT,false);
             String cost=o.action()==OperationsShop.Action.SELL?numberLong(shopPrice(o))+" cr/u · x"+v.saleCounts().get(shopSelection):o.action()==OperationsShop.Action.BUY?numberLong((long)shopPrice(o)*shopLots)+" cr. · x"+(stack.getCount()*shopLots):o.action()==OperationsShop.Action.UNLOCK?"Remettre un objet":merchant==OperationsShop.ARMORER?"8 cr./% · min. 50":numberLong(o.price())+" cr.";
             text(g,fit(cost,174),640,177,.9F,GOLD,true);
             text(g,shopLocked(o)?"Fidélité ou accès requis":o.action()==OperationsShop.Action.SELL?"Revente au tarif du jour":"Fidélité "+o.loyaltyLevel()+(o.action()==OperationsShop.Action.BUY&&v.commerceDiscount()>0?" · -"+v.commerceDiscount()+" %":""),640,191,.82F,shopLocked(o)?0xffe5a9a0:SOFT,false);
+            }
         }else text(g,"Sélectionne un objet",589,169,1,SOFT,false);
         text(g,"INVENTAIRE DU JOUEUR",581,249,1.02F,GOLD,true);
         if(minecraft.player!=null){

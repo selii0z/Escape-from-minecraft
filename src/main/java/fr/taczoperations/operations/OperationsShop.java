@@ -99,7 +99,7 @@ public enum OperationsShop {
         switch (this) {
             case ARMORER -> {
                 offers.add(buy("Grenade de raid EFM",180,()->CampaignSupplies.rewardStack(RaidGrenade.REFERENCE),null,20));
-                offers.add(new Offer("Entretien · arme tenue en main",0,Action.REPAIR,()->new ItemStack(Items.IRON_INGOT),null,0));
+                offers.add(new Offer("Réparation · arme TaCZ",0,Action.REPAIR,()->new ItemStack(Items.IRON_INGOT),null,0));
                 // Build a single authoritative catalogue from the installed TaCZ packs.
                 // Each calibre inherits the lowest tier of a weapon using it, with
                 // a minimum tier for the calibre itself. No duplicate cheap ammo offers.
@@ -177,7 +177,7 @@ public enum OperationsShop {
                         offers.add(buy(BallisticVest.name(slot)+" · Classe "+tier,base*percent/100,
                             () -> BallisticVest.create(slot,t,BallisticVest.classColor(t)),null,tier==2?20:tier==3?100:190));
                     }
-                    offers.add(new Offer("Réparation · "+BallisticVest.name(slot)+" portée", 300*percent/100,
+                    offers.add(new Offer("Réparation · "+BallisticVest.name(slot), 300*percent/100,
                         Action.REPAIR, () -> new ItemStack(BallisticVest.item(slot)),null,0));
                 }
                 for(var slot:BallisticVest.SLOTS){
@@ -400,6 +400,51 @@ public enum OperationsShop {
         ItemStack sample=offer.stack().get();
         return storage.count(s->matchesSale(offer,sample,s));
     }
+    public record RepairQuote(ItemStack target,net.minecraft.world.entity.EquipmentSlot slot,int cost,int condition){}
+    public RepairQuote repairQuote(net.minecraft.world.entity.player.Player player,Offer offer){
+        var empty=new RepairQuote(ItemStack.EMPTY,null,0,100);
+        if(player==null||offer.action()!=Action.REPAIR)return empty;
+        if(this==ARMORER){
+            var hand=player.getMainHandItem();
+            if(hand.getItem() instanceof com.tacz.guns.api.item.IGun)
+                return new RepairQuote(hand,null,WeaponCondition.repairCost(hand,0),WeaponCondition.condition(hand)/100);
+            ItemStack fallback=ItemStack.EMPTY;
+            for(var candidate:player.getInventory().items){
+                if(!(candidate.getItem() instanceof com.tacz.guns.api.item.IGun))continue;
+                if(fallback.isEmpty())fallback=candidate;
+                if(WeaponCondition.repairCost(candidate,0)>0)
+                    return new RepairQuote(candidate,null,WeaponCondition.repairCost(candidate,0),WeaponCondition.condition(candidate)/100);
+            }
+            return fallback.isEmpty()?empty:new RepairQuote(fallback,null,0,100);
+        }
+        if(this!=SALVAGER)return empty;
+        var sample=offer.stack().get();
+        for(var slot:BallisticVest.SLOTS){
+            if(!sample.is(BallisticVest.item(slot)))continue;
+            // Explicit priority: the matching held piece, then equipped piece, then inventory.
+            var hand=player.getMainHandItem();
+            if(BallisticVest.tier(hand,slot)>0)return armorQuote(hand,slot,offer.price());
+            var worn=player.getItemBySlot(slot);
+            if(BallisticVest.tier(worn,slot)>0&&armorQuote(worn,slot,offer.price()).cost()>0)return armorQuote(worn,slot,offer.price());
+            ItemStack fallback=worn;
+            if(BallisticVest.tier(fallback,slot)==0)fallback=ItemStack.EMPTY;
+            for(var candidate:player.getInventory().items){
+                if(BallisticVest.tier(candidate,slot)==0)continue;
+                if(fallback.isEmpty())fallback=candidate;
+                var quote=armorQuote(candidate,slot,offer.price());
+                if(quote.cost()>0)return quote;
+            }
+            return fallback.isEmpty()?empty:armorQuote(fallback,slot,offer.price());
+        }
+        return empty;
+    }
+    private static RepairQuote armorQuote(ItemStack stack,net.minecraft.world.entity.EquipmentSlot slot,int base){
+        int condition=BallisticVest.condition(stack);
+        int vanillaWear=stack.getMaxDamage()>0?(int)Math.ceil(100.0*stack.getDamageValue()/stack.getMaxDamage()):0;
+        int wear=Math.max(100-condition,vanillaWear);
+        int cost=wear<=0?0:Math.max(1,(base*wear+99)/100);
+        return new RepairQuote(stack,slot,cost,condition);
+    }
     public static int purchasePrice(Offer offer,int discount){
         if(offer.action()!=Action.BUY||offer.price()<=0)return offer.price();
         return (int)Math.max(1,((long)offer.price()*(100-Math.clamp(discount,0,10))+99)/100);
@@ -430,21 +475,17 @@ public enum OperationsShop {
         if (stack.isEmpty()) return "Article indisponible dans cette installation TaCZ.";
         int balance = account.getInt("credits");
         if (offer.action == Action.REPAIR) {
-            if (this == ARMORER) return WeaponCondition.repair(player);
-            if (this != SALVAGER) return "Service indisponible.";
-            for (var slot : BallisticVest.SLOTS) {
-                if (!stack.is(BallisticVest.item(slot))) continue;
-                ItemStack worn = player.getItemBySlot(slot);
-                if (BallisticVest.tier(worn,slot) == 0) return "Équipe d’abord la protection balistique à réparer.";
-                if (BallisticVest.condition(worn) == 100 && worn.getDamageValue() == 0) return "Protection déjà en parfait état.";
-                if (balance < offer.price) return "Crédits insuffisants.";
-                if (!BallisticVest.repair(worn,slot)) return "Réparation impossible.";
-                account.putInt("credits", balance-offer.price);
-                TradeJournal.record(player,"Réparation",title,offer.title(),1,-offer.price());
-                player.getInventory().setChanged();
-                return "Protection réparée · état 100/100.";
-            }
-            return "Protection indisponible.";
+            RepairQuote quote=repairQuote(player,offer);
+            if(quote.target().isEmpty())return this==ARMORER?"Aucune arme TaCZ à réparer dans ton inventaire.":"Aucune protection de ce type à réparer.";
+            if(quote.cost()==0)return "Équipement déjà en parfait état.";
+            if(balance<quote.cost())return "Crédits insuffisants · "+quote.cost()+" crédits nécessaires.";
+            if(this==ARMORER)return WeaponCondition.repair(player,quote.target(),0);
+            if(this!=SALVAGER||quote.slot()==null)return "Service indisponible.";
+            if(!BallisticVest.repair(quote.target(),quote.slot()))return "Protection déjà en parfait état.";
+            account.putInt("credits",balance-quote.cost());
+            TradeJournal.record(player,"Réparation",title,quote.target().getHoverName().getString(),1,-quote.cost());
+            player.getInventory().setChanged();
+            return "Protection réparée · 100/100 · -"+quote.cost()+" crédits.";
         }
         if (offer.action == Action.SELL) {
             long today=ResaleMarket.day();
