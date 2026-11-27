@@ -261,8 +261,7 @@ public final class ForestExpedition {
             return "Une équipe occupe déjà cette carte (joueurs déconnectés inclus).";
         }
         var random = forest.getRandom();
-        var entry = express!=null?express.pos(express.entry()):industrial ? industrialPosition(IndustrialZone.ENTRY)
-            : ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
+        var entry = deployment(forest,player,partner,industrial,express);
         int weatherRoll=random.nextInt(100);
         int weather=weatherRoll<50?0:weatherRoll<85?1:2;
         if (!enter(player, forest, entry, night, weather, industrial,express)) {
@@ -285,8 +284,7 @@ public final class ForestExpedition {
         var forest=player.server.getLevel(FOREST);
         if(forest==null)return "Dimension indisponible.";
         var random=forest.getRandom();
-        var entry=express!=null?express.pos(express.entry()):industrial?industrialPosition(IndustrialZone.ENTRY):
-            ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
+        var entry=deployment(forest,player,null,industrial,express);
         int roll=random.nextInt(100),weather=roll<50?0:roll<85?1:2;
         problem=ScavRun.prepare(player);
         if(!problem.isEmpty()){if(ScavRun.active(player))ScavRun.recover(player);return problem;}
@@ -297,6 +295,39 @@ public final class ForestExpedition {
         ScavRun.started(player);
         player.sendSystemMessage(Component.literal("Raid Scav · équipement prêté · Scavs neutres tant que tu ne les attaques pas. Prochain départ dans 45 minutes."));
         return "";
+    }
+
+    // Prefer a diagonal crossing, while keeping both extraction options far from deployment.
+    // The existing western-southern clearing is already generated and safe in old saves.
+    static ForestPlan.Point oppositeForestEntry(){
+        var primary=ForestPlan.EXTRACTION;
+        var secondary=ForestPlan.CONDITIONAL_EXIT;
+        return ForestPlan.ENTRIES.stream().max(java.util.Comparator.comparingDouble(p->{
+            double dx=Math.abs(p.x()-primary.x()),dz=Math.abs(p.z()-primary.z());
+            double other=Math.hypot(p.x()-secondary.x(),p.z()-secondary.z());
+            return Math.min(Math.hypot(dx,dz),other)+Math.min(dx,dz)*0.75;
+        })).orElseThrow();
+    }
+    private static BlockPos deployment(ServerLevel level,ServerPlayer player,ServerPlayer partner,boolean industrial,ExpressZone express){
+        if(express!=null)return express.pos(express.entry());
+        if(industrial)return industrialPosition(IndustrialZone.ENTRY);
+        var point=oppositeForestEntry();
+        var center=ForestLandmarks.position(point);
+        // Keep variation inside the existing tree-free clearing, not near the extraction.
+        // Validate both members before selecting an offset; never split a duo.
+        var random=level.getRandom();
+        for(int i=0;i<8;i++){
+            int x=point.x()+random.nextInt(11)-5,z=point.z()+random.nextInt(11)-5;
+            var candidate=ForestLandmarks.position(new ForestPlan.Point(x,z));
+            level.getChunk(candidate);
+            if(!standingRoom(player,level,Vec3.atBottomCenterOf(candidate)))continue;
+            if(partner!=null){
+                level.getChunk(candidate.south());
+                if(!standingRoom(partner,level,Vec3.atBottomCenterOf(candidate.south())))continue;
+            }
+            return candidate;
+        }
+        return center;
     }
 
     static BlockPos industrialPosition(ForestPlan.Point point) {
