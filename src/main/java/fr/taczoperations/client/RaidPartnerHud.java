@@ -13,10 +13,14 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public final class RaidPartnerHud {
     private static RaidPartnerPayload state;
     private static Object level;
-    private static long updated;
+    private static long updated,lastFrame;
+    private static net.minecraft.world.phys.Vec3 smooth;
     public static void handle(RaidPartnerPayload payload,IPayloadContext context){
         context.enqueueWork(()->{
             var mc=Minecraft.getInstance();
+            if(!payload.visible()||state==null||level!=mc.level||!state.name().equals(payload.name())){
+                smooth=null;lastFrame=0;
+            }
             state=payload.visible()?payload:null;level=mc.level;updated=System.nanoTime();
         });
     }
@@ -26,7 +30,23 @@ public final class RaidPartnerHud {
             ||mc.options.hideGui||!mc.level.dimension().equals(ForestExpedition.FOREST)||System.nanoTime()-updated>3_000_000_000L)return;
         var camera=mc.gameRenderer.getMainCamera();
         var pos=camera.getPosition();
-        double dx=state.x()-pos.x,dy=state.y()-pos.y,dz=state.z()-pos.z;
+        var target=new net.minecraft.world.phys.Vec3(state.x(),state.y(),state.z());
+        long now=System.nanoTime();
+        double dt=lastFrame==0?0:Math.clamp((now-lastFrame)/1e9,0,.1);
+        lastFrame=now;
+        if(smooth==null||smooth.distanceToSqr(target)>64*64)smooth=target;
+        // Outside client tracking range, smooth the five-tick server updates in world space.
+        smooth=smooth.lerp(target,1-Math.exp(-dt*12));
+        var marker=smooth;
+        // Within tracking range use the exact same interpolated position as the player model.
+        float partial=event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        for(var partner:mc.level.players()){
+            if(partner==mc.player||!partner.getGameProfile().getName().equals(state.name())||!partner.isAlive())continue;
+            marker=partner.getPosition(partial).add(0,partner.getBbHeight()+.25,0);
+            smooth=marker;
+            break;
+        }
+        double dx=marker.x-pos.x,dy=marker.y-pos.y,dz=marker.z-pos.z;
         double yaw=Math.toRadians(camera.getYRot()),pitch=Math.toRadians(camera.getXRot());
         double right=-Math.cos(yaw)*dx-Math.sin(yaw)*dz;
         double horizontal=-Math.sin(yaw)*dx+Math.cos(yaw)*dz;
@@ -37,7 +57,7 @@ public final class RaidPartnerHud {
         boolean front=forward>.1;
         double sx=front?right*focal/forward:Math.copySign(w,right==0?1:right);
         double sy=front?-up*focal/forward:0;
-        int x=(int)Math.clamp(w/2.0+sx,60,w-60),y=(int)Math.clamp(h/2.0+sy,32,h-65);
+        int x=(int)Math.round(Math.clamp(w/2.0+sx,60,w-60)),y=(int)Math.round(Math.clamp(h/2.0+sy,32,h-65));
         int color=0xff77e898;
         String name=state.name()+" · "+Math.round(Math.sqrt(dx*dx+dy*dy+dz*dz))+" m";
         int tw=mc.font.width(name);

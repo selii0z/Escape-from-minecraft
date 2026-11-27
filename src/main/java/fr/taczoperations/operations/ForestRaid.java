@@ -45,6 +45,8 @@ import java.util.UUID;
 public final class ForestRaid extends SavedData {
     static final String ENEMY = "taczoperations_enemy";
     private static final String PLAYER = "taczoperations_raid_player";
+    private static final String ENTRY_GRACE = "efm_entry_grace_until";
+    private static final int ENTRY_GRACE_TICKS = 300;
     private static final String CORPSE = "taczoperations_raid_corpse";
     private static final String DROP = "taczoperations_raid_drop";
     private static final String CRATE = "taczoperations_raid_crate";
@@ -195,6 +197,7 @@ public final class ForestRaid extends SavedData {
             raid.locations=List.copyOf(marks);
         }
         player.getPersistentData().putUUID(PLAYER, raid.id);
+        startEntryGrace(level,player);
         RaidSurvival.begin(player);
         if(!ScavRun.active(player)){
             SupplyContract.departure(player);
@@ -205,6 +208,7 @@ public final class ForestRaid extends SavedData {
         raid.announceExits(player);
         if (partner != null) {
             partner.getPersistentData().putUUID(PLAYER, raid.id);
+            startEntryGrace(level,partner);
             RaidSurvival.begin(partner);
             SupplyContract.departure(partner);
             StoryMissions.begin(partner,industrial);
@@ -825,6 +829,23 @@ public final class ForestRaid extends SavedData {
         return raid!=null&&raid.owns(player);
     }
 
+    private static void startEntryGrace(ServerLevel level,ServerPlayer player){
+        player.getPersistentData().putLong(ENTRY_GRACE,level.getGameTime()+ENTRY_GRACE_TICKS);
+        player.sendSystemMessage(Component.literal("Déploiement · 15 secondes de protection contre les IA. Tirer ou attaquer met fin à la protection."));
+    }
+    static boolean entryProtected(ServerPlayer player){
+        return player.getPersistentData().getLong(ENTRY_GRACE)>player.serverLevel().getGameTime()&&isParticipant(player);
+    }
+    static void endEntryGrace(ServerPlayer player){
+        if(!entryProtected(player))return;
+        player.getPersistentData().remove(ENTRY_GRACE);
+        player.displayClientMessage(Component.literal("Protection de déploiement terminée."),true);
+    }
+    private boolean tooCloseToParticipant(ServerLevel level,BlockPos place){
+        return level.players().stream().anyMatch(p->owns(p)&&place.distToCenterSqr(p.position())<
+            (entryProtected(p)?50*50:30*30));
+    }
+
     static boolean currentGuard(ServerLevel level, Pillager guard) {
         return at(level,guard.blockPosition()).matches(guard.getPersistentData(),ENEMY);
     }
@@ -911,6 +932,7 @@ public final class ForestRaid extends SavedData {
     }
 
     static void clearPlayer(ServerPlayer player) {
+        player.getPersistentData().remove(ENTRY_GRACE);
         player.getPersistentData().remove(PLAYER);
     }
 
@@ -986,7 +1008,7 @@ public final class ForestRaid extends SavedData {
                     BlockPos around = raid.position(local);
                     BlockPos place = findFloor(level, around, 4, true);
                     if (place == null || !raid.validPosition( place)
-                        || level.players().stream().anyMatch(p -> isParticipant(p) && place.distToCenterSqr(p.position()) < 20*20)
+                        || raid.tooCloseToParticipant(level,place)
                         || !level.getEntitiesOfClass(Pillager.class,
                         new net.minecraft.world.phys.AABB(place).inflate(1.5),
                         e -> e.isAlive() && currentGuard(level, e)).isEmpty()) continue;
@@ -1023,7 +1045,7 @@ public final class ForestRaid extends SavedData {
                     if(!level.hasChunkAt(near))continue;
                     BlockPos place=findFloor(level,near,4,true);
                     if(place==null||!raid.validPosition(place)
-                        ||level.players().stream().anyMatch(p->raid.owns(p)&&place.distToCenterSqr(p.position())<20*20)
+                        ||raid.tooCloseToParticipant(level,place)
                         ||!level.getEntitiesOfClass(Pillager.class,new net.minecraft.world.phys.AABB(place).inflate(2),e->e.isAlive()&&currentGuard(level,e)).isEmpty())continue;
                     if(raid.spawnGuard(level,place,role,squad,member==0?null:boss)){
                         raid.enemies.set(slot);raid.setDirty();bossBudget--;break;

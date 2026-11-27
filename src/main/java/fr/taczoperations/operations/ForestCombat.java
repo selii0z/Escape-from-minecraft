@@ -28,6 +28,18 @@ public final class ForestCombat {
     // Raid-only game balance: NPC damage caps and player headshot bonuses.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
         if (event.getLogicalSide().isClient()) return;
+        if(event.getHurtEntity() instanceof ServerPlayer protectedPlayer
+            &&event.getAttacker() instanceof Pillager enemy
+            &&enemy.level() instanceof ServerLevel raidLevel
+            &&raidLevel.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.entryProtected(protectedPlayer)&&ForestRaid.currentGuard(raidLevel,enemy)){
+            event.setCanceled(true);return;
+        }
+        if(event.getAttacker() instanceof ServerPlayer shooter
+            &&event.getHurtEntity() instanceof Pillager enemy
+            &&enemy.level() instanceof ServerLevel raidLevel&&raidLevel.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.currentGuard(raidLevel,enemy))
+            ForestRaid.endEntryGrace(shooter);
         if(event.getAttacker() instanceof ServerPlayer scav&&event.getHurtEntity() instanceof Pillager target
             &&target.level() instanceof ServerLevel level&&ForestRaid.currentGuard(level,target)
             &&ForestRaid.sameSession(level,target,scav)&&!GuardRole.get(target).boss()&&GuardRole.get(target)!=GuardRole.PMC)
@@ -98,6 +110,29 @@ public final class ForestCombat {
         float protection = BallisticVest.protection(player, event.getBullet(), event.isHeadShot(), damage);
         event.setBaseAmount(damage * protection / headshot);
         RaidInjuries.hit(player,event.getBullet(),event.isHeadShot(),damage*protection);
+    }
+
+    // Also cover the vanilla crossbow fallback and melee damage.
+    public static void onIncomingDamage(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event){
+        var attacker=event.getSource().getEntity();
+        if(event.getEntity() instanceof ServerPlayer p&&attacker instanceof Pillager guard
+            &&guard.level() instanceof ServerLevel level&&level.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.entryProtected(p)&&ForestRaid.currentGuard(level,guard)){
+            event.setCanceled(true);return;
+        }
+        if(attacker instanceof ServerPlayer p&&event.getEntity() instanceof Pillager guard
+            &&guard.level() instanceof ServerLevel level&&level.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.currentGuard(level,guard))ForestRaid.endEntryGrace(p);
+    }
+    public static void onPlayerFire(com.tacz.guns.api.event.common.GunFireEvent event){
+        if(!event.getLogicalSide().isClient()&&!event.isCanceled()&&event.getShooter() instanceof ServerPlayer p)
+            ForestRaid.endEntryGrace(p);
+    }
+    public static void onChangeTarget(net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent event){
+        if(event.getEntity() instanceof Pillager guard&&guard.level() instanceof ServerLevel level
+            &&level.dimension().equals(ForestExpedition.FOREST)
+            &&event.getNewAboutToBeSetTarget() instanceof ServerPlayer p
+            &&ForestRaid.entryProtected(p)&&ForestRaid.currentGuard(level,guard))event.setCanceled(true);
     }
 
     private static final class Aim {
@@ -211,6 +246,7 @@ public final class ForestCombat {
                 if(candidate.isCrouching())detection*=1.0-PassiveSkills.bonus(candidate,PassiveSkills.Skill.STEALTH)/100.0;
                 if (distance < range && distance < detection * detection
                     && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
+                    && !ForestRaid.entryProtected(candidate)
                     && (!ScavRun.friendly(candidate)||role.boss()||role==GuardRole.PMC)
                     && ForestRaid.sameSession(level,guard,candidate) && guard.hasLineOfSight(candidate)) {
                     target = candidate;
