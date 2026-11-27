@@ -206,16 +206,16 @@ public final class OperationsMenu extends AbstractContainerMenu {
             var counts=new java.util.ArrayList<Integer>();
             long day=ResaleMarket.day();
             var valued=new java.util.HashMap<String,Long>();
+            var carried=CarriedStorage.of(player);
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
-                int count=OperationsShop.saleCount(player,offer);
+                int count=OperationsShop.saleCount(carried,offer);
                 if(!offer.stack().get().isEmpty()&&(shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL&&offer.loyaltyLevel()<=loyalty)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
                     var stack=offer.stack().get();
-                    String key=stack.getItem() instanceof com.tacz.guns.api.item.IGun gun
-                        ?"gun/"+gun.getGunId(stack):"item/"+net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    String key=OperationsShop.quoteKey(offer,stack);
                     valued.merge(key,(long)count*ResaleMarket.price(offer,day),Math::max);
                 }
             }

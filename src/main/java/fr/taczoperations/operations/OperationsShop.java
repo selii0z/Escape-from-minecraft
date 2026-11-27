@@ -68,7 +68,10 @@ public enum OperationsShop {
     }
 
     public record Offer(String title, int price, Action action, Supplier<ItemStack> stack,
-                        RaidRelic key, int rankXp) {
+                        RaidRelic key, int rankXp, int minCondition, int maxCondition) {
+        public Offer(String title,int price,Action action,Supplier<ItemStack> stack,RaidRelic key,int rankXp){
+            this(title,price,action,stack,key,rankXp,-1,-1);
+        }
         public boolean accessory(){return title.startsWith("Accessoire · ");}
         public int shopCategory(){
             if(action==Action.REPAIR||action==Action.UNLOCK)return 6;
@@ -177,9 +180,14 @@ public enum OperationsShop {
                     offers.add(new Offer("Réparation · "+BallisticVest.name(slot)+" portée", 300*percent/100,
                         Action.REPAIR, () -> new ItemStack(BallisticVest.item(slot)),null,0));
                 }
-                for(int tier=2;tier<=6;tier++){
-                    final int t=tier;
-                    offers.add(new Offer("Reprise · Tunique classe "+t,150*t,Action.SELL,()->BallisticVest.create(t,BallisticVest.classColor(t)),null,0));
+                for(var slot:BallisticVest.SLOTS){
+                    int percent=switch(slot){case HEAD->80;case LEGS->75;case FEET->50;default->100;};
+                    for(int tier=2;tier<=6;tier++){
+                        final int t=tier;
+                        int base=switch(t){case 2->900;case 3->2400;case 4->6500;case 5->12000;default->24000;};
+                        addConditionSales(offers,BallisticVest.name(slot)+" · Classe "+t,Math.max(1,base*percent*30/10000),
+                            ()->BallisticVest.create(slot,t,BallisticVest.classColor(t)));
+                    }
                 }
                 offers.add(new Offer("Reprise · Sac de raid",4500,Action.SELL,()->FieldPack.create(false,5),null,0));
                 offers.add(new Offer("Reprise · Gilet élite",900,Action.SELL,()->FieldPack.create(true,2),null,0));
@@ -218,12 +226,88 @@ public enum OperationsShop {
             for (Offer offer : List.copyOf(offers)) {
                 if (offer.action != Action.BUY) continue;
                 ItemStack sample = offer.stack.get();
-                if (!(sample.getItem() instanceof com.tacz.guns.api.item.IGun)) continue;
-                offers.add(new Offer("Reprise · " + offer.title, Math.max(1, offer.price * 30 / 100),
-                    Action.SELL, offer.stack, null, 0));
+                if(sample.getItem() instanceof com.tacz.guns.api.item.IGun)
+                    addConditionSales(offers,offer.title,Math.max(1,offer.price*30/100),offer.stack);
+                else if(sample.getItem() instanceof com.tacz.guns.api.item.IAmmo||sample.getItem() instanceof com.tacz.guns.api.item.IAttachment)
+                    offers.add(new Offer("Reprise · "+offer.title,Math.max(1,offer.price*30/100/Math.max(1,sample.getCount())),Action.SELL,offer.stack,null,0));
             }
         }
+        appendEfmResales(offers);
         return offers;
+    }
+
+    private static void addConditionSales(List<Offer> offers,String name,int price,Supplier<ItemStack> stack){
+        int[] low={75,40,1,0},high={100,74,39,0},rate={100,70,35,10};
+        String[] labels={"75–100 %","40–74 %","1–39 %","0 %"};
+        for(int i=0;i<low.length;i++)offers.add(new Offer("Reprise · "+name+" · "+labels[i],
+            Math.max(1,price*rate[i]/100),Action.SELL,stack,null,0,low[i],high[i]));
+    }
+    private static int ballisticTier(ItemStack stack){
+        for(var slot:BallisticVest.SLOTS){int tier=BallisticVest.tier(stack,slot);if(tier>0)return tier;}
+        return 0;
+    }
+    private static int resaleCondition(ItemStack stack){
+        if(ballisticTier(stack)>0)return BallisticVest.condition(stack);
+        if(stack.getItem() instanceof com.tacz.guns.api.item.IGun)return WeaponCondition.condition(stack)/100;
+        return stack.isDamageableItem()?Math.clamp(100-stack.getDamageValue()*100/Math.max(1,stack.getMaxDamage()),0,100):100;
+    }
+    // A stable identity for resale offers, independent of display language and stack count.
+    public static String saleKey(ItemStack stack){
+        String item=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        int tier=ballisticTier(stack);
+        if(tier>0)return "armor/"+item+"/"+tier;
+        if(stack.getItem() instanceof com.tacz.guns.api.item.IGun gun)return "gun/"+gun.getGunId(stack);
+        if(stack.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)return "ammo/"+ammo.getAmmoId(stack);
+        if(stack.getItem() instanceof com.tacz.guns.api.item.IAttachment attachment)return "attachment/"+attachment.getAttachmentId(stack);
+        return "item/"+item;
+    }
+    static String quoteKey(Offer offer,ItemStack sample){
+        return saleKey(sample)+"/"+offer.minCondition()+"/"+offer.maxCondition();
+    }
+    private static OperationsShop resaleMerchant(ItemStack stack,String path){
+        if(stack.getItem() instanceof FieldMedicine||path.equals("field_ration"))return MEDIC;
+        if(path.equals("raid_grenade")||path.equals("tactical_headset"))return ARMORER;
+        if(stack.getItem() instanceof FieldPack||stack.getItem() instanceof SecureCaseItem||stack.getItem() instanceof KeyRingItem
+            ||path.endsWith("_goggles")||path.endsWith("_key")||path.equals("military_tag"))return SALVAGER;
+        for(var item:TradeLoot.values())if(path.equals(item.id))return item.merchant();
+        return BROKER;
+    }
+    private static String stableName(ItemStack stack,String path){
+        if(path.startsWith("supply_")||path.startsWith("collector_")||stack.getItem() instanceof SecureCaseItem)
+            return stack.getHoverName().getString();
+        return switch(path){
+            case "bandage"->"Bandage";case "splint"->"Attelle";case "hemostat"->"Kit hémostatique";
+            case "medkit"->"Kit de premiers secours";case "salewa"->"Salewa";case "field_ration"->"Ration de terrain";
+            case "raid_grenade"->"Grenade de raid EFM";case "tactical_headset"->"Casque audio tactique";
+            case "night_vision_goggles"->"Lunettes de vision nocturne";case "thermal_goggles"->"Lunettes thermiques";
+            case "key_ring"->"Trousseau";case "forest_key"->"Clé de la Forêt noire";case "industrial_key"->"Clé industrielle";
+            default->path.replace('_',' ');
+        };
+    }
+    private static int fallbackPrice(ItemStack stack,String path){
+        if(stack.getItem() instanceof SecureCaseItem c)return 100*c.tier().capacity;
+        if(path.startsWith("collector_"))return 500;
+        if(path.startsWith("supply_"))return 100;
+        return switch(path){case "tactical_headset"->250;case "key_ring"->150;case "forest_key","industrial_key"->150;default->25;};
+    }
+    private void appendEfmResales(List<Offer> offers){
+        var registry=net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var known=new java.util.HashSet<String>();
+        var buyPrices=new java.util.HashMap<String,Integer>();
+        for(var offer:offers){
+            var stack=offer.stack().get();if(stack.isEmpty())continue;
+            String key=saleKey(stack);
+            if(offer.action()==Action.SELL)known.add(key);
+            else if(offer.action()==Action.BUY)buyPrices.merge(key,Math.max(1,offer.price()*30/100/Math.max(1,stack.getCount())),Math::min);
+        }
+        // Include all EFM registry items, including future campaign supplies, without duplicate offers.
+        for(var id:registry.keySet().stream().filter(k->k.getNamespace().equals("taczoperations"))
+                .sorted(java.util.Comparator.comparing(ResourceLocation::toString)).toList()){
+            var item=registry.get(id);var sample=new ItemStack(item);
+            if(sample.isEmpty()||resaleMerchant(sample,id.getPath())!=this||!known.add(saleKey(sample)))continue;
+            int price=buyPrices.getOrDefault(saleKey(sample),fallbackPrice(sample,id.getPath()));
+            offers.add(new Offer("Reprise · "+stableName(sample,id.getPath()),price,Action.SELL,()->new ItemStack(item),null,0));
+        }
     }
 
     private static int tierRequirement(int tier) {
@@ -297,23 +381,24 @@ public enum OperationsShop {
 
     public static boolean matchesSale(ItemStack sample,ItemStack candidate){
         if(sample.isEmpty()||candidate.isEmpty())return false;
-        // Never destroy contents by reselling an equipped storage item as an empty bag.
+        // Do not discard any stored items or mistake tagged EFM armor for ordinary leather.
         if(candidate.getItem() instanceof FieldPack&&FieldPack.contents(candidate).stream().anyMatch(item->!item.isEmpty()))return false;
-        int armorTier=BallisticVest.tier(sample,net.minecraft.world.entity.EquipmentSlot.CHEST);
-        if(armorTier>0)return BallisticVest.tier(candidate,net.minecraft.world.entity.EquipmentSlot.CHEST)==armorTier&&candidate.is(sample.getItem());
-        if(sample.getItem() instanceof com.tacz.guns.api.item.IGun gun)
-            return candidate.getItem() instanceof com.tacz.guns.api.item.IGun actual
-                &&java.util.Objects.equals(gun.getGunId(sample),actual.getGunId(candidate));
-        if(sample.getItem() instanceof com.tacz.guns.api.item.IAmmo ammo)
-            return candidate.getItem() instanceof com.tacz.guns.api.item.IAmmo actual&&java.util.Objects.equals(ammo.getAmmoId(sample),actual.getAmmoId(candidate));
-        if(sample.getItem() instanceof com.tacz.guns.api.item.IAttachment attachment)
-            return candidate.getItem() instanceof com.tacz.guns.api.item.IAttachment actual&&java.util.Objects.equals(attachment.getAttachmentId(sample),actual.getAttachmentId(candidate));
-        return candidate.is(sample.getItem());
+        if(candidate.getItem() instanceof KeyRingItem&&KeyRingItem.contents(candidate).stream().anyMatch(item->!item.isEmpty()))return false;
+        if(candidate.getItem() instanceof SecureCaseItem&&!RaidSecurity.emptyCase(candidate))return false;
+        if(candidate.has(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA))return false;
+        return saleKey(sample).equals(saleKey(candidate));
     }
-    static int saleCount(ServerPlayer player,Offer offer){
+    public static boolean matchesSale(Offer offer,ItemStack sample,ItemStack candidate){
+        if(!matchesSale(sample,candidate))return false;
+        if(offer.minCondition()<0)return true;
+        int condition=resaleCondition(candidate);
+        return condition>=offer.minCondition()&&condition<=offer.maxCondition();
+    }
+    static int saleCount(ServerPlayer player,Offer offer){return saleCount(CarriedStorage.of(player),offer);}
+    static int saleCount(CarriedStorage storage,Offer offer){
         if(offer.action()!=Action.SELL)return 0;
         ItemStack sample=offer.stack().get();
-        return CarriedStorage.of(player).count(s->matchesSale(sample,s));
+        return storage.count(s->matchesSale(offer,sample,s));
     }
     public static int purchasePrice(Offer offer,int discount){
         if(offer.action()!=Action.BUY||offer.price()<=0)return offer.price();
@@ -366,16 +451,16 @@ public enum OperationsShop {
             if(quotedDay!=today)return "Les tarifs ont changé. Vérifie le nouveau prix avant de vendre.";
             int price=ResaleMarket.price(offer,today);
             var storage=CarriedStorage.of(player);
-            int available=storage.count(s->matchesSale(stack,s));
+            int available=storage.count(s->matchesSale(offer,stack,s));
             if(quantity<=0||available<quantity)return "Quantité indisponible. Vérifie ton inventaire.";
             if(bulk&&available!=quantity)return "Quantité modifiée. Vérifie le nouveau montant.";
             long total=(long)price*quantity;
             if(total>Integer.MAX_VALUE-(long)balance)return "Solde maximal atteint.";
             // Validate the entire quote before touching any stack.
-            if(!storage.consume(s->matchesSale(stack,s),quantity))return "Quantité indisponible.";
+            if(!storage.consume(s->matchesSale(offer,stack,s),quantity))return "Quantité indisponible.";
             account.putInt("credits",balance+(int)total);
             TradeJournal.record(player,"Vente",title,offer.title(),quantity,total);
-            CampaignRuntime.recordMerchantSale(player,name().toLowerCase(java.util.Locale.ROOT),quantity,this==SALVAGER&&(stack.getItem() instanceof FieldPack||BallisticVest.tier(stack,net.minecraft.world.entity.EquipmentSlot.CHEST)>0));
+            CampaignRuntime.recordMerchantSale(player,name().toLowerCase(java.util.Locale.ROOT),quantity,this==SALVAGER&&(stack.getItem() instanceof FieldPack||ballisticTier(stack)>0));
             PassiveSkills.trade(player,total);
             return "Vente · "+quantity+" objet(s) · +"+total+" crédits.";
         }

@@ -13,8 +13,7 @@ final class RaidLootValue {
     private static final String BASE="efm_loot_value_baseline";
     record Estimate(long credits,int count){}
     private static String key(ItemStack stack){
-        if(stack.getItem() instanceof IGun gun)return "gun/"+gun.getGunId(stack);
-        return "item/"+BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return OperationsShop.saleKey(stack);
     }
     private static void count(Map<String,Integer> counts,ItemStack stack){
         if(!stack.isEmpty())counts.merge(key(stack),stack.getCount(),Integer::sum);
