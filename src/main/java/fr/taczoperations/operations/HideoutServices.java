@@ -19,7 +19,6 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.item.alchemy.PotionContents;
 
-@net.neoforged.fml.common.EventBusSubscriber(modid="taczoperations")
 public final class HideoutServices {
     private static final String STASH="hideout_stash";
     enum Recipe {
