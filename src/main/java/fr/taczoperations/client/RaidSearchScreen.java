@@ -25,7 +25,6 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
     }
     @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
         super.render(g,mouseX,mouseY,partial);
-        DiscoveryClient.maskSlots(g,menu,leftPos,topPos);
         renderTooltip(g,mouseX,mouseY);
     }
     @Override protected void renderBg(GuiGraphics g,float partial,int mouseX,int mouseY){
@@ -61,11 +60,9 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
         g.drawString(font,count,168-font.width(count),164,SOFT,false);
     }
     @Override public boolean keyPressed(int key,int scan,int mods){
-        if(DiscoveryClient.inspectKey(key,scan)&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.keyPressed(key,scan,mods);
     }
     @Override public boolean mouseClicked(double x,double y,int button){
-        if(DiscoveryClient.inspectMouse(button)&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.mouseClicked(x,y,button);
     }
 }

@@ -265,8 +265,6 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::commands);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogout);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogin);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ItemDiscovery::login);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ItemDiscovery::respawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onServerTick);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::cloneCases);
