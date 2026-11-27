@@ -44,7 +44,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         .mapToInt(contract -> contract.experience).sum();
 
     private record Area(String title, String image, int difficulty, String environment) {
-        ResourceLocation texture() { return OperationsScreen.texture(image); }
+        ResourceLocation texture() { return OperationsScreen.texture("hd/"+image); }
     }
 
     private static final Area[] AREAS = {
@@ -193,12 +193,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 simple(420,207,120,29,"Utilisation",()->send(OperationsMenu.SECURE_POUCH));
                 simple(420,269,120,29,"Assurer",()->send(OperationsMenu.INSURE_GEAR));
                 simple(420,331,120,29,"Ouvrir",()->send(OperationsMenu.CLAIM_INSURANCE));
-                simple(581,185,232,29,"Configuration des HUD",()->minecraft.setScreen(new RaidHudSettings.Screen(this)));
-                simple(581,305,232,29,"Réinitialiser mon compte",()->{send(OperationsMenu.ARM_WIPE);minecraft.setScreen(new AccountWipeScreen(this,menu.containerId));});
+                simple(581,128,232,29,"Configuration des HUD",()->minecraft.setScreen(new RaidHudSettings.Screen(this)));
+                simple(581,205,232,29,"Ouvrir le groupe",()->send(OperationsMenu.GROUP));
+                simple(581,328,232,29,"Réinitialiser mon compte",()->{send(OperationsMenu.ARM_WIPE);minecraft.setScreen(new AccountWipeScreen(this,menu.containerId));});
             }
             default -> { }
         }
-        if (view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET && view.tab()!=OperationsMenu.DETAILED_STATS) {
+        if (view.tab() != OperationsMenu.SETTINGS && view.tab() != OperationsMenu.FOREST && view.tab() != OperationsMenu.GROUP && view.tab() != OperationsMenu.SHOP && view.tab() != OperationsMenu.CONTRACTS && view.tab()!=OperationsMenu.TIMED_CONTRACTS && view.tab()!=OperationsMenu.BLACK_MARKET && view.tab()!=OperationsMenu.PROGRESSION && view.tab()!=OperationsMenu.TRADE_JOURNAL && view.tab()!=OperationsMenu.MERCHANT_ORDERS && view.tab()!=OperationsMenu.PLAYER_MARKET && view.tab()!=OperationsMenu.DETAILED_STATS) {
             simple(581, 243, 232, 28, "Ouvrir le groupe", () -> send(OperationsMenu.GROUP));
         }
     }
@@ -444,8 +445,8 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         Area area = AREAS[selectedArea];
         boolean open = true;
         panel(g, 569, 85, 258, 83, 0xc5272e20);
-        g.blit(area.texture(), 574, 91, 87, 69, 83, 0, 214, 170, 380, 170);
-        g.renderOutline(572, 89, 91, 73, 0xffc4b68c);
+        TacticalSkin.picture(g,area.texture(),574,91,87,69);
+        TacticalSkin.outline(g,572,89,91,73,0xffc4b68c);
         icon(g, selectedArea + 6, 668, 100, 16);
         text(g, upper(area.title), 685, 102, area.title.length() > 19 ? 1.00F : 1.25F, WHITE, true);
         String[] lines = selectedArea == 0
@@ -679,9 +680,17 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 panel(g,169,318,379,54,DARK);
                 text(g,"Espace de récupération",185,330,1.13F,WHITE,true);
                 text(g,"Après 30 min · chance 95 %",185,349,.95F,SOFT,false);
-                text(g,"ZONE DE RÉINITIALISATION",581,251,1.0F,0xffe18979,true);
-                text(g,"Efface uniquement ta progression EFM.",581,272,.9F,SOFT,false);
-                text(g,"Action définitive.",581,288,.9F,SOFT,false);
+                panel(g,575,88,249,80,DARK);
+                text(g,"AFFICHAGE EN RAID",585,98,1.1F,GOLD,true);
+                text(g,"Position, taille et opacité des HUD.",585,114,.91F,SOFT,false);
+                panel(g,575,175,249,69,DARK);
+                text(g,"GROUPE",585,185,1.1F,GOLD,true);
+                text(g,view.partner().isEmpty()?"Solo · invitations disponibles":"Équipier : "+view.partner(),585,197,.8F,SOFT,false);
+                panel(g,575,260,249,122,DARK);
+                text(g,"ZONE DE RÉINITIALISATION",585,273,1.0F,0xffe18979,true);
+                text(g,"Efface uniquement ta progression EFM.",585,294,.9F,SOFT,false);
+                text(g,"Action définitive.",585,309,.9F,SOFT,false);
+                return;
             }
             case OperationsMenu.GROUP -> {
                 pageTitle(g, "♟", "GROUPE", "Préparez un déploiement à deux");
@@ -1133,7 +1142,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var textures = minecraft.getTextureManager();
         textures.bindForSetup(id);
         textures.getTexture(id).setFilter(true, false);
-        // Use normalized UVs by giving the UV region and texture the same dimensions.
+        if(id.getPath().contains("/hd/")){TacticalSkin.picture(g,id,x,y,w,h);return;}
         g.blit(id, x, y, 0, 0, w, h, w, h);
     }
 

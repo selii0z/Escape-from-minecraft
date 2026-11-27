@@ -1,0 +1,72 @@
+import java.awt.*
+import java.awt.geom.*
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Generate smooth GUI masks and high-resolution presentation assets at build time.
+def hdArt=layout.buildDirectory.dir('generated/tacticalHd')
+tasks.register('generateTacticalHd'){
+    inputs.file('gradle/tactical-hd.gradle')
+    inputs.dir('src/main/resources/assets/taczoperations/textures/gui')
+    outputs.dir(hdArt)
+    doLast{
+        File src=file('src/main/resources/assets/taczoperations/textures/gui')
+        File root=new File(hdArt.get().asFile,'assets/taczoperations/textures/gui/hd')
+        root.mkdirs()
+        def render={String name,int w,int h,Closure painter->
+            BufferedImage img=new BufferedImage(w,h,BufferedImage.TYPE_INT_ARGB)
+            Graphics2D g=img.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON)
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY)
+            painter(g);g.dispose();ImageIO.write(img,'png',new File(root,name+'.png'))
+        }
+        def c={int hex->new Color(hex)}
+        ['rounded_fill','rounded_border'].each { name->
+            render(name,128,128){g->
+                g.setColor(Color.WHITE)
+                if(name=='rounded_fill')g.fill(new RoundRectangle2D.Double(0,0,128,128,56,56))
+                else{g.setStroke(new BasicStroke(5f));g.draw(new RoundRectangle2D.Double(3,3,122,122,50,50))}
+            }
+        }
+        render('header',2048,136){g->
+            g.setPaint(new GradientPaint(0f,0f,c(0x45413c),0f,136f,c(0x171719)));g.fillRect(0,0,2048,136)
+            Random rng=new Random(831L)
+            for(int layer=0;layer<3;layer++){
+                g.setColor(c([0x343632,0x292c29,0x181b19][layer]))
+                for(int i=0;i<88;i++){
+                    int x=rng.nextInt(2100),base=110+layer*11,h=24+rng.nextInt(75),w=12+rng.nextInt(22)
+                    g.fillRect(x-2,base-h,4,h)
+                    for(int j=0;j<6;j++){
+                        int y=base-h+j*h.intdiv(7),r=(int)(w*(j+2)/7)
+                        g.fillPolygon([x,x-r,x+r] as int[],[y-10,y+23,y+23] as int[],3)
+                    }
+                }
+            }
+            g.setPaint(new GradientPaint(0f,0f,new Color(18,18,18,240),560f,0f,new Color(18,18,18,35)));g.fillRect(0,0,620,136)
+            g.setColor(c(0x666058));g.setStroke(new BasicStroke(3f));g.drawLine(0,2,2048,2)
+            g.setColor(c(0xa56632));g.drawLine(0,133,2048,133)
+        }
+        // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.
+        ['forest','industrial','village','underground','quarantine','military'].each { id->
+            BufferedImage original=ImageIO.read(new File(src,id+'.png'))
+            render(id,1920,860){g->g.drawImage(original,0,0,1920,860,null)}
+        }
+        // Reuse the full-resolution character art instead of the former 16-pixel atlas.
+        // Each merchant gets its own square crop and color treatment; remaining original portraits are retained.
+        def roles=['armorer','medic','salvager','broker','armorer','salvager','armorer','broker','broker','medic','salvager']
+        def shades=[0x8c704d,0xc0c1ae,0x697584,0xbca17a,0x767871,0x977347,0x5d7455,0x383d46,0x9b694a,0x72959b,0x887754]
+        roles.eachWithIndex { role,i->
+            BufferedImage original=ImageIO.read(new File(src,'merchant_'+role+'.png'))
+            render('portrait_'+i,512,512){g->
+                int side=original.width,top=Math.max(0,Math.min(original.height-side,8))
+                g.drawImage(original,0,0,512,512,0,top,side,top+side,null)
+                Color tint=c(shades[i]);g.setComposite(AlphaComposite.SrcOver.derive(0.13f))
+                g.setColor(tint);g.fillRect(0,0,512,512)
+                g.setComposite(AlphaComposite.SrcOver);g.setPaint(new GradientPaint(0f,390f,new Color(10,10,10,0),0f,512f,new Color(10,10,10,95)));g.fillRect(0,390,512,122)
+            }
+        }
+    }
+}
+sourceSets.main.resources.srcDir(hdArt)
+tasks.named('processResources'){dependsOn tasks.named('generateTacticalHd')}

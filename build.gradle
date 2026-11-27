@@ -109,3 +109,5 @@ tasks.register('campaignGraphTest', JavaExec) {
 tasks.named('check') { dependsOn tasks.named('campaignGraphTest') }
 
 apply from: 'gradle/collector-art.gradle'
+
+apply from: 'gradle/tactical-hd.gradle'

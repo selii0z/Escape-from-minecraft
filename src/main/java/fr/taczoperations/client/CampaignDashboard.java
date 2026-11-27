@@ -106,7 +106,7 @@ public final class CampaignDashboard {
     }
     private static void accentButton(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled,int accent){
         tile(g,x,y,w,h,enabled&&accent==ORANGE,enabled&&hit(mx,my,x,y,w,h));
-        if(enabled){g.fillGradient(x+2,y+2,x+w-2,y+h-2,accent==ORANGE?0xff54391f:0xff3d4428,0xff1d2017);TacticalSkin.outline(g,x,y,w,h,accent);}
+        if(enabled){TacticalSkin.cut(g,x+1,y+1,w-2,h-2,accent==ORANGE?0xff392819:0xff303722);TacticalSkin.outline(g,x,y,w,h,accent);}
         text(g,s,x+(w-font().width(styled(s,true)))/2,y+(h-8)/2,1,enabled?accent:0xff777777,true);
     }
     private static void badge(GuiGraphics g,String s,int x,int y,int w,int h){
@@ -135,11 +135,10 @@ public final class CampaignDashboard {
     }
     private static void art(GuiGraphics g,String id,int x,int y,int w,int h){
         if(!List.of("forest","industrial","village","underground","quarantine","military").contains(id))id="military";
-        var tex=ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/"+id+".png");
+        var tex=ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/hd/"+id+".png");
         var textures=Minecraft.getInstance().getTextureManager();textures.bindForSetup(tex);textures.getTexture(tex).setFilter(true,false);
         // Center crop from the original 380x170 illustration; never stretch.
-        int sourceH=Math.min(170,Math.round(380f*h/w));
-        g.blit(tex,x,y,w,h,0,(170-sourceH)/2,380,sourceH,380,170);
+        TacticalSkin.picture(g,tex,x,y,w,h);
         TacticalSkin.outline(g,x,y,w,h,0xff8a8070);
     }
     private int mx(int i){return 169+(i-traderStart)*TRADER_STEP;}
