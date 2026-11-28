@@ -220,6 +220,51 @@ tasks.register('generateTacticalHd'){
                 gr.setClip(null)
             }
         }
+        // BLACKZXNE board palette. Four-part geometry is shared with SAPHXR,
+        // but the metal, screens and tactical documents use a separate identity.
+        File boardRoot=new File(root.parentFile.parentFile,'block')
+        boardRoot.mkdirs()
+        def boardArt={String name,int bg,int accent,Closure draw->
+            BufferedImage img=new BufferedImage(32,32,BufferedImage.TYPE_INT_ARGB)
+            Graphics2D gr=img.createGraphics()
+            Random rand=new Random(940L+name.hashCode())
+            for(int y=0;y<32;y++)for(int x=0;x<32;x++){
+                int noise=rand.nextInt(9)-4
+                int shade=(y==0||x==0)?12:(y==31||x==31)?-14:0
+                int r=Math.clamp(((bg>>16)&255)+noise+shade,0,255)
+                int gg=Math.clamp(((bg>>8)&255)+noise+shade,0,255)
+                int b=Math.clamp((bg&255)+noise+shade,0,255)
+                img.setRGB(x,y,new Color(r,gg,b).getRGB())
+            }
+            gr.setColor(c(accent));draw(gr);gr.dispose()
+            ImageIO.write(img,'png',new File(boardRoot,'blackzxne_board_'+name+'.png'))
+        }
+        boardArt('steel',0x303338,0x64686e){gr->
+            gr.fillRect(1,1,2,2);gr.fillRect(29,1,2,2);gr.fillRect(1,29,2,2);gr.fillRect(29,29,2,2)
+            gr.setColor(c(0x1b1d20));gr.fillRect(5,3,2,26);gr.fillRect(25,3,2,26)
+        }
+        boardArt('board',0x22262a,0x343b40){gr->
+            for(int x=3;x<32;x+=7)gr.drawLine(x,0,x,31)
+            for(int y=5;y<32;y+=8)gr.drawLine(0,y,31,y)
+        }
+        boardArt('edge',0x33363a,0x5c6268){gr->
+            gr.fillRect(0,0,32,2);gr.setColor(c(0x1a1b1e));gr.fillRect(0,29,32,3)
+            gr.setColor(c(0xa9242d));gr.fillRect(3,14,26,3)
+        }
+        boardArt('header',0x202327,0xd72c37){gr->
+            gr.fillRect(0,27,32,3);gr.fillRect(2,5,3,19);gr.fillRect(8,5,3,19)
+            gr.setColor(c(0xc8cdd0));gr.fillRect(15,9,13,3);gr.fillRect(15,15,9,3)
+        }
+        boardArt('red',0x8c1720,0xf34b50){gr->gr.fillRect(1,1,30,3);gr.fillRect(1,28,30,3)}
+        boardArt('paper_map',0x52564e,0x969e85){gr->
+            gr.drawRect(2,2,27,27);gr.drawLine(5,22,14,6);gr.drawLine(14,6,26,13)
+            gr.setColor(c(0xc23a40));gr.drawLine(6,23,16,19);gr.drawLine(16,19,23,8);gr.fillRect(21,6,4,4);gr.fillRect(4,21,4,4)
+        }
+        boardArt('paper_list',0x777a76,0xb7bcb8){gr->
+            gr.fillRect(5,5,20,3);gr.setColor(c(0x3e4547))
+            for(int y=12;y<28;y+=5){gr.drawRect(4,y,3,3);gr.fillRect(11,y+1,15,1)}
+            gr.setColor(c(0xbd2935));gr.fillRect(4,13,4,2);gr.fillRect(4,18,4,2)
+        }
         // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.
         ['forest','industrial','village','underground','quarantine','military','warehouse'].each { id->
             File source=new File(src,id+'.png')

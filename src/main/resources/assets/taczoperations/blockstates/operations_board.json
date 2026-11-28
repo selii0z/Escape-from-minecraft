@@ -1,8 +1,84 @@
 {
   "variants": {
-    "facing=north": {"model": "taczoperations:block/operations_board"},
-    "facing=east": {"model": "taczoperations:block/operations_board", "y": 90},
-    "facing=south": {"model": "taczoperations:block/operations_board", "y": 180},
-    "facing=west": {"model": "taczoperations:block/operations_board", "y": 270}
+    "facing=north,part=legacy": {
+      "model": "taczoperations:block/operations_board",
+      "y": 0
+    },
+    "facing=north,part=lower_left": {
+      "model": "taczoperations:block/operations_board_0_0",
+      "y": 0
+    },
+    "facing=north,part=lower_right": {
+      "model": "taczoperations:block/operations_board_1_0",
+      "y": 0
+    },
+    "facing=north,part=upper_left": {
+      "model": "taczoperations:block/operations_board_0_1",
+      "y": 0
+    },
+    "facing=north,part=upper_right": {
+      "model": "taczoperations:block/operations_board_1_1",
+      "y": 0
+    },
+    "facing=east,part=legacy": {
+      "model": "taczoperations:block/operations_board",
+      "y": 90
+    },
+    "facing=east,part=lower_left": {
+      "model": "taczoperations:block/operations_board_0_0",
+      "y": 90
+    },
+    "facing=east,part=lower_right": {
+      "model": "taczoperations:block/operations_board_1_0",
+      "y": 90
+    },
+    "facing=east,part=upper_left": {
+      "model": "taczoperations:block/operations_board_0_1",
+      "y": 90
+    },
+    "facing=east,part=upper_right": {
+      "model": "taczoperations:block/operations_board_1_1",
+      "y": 90
+    },
+    "facing=south,part=legacy": {
+      "model": "taczoperations:block/operations_board",
+      "y": 180
+    },
+    "facing=south,part=lower_left": {
+      "model": "taczoperations:block/operations_board_0_0",
+      "y": 180
+    },
+    "facing=south,part=lower_right": {
+      "model": "taczoperations:block/operations_board_1_0",
+      "y": 180
+    },
+    "facing=south,part=upper_left": {
+      "model": "taczoperations:block/operations_board_0_1",
+      "y": 180
+    },
+    "facing=south,part=upper_right": {
+      "model": "taczoperations:block/operations_board_1_1",
+      "y": 180
+    },
+    "facing=west,part=legacy": {
+      "model": "taczoperations:block/operations_board",
+      "y": 270
+    },
+    "facing=west,part=lower_left": {
+      "model": "taczoperations:block/operations_board_0_0",
+      "y": 270
+    },
+    "facing=west,part=lower_right": {
+      "model": "taczoperations:block/operations_board_1_0",
+      "y": 270
+    },
+    "facing=west,part=upper_left": {
+      "model": "taczoperations:block/operations_board_0_1",
+      "y": 270
+    },
+    "facing=west,part=upper_right": {
+      "model": "taczoperations:block/operations_board_1_1",
+      "y": 270
+    }
   }
 }

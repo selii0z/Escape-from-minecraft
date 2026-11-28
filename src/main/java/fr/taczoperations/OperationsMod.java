@@ -63,7 +63,7 @@ public final class OperationsMod {
             fr.taczoperations.operations.RaidFurnitureEntity::new,java.util.stream.Stream.concat(FURNITURE.stream(),DECOR.stream()).map(Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
 
     public static final Supplier<OperationsBoardBlock> BOARD = BLOCKS.registerBlock(
-        "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F));
+        "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F).noOcclusion());
     public static final Supplier<EntityType<GuardCorpse>> GUARD_CORPSE = ENTITIES.register("guard_corpse", () ->
         EntityType.Builder.<GuardCorpse>of(GuardCorpse::new, MobCategory.MISC)
             .sized(1.55F, .36F).clientTrackingRange(8).updateInterval(10).build(ID + ":guard_corpse"));
