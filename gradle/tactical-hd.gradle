@@ -111,48 +111,113 @@ tasks.register('generateTacticalHd'){
             g.setColor(c(0xd0d5da));g.drawString(tagline,Math.max(60,(1740-g.getFontMetrics().stringWidth(tagline)).intdiv(2)),362)
             g.setPaint(new GradientPaint(0f,0f,c(0xc9222c),1650f,0f,c(0x542027)));g.fillRect(24,407,1650,7)
         }
-        // Seven distinct, text-free illustrations. Source artwork is original mod art;
-        // the additional silhouettes are drawn at full texture resolution.
+        // Illustrated navigation: brighter photographic-style crops, dimensional props,
+        // and a short dark gradient behind the live label instead of a full dark wash.
+        def cover={Graphics2D gr,BufferedImage art,int w,int h,double focus->
+            double fit=Math.max(w/(double)art.width,h/(double)art.height)
+            int aw=Math.round((float)(art.width*fit)),ah=Math.round((float)(art.height*fit))
+            gr.drawImage(art,(w-aw).intdiv(2),(int)((h-ah)*focus),aw,ah,null)
+        }
+        def block={Graphics2D gr,int x,int y,int w,int h,int d,int rgb->
+            Color base=c(rgb)
+            gr.setColor(base.darker());gr.fillPolygon([x+w,x+w+d,x+w+d,x+w] as int[],[y,y-d,y+h-d,y+h] as int[],4)
+            gr.setColor(base.brighter());gr.fillPolygon([x,x+d,x+w+d,x+w] as int[],[y,y-d,y-d,y] as int[],4)
+            gr.setColor(base);gr.fillRect(x,y,w,h)
+        }
+        def operator={Graphics2D gr,int x,int y,int scale,int rgb->
+            def old=gr.getTransform()
+            gr.translate(x,y);gr.scale(scale/100d,scale/100d)
+            block(gr,-73,99,47,122,17,0x373c3c);block(gr,24,99,47,122,17,0x373c3c)
+            block(gr,-76,-8,152,125,23,rgb)
+            block(gr,-112,5,39,100,14,0x515951);block(gr,76,5,39,100,14,0x515951)
+            block(gr,-56,-88,110,88,20,0x8c7966)
+            block(gr,-63,-108,124,39,18,0x4c5550)
+            gr.setColor(c(0x171f25));gr.fillRect(-53,-63,104,22)
+            gr.setColor(c(0x8fa9ac));gr.fillRect(-45,-60,39,11);gr.fillRect(7,-60,36,11)
+            gr.setColor(c(0x292f2d));gr.fillRect(-59,4,118,86)
+            for(int j=0;j<3;j++)block(gr,-51+j*35,38,27,45,7,0x646c5d)
+            gr.setColor(c(0x9ca79f));gr.fillRect(-12,10,26,13)
+            gr.setTransform(old)
+        }
         def navSources=['forest','military','village','merchant_armorer','military','industrial','underground']
         navSources.eachWithIndex{source,i->
             BufferedImage art=ImageIO.read(new File(src,source+'.png'))
-            render('nav_'+i,1040,224){g->
-                g.setClip(new RoundRectangle2D.Double(0,0,1040,224,35,35))
-                double fit=Math.max(1040d/art.width,224d/art.height)
-                int aw=Math.round((float)(art.width*fit)),ah=Math.round((float)(art.height*fit))
-                g.drawImage(art,(1040-aw).intdiv(2),(224-ah).intdiv(2),aw,ah,null)
-                g.setColor(new Color(8,10,13,125));g.fillRect(0,0,1040,224)
-                g.setColor(new Color(170,180,190,115));g.setStroke(new BasicStroke(5f))
-                if(i==0){ // woodland operator silhouette
-                    g.setColor(new Color(15,18,21,210));g.fillRect(812,65,112,123);g.fillRoundRect(831,22,74,57,8,8)
-                    g.fillRect(785,79,31,77);g.fillRect(921,80,30,74);g.fillRect(834,188,30,36);g.fillRect(883,188,30,36)
-                    g.setColor(new Color(111,129,117,185));g.fillRect(826,79,86,87);g.fillRect(837,37,62,18)
-                }else if(i==1||i==2||i==5){
-                    int xx=785,yy=24
-                    g.setColor(new Color(12,15,18,205));g.fillRoundRect(xx-15,yy-7,194,182,14,14)
-                    g.setColor(new Color(189,195,198,150));g.drawRoundRect(xx,yy,160,169,8,8)
-                    for(int j=0;j<5;j++)g.drawLine(xx+23,yy+40+j*22,xx+128,yy+40+j*22)
-                    g.setColor(new Color(206,43,51,190))
-                    if(i==1){g.drawLine(xx+25,yy+120,xx+70,yy+78);g.drawLine(xx+70,yy+78,xx+120,yy+105)}
-                    else if(i==2){g.drawRect(xx+17,yy+18,125,133);g.drawLine(xx+80,yy+20,xx+80,yy+150)}
-                    else{g.fillRect(xx+10,yy+92,140,21)}
+            render('nav_'+i,1040,224){gr->
+                gr.setClip(new RoundRectangle2D.Double(0,0,1040,224,30,30))
+                cover(gr,art,1040,224,0.42d)
+                gr.setColor(new Color(10,12,16,36));gr.fillRect(0,0,1040,224)
+                gr.setPaint(new GradientPaint(535f,0f,new Color(30,34,38,0),1040f,0f,new Color(10,12,15,85)))
+                gr.fillRect(535,0,505,224)
+                if(i==0){operator(gr,850,102,92,0x687564)}
+                else if(i==1||i==2||i==5){
+                    def old=gr.getTransform()
+                    gr.translate(844,112);gr.rotate(i==2?-.15d:.10d)
+                    block(gr,-113,-78,212,159,12,i==5?0x60534a:0x9c937b)
+                    block(gr,-95,-67,175,141,5,i==5?0xb7b9b3:0xd9cdb0)
+                    gr.setColor(c(0x716756));gr.setStroke(new BasicStroke(3f))
+                    for(int j=0;j<6;j++)gr.drawLine(-76,-42+j*17,55,-42+j*17)
+                    if(i==1){
+                        gr.setColor(c(0x425f4b));gr.fillPolygon([-85,-35,7,43,72] as int[],[48,-28,-10,-45,50] as int[],5)
+                        gr.setColor(c(0xaa2c36));gr.setStroke(new BasicStroke(5f));gr.drawPolyline([-60,-20,17,55] as int[],[32,-15,21,-36] as int[],4)
+                    }else if(i==2){
+                        gr.setColor(c(0x8e3038));gr.fillRect(-11,-67,9,141)
+                        gr.setColor(c(0x514c46));gr.drawRect(5,-40,60,55)
+                    }else{
+                        gr.setColor(c(0xa7343c));gr.rotate(-.16d);gr.fillRect(-62,-6,115,23)
+                        gr.setColor(c(0xdbb0ad));gr.drawRect(-58,-3,107,17)
+                    }
+                    gr.setTransform(old)
                 }else if(i==3){
-                    g.setColor(new Color(15,18,20,190));g.fillRoundRect(745,32,260,165,12,12)
-                    g.setColor(new Color(175,183,187,145));g.drawRoundRect(745,32,260,165,12,12)
-                    for(int j=0;j<3;j++){g.fillRect(770,55+j*45,168,10);g.fillRect(796,65+j*45,20,18)}
+                    block(gr,706,73,230,121,28,0x485749)
+                    block(gr,722,48,230,39,21,0x65745f)
+                    for(int j=0;j<2;j++){gr.setColor(c(0xb7b49b));gr.fillRect(742+j*149,84,20,35)}
+                    gr.setColor(c(0x22282a));gr.fillRect(777,116,95,24)
+                    gr.setColor(c(0xc9c5ad));gr.fillRect(791,123,62,8)
                 }else if(i==4){
-                    g.setColor(new Color(186,194,203,160));g.setStroke(new BasicStroke(13f))
-                    for(int j=0;j<3;j++)g.drawPolyline([785,872,959] as int[],[85+j*49,37+j*49,85+j*49] as int[],3)
+                    def old=gr.getTransform();gr.translate(850,107);gr.rotate(-.12d)
+                    block(gr,-93,-86,186,172,12,0x454e43)
+                    gr.setColor(c(0xd0b57d));gr.setStroke(new BasicStroke(17f))
+                    for(int j=0;j<3;j++)gr.drawPolyline([-61,0,61] as int[],[-12+j*45,-48+j*45,-12+j*45] as int[],3)
+                    gr.setTransform(old)
                 }else{
-                    g.setColor(new Color(10,15,18,190));g.fillRoundRect(755,23,244,178,14,14)
-                    g.setColor(new Color(158,175,182,155));g.drawRect(776,42,199,76)
-                    for(int j=0;j<4;j++)g.drawLine(790,135+j*13,954,135+j*13)
-                    g.setColor(new Color(218,38,47,215));g.fillOval(950,147,17,17)
+                    block(gr,707,40,241,141,21,0x4c5358)
+                    block(gr,725,56,203,89,6,0x172b32)
+                    gr.setColor(c(0x6ab9ac));gr.setStroke(new BasicStroke(4f));gr.drawPolyline([740,760,781,801,827,851,877,909] as int[],[114,114,80,115,98,115,73,115] as int[],8)
+                    for(int j=0;j<6;j++)block(gr,733+j*30,155,20,10,3,j==5?0xa73139:0x8e9697)
                 }
-                // Opaque left edge for the live icon and label, clear illustration at right.
-                g.setPaint(new GradientPaint(0f,0f,new Color(8,10,12,245),1040f,0f,new Color(8,10,12,35)))
-                g.fillRect(0,0,1040,224)
-                g.setClip(null)
+                gr.setPaint(new GradientPaint(0f,0f,new Color(7,9,12,222),730f,0f,new Color(7,9,12,0)))
+                gr.fillRect(0,0,730,224)
+                gr.setClip(null)
+            }
+        }
+        // Small scene illustrations for the four deployment choices.
+        for(int i=0;i<4;i++){
+            int mode=i
+            render('choice_'+i,560,288){gr->
+                gr.setClip(new RoundRectangle2D.Double(0,0,560,288,26,26))
+                boolean dark=mode==1
+                gr.setPaint(new GradientPaint(0f,0f,c(dark?0x111f4c:mode==0?0x5495ba:0x626e78),0f,288f,c(dark?0x455b81:mode==0?0xe1b56c:0x222a31)))
+                gr.fillRect(0,0,560,288)
+                if(mode<2){
+                    gr.setColor(c(dark?0xc1dbfa:0xffe6a1));gr.fillOval(370,21,83,83)
+                    if(dark){gr.setColor(c(0x192a52));gr.fillOval(398,9,77,77)}
+                    Random stars=new Random(67L)
+                    if(dark)for(int j=0;j<32;j++){gr.setColor(c(0xa3bad8));gr.fillRect(stars.nextInt(560),stars.nextInt(135),3,3)}
+                    gr.setColor(c(dark?0x2a3952:0x819a8e))
+                    gr.fillPolygon([0,105,192,270,375,470,560,560,0] as int[],[155,56,135,90,150,76,137,288,288] as int[],9)
+                    for(int j=0;j<14;j++){
+                        int x=j*44-12,hh=40+stars.nextInt(80)
+                        gr.setColor(c(dark?0x141f29:0x3c5a43))
+                        gr.fillRect(x-4,224-hh,8,hh+35)
+                        for(int k=0;k<4;k++)gr.fillPolygon([x,x-19-k*4,x+19+k*4] as int[],[224-hh+k*17,250-hh+k*17,250-hh+k*17] as int[],3)
+                    }
+                    gr.setColor(c(dark?0x111c25:0x344c39));gr.fillRect(0,224,560,64)
+                }else{
+                    for(int j=0;j<7;j++){gr.setColor(c(0x42494e));gr.fillRect(j*90,110-(j%3)*16,78,178)}
+                    if(mode==2)operator(gr,280,132,107,0x687b66)
+                    else{operator(gr,178,132,95,0x677863);operator(gr,375,123,101,0x626e7e)}
+                }
+                gr.setClip(null)
             }
         }
         // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.

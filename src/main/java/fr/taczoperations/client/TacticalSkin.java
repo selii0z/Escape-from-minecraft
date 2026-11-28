@@ -10,6 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 final class TacticalSkin {
     private static ResourceLocation tex(String path){return ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/hd/"+path+".png");}
     private static final ResourceLocation FILL=tex("rounded_fill"),BORDER=tex("rounded_border"),HEADER=tex("header"),BRAND=tex("blackzxne_brand");
+    private static final ResourceLocation[] CHOICES=new ResourceLocation[4];
+    static{for(int i=0;i<CHOICES.length;i++)CHOICES[i]=tex("choice_"+i);}
     private static final ResourceLocation[] NAV=new ResourceLocation[7];
     static{for(int i=0;i<NAV.length;i++)NAV[i]=tex("nav_"+i);}
     private static final ResourceLocation[] PORTRAITS=new ResourceLocation[11];
@@ -55,13 +57,23 @@ final class TacticalSkin {
         linear(id);
         RenderSystem.enableBlend();
         try{
-            g.blit(id,x+3,y+3,w-6,h-6,0,0,1040,224,1040,224);
-            if(selected)g.fill(x+3,y+3,x+w-3,y+h-3,0x45e51929);
-            else if(hover)g.fill(x+3,y+3,x+w-3,y+h-3,0x16ffffff);
-            g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x08000000,0x40000000);
+            g.blit(id,x+2,y+2,w-4,h-4,0,0,1040,224,1040,224);
+            if(selected)g.fill(x+2,y+2,x+w-2,y+h-2,0x17e51929);
+            else if(hover)g.fill(x+2,y+2,x+w-2,y+h-2,0x13ffffff);
             g.flush();
         }finally{RenderSystem.disableBlend();}
         outline(g,x,y,w,h,selected?ORANGE:hover?0xffbfc3c7:0xff616468);
+    }
+    static void choice(GuiGraphics g,int index,int x,int y,int w,int h,boolean selected,boolean hover){
+        tile(g,x,y,w,h,selected,hover);
+        var id=CHOICES[index];linear(id);RenderSystem.enableBlend();
+        try{
+            g.blit(id,x+2,y+2,w-4,h-4,0,0,560,288,560,288);
+            if(hover)g.fill(x+2,y+2,x+w-2,y+h-2,0x14ffffff);
+            g.fillGradient(x+2,y+h/2,x+w-2,y+h-2,0x00000000,0xe90a0b0d);
+            g.flush();
+        }finally{RenderSystem.disableBlend();}
+        outline(g,x,y,w,h,selected?ORANGE:hover?0xffbec4ca:0xff73777d);
     }
     static void stripes(GuiGraphics g,int x,int y,int color){
         for(int i=0;i<4;i++)for(int j=0;j<7;j++)g.fill(x+i*10+6-j,y+j,x+i*10+11-j,y+j+1,color);

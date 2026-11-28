@@ -128,13 +128,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         for (int row = 0; row < SECTIONS.length; row++) {
             Section section = SECTIONS[row];
             int navIndex = row;
-            int iconIndex = row>2?row-1:row;
             int y = 81 + row * 39;
             widget(12, y, 136, 34, section.title, () -> send(section.tab),
                 () -> true, (g, hovered) -> {
                     TacticalSkin.navigation(g, navIndex, 12, y, 136, 34, active(section.tab), hovered);
-                    if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 4, 25);
-                    text(g, section.title, 52, y + 11, 1.16F, WHITE, true);
+                    text(g, section.title, 21, y + 11, 1.19F, WHITE, true);
                 });
         }
         if(questMode)return;
@@ -262,6 +260,13 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         }
     }
 
+    private void illustratedChoice(int x,int y,int w,int h,String label,int art,Runnable action,BooleanSupplier selected){
+        widget(x,y,w,h,label,action,()->true,(g,hover)->{
+            TacticalSkin.choice(g,art,x,y,w,h,selected.getAsBoolean(),hover);
+            centered(g,label,x+w/2,y+h-10,.94F,WHITE,true);
+        });
+    }
+
     private void operationWidgets() {
         for (int i = 0; i < AREAS.length; i++) {
             final int index = i;
@@ -270,16 +275,16 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
             widget(x, y, 190, 87, AREAS[i].title, () -> selectedArea = index,
                 () -> true, (g, hovered) -> mapCard(g, index, x, y, hovered));
         }
-        simple(582, 321, 54, 27, "☀ Jour", () -> night = false, () -> !night, () -> true);
-        simple(643, 321, 53, 27, "☾ Nuit", () -> night = true, () -> night, () -> true);
-        simple(711, 321, 40, 27, "Solo", () -> duo = false, () -> !duo, () -> true);
-        simple(756, 321, 63, 27, "Duo", () -> {
+        illustratedChoice(582,321,54,27,"Jour",0,()->night=false,()->!night);
+        illustratedChoice(643,321,53,27,"Nuit",1,()->night=true,()->night);
+        illustratedChoice(711,321,51,27,"Solo",2,()->duo=false,()->!duo);
+        illustratedChoice(768,321,51,27,"Duo",3,()->{
             if (menu.view().partner().isEmpty()) {
                 send(OperationsMenu.GROUP);
             } else {
                 duo = true;
             }
-        }, () -> duo, () -> true);
+        },()->duo);
         simple(580,407,117,25,"Jouer Scav",()->{
             int area=selectedArea<2?selectedArea:(selectedArea==4?4:selectedArea==5?1:selectedArea==3?2:3)+1;
             send(OperationsMenu.SCAV_FIRST+area*2+(night?1:0));
