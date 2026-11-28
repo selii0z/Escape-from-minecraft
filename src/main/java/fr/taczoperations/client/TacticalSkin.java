@@ -56,18 +56,6 @@ final class TacticalSkin {
     }
     static void logo(GuiGraphics g){
         linear(HEADER);g.blit(HEADER,10,9,814,54,0,0,2048,136,2048,136);
-        var font=Minecraft.getInstance().font;
-        var style=Style.EMPTY.withFont(ResourceLocation.fromNamespaceAndPath("taczoperations","heading"));
-        var brand=Component.literal("BLACKZ").withStyle(style.withColor(0xffe9ebed))
-            .append(Component.literal("X").withStyle(style.withColor(0xffff3138)))
-            .append(Component.literal("NE").withStyle(style.withColor(0xffe9ebed)));
-        float logoScale=Math.min(3.0f,212f/Math.max(1,font.width(brand)));
-        g.pose().pushPose();g.pose().translate(23,16,0);g.pose().scale(logoScale,logoScale,1);
-        g.drawString(font,brand,0,0,0xffffffff,true);g.pose().popPose();
-        var sub=Component.literal("E S C A P E   E X P E R I E N C E").withStyle(style);
-        float subScale=Math.min(.92f,200f/Math.max(1,font.width(sub)));
-        g.pose().pushPose();g.pose().translate(23+(212-font.width(sub)*subScale)/2,47,0);g.pose().scale(subScale,subScale,1);
-        g.drawString(font,sub,0,0,0xffd0d3d6,false);g.pose().popPose();
         g.fill(12,61,821,62,0xffe9272c);
         stripes(g,775,16,0xffd9232c);
     }

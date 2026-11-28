@@ -60,12 +60,31 @@ tasks.register('generateTacticalHd'){
             }
             g.setColor(c(0xff4749));g.fillOval(1811,108,11,7)
             g.setPaint(new GradientPaint(0f,0f,new Color(18,18,18,240),560f,0f,new Color(18,18,18,35)));g.fillRect(0,0,620,136)
+            // Brand is baked into the header; the current page and trader remain live text.
+            g.setColor(new Color(10,11,13,220))
+            g.fillPolygon([0,550,590,550,0] as int[],[0,0,68,136,136] as int[],5)
+            g.setColor(c(0x5c2228));g.setStroke(new BasicStroke(3f))
+            g.drawPolyline([0,550,590,550,0] as int[],[1,1,68,135,135] as int[],5)
+            g.setColor(c(0xec242d));g.fillPolygon([15,55,80,40] as int[],[42,6,6,42] as int[],4)
+            g.setFont(new Font('SansSerif',Font.BOLD|Font.ITALIC,78))
+            float ratio=Math.min(1f,475f/g.getFontMetrics().stringWidth('BLACKZXNE'))
+            def oldTransform=g.getTransform()
+            g.translate(48,22);g.scale(ratio,1.0)
+            int tx=0
+            ['BLACKZ','X','NE'].eachWithIndex{part,idx->
+                g.setColor(c(idx==1?0xf5303a:0xe9ebed));g.drawString(part,tx,62);tx+=g.getFontMetrics().stringWidth(part)
+            }
+            g.setTransform(oldTransform)
+            g.setFont(new Font('SansSerif',Font.BOLD,20))
+            g.setColor(c(0xc5c8cb));String subtitle='E S C A P E   E X P E R I E N C E'
+            g.drawString(subtitle,Math.max(30,(550-g.getFontMetrics().stringWidth(subtitle)).intdiv(2)),115)
             g.setColor(c(0x777b80));g.setStroke(new BasicStroke(3f));g.drawLine(0,2,2048,2)
             g.setColor(c(0xe0232a));g.drawLine(0,133,2048,133)
         }
         // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.
-        ['forest','industrial','village','underground','quarantine','military'].each { id->
-            BufferedImage original=ImageIO.read(new File(src,id+'.png'))
+        ['forest','industrial','village','underground','quarantine','military','warehouse'].each { id->
+            File source=new File(src,id+'.png')
+            BufferedImage original=ImageIO.read(source.isFile()?source:new File(src,'industrial.png'))
             render(id,1920,860){g->g.drawImage(original,0,0,1920,860,null)}
         }
         // Reuse the full-resolution character art instead of the former 16-pixel atlas.

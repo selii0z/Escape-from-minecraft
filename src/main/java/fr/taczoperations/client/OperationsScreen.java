@@ -51,7 +51,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         new Area("Forêt Noire", "forest", 2, "Forêt, collines et installations"),
         new Area("Zone industrielle", "industrial", 3, "Usines et entrepôts"),
         new Area("Village express", "village", 3, "Maisons et ruelles"),
-        new Area("Entrepôt express", "industrial", 3, "Hangars et stockage"),
+        new Area("Entrepôt express", "warehouse", 3, "Hangars et stockage"),
         new Area("Zombiepolis", "quarantine", 4, "Ville et îles"),
         new Area("Bunker express", "underground", 4, "Galeries et salles techniques")
     };

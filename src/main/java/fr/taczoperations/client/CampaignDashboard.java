@@ -152,7 +152,9 @@ public final class CampaignDashboard {
             int i=TRADER_ORDER[slot],bx=mx(slot);
             tile(g,bx,70,TRADER_W,33,i==trader,hit(x,y,bx,70,TRADER_W,33));
             if(!TacticalSkin.portrait(g,i,bx+4,74,25))item(g,new ItemStack(ICONS[i]),bx+6,76,1.25f);
-            text(g,fit(CampaignTrader.values()[i].title,64,true),bx+31,77,.86f,WHITE,true);
+            String label=CampaignTrader.values()[i].title;
+            float labelScale=Math.min(.86f,53f/Math.max(1,font().width(styled(label,true))));
+            text(g,label,bx+31,77,labelScale,WHITE,true);
             if(i<loyalties.size())text(g,loyalties.get(i)==0?"Verrouillé":"Fidélité "+loyalties.get(i),bx+31,89,.70f,loyalties.get(i)==0?SOFT:ORANGE,false);
         }
         // The entire merchant list is available with the mouse wheel; compact arrows overlay the outer gutter.
