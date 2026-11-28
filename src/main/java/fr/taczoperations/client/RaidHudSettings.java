@@ -25,11 +25,11 @@ public final class RaidHudSettings {
     private static final int[] OPACITIES={0,25,50,75,100};
     private static final int[] TIMES={5,10,20,0,-1};
     enum Panel {
-        HEALTH("Santé",142,235,0), TIMER("Chronomètre",150,64,500), EXITS("Sorties",146,92,1000);
+        HEALTH("Santé",142,235,0), TIMER("Chronomètre",150,64,500), EXITS("Sorties",146,92,1000), QUESTS("Quêtes",206,183,1000);
         final String label;final int w,h,defaultX;
         int size,opacity,duration,x,y;
         Panel(String label,int w,int h,int defaultX){this.label=label;this.w=w;this.h=h;this.defaultX=defaultX;reset();}
-        void reset(){size=2;opacity=3;duration=1;x=defaultX;y=0;}
+        void reset(){size=2;opacity=3;duration=defaultX==1000&&w==206?3:1;x=defaultX;y=w==206?550:0;}
     }
     private static long shownAt;
     private static Object previousLevel;
@@ -48,9 +48,9 @@ public final class RaidHudSettings {
                 String k=panel.name().toLowerCase(java.util.Locale.ROOT)+".";
                 panel.size=read(p,k+"size",read(p,"size",1,0,4)+1,0,SIZES.length-1);
                 panel.opacity=read(p,k+"opacity",read(p,"opacity",2,0,3)+1,0,OPACITIES.length-1);
-                panel.duration=read(p,k+"duration",read(p,"duration",1,0,3),0,TIMES.length-1);
+                panel.duration=read(p,k+"duration",panel==Panel.QUESTS?3:read(p,"duration",1,0,3),0,TIMES.length-1);
                 int oldX=oldRight?(panel==Panel.HEALTH?1000:panel==Panel.EXITS?0:500):panel.defaultX;
-                panel.x=read(p,k+"x",oldX,0,1000);panel.y=read(p,k+"y",0,0,1000);
+                panel.x=read(p,k+"x",panel==Panel.QUESTS?panel.defaultX:oldX,0,1000);panel.y=read(p,k+"y",panel==Panel.QUESTS?550:0,0,1000);
             }
         }catch(Exception ex){for(Panel panel:Panel.values())panel.reset();}
     }
@@ -99,9 +99,9 @@ public final class RaidHudSettings {
         private float factor,previewX,previewY;
         public Screen(net.minecraft.client.gui.screens.Screen parent){super(Component.literal("HUD de raid"));this.parent=parent;}
         @Override protected void init(){
-            int usable=Math.min(450,width-12),left=(width-usable)/2,cell=(usable-8)/3;
+            int usable=Math.min(450,width-12),left=(width-usable)/2,cell=(usable-8)/3,tab=(usable-12)/4;
             for(Panel panel:Panel.values()){
-                addRenderableWidget(Button.builder(Component.literal((selected==panel?"• ":"")+panel.label),b->{selected=panel;rebuildWidgets();}).bounds(left+panel.ordinal()*(cell+4),17,cell,20).build());
+                addRenderableWidget(Button.builder(Component.literal((selected==panel?"• ":"")+panel.label),b->{selected=panel;rebuildWidgets();}).bounds(left+panel.ordinal()*(tab+4),17,tab,20).build());
             }
             addRenderableWidget(Button.builder(Component.literal("Taille : "+SIZES[selected.size]+" %"),b->{selected.size=(selected.size+1)%SIZES.length;save();rebuildWidgets();}).bounds(left,40,cell,20).build());
             addRenderableWidget(Button.builder(Component.literal("Fond : "+OPACITIES[selected.opacity]+" %"),b->{selected.opacity=(selected.opacity+1)%OPACITIES.length;save();rebuildWidgets();}).bounds(left+cell+4,40,cell,20).build());
@@ -131,6 +131,13 @@ public final class RaidHudSettings {
                 g.drawString(font,"Principale · 245 m",5,24,0xffb5d78e,false);
                 g.drawString(font,"Relais · 390 m",5,48,0xffe5ce88,false);
                 g.drawString(font,"Payante · 520 m",5,72,0xffd3dbcc,false);
+            }else if(p==Panel.QUESTS){
+                g.drawString(font,"Prapor · Quête suivie",5,18,0xffe5ce88,false);
+                g.drawString(font,"Éliminations : 2/5",5,40,0xffd3dbcc,false);
+                g.fill(5,52,201,56,0xff414b3c);g.fill(5,52,83,56,0xff9fb877);
+                g.drawString(font,"Extraction : 0/1",5,68,0xffd3dbcc,false);
+                g.fill(5,80,201,84,0xff414b3c);
+                g.drawString(font,"Orange : à confirmer",5,100,0xffdba16b,false);
             }else{
                 g.fill(17,25,30,38,0xff9eae91);g.fill(14,40,33,65,0xff9eae91);
                 g.fill(5,41,12,64,0xff9eae91);g.fill(35,41,42,64,0xff9eae91);

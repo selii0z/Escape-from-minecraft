@@ -39,6 +39,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int DEPART_DUO = 25;
     public static final int DEPART_DUO_NIGHT = 26;
     public static final int ENTER_HIDEOUT = 27;
+    public static final int QUESTS = 28;
     private static final int PAGE_SIZE = 4;
     public static final int LIST_ROWS = 6;
     public static final int CONTRACT_ROWS = 5;
@@ -48,7 +49,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
     public static final int TRADE_FIRST = 55, SHOP_CATEGORY_FIRST=228;
     public static final int SELL_ALL_FIRST=100, SHOP_OWNED_FILTER=166, TRADE_JOURNAL=167, MERCHANT_ORDERS=168, ORDER_FIRST=170, SHOP_ACCESSORIES=174;
     public static final int CONTRACT_FIRST = 55;
-    public static final int INDUSTRIAL_FIRST = 65, EXPRESS_FIRST=300;
+    public static final int INDUSTRIAL_FIRST = 65, EXPRESS_FIRST=300, SCAV_FIRST=320, SCAV_COLLECT=332;
 
     public static final int FILTER_CATEGORY = 100, FILTER_DIFFICULTY = 110, FILTER_STATUS = 120, FILTER_MERCHANT = 130;
 
@@ -102,6 +103,7 @@ public final class OperationsMenu extends AbstractContainerMenu {
 
     public static final int ARM_WIPE=270, DETAILED_STATS=271;
     private long wipeUntil=-1;
+    private long lastCampaignRequest=-1;
     private final View view;
     private final BlockPos position;
     private final ServerLevel level;
@@ -204,16 +206,16 @@ public final class OperationsMenu extends AbstractContainerMenu {
             var counts=new java.util.ArrayList<Integer>();
             long day=ResaleMarket.day();
             var valued=new java.util.HashMap<String,Long>();
+            var carried=CarriedStorage.of(player);
             for(int i=0;i<offers.size();i++){
                 var offer=offers.get(i);
-                int count=OperationsShop.saleCount(player,offer);
+                int count=OperationsShop.saleCount(carried,offer);
                 if(!offer.stack().get().isEmpty()&&(shopOwned?offer.action()==OperationsShop.Action.SELL&&count>0:offer.action()!=OperationsShop.Action.SELL&&offer.loyaltyLevel()<=loyalty)&&(!shopAccessories||offer.accessory())&&(shopOwned||shopAccessories||shopCategory==0||offer.shopCategory()==shopCategory)){
                     indices.add(i);counts.add(count);
                 }
                 if(count>0){
                     var stack=offer.stack().get();
-                    String key=stack.getItem() instanceof com.tacz.guns.api.item.IGun gun
-                        ?"gun/"+gun.getGunId(stack):"item/"+net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    String key=OperationsShop.quoteKey(offer,stack);
                     valued.merge(key,(long)count*ResaleMarket.price(offer,day),Math::max);
                 }
             }
@@ -336,6 +338,21 @@ public final class OperationsMenu extends AbstractContainerMenu {
         String notice=WipeAccount.reset(p);
         open(p,position,SETTINGS,0,notice);
     }
+    public void campaignRequest(ServerPlayer p,CampaignTabRequest request){
+        if(p.containerMenu!=this||request.menuId()!=containerId||!stillValid(p)||!getCarried().isEmpty()||!ProgressionMenus.available(p))return;
+        var traders=fr.taczoperations.campaign.CampaignTrader.values();
+        if(request.trader()<0||request.trader()>=traders.length||request.action()<0||request.action()>6)return;
+        long tick=p.level().getGameTime();
+        if(tick==lastCampaignRequest)return;
+        lastCampaignRequest=tick;
+        var trader=traders[request.trader()];
+        if(request.action()==5){
+            p.closeContainer();CampaignUnlockShop.open(p,trader,0,()->open(p,position,QUESTS,0,""));return;
+        }
+        if(request.action()==6){p.closeContainer();ProgressionMenus.missions(p);return;}
+        String notice=CampaignTab.act(p,trader,request.action(),request.quest());
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p,CampaignTab.snapshot(p,containerId,trader,notice));
+    }
     @Override
     public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer serverPlayer) || player.containerMenu!=this || !stillValid(player)) {
@@ -347,7 +364,8 @@ public final class OperationsMenu extends AbstractContainerMenu {
             else {wipeUntil=-1;serverPlayer.sendSystemMessage(Component.literal(problem));}
             return true;
         }
-        if(button==ENTER_HIDEOUT){Hideout.fromBoard(serverPlayer);return true;}
+        if(button==QUESTS){if(!ProgressionMenus.available(serverPlayer)||!getCarried().isEmpty())return false;open(serverPlayer,position,QUESTS,0,"");return true;}
+        if(button==ENTER_HIDEOUT)return false;
         int tab = view.tab();
         int page = view.page();
         String notice = "";
@@ -355,6 +373,15 @@ public final class OperationsMenu extends AbstractContainerMenu {
             || button == SHOP || button == PROGRESSION || button == FILES || button == SETTINGS || button == TIMED_CONTRACTS || button == BLACK_MARKET || button==TRADE_JOURNAL || button==MERCHANT_ORDERS || button==PLAYER_MARKET || button==DETAILED_STATS) {
             tab = button;
             page = 0;
+        } else if(tab==FOREST&&button>=SCAV_FIRST&&button<SCAV_FIRST+12){
+            int mode=button-SCAV_FIRST,area=mode/2;
+            boolean night=(mode&1)!=0,industrial=area==1;
+            var express=area<2?null:fr.taczoperations.worldgen.ExpressZone.byId(area-1);
+            if(area>=2&&express==null)return false;
+            notice=ForestExpedition.departScav(serverPlayer,position,night,industrial,express);
+            if(notice.isEmpty())return true;
+        } else if(tab==FOREST&&button==SCAV_COLLECT){
+            notice=ScavRun.collect(serverPlayer);
         } else if(tab==FOREST&&button>=EXPRESS_FIRST&&button<EXPRESS_FIRST+16){
             int mode=button-EXPRESS_FIRST;
             var map=fr.taczoperations.worldgen.ExpressZone.byId(1+mode/4);

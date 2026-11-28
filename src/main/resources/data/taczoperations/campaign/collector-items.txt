@@ -1,0 +1,44 @@
+5bc9c1e2d4351e00367fbcf0|Antique axe|golden_axe
+5bc9c049d4351e44f824d360|Battered antique book|book
+5bc9b355d4351e6d1509862a|FireKlean gun lube|honey_bottle
+5bc9bdb8d4351e003562b8a1|Silver badge|iron_nugget
+5bc9b9ecd4351e3bac122519|DeadlySlob's beard oil|potion
+5bc9b720d4351e450201234b|Golden 1GPhone smartphone|gold_ingot
+5bd073a586f7747e6f135799|Fake mustache|black_dye
+5e54f62086f774219b0f1937|Raven figurine|feather
+5e54f79686f7744022011103|Pestily plague mask|leather_helmet
+5e54f76986f7740366043752|Shroud half-mask|leather_helmet
+5e54f6af86f7742199090bf3|Can of Dr. Lupo's coffee beans|cocoa_beans
+5bc9be8fd4351e00334cae6e|42 Signature Blend English tea|paper
+5f745ee30acaeb0d490d8c5b|Veritas guitar pick|amethyst_shard
+69f9d60b5de6674f08060f2a|Dunduk floppy disk|music_disc_13
+60b0f93284c20f0feb453da7|Can of RatCola soda|honey_bottle
+69398e94ca94fd2877039504|Nut Sack balaclava|leather_helmet
+69f9d547b98cc4120608692a|DesmondPilak CD|music_disc_cat
+6937edb912d456a817083e82|Mazoni golden dumbbell|gold_ingot
+69f9d319c906cd16da03b374|SheefGG piggy bank|pink_dye
+60b0f7057897d47c5b04ab94|Loot Lord plushie|rabbit_hide
+6937ecf8628ee476240c07cb|TigzResQ splint|stick
+6a3532423ec9d7082a05d430|Can of Gigabeef meat|cooked_beef
+5fd8d28367cb5e077335170f|Smoke balaclava|leather_helmet
+6937f02dfd6488bb27024839|Domontovich ushanka hat|leather_helmet
+6a4ce086b5644e9f0a08d08a|LM KC-130 model aircraft|paper
+6a35322b81d315afe1018ef3|French bakery baguette|bread
+6a3557f841667bc4bb00fea4|Bottle of YMXC water|glass_bottle
+60b0f6c058e0b0481a09ad11|WZ Wallet|leather
+60b0f561c4449e4cb624c1d7|LVNDMARK's rat poison|spider_eye
+62a09ec84f842e1bd12da3f2|MissAm forklift key|tripwire_hook
+62a09e974f842e1bd12da3f0|Video cassette - The Cyborg Killer|music_disc_blocks
+62a09e73af34e73a266d932a|BakeEzy cook book|book
+62a09e410b9d3c46de5b6e78|JohnB Liquid DNB glasses|glass_bottle
+62a09dd4621468534a797ac7|Baddie's red beard|red_dye
+62a09d79de7ac81993580530|DRD body armor|iron_chestplate
+62a09d3bcf4a99369e262447|Gingy keychain|tripwire_hook
+62a09cfe4f842e1bd12da3e4|Golden egg|golden_apple
+62a09cb7a04c0c5c6e0a84f8|Press pass issued for NoiceGuy|paper
+62a091170b9d3c46de5b6cf2|Axel parrot figurine|feather
+62a08f4c4f842e1bd12d9d62|Bear Buddy plush toy|rabbit_hide
+62a09e08de7ac81993580532|Glorious E mask|leather_helmet
+66b37f114410565a8f6789e2|Inseq gas pipe wrench|iron_ingot
+66b37eb4acff495a29492407|Viibiin sneaker|leather_boots
+66b37ea4c5d72b0277488439|Tamatthi kunai knife replica|iron_sword

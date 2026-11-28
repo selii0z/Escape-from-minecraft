@@ -5,6 +5,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.event.ItemAttributeModifierEvent;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -78,19 +84,83 @@ public final class BallisticVest {
 
     // Copy the installed game's armor attributes, not the reference item's abilities.
     private static Item reference(EquipmentSlot slot,int tier){
-        String material=switch(tier){case 3->"golden";case 4->"diamond";case 5->"netherite";case 6->"vibranium";default->"leather";};
+        String material=switch(tier){case 3->"iron";case 4->"diamond";case 5->"netherite";case 6->"vibranium";default->"leather";};
         String part=switch(slot){case HEAD->"helmet";case LEGS->"leggings";case FEET->"boots";default->"chestplate";};
         var registry=net.minecraft.core.registries.BuiltInRegistries.ITEM;
         var id=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(tier==6?"allthemodium":"minecraft",material+"_"+part);
         return registry.containsKey(id)?registry.get(id):registry.get(net.minecraft.resources.ResourceLocation.withDefaultNamespace("netherite_"+part));
     }
+    // ArmorItem can supply default attributes through a method rather than a data component.
+    // EFM uses explicit attributes with a distinct ID for each armor slot.
+    private static final int[][] ARMOR_POINTS={
+        {1,3,2,1}, {2,6,5,2}, {3,8,6,3}, {3,8,6,3}, {3,8,6,3}
+    };
+    private static int slotIndex(EquipmentSlot slot){
+        return switch(slot){case HEAD->0;case CHEST->1;case LEGS->2;case FEET->3;default->throw new IllegalArgumentException("Not armor");};
+    }
+    private static EquipmentSlotGroup slotGroup(EquipmentSlot slot){
+        return switch(slot){case HEAD->EquipmentSlotGroup.HEAD;case CHEST->EquipmentSlotGroup.CHEST;case LEGS->EquipmentSlotGroup.LEGS;case FEET->EquipmentSlotGroup.FEET;default->throw new IllegalArgumentException("Not armor");};
+    }
+    private static boolean protectionAttribute(net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> a){
+        return a.equals(Attributes.ARMOR)||a.equals(Attributes.ARMOR_TOUGHNESS)||a.equals(Attributes.KNOCKBACK_RESISTANCE);
+    }
+    private static AttributeModifier modifier(EquipmentSlot slot,String kind,double value){
+        return new AttributeModifier(ResourceLocation.fromNamespaceAndPath("taczoperations","armor_"+slot.name().toLowerCase(java.util.Locale.ROOT)+"_"+kind),value,AttributeModifier.Operation.ADD_VALUE);
+    }
+    private static ItemAttributeModifiers protectionAttributes(EquipmentSlot slot,int tier,int condition){
+        var group=slotGroup(slot);
+        var builder=ItemAttributeModifiers.builder();
+        if(condition<=0){
+            // A nonempty explicit zero modifier also prevents a fallback to leather defaults.
+            return builder.add(Attributes.ARMOR,modifier(slot,"points",0),group).build();
+        }
+        if(tier==6){
+            var ref=new ItemStack(reference(slot,tier));
+            var actual=ref.getAttributeModifiers();
+            boolean hasArmor=actual.modifiers().stream().anyMatch(e->e.attribute().equals(Attributes.ARMOR)&&e.modifier().amount()>0&&e.slot().test(slot));
+            if(hasArmor){
+                // Preserve installed Vibranium armor stats, if that material is present.
+                for(var entry:actual.modifiers())if(protectionAttribute(entry.attribute())&&entry.slot().test(slot)){
+                    var original=entry.modifier();
+                    String id=original.id().getNamespace()+"_"+original.id().getPath().replace('/','_');
+                    builder.add(entry.attribute(),new AttributeModifier(ResourceLocation.fromNamespaceAndPath("taczoperations","armor_"+slot.name().toLowerCase(java.util.Locale.ROOT)+"_"+id),original.amount(),original.operation()),group);
+                }
+                return builder.build();
+            }
+        }
+        builder.add(Attributes.ARMOR,modifier(slot,"points",ARMOR_POINTS[tier-2][slotIndex(slot)]),group);
+        if(tier>=4)builder.add(Attributes.ARMOR_TOUGHNESS,modifier(slot,"toughness",tier==4?2:3),group);
+        if(tier>=5)builder.add(Attributes.KNOCKBACK_RESISTANCE,modifier(slot,"knockback",.1),group);
+        return builder.build();
+    }
     private static boolean applyProtection(ItemStack stack,EquipmentSlot slot,int tier,int condition){
-        var template=new ItemStack(reference(slot,tier));
-        var attrs=condition<=0?net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY:
-            template.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY);
-        if(java.util.Objects.equals(stack.get(DataComponents.ATTRIBUTE_MODIFIERS),attrs))return false;
-        stack.set(DataComponents.ATTRIBUTE_MODIFIERS,attrs);
-        return true;
+        var attrs=protectionAttributes(slot,tier,condition);
+        boolean changed=!java.util.Objects.equals(stack.get(DataComponents.ATTRIBUTE_MODIFIERS),attrs);
+        if(changed)stack.set(DataComponents.ATTRIBUTE_MODIFIERS,attrs);
+        // Keep the leather carrier for EFM models, but use material-appropriate durability.
+        int oldMax=stack.getMaxDamage(),newMax=new ItemStack(reference(slot,tier)).getMaxDamage();
+        if(newMax>0&&oldMax!=newMax){
+            int oldDamage=stack.getDamageValue();
+            stack.set(DataComponents.MAX_DAMAGE,newMax);
+            stack.setDamageValue(Math.min(newMax-1,oldMax>0?(int)Math.round(oldDamage*(double)newMax/oldMax):oldDamage));
+            changed=true;
+        }
+        return changed;
+    }
+    // Both client tooltip and server equipment calculations pass through this event.
+    // Never touch ordinary vanilla/modded armor or unrelated bonus attributes.
+    public static void onAttributes(ItemAttributeModifierEvent event){
+        var stack=event.getItemStack();
+        for(var slot:SLOTS){
+            int tier=tier(stack,slot);if(tier==0)continue;
+            var expected=protectionAttributes(slot,tier,condition(stack));
+            var actual=event.getModifiers().stream().filter(e->protectionAttribute(e.attribute())).toList();
+            if(!actual.equals(expected.modifiers())){
+                event.removeIf(e->protectionAttribute(e.attribute()));
+                for(var e:expected.modifiers())event.addModifier(e.attribute(),e.modifier(),e.slot());
+            }
+            return;
+        }
     }
 
     public static int tier(ItemStack stack, EquipmentSlot slot) {
@@ -125,8 +195,8 @@ public final class BallisticVest {
             boolean attributesChanged=applyProtection(stack,slot,tier,condition(stack));
             if (attributesChanged||!expected.equals(stack.get(DataComponents.DYED_COLOR))) {
                 stack.set(DataComponents.DYED_COLOR, expected);
-                updateLore(stack,slot,tier,condition(stack));
             }
+            updateLore(stack,slot,tier,condition(stack));
             return;
         }
     }
@@ -146,11 +216,17 @@ public final class BallisticVest {
             case FEET -> "Pieds";
             default -> "Torse et bras";
         };
-        String equivalent=reference(slot,tier).getDescription().getString();
-        stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-            Component.literal("Protection : " + equivalent),
-            Component.literal("État balistique : " + condition + " / 100"),
-            Component.literal("Zone protégée : " + zone))));
+        String equivalent=switch(tier){
+            case 2->"cuir";case 3->"fer";case 4->"diamant";case 5->"netherite";
+            case 6->net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(reference(slot,tier)).getNamespace().equals("allthemodium")?"vibranium":"netherite";
+            default->"cuir";
+        };
+        var style=net.minecraft.network.chat.Style.EMPTY.withItalic(false).withColor(net.minecraft.ChatFormatting.GRAY);
+        var lore=new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            Component.literal("Protection : "+equivalent).withStyle(style),
+            Component.literal("État balistique : "+condition+" / 100").withStyle(style),
+            Component.literal("Zone protégée : "+zone).withStyle(style)));
+        if(!lore.equals(stack.get(DataComponents.LORE)))stack.set(DataComponents.LORE,lore);
     }
 
     private static void setCondition(ItemStack stack, EquipmentSlot slot, int tier, int value) {

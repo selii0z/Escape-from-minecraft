@@ -19,7 +19,6 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.item.alchemy.PotionContents;
 
-@net.neoforged.fml.common.EventBusSubscriber(modid="taczoperations")
 public final class HideoutServices {
     private static final String STASH="hideout_stash";
     enum Recipe {
@@ -128,7 +127,6 @@ public final class HideoutServices {
         }
         HideoutPower.use(p);p.getInventory().setChanged();Hideout.say(p,r.count+" × "+output.getHoverName().getString()+" fabriqué(s).");
     }
-    @net.neoforged.bus.api.SubscribeEvent
     public static void recipeCommands(net.neoforged.neoforge.event.RegisterCommandsEvent event){
         event.getDispatcher().register(net.minecraft.commands.Commands.literal("efm")
             .then(net.minecraft.commands.Commands.literal("recettes")
@@ -147,6 +145,29 @@ public final class HideoutServices {
                     }
                     return 1;
                 })));
+    }
+    /** Withdraw-only migration. Preserve anything that cannot fit or be decoded. */
+    static int recoverLegacyStash(ServerPlayer p){
+        if(!PlayerMarket.available(p)||ForestExpedition.hasReturnPoint(p)||ScavRun.active(p)||!p.level().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)
+            ||p.containerMenu!=p.inventoryMenu||!p.containerMenu.getCarried().isEmpty())return 0;
+        var account=SupplyContract.account(p);
+        var saved=account.getList(STASH,10);
+        var remainder=new ListTag();int recovered=0;
+        for(var raw:saved){
+            if(!(raw instanceof CompoundTag tag)){remainder.add(raw.copy());continue;}
+            try{
+                var stack=ItemStack.parseOptional(p.registryAccess(),tag.getCompound("item"));
+                if(stack.isEmpty()){remainder.add(tag.copy());continue;}
+                int before=stack.getCount();p.getInventory().add(stack);
+                recovered+=before-stack.getCount();
+                if(!stack.isEmpty()){
+                    var left=tag.copy();left.put("item",stack.saveOptional(p.registryAccess()));remainder.add(left);
+                }
+            }catch(RuntimeException ex){remainder.add(tag.copy());}
+        }
+        account.put(STASH,remainder);p.getInventory().setChanged();
+        Hideout.say(p,recovered+" objet(s) récupéré(s). "+remainder.size()+" pile(s) restent dans l’ancienne réserve.");
+        return 1;
     }
     private HideoutServices(){}
 }

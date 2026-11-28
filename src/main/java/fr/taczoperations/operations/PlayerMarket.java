@@ -49,7 +49,7 @@ public final class PlayerMarket extends SavedData {
         return p.server.overworld().getDataStorage().computeIfAbsent(FACTORY,"efm_player_market_v1");
     }
     static boolean available(ServerPlayer p){
-        return p.isAlive()&&!p.isCreative()&&!p.isSpectator()&&!p.level().dimension().equals(ForestExpedition.FOREST);
+        return p.isAlive()&&!p.isCreative()&&!p.isSpectator()&&!p.level().dimension().equals(ForestExpedition.FOREST)&&!p.level().dimension().equals(Hideout.DIMENSION);
     }
     public static boolean eligible(ItemStack s){
         if(s.isEmpty()||s.getCount()>s.getMaxStackSize()||s.getItem() instanceof SecureCaseItem)return false;

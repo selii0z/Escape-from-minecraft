@@ -1,0 +1,1151 @@
+{
+  "schema": 1,
+  "quests": [
+    {
+      "id": "5936d90786f7742b1420ba5b",
+      "name": "Debut",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5967379186f77463860dadd6",
+          "type": "kill:woods,customs,interchange:scav",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "excludedMaps": [
+          "ground-zero",
+          "ground-zero-21"
+        ]
+      }
+    },
+    {
+      "id": "5a0327ba86f77456b9154236",
+      "name": "Fuel Shortage",
+      "trader": "peacekeeper",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5a03289686f7745dbc6c5063",
+          "type": "turnin-fir:577e1c9d2459773cd707c525,59faf98186f774067b6be103,59e3596386f774176c10a2a2,59e3556c86f7741776641ac2,5e2af02c86f7746d420957d4,5e2af00086f7746d3f3c33f7,5e2aef7986f7746d3f3c33f5,62a09ee4cf4a99369e262453,5d40412b86f7743cb332ac3a,5c13cd2486f774072c757944,59e35abd86f7741778269d82,5c13cef886f774072e618e82,5d4041f086f7743cac3f22a7,67586c61a0c49554ed0bb4a8,59e358a886f7741776641ac3,60b0f561c4449e4cb624c1d7,5bc9b9ecd4351e3bac122519,57347c93245977448d35f6e3",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false
+        },
+        {
+          "id": "5a0328cb86f77456b91543b8",
+          "type": "turnin-fir:60391b0fb847c71012789415,56742c284bdc2d98058b456d,67586bee39b1b82b0d0f9d06,59fafb5d86f774067a6f2084,5e2af2bc86f7746d3f3c33fc,5e2af37686f774755a234b65,60391a8b3364dc22b04d0ce5,590c5bbd86f774785762df04,590c5c9f86f77477c91c36e7,57347b8b24597737dd42e192,56742c2e4bdc2d95058b456d,699f09de81a6c812900a77b7,590a373286f774287540368b,5bc9b355d4351e6d1509862a,5b43575a86f77424f443fe62,5d1b36a186f7742523398433,5d1b371186f774253763a656",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "dollars": 550,
+        "reputationMilli": 100
+      }
+    },
+    {
+      "id": "669fa39ee749756c920d02c8",
+      "name": "All Is Revealed",
+      "trader": "therapist",
+      "level": 5,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "669fb6c859bdae826f7325d4",
+          "type": "quest-find:factory:chemical-sample",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false
+        },
+        {
+          "id": "66a7eebed6bac3ecc16f7d6b",
+          "type": "quest-give:chemical-sample",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 5,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "traderLoyalty": 2,
+        "questItem": "669fac549b0ce3feae01a137",
+        "mapIds": [
+          "55f2d3fd4bdc2d5f408b4567",
+          "59fc81d786f774390775787e"
+        ]
+      },
+      "adaptation": {
+        "map": "factory",
+        "site": "Bunker, salle nord-ouest",
+        "localX": 52,
+        "localZ": 54,
+        "radius": 3
+      }
+    },
+    {
+      "id": "5fd9fad9c1ce6b1a3b486d00",
+      "name": "Search Mission",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5fd9fad9c1ce6b1a3b486d03",
+          "type": "visit:woods:convoy",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        },
+        {
+          "id": "5fd9fad9c1ce6b1a3b486d05",
+          "type": "visit:woods:camp",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "startItem": "5f4f9eb969cdc30ff33f09db"
+      },
+      "adaptation": {
+        "convoy": [
+          484,
+          570
+        ],
+        "camp": [
+          645,
+          225
+        ],
+        "startItem": "minecraft:compass"
+      }
+    },
+    {
+      "id": "5a27bafb86f7741c73584017",
+      "name": "Chemical Experiments",
+      "trader": "peacekeeper",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "6a5c10e883a51e292d11b976",
+          "type": "plant:customs:medical-deposit:59e35cbb86f7741778269d83",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "dollars": 550,
+        "reputationMilli": 100,
+        "foundInRaid": false
+      },
+      "adaptation": {
+        "site": [
+          95,
+          425
+        ],
+        "radius": 3
+      }
+    },
+    {
+      "id": "5d2495a886f77425cd51e403",
+      "name": "Introduction",
+      "trader": "mechanic",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "63ac18f4972364554162a25c",
+          "type": "visit:woods:hunting-cabin",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        },
+        {
+          "id": "5d249a6e86f774791546e952",
+          "type": "quest-find:woods:jaeger-message",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false
+        },
+        {
+          "id": "5d249aa286f77475e8376399",
+          "type": "quest-give:jaeger-message",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reward": {
+        "credits": 300,
+        "xp": 45,
+        "reputation": 0
+      },
+      "reference": {
+        "level": 0,
+        "experience": 4500,
+        "rubles": 30000,
+        "dialogueTrader": "mechanic",
+        "unlockTrader": "jaeger",
+        "questItem": "5d3ec50586f774183a607442"
+      },
+      "adaptation": {
+        "site": [
+          130,
+          513
+        ],
+        "radius": 5
+      }
+    },
+    {
+      "id": "600302d73b897b11364cd161",
+      "name": "All This Filth",
+      "trader": "jaeger",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "600303250b79c6604058ce30",
+          "type": "kill:woods,customs,interchange:scav",
+          "amount": 20,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "excludedMaps": [
+          "ground-zero",
+          "ground-zero-21",
+          "ground-zero-tutorial"
+        ]
+      },
+      "adaptation": {}
+    },
+    {
+      "id": "5ae448bf86f7744d733e55ee",
+      "name": "Make ULTRA Great Again",
+      "trader": "ragman",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5ae44ecd86f77414a13c970e",
+          "type": "kill:interchange:any",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "dialogueTrader": "ragman"
+      },
+      "adaptation": {}
+    },
+    {
+      "id": "5d24b81486f77439c92d6ba8",
+      "name": "Acquaintance",
+      "trader": "jaeger",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5d24ba7886f77439c92d6baa",
+          "type": "turnin-any:590c5d4b86f774784e1b9c45,5448ff904bdc2d6f028b456e,57505f6224597709a92585a9,57347da92459774491567cf5,57347d3d245977448f7b7f61,57347d7224597744596b4e72,5734773724597737fd047c14,5751487e245977207e26a315,57347d9c245977448b40fa85,57347d5f245977448b40fa81,5673de654bdc2d180f8b456d,590c5f0d86f77413997acfab,69774bb0a247161ff1068335,656df4fec921ad01000481a2,67586b7e49c2fa592e0d8ed9,65815f0e647e3d7246384e14,5bc9c29cd4351e003562b8a3,59e3577886f774176a362503,57347d90245977448f7b7f65,57347d692459774491567cf1,544fb6cc4bdc2d34748b456e,57347d8724597744596b4e76,5bc9b156d4351e00367fbce9,635a758bfefc88a93f021b8a",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false
+        }
+      ],
+      "implemented": true,
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "foundInRaid": false
+      },
+      "adaptation": {}
+    },
+    {
+      "id": "59c9392986f7742f6923add2",
+      "name": "Aid Stations",
+      "trader": "therapist",
+      "level": 5,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "59c93bdb86f7742a19140434",
+          "type": "find-stock-any:593aa4be86f77457f56379f8",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé chambre 303"
+        },
+        {
+          "id": "59c93d4e86f774496b698953",
+          "type": "turnin-any:593aa4be86f77457f56379f8",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé chambre 303"
+        },
+        {
+          "id": "59c93c1986f7742a424eaa33",
+          "type": "find-stock-any:591afe0186f77431bd616a11",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé ZB-014"
+        },
+        {
+          "id": "59c93d8086f7742a19140436",
+          "type": "turnin-any:591afe0186f77431bd616a11",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé ZB-014"
+        },
+        {
+          "id": "59c93cbb86f7742a19140435",
+          "type": "find-stock-any:5913915886f774123603c392",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé du poste militaire"
+        },
+        {
+          "id": "59c93d9c86f7742f6923add3",
+          "type": "turnin-any:5913915886f774123603c392",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé du poste militaire"
+        },
+        {
+          "id": "59c93cea86f7742a08623162",
+          "type": "find-stock-any:5913877a86f774432f15d444",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Clé réserve station-service"
+        },
+        {
+          "id": "59c93dbf86f7742a424eaa34",
+          "type": "turnin-any:5913877a86f774432f15d444",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Clé réserve station-service"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "reference": {
+        "level": 5,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "foundInRaid": false
+      }
+    },
+    {
+      "id": "5ac346a886f7744e1b083d67",
+      "name": "Rat Hunting",
+      "trader": "mechanic",
+      "level": 12,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5cb6f81d86f7740e9d452683",
+          "type": "find-stock-fir:573477e124597737dd42e191",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Processeur PC"
+        },
+        {
+          "id": "5ac5e79986f7747398341847",
+          "type": "turnin-fir:573477e124597737dd42e191",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Processeur PC"
+        },
+        {
+          "id": "5cb6f88d86f7747d215f09c1",
+          "type": "find-stock-fir:590a358486f77429692b2790",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Batterie rechargeable"
+        },
+        {
+          "id": "5ac5e88e86f7741c5804f9db",
+          "type": "turnin-fir:590a358486f77429692b2790",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Batterie rechargeable"
+        },
+        {
+          "id": "5cb6f8de86f7740e9d452685",
+          "type": "find-stock-fir:590a3b0486f7743954552bdb",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Circuit imprimé"
+        },
+        {
+          "id": "5ac5e98886f77479bc6ca201",
+          "type": "turnin-fir:590a3b0486f7743954552bdb",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Circuit imprimé"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "reference": {
+        "level": 12,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "5d25e4b786f77408251c4bfc",
+      "name": "Fishing Place",
+      "trader": "jaeger",
+      "level": 17,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5d2f375186f7745916404955",
+          "type": "find-stock-fir:5c94bbff86f7747ee735c08f",
+          "amount": 2,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Carte d'accès Labs"
+        },
+        {
+          "id": "5d8a09d386f77410b4225d13",
+          "type": "turnin-fir:5c94bbff86f7747ee735c08f",
+          "amount": 2,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Carte d'accès Labs"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 3,
+      "reward": {
+        "credits": 2750,
+        "xp": 280,
+        "reputation": 750
+      },
+      "reference": {
+        "level": 17,
+        "experience": 28000,
+        "rubles": 275000,
+        "reputationMilli": 750,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "5969f90786f77420d2328015",
+      "name": "Charity",
+      "trader": "therapist",
+      "level": 18,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "5969f98286f774576d4c9542",
+          "type": "find-stock-fir:5c10c8fd86f7743d7d706df3",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Injecteur d'adrénaline"
+        },
+        {
+          "id": "5969f99286f77456630ea442",
+          "type": "turnin-fir:5c10c8fd86f7743d7d706df3",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Injecteur d'adrénaline"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 3,
+      "reward": {
+        "credits": 2750,
+        "xp": 280,
+        "reputation": 750
+      },
+      "reference": {
+        "level": 18,
+        "experience": 28000,
+        "rubles": 275000,
+        "reputationMilli": 750,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "60e71dc67fcf9c556f325056",
+      "name": "Booze",
+      "trader": "ragman",
+      "level": 27,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "60e73333465ea8368012cc5b",
+          "type": "find-stock-fir:5d40407c86f774318526545a",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Vodka Tarkovskaya"
+        },
+        {
+          "id": "60e73397479eef59b01b0bd5",
+          "type": "turnin-fir:5d40407c86f774318526545a",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Vodka Tarkovskaya"
+        },
+        {
+          "id": "60e733590367e10a450f7805",
+          "type": "find-stock-fir:5d403f9186f7743cac3f229b",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Whisky Dan Jackiel"
+        },
+        {
+          "id": "60e733b80367e10a450f7807",
+          "type": "turnin-fir:5d403f9186f7743cac3f229b",
+          "amount": 10,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Whisky Dan Jackiel"
+        },
+        {
+          "id": "60f028268b669d08a35bfad8",
+          "type": "find-stock-fir:5d1b33a686f7742523398398",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Eau purifiée"
+        },
+        {
+          "id": "60f0284e8b669d08a35bfada",
+          "type": "turnin-fir:5d1b33a686f7742523398398",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Eau purifiée"
+        },
+        {
+          "id": "62a700fb7230237f257cac2e",
+          "type": "find-stock-fir:62a09f32621468534a797acb",
+          "amount": 20,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Bière Pevko"
+        },
+        {
+          "id": "62a70110eb3cb46d9a0bba78",
+          "type": "turnin-fir:62a09f32621468534a797acb",
+          "amount": 20,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Bière Pevko"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 3,
+      "reward": {
+        "credits": 2750,
+        "xp": 280,
+        "reputation": 750
+      },
+      "reference": {
+        "level": 27,
+        "experience": 28000,
+        "rubles": 275000,
+        "reputationMilli": 750,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "69ce1de03e15cd80bd06f6c9",
+      "name": "Oil Change",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "69ce1e2614b1a16885f61da4",
+          "type": "find-stock-fir:699f09de81a6c812900a77b7",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Trouver · Fluide hydraulique AMG-10"
+        },
+        {
+          "id": "69ce1e30e2c52320f2eba4ee",
+          "type": "turnin-fir:699f09de81a6c812900a77b7",
+          "amount": 5,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Remettre · Fluide hydraulique AMG-10"
+        }
+      ],
+      "implemented": true,
+      "adapter": "paired-stock-v1",
+      "loyalty": 1,
+      "reward": {
+        "credits": 3300,
+        "xp": 320,
+        "reputation": 0
+      },
+      "reference": {
+        "level": 0,
+        "experience": 32000,
+        "rubles": 330000,
+        "reputationMilli": 0,
+        "foundInRaid": true
+      }
+    },
+    {
+      "id": "596a0e1686f7741ddf17dbee",
+      "name": "Supply Plans",
+      "trader": "therapist",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "596a0e7086f7741ddf17dbef",
+          "type": "quest-find:woods:5938878586f7741b797c562f",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Dossier sécurisé 0052 récupéré"
+        },
+        {
+          "id": "596a0eaf86f774576d4c957f",
+          "type": "extract:woods",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Extraction réussie"
+        },
+        {
+          "id": "596a0e8086f7741ddd6c104c",
+          "type": "quest-give:5938878586f7741b797c562f",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Dossier sécurisé 0052 remis"
+        }
+      ],
+      "implemented": true,
+      "adapter": "quest-item-v1",
+      "loyalty": 1,
+      "dialogueTrader": "therapist",
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "adaptation": {
+        "map": "woods",
+        "localX": 338,
+        "localZ": 688,
+        "radius": 5,
+        "site": "Cabane forestière sud"
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "questItem": "5938878586f7741b797c562f"
+      }
+    },
+    {
+      "id": "669fa399033a3ce9870338a8",
+      "name": "Possessor",
+      "trader": "prapor",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "669fb4a56e66d3d79183a5c9",
+          "type": "quest-find:factory:66c0b90c8398582e4b0c2e27",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Carnet de bord du pilote récupéré"
+        },
+        {
+          "id": "669fb4b21f2e5268651cc96a",
+          "type": "quest-give:66c0b90c8398582e4b0c2e27",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Carnet de bord du pilote remis"
+        }
+      ],
+      "implemented": true,
+      "adapter": "quest-item-v1",
+      "loyalty": 1,
+      "dialogueTrader": null,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "adaptation": {
+        "map": "factory",
+        "localX": 172,
+        "localZ": 54,
+        "radius": 5,
+        "site": "Bunker · salle nord-est"
+      },
+      "reference": {
+        "level": 0,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "questItem": "66c0b90c8398582e4b0c2e27"
+      }
+    },
+    {
+      "id": "675c1570526ff496850895d9",
+      "name": "Passion for Ergonomics",
+      "trader": "mechanic",
+      "level": 1,
+      "prerequisites": [],
+      "conflicts": [],
+      "objectives": [
+        {
+          "id": "675c15916580a378dc0f012f",
+          "type": "quest-find:customs:675f80d4fe1b59cf490d3527",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Boîte d'outils améliorés récupéré"
+        },
+        {
+          "id": "675c1595a4c063af74ee5279",
+          "type": "quest-give:675f80d4fe1b59cf490d3527",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Boîte d'outils améliorés remis"
+        }
+      ],
+      "implemented": true,
+      "adapter": "quest-item-v1",
+      "loyalty": 1,
+      "dialogueTrader": "mechanic",
+      "reward": {
+        "credits": 800,
+        "xp": 30,
+        "reputation": 100
+      },
+      "adaptation": {
+        "map": "customs",
+        "localX": 307,
+        "localZ": 333,
+        "radius": 5,
+        "site": "Atelier central de la Zone industrielle"
+      },
+      "reference": {
+        "level": 0,
+        "experience": 3000,
+        "rubles": 80000,
+        "reputationMilli": 100,
+        "questItem": "675f80d4fe1b59cf490d3527"
+      }
+    },
+    {
+      "id": "639135d89444fb141f4e6eea",
+      "name": "Population Census",
+      "trader": "therapist",
+      "level": 5,
+      "prerequisites": [],
+      "conflicts": [],
+      "implemented": true,
+      "adapter": "quest-item-city-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "639135d89444fb141f4e6eeb",
+          "type": "quest-find:streets:638e0057ab150a5f56238960",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Registre de population récupéré(s)"
+        },
+        {
+          "id": "639135d89444fb141f4e6eec",
+          "type": "quest-give:638e0057ab150a5f56238960",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Registre de population remis"
+        }
+      ],
+      "adaptation": {
+        "map": "streets",
+        "localX": 0,
+        "localZ": 0,
+        "radius": 5,
+        "site": "Zombiepolis · Registre de population"
+      },
+      "reference": {
+        "level": 5,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "questItem": "638e0057ab150a5f56238960",
+        "siteAdaptation": "Existing valid city encounter anchor"
+      }
+    },
+    {
+      "id": "638fcd23dc65553116701d33",
+      "name": "Audit",
+      "trader": "ragman",
+      "level": 12,
+      "prerequisites": [],
+      "conflicts": [],
+      "implemented": true,
+      "adapter": "quest-item-city-v1",
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "638fd070202cd55bee01ca11",
+          "type": "quest-find:streets:63a943cead5cc12f22161ff7",
+          "amount": 1,
+          "scope": "SURVIVING_RAID",
+          "optional": false,
+          "label": "Documents financiers récupéré(s)"
+        },
+        {
+          "id": "638fd0805e5a195d2c443754",
+          "type": "quest-give:63a943cead5cc12f22161ff7",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Documents financiers remis"
+        }
+      ],
+      "adaptation": {
+        "map": "streets",
+        "localX": 1,
+        "localZ": 0,
+        "radius": 5,
+        "site": "Zombiepolis · Documents financiers"
+      },
+      "reference": {
+        "level": 12,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "questItem": "63a943cead5cc12f22161ff7",
+        "siteAdaptation": "Existing valid city encounter anchor"
+      }
+    },
+    {
+      "id": "66b38e144f2ab7cc530c3fe7",
+      "name": "Every Hunter Knows This",
+      "trader": "jaeger",
+      "level": 9,
+      "loyalty": 2,
+      "prerequisites": [],
+      "conflicts": [],
+      "implemented": true,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "66b38e144f2ab7cc530c3fe8",
+          "type": "visit:factory:mine-check",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Bunker · inspecter le secteur (112,177)"
+        },
+        {
+          "id": "66b38e144f2ab7cc530c3fea",
+          "type": "visit:customs:mine-check",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Zone industrielle · inspecter le secteur (350,520)"
+        }
+      ],
+      "reference": {
+        "level": 9,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250
+      }
+    },
+    {
+      "id": "669fa39b91b0a8c9680fc467",
+      "name": "Black Swan",
+      "trader": "mechanic",
+      "level": 12,
+      "loyalty": 2,
+      "reward": {
+        "credits": 1650,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "669fb647a5be751be095da27",
+          "type": "plant:factory:black-swan:5991b51486f77447b112d44f",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Poser une balise MS2000 · Bunker, salle centrale"
+        }
+      ],
+      "adaptation": {
+        "sites": [
+          {
+            "map": "factory",
+            "x": 112,
+            "z": 112,
+            "radius": 4
+          }
+        ],
+        "durationSeconds": 10
+      },
+      "reference": {
+        "level": 12,
+        "experience": 10000,
+        "rubles": 165000,
+        "reputationMilli": 250,
+        "startItems": {
+          "5991b51486f77447b112d44f": 1
+        }
+      },
+      "adapter": "field-deposit-v2",
+      "implemented": true,
+      "prerequisites": [],
+      "conflicts": []
+    },
+    {
+      "id": "5b4795fb86f7745876267770",
+      "name": "Chumming",
+      "trader": "skier",
+      "level": 7,
+      "loyalty": 2,
+      "reward": {
+        "credits": 1000,
+        "xp": 100,
+        "reputation": 250
+      },
+      "objectives": [
+        {
+          "id": "5b4796c086f7745877352c2c",
+          "type": "plant:customs:chumming:5734758f24597738025ee253",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Déposer des chaînes en or · Zone industrielle"
+        },
+        {
+          "id": "5b47971086f774587877ad34",
+          "type": "plant:woods:chumming:5734758f24597738025ee253",
+          "amount": 3,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Déposer des chaînes en or · Forêt Noire"
+        }
+      ],
+      "adaptation": {
+        "sites": [
+          {
+            "map": "customs",
+            "x": 350,
+            "z": 520,
+            "radius": 5
+          },
+          {
+            "map": "woods",
+            "x": 645,
+            "z": 225,
+            "radius": 6
+          }
+        ],
+        "durationSeconds": 10
+      },
+      "reference": {
+        "level": 7,
+        "experience": 10000,
+        "euros": 1000,
+        "reputationMilli": 250,
+        "startItems": {
+          "5734758f24597738025ee253": 4
+        }
+      },
+      "adapter": "field-deposit-v2",
+      "implemented": true,
+      "prerequisites": [],
+      "conflicts": []
+    },
+    {
+      "id": "6834145ebc1f443d7603c8a7",
+      "name": "Easy Money - Part 1",
+      "trader": "skier",
+      "level": 10,
+      "loyalty": 2,
+      "reward": {
+        "credits": 450,
+        "xp": 30,
+        "reputation": 0
+      },
+      "objectives": [
+        {
+          "id": "6834145ebc1f443d7603c8ab",
+          "type": "plant:customs:arena-poster:675a0288c3102563bd01c9c3",
+          "amount": 1,
+          "scope": "CAMPAIGN",
+          "optional": false,
+          "label": "Déposer une affiche Arena · Zone industrielle"
+        }
+      ],
+      "adaptation": {
+        "sites": [
+          {
+            "map": "customs",
+            "x": 125,
+            "z": 540,
+            "radius": 5
+          }
+        ],
+        "durationSeconds": 10
+      },
+      "reference": {
+        "level": 10,
+        "experience": 3000,
+        "euros": 450,
+        "reputationMilli": 0,
+        "startItems": {
+          "675a0288c3102563bd01c9c3": 3
+        },
+        "unlockTrader": "ref"
+      },
+      "adapter": "field-deposit-v2",
+      "implemented": true,
+      "prerequisites": [],
+      "conflicts": []
+    }
+  ]
+}

@@ -23,7 +23,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInventoryMenu>{
     private static final net.minecraft.client.KeyMapping TACTICAL=new net.minecraft.client.KeyMapping(
         "key.taczoperations.field_inventory",org.lwjgl.glfw.GLFW.GLFW_KEY_I,"key.categories.taczoperations");
-    private static final int TEXT=0xffd3dac7, GOLD=0xffd8c783;
+    private static final int TEXT=0xffd9dcdf, GOLD=0xffe5e6e8;
     public FieldInventoryScreen(FieldInventoryMenu menu,Inventory inv,Component title){
         super(menu,inv,title);imageWidth=FieldInventoryMenu.WIDTH;imageHeight=FieldInventoryMenu.HEIGHT;
     }
@@ -69,15 +69,15 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
     private static boolean openingClassic;
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         int x=leftPos,y=topPos;
-        g.fill(x,y,x+imageWidth,y+imageHeight,0xff20251f);
-        g.renderOutline(x,y,imageWidth,imageHeight,0xff66715b);
-        g.fill(x+3,y+3,x+imageWidth-3,y+14,0xff353e2d);
+        g.fill(x,y,x+imageWidth,y+imageHeight,0xff202124);
+        g.renderOutline(x,y,imageWidth,imageHeight,0xff64686c);
+        g.fill(x+3,y+3,x+imageWidth-3,y+14,0xff303236);
         for(var slot:menu.slots){
             int sx=x+slot.x-1,sy=y+slot.y-1;
-            g.fill(sx,sy,sx+18,sy+18,0xff141914);
-            g.renderOutline(sx,sy,18,18,slot.index>=FieldInventoryMenu.STORAGE_START?0xff85976c:0xff596351);
+            g.fill(sx,sy,sx+18,sy+18,0xff141517);
+            g.renderOutline(sx,sy,18,18,slot.index>=FieldInventoryMenu.STORAGE_START?0xff85898d:0xff595d61);
         }
-        g.fill(x+30,y+18,x+86,y+92,0xff171b17);
+        g.fill(x+30,y+18,x+86,y+92,0xff17181a);
         if(minecraft!=null&&minecraft.player!=null)
             InventoryScreen.renderEntityInInventoryFollowsMouse(g,x+30,y+18,x+86,y+92,32,.0625F,mx,my,minecraft.player);
         if(menu.bagSize()==0)g.drawString(font,"Aucun sac équipé",x+194,y+40,TEXT,false);
@@ -93,22 +93,19 @@ public final class FieldInventoryScreen extends AbstractContainerScreen<FieldInv
         g.drawString(font,"BARRE RAPIDE",10,182,GOLD,false);
         g.drawString(font,"SAC À DOS · "+menu.bagSize(),194,17,GOLD,false);
         g.drawString(font,"GILET · "+menu.rigSize(),194,182,GOLD,false);
-        g.drawString(font,"E / "+TACTICAL.getTranslatedKeyMessage().getString()+" : fermer · Molette : examiner",10,229,TEXT,false);
+        g.drawString(font,"E / "+TACTICAL.getTranslatedKeyMessage().getString()+" : fermer",10,229,TEXT,false);
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         super.render(g,mx,my,partial);
-        DiscoveryClient.maskSlots(g,menu,leftPos,topPos);
         renderTooltip(g,mx,my);
     }
     @Override public boolean keyPressed(int key,int scan,int mods){
         if(TACTICAL.matches(key,scan)){
-            if(DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
             onClose();return true;
         }
         return super.keyPressed(key,scan,mods);
     }
     @Override public boolean mouseClicked(double x,double y,int button){
-        if(button==2&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.mouseClicked(x,y,button);
     }
 }

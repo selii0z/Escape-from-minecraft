@@ -11,7 +11,6 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.HopperMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
@@ -43,20 +42,26 @@ public final class RaidSecurity {
             return;
         }
         p.closeContainer();
-        var container=new Pouch(p,carrier,slot);
-        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new HopperMenu(id,inv,container) {
+        int capacity=SecureCaseItem.capacity(carrier);
+        int rows=(capacity+8)/9;
+        int displaySlots=rows*9;
+        var container=new Pouch(p,carrier,slot,capacity,displaySlots);
+        p.openMenu(new SimpleMenuProvider((id,inv,ignored)->new net.minecraft.world.inventory.ChestMenu(
+            rows==1?net.minecraft.world.inventory.MenuType.GENERIC_9x1:net.minecraft.world.inventory.MenuType.GENERIC_9x2,id,inv,container,rows) {
             {
                 for(int i=0;i<slots.size();i++) {
                     Slot old=slots.get(i);
-                    final boolean storage=i<5;
+                    final boolean storage=i<displaySlots;
+                    final boolean disabled=storage&&i>=capacity;
                     final boolean locked=old.container==inv && old.getContainerSlot()==slot;
                     if(!storage&&!locked)continue;
                     Slot filtered=new Slot(old.container,old.getContainerSlot(),old.x,old.y) {
                         @Override public boolean mayPlace(ItemStack s) {
-                            return !locked && !(s.getItem() instanceof SecureCaseItem)
+                            return !locked && !disabled && !(s.getItem() instanceof SecureCaseItem)
+                                && !(s.getItem() instanceof FieldPack)
                                 && (s.getItem() instanceof KeyRingItem || !s.has(DataComponents.CONTAINER)) && !s.has(DataComponents.BUNDLE_CONTENTS);
                         }
-                        @Override public boolean mayPickup(Player player) {return !locked;}
+                        @Override public boolean mayPickup(Player player) {return !locked&&!disabled;}
                     };
                     filtered.index=i;slots.set(i,filtered);
                 }
@@ -64,28 +69,29 @@ public final class RaidSecurity {
             @Override public void clicked(int index,int button,net.minecraft.world.inventory.ClickType type,Player player) {
                 if(!container.stillValid(player))return;
                 if(type==net.minecraft.world.inventory.ClickType.SWAP && button==slot)return;
+                if(index>=capacity&&index<displaySlots)return;
                 if(index>=0&&index<slots.size()&&slots.get(index).container==inv&&slots.get(index).getContainerSlot()==slot)return;
                 super.clicked(index,button,type,player);
             }
             @Override public ItemStack quickMoveStack(Player player,int index) {
-                if(!container.stillValid(player))return ItemStack.EMPTY;
+                if(!container.stillValid(player)||index>=capacity&&index<displaySlots)return ItemStack.EMPTY;
                 if(index>=0&&index<slots.size()&&slots.get(index).container==inv&&slots.get(index).getContainerSlot()==slot)return ItemStack.EMPTY;
                 return super.quickMoveStack(player,index);
             }
-        },Component.literal("Coffre sécurisé · 5 emplacements")));
+        },Component.literal(((SecureCaseItem)carrier.getItem()).tier().title+" · "+capacity+" emplacements")));
     }
     private static final class Pouch extends SimpleContainer {
         private final ServerPlayer owner;
         private final ItemStack carrier;
-        private final int slot;
+        private final int slot,capacity;
         private final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension;
         private boolean ready;
-        Pouch(ServerPlayer p,ItemStack carrier,int slot) {
-            super(5);owner=p;this.carrier=carrier;this.slot=slot;dimension=p.level().dimension();
+        Pouch(ServerPlayer p,ItemStack carrier,int slot,int capacity,int displaySlots) {
+            super(displaySlots);owner=p;this.carrier=carrier;this.slot=slot;this.capacity=capacity;dimension=p.level().dimension();
             ListTag items=tag(carrier).getList(POUCH,10);
             for(int i=0;i<items.size();i++) {
                 CompoundTag e=items.getCompound(i);int n=e.getInt("slot");
-                if(n>=0&&n<5) super.setItem(n,ItemStack.parseOptional(p.registryAccess(),e.getCompound("item")));
+                if(n>=0&&n<capacity) super.setItem(n,ItemStack.parseOptional(p.registryAccess(),e.getCompound("item")));
             }
             ready=true;
         }
@@ -96,7 +102,7 @@ public final class RaidSecurity {
         @Override public void setChanged() {
             super.setChanged();if(!ready)return;
             ListTag items=new ListTag();
-            for(int i=0;i<getContainerSize();i++) {
+            for(int i=0;i<capacity;i++) {
                 ItemStack s=getItem(i);if(s.isEmpty())continue;
                 CompoundTag e=new CompoundTag();e.putInt("slot",i);e.put("item",s.saveOptional(owner.registryAccess()));items.add(e);
             }
@@ -104,6 +110,34 @@ public final class RaidSecurity {
             carrier.set(DataComponents.CUSTOM_DATA,CustomData.of(d));
             owner.getInventory().setChanged();
         }
+    }
+    /** Internal reward adapter; only a successfully validated campaign reward may call it.
+     * Replace exactly one carried case in place, preserving all its saved contents.
+     * No public command, recipe or vendor grants a higher tier.
+     */
+    static boolean grantCaseUpgrade(ServerPlayer p,SecureCaseItem.Tier target){
+        if(!available(p)||p.isCreative()||p.level().dimension().equals(ForestExpedition.FOREST)
+            ||ForestExpedition.hasReturnPoint(p)||!p.containerMenu.getCarried().isEmpty())return false;
+        int found=-1;
+        var inv=p.getInventory();
+        for(int i=0;i<inv.getContainerSize();i++){
+            if(!(inv.getItem(i).getItem() instanceof SecureCaseItem))continue;
+            if(found>=0)return false;
+            found=i;
+        }
+        if(!SupplyContract.account(p).getList(PROTECTED,10).isEmpty()
+            ||!p.getPersistentData().getList(DEATH_CASES,10).isEmpty())return false;
+        if(found<0)return false;
+        var previous=inv.getItem(found);
+        if(SecureCaseItem.capacity(previous)>=target.capacity)return false;
+        var registered=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("taczoperations",target.id));
+        if(!(registered instanceof SecureCaseItem next)||next.tier()!=target)return false;
+        p.closeContainer();
+        var replacement=new ItemStack(registered);
+        replacement.set(DataComponents.CUSTOM_DATA,CustomData.of(tag(previous)));
+        inv.setItem(found,replacement);inv.setChanged();
+        return true;
     }
     // Store only real drops that have been removed from the death event.
     // This also protects the physical case from death outside a raid.
@@ -119,6 +153,7 @@ public final class RaidSecurity {
     }
     public static void returnCases(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
         if(!(event.getEntity() instanceof ServerPlayer p)||!p.isAlive()||p.tickCount%20!=0)return;
+        if(ScavRun.active(p))return;
         clearStaleInsurance(p);
         var account=SupplyContract.account(p);ListTag queue=account.getList(PROTECTED,10);
         boolean changed=false;
@@ -133,10 +168,10 @@ public final class RaidSecurity {
         var result=new java.util.ArrayList<ItemStack>();
         if(!(carrier.getItem() instanceof SecureCaseItem))return result;
         var items=tag(carrier).getList(POUCH,10);
-        for(int i=0;i<items.size()&&i<5;i++){
+        for(int i=0;i<items.size()&&i<SecureCaseItem.capacity(carrier);i++){
             var entry=items.getCompound(i);
             int slot=entry.getInt("slot");
-            if(slot>=0&&slot<5)result.add(ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item")));
+            if(slot>=0&&slot<SecureCaseItem.capacity(carrier))result.add(ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item")));
         }
         return result;
     }
@@ -147,6 +182,7 @@ public final class RaidSecurity {
             CompoundTag data=tag(carrier);ListTag items=data.getList(POUCH,10);
             for(int i=0;i<items.size();i++){
                 var entry=items.getCompound(i);
+                if(entry.getInt("slot")<0||entry.getInt("slot")>=SecureCaseItem.capacity(carrier))continue;
                 var ring=ItemStack.parseOptional(p.registryAccess(),entry.getCompound("item"));
                 if(!(ring.getItem() instanceof KeyRingItem))continue;
                 var keys=KeyRingItem.contents(ring);
@@ -165,6 +201,7 @@ public final class RaidSecurity {
         }
         return false;
     }
+    static boolean emptyCase(ItemStack s){return s.getItem() instanceof SecureCaseItem&&tag(s).getList(POUCH,10).isEmpty();}
     private static CompoundTag tag(ItemStack s) {
         CustomData d=s.get(DataComponents.CUSTOM_DATA);return d==null?new CompoundTag():d.copyTag();
     }
@@ -237,7 +274,7 @@ public final class RaidSecurity {
         return items.size()+" équipement(s) assuré(s) · -"+cost+" crédits.";
     }
     public static void onDeathDrops(LivingDropsEvent event) {
-        if(!(event.getEntity() instanceof ServerPlayer p)||event.isCanceled())return;
+        if(!(event.getEntity() instanceof ServerPlayer p)||event.isCanceled()||ScavRun.active(p))return;
         ListTag protectedCases=p.getPersistentData().getList(DEATH_CASES,10);
         var protectedIterator=event.getDrops().iterator();
         while(protectedIterator.hasNext()) {

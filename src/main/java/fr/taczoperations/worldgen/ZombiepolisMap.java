@@ -22,6 +22,26 @@ public final class ZombiepolisMap {
     private record Data(BlockState[] palette,short[] heights,List<Anchor> guards,List<ForestRaidAnchors.Mark> loot){}
     private static volatile Data data;
     private static volatile boolean failed;
+    private static java.util.zip.ZipFile privateTerrain;
+    /** Server-local immutable archive; no map content is downloaded or pushed to GitHub. */
+    private static InputStream resource(String name) throws IOException {
+        if(privateTerrain!=null){
+            var entry=privateTerrain.getEntry(ROOT.substring(1)+name);
+            return entry==null?null:privateTerrain.getInputStream(entry);
+        }
+        return ZombiepolisMap.class.getResourceAsStream(ROOT+name);
+    }
+    private static void openPrivateTerrain() throws IOException {
+        var path=java.nio.file.Path.of("config","taczoperations","zombiepolis.zip");
+        if(java.nio.file.Files.isRegularFile(path)){
+            privateTerrain=new java.util.zip.ZipFile(path.toFile());
+            for(String name:List.of("palette.txt","height.bin","source.json")){
+                if(privateTerrain.getEntry(ROOT.substring(1)+name)==null)throw new IOException("Missing private Zombiepolis resource: "+name);
+            }
+            var h=privateTerrain.getEntry(ROOT.substring(1)+"height.bin");
+            if(h.getSize()!=2L*SIZE*SIZE)throw new IOException("Invalid Zombiepolis height map");
+        }
+    }
     private static ForestPlan.Point local(int x,int z){return new ForestPlan.Point(x-SOURCE_MIN,z-SOURCE_MIN);}
     public static ForestPlan.Point entry(){return ENTRY;}
     public static ForestPlan.Point exitA(){return EXIT_A;}
@@ -31,10 +51,15 @@ public final class ZombiepolisMap {
         if(data!=null||failed)return data;
         synchronized(ZombiepolisMap.class){
             if(data!=null||failed)return data;
-            try(var p=ZombiepolisMap.class.getResourceAsStream(ROOT+"palette.txt");
-                var h=ZombiepolisMap.class.getResourceAsStream(ROOT+"height.bin");
-                var a=ZombiepolisMap.class.getResourceAsStream(ROOT+"source.json")){
-                if(p==null||h==null||a==null){failed=true;return null;}
+            try{
+                openPrivateTerrain();
+            }catch(IOException e){failed=true;com.mojang.logging.LogUtils.getLogger().error("Cannot open private Zombiepolis archive",e);return null;}
+            try(var p=resource("palette.txt");var h=resource("height.bin");var a=resource("source.json")){
+                if(p==null||h==null||a==null){
+                    failed=true;
+                    com.mojang.logging.LogUtils.getLogger().warn("Zombiepolis missing: install config/taczoperations/zombiepolis.zip or use the complete private JAR.");
+                    return null;
+                }
                 var palette=new BufferedReader(new InputStreamReader(p,StandardCharsets.UTF_8)).lines().map(ZombiepolisMap::state).toArray(BlockState[]::new);
                 if(palette.length<1||palette.length>65535)throw new IOException("bad palette");
                 short[] heights=new short[SIZE*SIZE];var in=new DataInputStream(h);
@@ -48,7 +73,9 @@ public final class ZombiepolisMap {
                 for(var e:j.getAsJsonArray("loot")){
                     var v=e.getAsJsonArray();loot.add(new ForestRaidAnchors.Mark(v.get(0).getAsInt()-SOURCE_MIN,v.get(1).getAsInt(),v.get(2).getAsInt()-SOURCE_MIN,i++%4));
                 }
+                if(guards.isEmpty()||loot.isEmpty())throw new IOException("Missing raid anchors");
                 data=new Data(palette,heights,List.copyOf(guards),List.copyOf(loot));
+                com.mojang.logging.LogUtils.getLogger().info("Zombiepolis loaded from {} ({} encounter anchors, {} loot anchors)",privateTerrain==null?"mod JAR":"server-local archive",guards.size(),loot.size());
                 return data;
             }catch(Exception e){failed=true;com.mojang.logging.LogUtils.getLogger().error("Cannot load Zombiepolis terrain",e);return null;}
         }
@@ -101,8 +128,8 @@ public final class ZombiepolisMap {
     }
     static void generate(ForestChunkGenerator.Painter out){
         var d=get();if(d==null)return;
-        String name=ROOT+"chunks/"+Math.floorDiv(out.minX,16)+"_"+Math.floorDiv(out.minZ,16)+".bin";
-        try(var raw=ZombiepolisMap.class.getResourceAsStream(name)){
+        String name="chunks/"+Math.floorDiv(out.minX,16)+"_"+Math.floorDiv(out.minZ,16)+".bin";
+        try(var raw=resource(name)){
             if(raw==null)return;
             var in=new DataInputStream(new BufferedInputStream(raw));
             if(in.readUnsignedShort()!=0x5a50)throw new IOException("bad map chunk");

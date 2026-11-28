@@ -25,10 +25,54 @@ public final class ForestCombat {
         float used;
     }
 
-    // Balance NPC damage only; player-fired TaCZ weapons keep their original stats.
+    // Raid-only game balance: NPC damage caps and player headshot bonuses.
     public static void onGunHurt(com.tacz.guns.api.event.common.EntityHurtByGunEvent.Pre event) {
         if (event.getLogicalSide().isClient()) return;
+        if(event.getHurtEntity() instanceof ServerPlayer protectedPlayer
+            &&event.getAttacker() instanceof Pillager enemy
+            &&enemy.level() instanceof ServerLevel raidLevel
+            &&raidLevel.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.entryProtected(protectedPlayer)&&ForestRaid.currentGuard(raidLevel,enemy)){
+            event.setCanceled(true);return;
+        }
+        if(event.getAttacker() instanceof ServerPlayer shooter
+            &&event.getHurtEntity() instanceof Pillager enemy
+            &&enemy.level() instanceof ServerLevel raidLevel&&raidLevel.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.currentGuard(raidLevel,enemy))
+            ForestRaid.endEntryGrace(shooter);
+        if(event.getAttacker() instanceof ServerPlayer scav&&event.getHurtEntity() instanceof Pillager target
+            &&target.level() instanceof ServerLevel level&&ForestRaid.currentGuard(level,target)
+            &&ForestRaid.sameSession(level,target,scav)&&!GuardRole.get(target).boss()&&GuardRole.get(target)!=GuardRole.PMC)
+            ScavRun.betray(scav);
+        if(event.getAttacker() instanceof Pillager attacker&&event.getHurtEntity() instanceof ServerPlayer scav
+            &&ScavRun.friendly(scav)&&!GuardRole.get(attacker).boss()&&GuardRole.get(attacker)!=GuardRole.PMC
+            &&attacker.level() instanceof ServerLevel level&&ForestRaid.currentGuard(level,attacker)&&ForestRaid.sameSession(level,attacker,scav)){
+            event.setCanceled(true);return;
+        }
         DetailedStats.hit(event);
+        // Only genuine TaCZ headshot events on current non-boss raid NPCs.
+        // Protective helmets retain their mitigation; body shots and PvP are unchanged.
+        if(event.isHeadShot()&&event.getAttacker() instanceof ServerPlayer shooter
+            &&event.getHurtEntity() instanceof Pillager target&&target.level() instanceof ServerLevel raidLevel
+            &&ForestRaid.currentGuard(raidLevel,target)&&ForestRaid.sameSession(raidLevel,target,shooter)
+            &&!GuardRole.get(target).boss()&&shooter.getMainHandItem().getItem() instanceof IGun gun){
+            var held=shooter.getMainHandItem();
+            var id=gun.getGunId(held);
+            String name=id.getPath().toLowerCase(java.util.Locale.ROOT);
+            boolean pistol=name.matches(".*(glock|m1911|p226|p320|m9|beretta|makarov|usp|cz75|pistol|revolver|deagle).*");
+            boolean eligible=TimelessAPI.getCommonGunIndex(id).map(index->{
+                var data=index.getGunData();
+                return data!=null&&data.getAmmoId()!=null
+                    &&OperationsShop.weaponTier(id,data.getAmmoId(),data.getAmmoAmount())>=2;
+            }).orElse(false);
+            if(!pistol&&eligible&&Float.isFinite(event.getBaseAmount())&&event.getBaseAmount()>0){
+                var helmet=target.getItemBySlot(EquipmentSlot.HEAD);
+                if(helmet.isEmpty()||java.util.Set.of("taczoperations:night_vision_goggles","taczoperations:thermal_goggles").contains(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(helmet.getItem()).toString())){
+                    event.setHeadshotMultiplier(Math.max(1F,event.getHeadshotMultiplier()));
+                    event.setBaseAmount(Math.max(event.getBaseAmount(),target.getHealth()*3F+10F));
+                }else event.setBaseAmount(event.getBaseAmount()*1.5F);
+            }
+        }
         // Apply localized ballistic protection to both players and guards.
         if (!(event.getAttacker() instanceof Pillager guard)
             || !(event.getHurtEntity() instanceof ServerPlayer player)
@@ -66,6 +110,29 @@ public final class ForestCombat {
         float protection = BallisticVest.protection(player, event.getBullet(), event.isHeadShot(), damage);
         event.setBaseAmount(damage * protection / headshot);
         RaidInjuries.hit(player,event.getBullet(),event.isHeadShot(),damage*protection);
+    }
+
+    // Also cover the vanilla crossbow fallback and melee damage.
+    public static void onIncomingDamage(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event){
+        var attacker=event.getSource().getEntity();
+        if(event.getEntity() instanceof ServerPlayer p&&attacker instanceof Pillager guard
+            &&guard.level() instanceof ServerLevel level&&level.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.entryProtected(p)&&ForestRaid.currentGuard(level,guard)){
+            event.setCanceled(true);return;
+        }
+        if(attacker instanceof ServerPlayer p&&event.getEntity() instanceof Pillager guard
+            &&guard.level() instanceof ServerLevel level&&level.dimension().equals(ForestExpedition.FOREST)
+            &&ForestRaid.currentGuard(level,guard))ForestRaid.endEntryGrace(p);
+    }
+    public static void onPlayerFire(com.tacz.guns.api.event.common.GunFireEvent event){
+        if(!event.getLogicalSide().isClient()&&!event.isCanceled()&&event.getShooter() instanceof ServerPlayer p)
+            ForestRaid.endEntryGrace(p);
+    }
+    public static void onChangeTarget(net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent event){
+        if(event.getEntity() instanceof Pillager guard&&guard.level() instanceof ServerLevel level
+            &&level.dimension().equals(ForestExpedition.FOREST)
+            &&event.getNewAboutToBeSetTarget() instanceof ServerPlayer p
+            &&ForestRaid.entryProtected(p)&&ForestRaid.currentGuard(level,guard))event.setCanceled(true);
     }
 
     private static final class Aim {
@@ -179,6 +246,8 @@ public final class ForestCombat {
                 if(candidate.isCrouching())detection*=1.0-PassiveSkills.bonus(candidate,PassiveSkills.Skill.STEALTH)/100.0;
                 if (distance < range && distance < detection * detection
                     && candidate.isAlive() && !candidate.isCreative() && !candidate.isSpectator()
+                    && !ForestRaid.entryProtected(candidate)
+                    && (!ScavRun.friendly(candidate)||role.boss()||role==GuardRole.PMC)
                     && ForestRaid.sameSession(level,guard,candidate) && guard.hasLineOfSight(candidate)) {
                     target = candidate;
                     range = distance;

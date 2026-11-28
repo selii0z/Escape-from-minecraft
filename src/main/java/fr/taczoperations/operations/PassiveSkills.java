@@ -29,7 +29,7 @@ public final class PassiveSkills {
         p.getPersistentData().remove(LIMITS);p.getPersistentData().remove(MOVE);p.getPersistentData().remove("efm_skill_extraction_awarded");
     }
     private static void gain(ServerPlayer p,Skill s,int amount,boolean extraction){
-        if(amount<=0||p.isCreative()||p.isSpectator()||(!extraction&&!RaidInjuries.active(p)))return;
+        if(amount<=0||ScavRun.active(p)||p.isCreative()||p.isSpectator()||(!extraction&&!RaidInjuries.active(p)))return;
         var root=p.getPersistentData();var limits=root.getCompound(LIMITS);int used=Math.clamp(limits.getInt(s.name()),0,s.cap);
         int grant=Math.min(amount,s.cap-used);if(grant<=0)return;
         limits.putInt(s.name(),used+grant);root.put(LIMITS,limits);award(p,s,grant);
@@ -37,6 +37,10 @@ public final class PassiveSkills {
     private static void award(ServerPlayer p,Skill s,int amount){
         int before=level(p,s);var d=data(p);d.putInt(s.name(),Math.min(threshold(50),xp(p,s)+amount));
         int after=level(p,s);if(after>before)p.sendSystemMessage(Component.literal(s.title+" · niveau "+after+"/50"));
+    }
+    static void questReward(ServerPlayer p,Skill skill,int levels){
+        int target=Math.min(50,level(p,skill)+levels);
+        award(p,skill,Math.max(0,threshold(target)-xp(p,skill)));
     }
     static boolean loaded(ServerPlayer p){return p.getInventory().items.stream().filter(s->!s.isEmpty()).count()>=24;}
     // Sample movement once a second; reject stationary and teleport-scale displacements.

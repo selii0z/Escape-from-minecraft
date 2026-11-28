@@ -13,8 +13,8 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMenu>{
-    private static final int BG=0xff191e1a,FRAME=0xff515b4c,OPEN=0xff30382e,UNKNOWN=0xff202620,
-        GOLD=0xffe5ce88,LIME=0xffa6bf7d,SOFT=0xffb8c0af;
+    private static final int BG=0xff191a1c,FRAME=0xff55595d,OPEN=0xff303236,UNKNOWN=0xff202124,
+        GOLD=0xffe5e6e8,LIME=0xffa6bf7d,SOFT=0xffb8c0af;
     public RaidSearchScreen(RaidSearchMenu menu,Inventory inventory,Component title){
         super(menu,inventory,title);
         imageWidth=176;imageHeight=187;
@@ -25,7 +25,6 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
     }
     @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
         super.render(g,mouseX,mouseY,partial);
-        DiscoveryClient.maskSlots(g,menu,leftPos,topPos);
         renderTooltip(g,mouseX,mouseY);
     }
     @Override protected void renderBg(GuiGraphics g,float partial,int mouseX,int mouseY){
@@ -44,7 +43,7 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
                     g.renderOutline(sx,sy,16,16,GOLD);
                     g.fill(sx+1,sy+13,sx+1+14*menu.itemProgress()/100,sy+15,LIME);
                     g.drawCenteredString(font,"?",sx+8,sy+3,GOLD);
-                }else g.drawCenteredString(font,"?",sx+8,sy+4,0xff6c7668);
+                }else g.drawCenteredString(font,"?",sx+8,sy+4,0xff6e7276);
             }
         }
         int barX=x+8,barY=y+176;
@@ -61,11 +60,9 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
         g.drawString(font,count,168-font.width(count),164,SOFT,false);
     }
     @Override public boolean keyPressed(int key,int scan,int mods){
-        if(key==org.lwjgl.glfw.GLFW.GLFW_KEY_I&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.keyPressed(key,scan,mods);
     }
     @Override public boolean mouseClicked(double x,double y,int button){
-        if(button==2&&DiscoveryClient.inspectSlot(menu,hoveredSlot))return true;
         return super.mouseClicked(x,y,button);
     }
 }

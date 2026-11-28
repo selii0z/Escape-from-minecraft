@@ -201,6 +201,7 @@ public final class ForestExpedition {
     static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial){return departureProblem(player,board,duo,industrial,null);}
     private static boolean insideMap(int x,int z,boolean industrial,ExpressZone express){return express!=null?express.inside(x,z):industrial?IndustrialZone.inside(x,z):ForestPlan.inside(x,z);}
     static String departureProblem(ServerPlayer player,BlockPos board,boolean duo,boolean industrial,ExpressZone express){
+        if(ScavRun.active(player))return "Récupération du matériel PMC en cours.";
         if(express!=null&&!express.available())return "Les ressources de cette carte sont absentes du serveur.";
         ServerLevel forest=player.server.getLevel(FOREST);
         if(forest==null||!(forest.getChunkSource().getGenerator() instanceof ForestChunkGenerator))
@@ -260,8 +261,7 @@ public final class ForestExpedition {
             return "Une équipe occupe déjà cette carte (joueurs déconnectés inclus).";
         }
         var random = forest.getRandom();
-        var entry = express!=null?express.pos(express.entry()):industrial ? industrialPosition(IndustrialZone.ENTRY)
-            : ForestLandmarks.position(ForestPlan.ENTRIES.get(random.nextInt(ForestPlan.ENTRIES.size())));
+        var entry = deployment(forest,player,partner,industrial,express);
         int weatherRoll=random.nextInt(100);
         int weather=weatherRoll<50?0:weatherRoll<85?1:2;
         if (!enter(player, forest, entry, night, weather, industrial,express)) {
@@ -274,6 +274,60 @@ public final class ForestExpedition {
         }
         ForestRaid.begin(forest, player, partner, industrial,express);
         return "";
+    }
+
+    static String departScav(ServerPlayer player,BlockPos board,boolean night,boolean industrial,ExpressZone express){
+        String problem=departureProblem(player,board,false,industrial,express);
+        if(!problem.isEmpty())return problem;
+        problem=ScavRun.problem(player);if(!problem.isEmpty())return problem;
+        clearStaleDeparture(player);
+        var forest=player.server.getLevel(FOREST);
+        if(forest==null)return "Dimension indisponible.";
+        var random=forest.getRandom();
+        var entry=deployment(forest,player,null,industrial,express);
+        int roll=random.nextInt(100),weather=roll<50?0:roll<85?1:2;
+        problem=ScavRun.prepare(player);
+        if(!problem.isEmpty()){if(ScavRun.active(player))ScavRun.recover(player);return problem;}
+        if(!enter(player,forest,entry,night,weather,industrial,express)){
+            ScavRun.markFinished(player,false);ScavRun.recover(player);return "Départ Scav annulé.";
+        }
+        ForestRaid.begin(forest,player,null,industrial,express);
+        ScavRun.started(player);
+        player.sendSystemMessage(Component.literal("Raid Scav · équipement prêté · Scavs neutres tant que tu ne les attaques pas. Prochain départ dans 45 minutes."));
+        return "";
+    }
+
+    // Prefer a diagonal crossing, while keeping both extraction options far from deployment.
+    // The existing western-southern clearing is already generated and safe in old saves.
+    static ForestPlan.Point oppositeForestEntry(){
+        var primary=ForestPlan.EXTRACTION;
+        var secondary=ForestPlan.CONDITIONAL_EXIT;
+        return ForestPlan.ENTRIES.stream().max(java.util.Comparator.comparingDouble(p->{
+            double dx=Math.abs(p.x()-primary.x()),dz=Math.abs(p.z()-primary.z());
+            double other=Math.hypot(p.x()-secondary.x(),p.z()-secondary.z());
+            return Math.min(Math.hypot(dx,dz),other)+Math.min(dx,dz)*0.75;
+        })).orElseThrow();
+    }
+    private static BlockPos deployment(ServerLevel level,ServerPlayer player,ServerPlayer partner,boolean industrial,ExpressZone express){
+        if(express!=null)return express.pos(express.entry());
+        if(industrial)return industrialPosition(IndustrialZone.ENTRY);
+        var point=oppositeForestEntry();
+        var center=ForestLandmarks.position(point);
+        // Keep variation inside the existing tree-free clearing, not near the extraction.
+        // Validate both members before selecting an offset; never split a duo.
+        var random=level.getRandom();
+        for(int i=0;i<8;i++){
+            int x=point.x()+random.nextInt(11)-5,z=point.z()+random.nextInt(11)-5;
+            var candidate=ForestLandmarks.position(new ForestPlan.Point(x,z));
+            level.getChunk(candidate);
+            if(!standingRoom(player,level,Vec3.atBottomCenterOf(candidate)))continue;
+            if(partner!=null){
+                level.getChunk(candidate.south());
+                if(!standingRoom(partner,level,Vec3.atBottomCenterOf(candidate.south())))continue;
+            }
+            return candidate;
+        }
+        return center;
     }
 
     static BlockPos industrialPosition(ForestPlan.Point point) {
@@ -291,7 +345,7 @@ public final class ForestExpedition {
     }
 
     private static boolean canDepart(ServerPlayer player) {
-        return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping();
+        return player.isAlive() && !player.isSpectator() && !player.isPassenger() && !player.isSleeping() && !ScavRun.active(player) && !player.level().dimension().equals(Hideout.DIMENSION);
     }
 
     private static boolean enter(ServerPlayer player, ServerLevel forest, BlockPos destination, boolean night, int weather, boolean industrial,ExpressZone express) {
@@ -378,7 +432,7 @@ public final class ForestExpedition {
         BlockPos feet = player.blockPosition();
         if(express==null&&player.tickCount%20==0)ExtractionRenovation.near(player,industrial);
         if(player.tickCount%20==0)syncExits(player,industrial,relayAvailable,relay,primary,secondary);
-        if(industrial && !player.isSpectator() && player.onGround()){
+        if(industrial && !ScavRun.active(player) && !player.isSpectator() && player.onGround()){
             BlockPos keyExit=industrialPosition(IndustrialZone.KEY_EXIT);
             BlockPos paidExit=industrialPosition(IndustrialZone.PAID_EXIT);
             boolean key=inExtraction(feet,keyExit);
@@ -506,6 +560,8 @@ public final class ForestExpedition {
         ResourceLocation key = ResourceLocation.tryParse(point.getString("dimension"));
         ServerLevel origin = key == null ? null : player.server.getLevel(ResourceKey.create(Registries.DIMENSION, key));
         Vec3 destination = new Vec3(point.getDouble("x"), point.getDouble("y"), point.getDouble("z"));
+        boolean legacyHideout=Hideout.DIMENSION.location().equals(key);
+        if(legacyHideout){origin=player.server.overworld();destination=Hideout.legacyDestination(player,origin);if(destination==null)destination=safeSpawn(player,origin,origin.getSharedSpawnPos());}
         // A missing or corrupted return point must never send a player to
         // arbitrary coordinates or back into the raid dimension.
         if (!hasReturnPoint(player) || origin == null || origin == player.level()
@@ -521,13 +577,19 @@ public final class ForestExpedition {
         if (player.level() != origin) {
             return false;
         }
+        if(legacyHideout)Hideout.clearLegacyReturn(player);
         if (leavingRaid) {
             RaidInjuries.clear(player);
             RaidAudio.clear(player);
             if(extracted)RaidAudio.extract(player);
+            ForestRaid.campaignEnd(player,extracted);
             ForestRaid.finishParticipant(player);
         }
-        if (!extracted) {
+        boolean scav=ScavRun.active(player);
+        if(scav){
+            ScavRun.markFinished(player,extracted);
+            StoryMissions.clear(player);SupplyContract.abortRun(player);
+        }else if (!extracted) {
             StoryMissions.clear(player);
             recoverInterruptedInventory(player);
             if(leavingRaid)SupplyContract.interrupted(player,point.getBoolean("industrial"));
@@ -535,6 +597,7 @@ public final class ForestExpedition {
         }
         clearReturnPoint(player);
         ForestRaid.clearPlayer(player);
+        if(scav)ScavRun.recover(player);
         if (leavingRaid) {
             ForestRaid.cleanupWhenEmpty(raidLevel);
         }

@@ -217,7 +217,7 @@ public enum SupplyContract {
     // Escape from Minecraft progression XP: distinct from vanilla experience.
     // Used by the existing progression and shop-rank display.
     static void activityXp(ServerPlayer player, int amount, boolean combat, String source) {
-        if (amount <= 0 || !ForestRaid.isParticipant(player)) return;
+        if (amount <= 0 || ScavRun.active(player) || !ForestRaid.isParticipant(player)) return;
         CompoundTag data = account(player);
         // Base XP is provisional until extraction or death applies its multiplier.
         data.putInt("raid_activity_xp",
@@ -370,7 +370,7 @@ public enum SupplyContract {
     }
 
     static void chestOpened(ServerPlayer player) {
-        if (!ForestRaid.isParticipant(player)) return;
+        if (ScavRun.active(player) || !ForestRaid.isParticipant(player)) return;
         for (var contract : values()) {
             if (contract.objective == Objective.CHEST && contract.status(player) == ACTIVE) {
                 contract.advance(player);
@@ -379,7 +379,7 @@ public enum SupplyContract {
     }
 
     static void kill(ServerPlayer player, boolean elite, boolean boss) {
-        if (!ForestRaid.isParticipant(player)) return;
+        if (ScavRun.active(player) || !ForestRaid.isParticipant(player)) return;
         CompoundTag data = player.getPersistentData();
         data.putInt("taczoperations_raid_kills", data.getInt("taczoperations_raid_kills") + 1);
         if (boss) data.putBoolean("taczoperations_raid_boss", true);
@@ -395,7 +395,7 @@ public enum SupplyContract {
         if (event.getLogicalSide().isClient() || !(event.getAttacker() instanceof ServerPlayer player)
             || !(event.getKilledEntity() instanceof net.minecraft.world.entity.monster.Pillager guard)
             || !(guard.level() instanceof net.minecraft.server.level.ServerLevel level)
-            || !isAssaultRifle(event.getGunId()) || !ForestRaid.isParticipant(player)
+            || ScavRun.active(player) || !isAssaultRifle(event.getGunId()) || !ForestRaid.isParticipant(player)
             || !ForestRaid.currentGuard(level, guard) 
             || guard.getPersistentData().getBoolean("taczoperations_assault_counted")) {
             return;
@@ -491,6 +491,7 @@ public enum SupplyContract {
         int crates = player.getPersistentData().getInt("taczoperations_run_crates");
         long started = player.getPersistentData().getLong("taczoperations_run_started");
         long seconds = started > 0 ? Math.max(0, (player.server.overworld().getGameTime() - started) / 20) : 0;
+        CampaignTraderAccount.successfulPmcRaid(player,(int)Math.min(Integer.MAX_VALUE,seconds),kills,crates);
         int completed = player.getPersistentData().getInt("taczoperations_run_contracts");
         int contractXp = player.getPersistentData().getInt("taczoperations_run_contract_xp");
         saveRaidReport(player, true, seconds, kills, crates, completed, killXp, searchXp, contractXp, bonus,

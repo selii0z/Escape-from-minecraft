@@ -1,0 +1,291 @@
+import java.awt.*
+import java.awt.geom.*
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Generate smooth GUI masks and high-resolution presentation assets at build time.
+def hdArt=layout.buildDirectory.dir('generated/tacticalHd')
+tasks.register('generateTacticalHd'){
+    inputs.file('gradle/tactical-hd.gradle')
+    inputs.dir('src/main/resources/assets/taczoperations/textures/gui')
+    outputs.dir(hdArt)
+    doLast{
+        File src=file('src/main/resources/assets/taczoperations/textures/gui')
+        File root=new File(hdArt.get().asFile,'assets/taczoperations/textures/gui/hd')
+        root.mkdirs()
+        def render={String name,int w,int h,Closure painter->
+            BufferedImage img=new BufferedImage(w,h,BufferedImage.TYPE_INT_ARGB)
+            Graphics2D g=img.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON)
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY)
+            painter(g);g.dispose();ImageIO.write(img,'png',new File(root,name+'.png'))
+        }
+        def c={int hex->new Color(hex)}
+        ['rounded_fill','rounded_border'].each { name->
+            render(name,128,128){g->
+                g.setColor(Color.WHITE)
+                if(name=='rounded_fill')g.fill(new RoundRectangle2D.Double(0,0,128,128,56,56))
+                else{g.setStroke(new BasicStroke(5f));g.draw(new RoundRectangle2D.Double(3,3,122,122,50,50))}
+            }
+        }
+        render('header',2048,136){g->
+            g.setPaint(new GradientPaint(0f,0f,c(0x45484b),0f,136f,c(0x171719)));g.fillRect(0,0,2048,136)
+            Random rng=new Random(831L)
+            for(int layer=0;layer<3;layer++){
+                g.setColor(c([0x373a3d,0x25282b,0x141619][layer]))
+                for(int i=0;i<88;i++){
+                    int x=rng.nextInt(2100),base=110+layer*11,h=24+rng.nextInt(75),w=12+rng.nextInt(22)
+                    g.fillRect(x-2,base-h,4,h)
+                    for(int j=0;j<6;j++){
+                        int y=base-h+j*h.intdiv(7),r=(int)(w*(j+2)/7)
+                        g.fillPolygon([x,x-r,x+r] as int[],[y-10,y+23,y+23] as int[],3)
+                    }
+                }
+            }
+            // Original military silhouette: depot, radio dish, watchtower, and red flare.
+            g.setColor(c(0x111315))
+            g.fillRect(1270,78,215,48);g.fillRect(1290,62,170,16)
+            for(int x=1300;x<1460;x+=27){g.setColor(c(0x42464a));g.fillRect(x,88,16,14)}
+            g.setColor(c(0x0d0f11));g.setStroke(new BasicStroke(6f))
+            g.drawLine(1573,125,1598,36);g.drawLine(1648,125,1624,36)
+            g.drawLine(1584,91,1639,91);g.drawLine(1591,64,1630,64)
+            g.drawLine(1584,91,1630,64);g.drawLine(1639,91,1591,64)
+            g.fillRect(1587,24,49,22);g.fillPolygon([1578,1612,1645] as int[],[24,7,24] as int[],3)
+            g.setColor(c(0x141619));g.fillRect(1514,50,5,39)
+            g.fillArc(1487,22,60,35,195,180)
+            for(int i=14;i>=0;i--){
+                g.setColor(new Color(220,18,28,12+i*2))
+                g.fillOval(1810+i*6,106-i*7,18+i*5,12+i*4)
+            }
+            g.setColor(c(0xff4749));g.fillOval(1811,108,11,7)
+            g.setPaint(new GradientPaint(0f,0f,new Color(18,18,18,240),560f,0f,new Color(18,18,18,35)));g.fillRect(0,0,620,136)
+            // Brand is baked into the header; the current page and trader remain live text.
+            g.setColor(new Color(10,11,13,220))
+            g.fillPolygon([0,550,590,550,0] as int[],[0,0,68,136,136] as int[],5)
+            g.setColor(c(0x5c2228));g.setStroke(new BasicStroke(3f))
+            g.drawPolyline([0,550,590,550,0] as int[],[1,1,68,135,135] as int[],5)
+            g.setColor(c(0xec242d));g.fillPolygon([15,55,80,40] as int[],[42,6,6,42] as int[],4)
+            g.setFont(new Font('SansSerif',Font.BOLD|Font.ITALIC,78))
+            float ratio=Math.min(1f,475f/g.getFontMetrics().stringWidth('BLACKZXNE'))
+            def oldTransform=g.getTransform()
+            g.translate(48,22);g.scale(ratio,1.0)
+            int tx=0
+            ['BLACKZ','X','NE'].eachWithIndex{part,idx->
+                g.setColor(c(idx==1?0xf5303a:0xe9ebed));g.drawString(part,tx,62);tx+=g.getFontMetrics().stringWidth(part)
+            }
+            g.setTransform(oldTransform)
+            g.setFont(new Font('SansSerif',Font.BOLD,20))
+            g.setColor(c(0xc5c8cb));String subtitle='E S C A P E   E X P E R I E N C E'
+            g.drawString(subtitle,Math.max(30,(550-g.getFontMetrics().stringWidth(subtitle)).intdiv(2)),115)
+            g.setColor(c(0x777b80));g.setStroke(new BasicStroke(3f));g.drawLine(0,2,2048,2)
+            g.setColor(c(0xe0232a));g.drawLine(0,133,2048,133)
+        }
+        // Render the brand independently at 8x the logical GUI dimensions.
+        // Never upscale the text from a screenshot.
+        render('blackzxne_brand',1872,432){g->
+            g.setPaint(new GradientPaint(0f,0f,c(0x181a1d),0f,432f,c(0x08090b)));g.fillRect(0,0,1872,432)
+            g.setColor(c(0x33161c));g.setStroke(new BasicStroke(6f))
+            g.drawPolyline([0,1710,1860,1710,0] as int[],[5,5,216,427,427] as int[],5)
+            g.setColor(c(0xe62833));g.fillPolygon([55,165,245,135] as int[],[123,28,28,123] as int[],4)
+            g.setColor(c(0x70212a));g.fillPolygon([1515,1630,1800,1685] as int[],[410,410,238,238] as int[],4)
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            Font brandFont=Font.createFont(Font.TRUETYPE_FONT,file('src/main/resources/assets/taczoperations/font/heading.ttf')).deriveFont(Font.BOLD|Font.ITALIC,245f)
+            def frc=g.getFontRenderContext()
+            def shapes=['BLACKZ','X','NE'].collect{part->brandFont.createGlyphVector(frc,part)}
+            double total=shapes.collect{it.getLogicalBounds().getWidth()}.sum()
+            double factor=Math.min(1d,1550d/total)
+            def transform=g.getTransform()
+            g.translate(155,245);g.scale(factor,1d)
+            double off=0
+            shapes.eachWithIndex{glyph,idx->
+                Shape shape=glyph.getOutline((float)off,0f)
+                g.setColor(new Color(0,0,0,190));g.setStroke(new BasicStroke(10f));g.draw(shape)
+                g.setPaint(new GradientPaint(0f,-185f,c(idx==1?0xff5a61:0xf8fafc),0f,0f,c(idx==1?0xb90a18:0x9ca3aa)))
+                g.fill(shape)
+                off+=glyph.getLogicalBounds().getWidth()
+            }
+            g.setTransform(transform)
+            g.setFont(brandFont.deriveFont(Font.BOLD,57f))
+            String tagline='E S C A P E   E X P E R I E N C E'
+            g.setColor(c(0xd0d5da));g.drawString(tagline,Math.max(60,(1740-g.getFontMetrics().stringWidth(tagline)).intdiv(2)),362)
+            g.setPaint(new GradientPaint(0f,0f,c(0xc9222c),1650f,0f,c(0x542027)));g.fillRect(24,407,1650,7)
+        }
+        // Illustrated navigation: brighter photographic-style crops, dimensional props,
+        // and a short dark gradient behind the live label instead of a full dark wash.
+        def cover={Graphics2D gr,BufferedImage art,int w,int h,double focus->
+            double fit=Math.max(w/(double)art.width,h/(double)art.height)
+            int aw=Math.round((float)(art.width*fit)),ah=Math.round((float)(art.height*fit))
+            gr.drawImage(art,(w-aw).intdiv(2),(int)((h-ah)*focus),aw,ah,null)
+        }
+        def block={Graphics2D gr,int x,int y,int w,int h,int d,int rgb->
+            Color base=c(rgb)
+            gr.setColor(base.darker());gr.fillPolygon([x+w,x+w+d,x+w+d,x+w] as int[],[y,y-d,y+h-d,y+h] as int[],4)
+            gr.setColor(base.brighter());gr.fillPolygon([x,x+d,x+w+d,x+w] as int[],[y,y-d,y-d,y] as int[],4)
+            gr.setColor(base);gr.fillRect(x,y,w,h)
+        }
+        def operator={Graphics2D gr,int x,int y,int scale,int rgb->
+            def old=gr.getTransform()
+            gr.translate(x,y);gr.scale(scale/100d,scale/100d)
+            block(gr,-73,99,47,122,17,0x373c3c);block(gr,24,99,47,122,17,0x373c3c)
+            block(gr,-76,-8,152,125,23,rgb)
+            block(gr,-112,5,39,100,14,0x515951);block(gr,76,5,39,100,14,0x515951)
+            block(gr,-56,-88,110,88,20,0x8c7966)
+            block(gr,-63,-108,124,39,18,0x4c5550)
+            gr.setColor(c(0x171f25));gr.fillRect(-53,-63,104,22)
+            gr.setColor(c(0x8fa9ac));gr.fillRect(-45,-60,39,11);gr.fillRect(7,-60,36,11)
+            gr.setColor(c(0x292f2d));gr.fillRect(-59,4,118,86)
+            for(int j=0;j<3;j++)block(gr,-51+j*35,38,27,45,7,0x646c5d)
+            gr.setColor(c(0x9ca79f));gr.fillRect(-12,10,26,13)
+            gr.setTransform(old)
+        }
+        def navSources=['forest','military','village','merchant_armorer','military','industrial','underground']
+        navSources.eachWithIndex{source,i->
+            BufferedImage art=ImageIO.read(new File(src,source+'.png'))
+            render('nav_'+i,1040,224){gr->
+                gr.setClip(new RoundRectangle2D.Double(0,0,1040,224,30,30))
+                cover(gr,art,1040,224,0.42d)
+                gr.setColor(new Color(10,12,16,36));gr.fillRect(0,0,1040,224)
+                gr.setPaint(new GradientPaint(535f,0f,new Color(30,34,38,0),1040f,0f,new Color(10,12,15,85)))
+                gr.fillRect(535,0,505,224)
+                if(i==0){operator(gr,850,102,92,0x687564)}
+                else if(i==1||i==2||i==5){
+                    def old=gr.getTransform()
+                    gr.translate(844,112);gr.rotate(i==2?-.15d:.10d)
+                    block(gr,-113,-78,212,159,12,i==5?0x60534a:0x9c937b)
+                    block(gr,-95,-67,175,141,5,i==5?0xb7b9b3:0xd9cdb0)
+                    gr.setColor(c(0x716756));gr.setStroke(new BasicStroke(3f))
+                    for(int j=0;j<6;j++)gr.drawLine(-76,-42+j*17,55,-42+j*17)
+                    if(i==1){
+                        gr.setColor(c(0x425f4b));gr.fillPolygon([-85,-35,7,43,72] as int[],[48,-28,-10,-45,50] as int[],5)
+                        gr.setColor(c(0xaa2c36));gr.setStroke(new BasicStroke(5f));gr.drawPolyline([-60,-20,17,55] as int[],[32,-15,21,-36] as int[],4)
+                    }else if(i==2){
+                        gr.setColor(c(0x8e3038));gr.fillRect(-11,-67,9,141)
+                        gr.setColor(c(0x514c46));gr.drawRect(5,-40,60,55)
+                    }else{
+                        gr.setColor(c(0xa7343c));gr.rotate(-.16d);gr.fillRect(-62,-6,115,23)
+                        gr.setColor(c(0xdbb0ad));gr.drawRect(-58,-3,107,17)
+                    }
+                    gr.setTransform(old)
+                }else if(i==3){
+                    block(gr,706,73,230,121,28,0x485749)
+                    block(gr,722,48,230,39,21,0x65745f)
+                    for(int j=0;j<2;j++){gr.setColor(c(0xb7b49b));gr.fillRect(742+j*149,84,20,35)}
+                    gr.setColor(c(0x22282a));gr.fillRect(777,116,95,24)
+                    gr.setColor(c(0xc9c5ad));gr.fillRect(791,123,62,8)
+                }else if(i==4){
+                    def old=gr.getTransform();gr.translate(850,107);gr.rotate(-.12d)
+                    block(gr,-93,-86,186,172,12,0x454e43)
+                    gr.setColor(c(0xd0b57d));gr.setStroke(new BasicStroke(17f))
+                    for(int j=0;j<3;j++)gr.drawPolyline([-61,0,61] as int[],[-12+j*45,-48+j*45,-12+j*45] as int[],3)
+                    gr.setTransform(old)
+                }else{
+                    block(gr,707,40,241,141,21,0x4c5358)
+                    block(gr,725,56,203,89,6,0x172b32)
+                    gr.setColor(c(0x6ab9ac));gr.setStroke(new BasicStroke(4f));gr.drawPolyline([740,760,781,801,827,851,877,909] as int[],[114,114,80,115,98,115,73,115] as int[],8)
+                    for(int j=0;j<6;j++)block(gr,733+j*30,155,20,10,3,j==5?0xa73139:0x8e9697)
+                }
+                gr.setPaint(new GradientPaint(0f,0f,new Color(7,9,12,222),730f,0f,new Color(7,9,12,0)))
+                gr.fillRect(0,0,730,224)
+                gr.setClip(null)
+            }
+        }
+        // Small scene illustrations for the four deployment choices.
+        for(int i=0;i<4;i++){
+            int mode=i
+            render('choice_'+i,560,288){gr->
+                gr.setClip(new RoundRectangle2D.Double(0,0,560,288,26,26))
+                boolean dark=mode==1
+                gr.setPaint(new GradientPaint(0f,0f,c(dark?0x111f4c:mode==0?0x5495ba:0x626e78),0f,288f,c(dark?0x455b81:mode==0?0xe1b56c:0x222a31)))
+                gr.fillRect(0,0,560,288)
+                if(mode<2){
+                    gr.setColor(c(dark?0xc1dbfa:0xffe6a1));gr.fillOval(370,21,83,83)
+                    if(dark){gr.setColor(c(0x192a52));gr.fillOval(398,9,77,77)}
+                    Random stars=new Random(67L)
+                    if(dark)for(int j=0;j<32;j++){gr.setColor(c(0xa3bad8));gr.fillRect(stars.nextInt(560),stars.nextInt(135),3,3)}
+                    gr.setColor(c(dark?0x2a3952:0x819a8e))
+                    gr.fillPolygon([0,105,192,270,375,470,560,560,0] as int[],[155,56,135,90,150,76,137,288,288] as int[],9)
+                    for(int j=0;j<14;j++){
+                        int x=j*44-12,hh=40+stars.nextInt(80)
+                        gr.setColor(c(dark?0x141f29:0x3c5a43))
+                        gr.fillRect(x-4,224-hh,8,hh+35)
+                        for(int k=0;k<4;k++)gr.fillPolygon([x,x-19-k*4,x+19+k*4] as int[],[224-hh+k*17,250-hh+k*17,250-hh+k*17] as int[],3)
+                    }
+                    gr.setColor(c(dark?0x111c25:0x344c39));gr.fillRect(0,224,560,64)
+                }else{
+                    for(int j=0;j<7;j++){gr.setColor(c(0x42494e));gr.fillRect(j*90,110-(j%3)*16,78,178)}
+                    if(mode==2)operator(gr,280,132,107,0x687b66)
+                    else{operator(gr,178,132,95,0x677863);operator(gr,375,123,101,0x626e7e)}
+                }
+                gr.setClip(null)
+            }
+        }
+        // BLACKZXNE board palette. Four-part geometry is shared with SAPHXR,
+        // but the metal, screens and tactical documents use a separate identity.
+        File boardRoot=new File(root.parentFile.parentFile,'block')
+        boardRoot.mkdirs()
+        def boardArt={String name,int bg,int accent,Closure draw->
+            BufferedImage img=new BufferedImage(32,32,BufferedImage.TYPE_INT_ARGB)
+            Graphics2D gr=img.createGraphics()
+            Random rand=new Random(940L+name.hashCode())
+            for(int y=0;y<32;y++)for(int x=0;x<32;x++){
+                int noise=rand.nextInt(9)-4
+                int shade=(y==0||x==0)?12:(y==31||x==31)?-14:0
+                int r=Math.clamp(((bg>>16)&255)+noise+shade,0,255)
+                int gg=Math.clamp(((bg>>8)&255)+noise+shade,0,255)
+                int b=Math.clamp((bg&255)+noise+shade,0,255)
+                img.setRGB(x,y,new Color(r,gg,b).getRGB())
+            }
+            gr.setColor(c(accent));draw(gr);gr.dispose()
+            ImageIO.write(img,'png',new File(boardRoot,'blackzxne_board_'+name+'.png'))
+        }
+        boardArt('steel',0x303338,0x64686e){gr->
+            gr.fillRect(1,1,2,2);gr.fillRect(29,1,2,2);gr.fillRect(1,29,2,2);gr.fillRect(29,29,2,2)
+            gr.setColor(c(0x1b1d20));gr.fillRect(5,3,2,26);gr.fillRect(25,3,2,26)
+        }
+        boardArt('board',0x22262a,0x343b40){gr->
+            for(int x=3;x<32;x+=7)gr.drawLine(x,0,x,31)
+            for(int y=5;y<32;y+=8)gr.drawLine(0,y,31,y)
+        }
+        boardArt('edge',0x33363a,0x5c6268){gr->
+            gr.fillRect(0,0,32,2);gr.setColor(c(0x1a1b1e));gr.fillRect(0,29,32,3)
+            gr.setColor(c(0xa9242d));gr.fillRect(3,14,26,3)
+        }
+        boardArt('header',0x202327,0xd72c37){gr->
+            gr.fillRect(0,27,32,3);gr.fillRect(2,5,3,19);gr.fillRect(8,5,3,19)
+            gr.setColor(c(0xc8cdd0));gr.fillRect(15,9,13,3);gr.fillRect(15,15,9,3)
+        }
+        boardArt('red',0x8c1720,0xf34b50){gr->gr.fillRect(1,1,30,3);gr.fillRect(1,28,30,3)}
+        boardArt('paper_map',0x52564e,0x969e85){gr->
+            gr.drawRect(2,2,27,27);gr.drawLine(5,22,14,6);gr.drawLine(14,6,26,13)
+            gr.setColor(c(0xc23a40));gr.drawLine(6,23,16,19);gr.drawLine(16,19,23,8);gr.fillRect(21,6,4,4);gr.fillRect(4,21,4,4)
+        }
+        boardArt('paper_list',0x777a76,0xb7bcb8){gr->
+            gr.fillRect(5,5,20,3);gr.setColor(c(0x3e4547))
+            for(int y=12;y<28;y+=5){gr.drawRect(4,y,3,3);gr.fillRect(11,y+1,15,1)}
+            gr.setColor(c(0xbd2935));gr.fillRect(4,13,4,2);gr.fillRect(4,18,4,2)
+        }
+        // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.
+        ['forest','industrial','village','underground','quarantine','military','warehouse'].each { id->
+            File source=new File(src,id+'.png')
+            BufferedImage original=ImageIO.read(source.isFile()?source:new File(src,'industrial.png'))
+            render(id,1920,860){g->g.drawImage(original,0,0,1920,860,null)}
+        }
+        // Reuse the full-resolution character art instead of the former 16-pixel atlas.
+        // Each merchant gets its own square crop and color treatment; remaining original portraits are retained.
+        def roles=['armorer','medic','salvager','broker','armorer','salvager','armorer','broker','broker','medic','salvager']
+        def shades=[0x8c704d,0xc0c1ae,0x697584,0xbca17a,0x767871,0x977347,0x5d7455,0x383d46,0x9b694a,0x72959b,0x887754]
+        roles.eachWithIndex { role,i->
+            BufferedImage original=ImageIO.read(new File(src,'merchant_'+role+'.png'))
+            render('portrait_'+i,512,512){g->
+                int side=original.width,top=Math.max(0,Math.min(original.height-side,8))
+                g.drawImage(original,0,0,512,512,0,top,side,top+side,null)
+                Color tint=c(shades[i]);g.setComposite(AlphaComposite.SrcOver.derive(0.13f))
+                g.setColor(tint);g.fillRect(0,0,512,512)
+                g.setComposite(AlphaComposite.SrcOver);g.setPaint(new GradientPaint(0f,390f,new Color(10,10,10,0),0f,512f,new Color(10,10,10,95)));g.fillRect(0,390,512,122)
+            }
+        }
+    }
+}
+sourceSets.main.resources.srcDir(hdArt)
+tasks.named('processResources'){dependsOn tasks.named('generateTacticalHd')}

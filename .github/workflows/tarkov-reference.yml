@@ -1,0 +1,58 @@
+name: Tarkov reference audit
+on:
+  push:
+    branches: [feature/tarkov-campaign]
+    paths:
+      - tools/tarkov_campaign_snapshot.py
+      - tools/tarkov_campaign_index.py
+      - tools/tarkov_campaign_items.py
+      - tools/tarkov_campaign_bulk.py
+      - 'src/main/resources/data/taczoperations/campaign/**'
+      - 'src/main/java/fr/taczoperations/campaign/**'
+      - 'src/test/java/fr/taczoperations/campaign/**'
+      - .github/workflows/tarkov-reference.yml
+  pull_request:
+    branches: [feature/1.4.0-hideout]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Test campaign graph
+        run: |
+          javac -d build/campaign-tests src/main/java/fr/taczoperations/campaign/CampaignGraph.java src/main/java/fr/taczoperations/campaign/TurnInPlanner.java src/main/java/fr/taczoperations/campaign/FieldAction.java src/main/java/fr/taczoperations/campaign/CampaignTrader.java src/main/java/fr/taczoperations/campaign/TraderRequirement.java src/main/java/fr/taczoperations/campaign/StockObjectives.java src/test/java/fr/taczoperations/campaign/CampaignGraphTest.java
+          java -cp build/campaign-tests fr.taczoperations.campaign.CampaignGraphTest
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and audit reference data
+        run: python3 tools/tarkov_campaign_snapshot.py --mode pve
+      - name: Build review index
+        run: python3 tools/tarkov_campaign_index.py
+      - name: Resolve quest items, loyalty and Collector
+        run: python3 tools/tarkov_campaign_items.py
+      - name: Stage all reference quests and draft bulk adapters
+        run: python3 tools/tarkov_campaign_bulk.py
+      - name: Upload audit manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarkov-reference-manifest
+          path: |
+            build/tarkov-reference/manifest.json
+            build/tarkov-review/
+      - name: Preserve frozen reference snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarkov-reference-snapshot
+          path: build/tarkov-reference/*.json
+          retention-days: 30
+          if-no-files-found: error

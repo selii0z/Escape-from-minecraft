@@ -62,7 +62,7 @@ public final class RaidResultScreen extends Screen {
             texture.setFilter(true,false);
             graphics.blit(illustration,(width-imageWidth)/2,(height-imageHeight)/2,imageWidth,imageHeight,
                 0f,0f,sourceW,sourceH,sourceW,sourceH);
-        }else graphics.fill(0,0,width,height,0xff161d19);
+        }else graphics.fill(0,0,width,height,0xff161719);
         graphics.fill(0, 0, width, height, 0x44000000);
         graphics.pose().pushPose();
         graphics.pose().translate(width/2F,height/2F,0);
@@ -119,7 +119,7 @@ public final class RaidResultScreen extends Screen {
         int priorWidth=(int)Math.clamp((xpBefore-(long)lower)*w/span,0L,w);
         int filled=(int)Math.clamp((shown-(long)lower)*w/span,0L,w);
         g.drawCenteredString(font,MilitaryProgression.label(shown)+"  ·  "+MilitaryProgression.grade(shown),x,y+1,0xffdadada);
-        g.fill(left-1,y+15,left+w+1,y+29,0xff626964);
+        g.fill(left-1,y+15,left+w+1,y+29,0xff666a6e);
         g.fill(left,y+16,left+w,y+28,0xff303639);
         if(priorWidth>0) g.fill(left,y+16,left+priorWidth,y+28,0xff829d75);
         if(filled>priorWidth) g.fill(left+priorWidth,y+16,left+filled,y+28,0xff8fdc57);

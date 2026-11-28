@@ -83,8 +83,8 @@ public final class WeaponCondition {
         return Math.max(1,(cost*(100-Math.clamp(discount,0,30))+99)/100);
     }
     static String repair(ServerPlayer p){return repair(p,0);}
-    static String repair(ServerPlayer p,int discount){
-        var stack=p.getMainHandItem();
+    static String repair(ServerPlayer p,int discount){return repair(p,p.getMainHandItem(),discount);}
+    static String repair(ServerPlayer p,ItemStack stack,int discount){
         if(!(stack.getItem() instanceof IGun))return "Tiens l'arme TaCZ à réparer en main.";
         int value=condition(stack);
         if(value==FULL&&!jammed(stack))return "Arme déjà en parfait état.";

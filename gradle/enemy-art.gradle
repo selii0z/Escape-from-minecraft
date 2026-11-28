@@ -11,6 +11,7 @@ tasks.register('generateEnemyArt'){
     outputs.dir(enemyArt)
     doLast{
         ['pmc_usec','pmc_bird_eye','raider','scout','soldier','marksman','heavy','leader','tagilla','shturman','killa','reshala','glukhar','sanitar','kaban','kollontay','partisan','zryachiy','knight','big_pipe','birdeye','cultist_priest','wedge','wedge_labs','shadow_tagilla','vengeful_killa','infected_tagilla','black_division'].eachWithIndex { id,variant ->
+            boolean scav=variant>=2&&variant<=7
             def cubes=[]
             def cube={String part,List origin,List size,List uv ->
                 cubes.add([part:part,origin:origin,size:size,uv:uv,offset:[0,0,0],rotation:[0,0,0],inflate:0])
@@ -21,10 +22,18 @@ tasks.register('generateEnemyArt'){
             cube('left_arm',[-1,-2,-2],[4,12,4],[16,24])
             cube('right_leg',[-2,0,-2],[4,12,4],[32,24])
             cube('left_leg',[-2,0,-2],[4,12,4],[48,24])
-            cube('head',[-4.5,-9,-4.5],[9,4,9],[0,48])
-            cube('body',[-4.5,1,-3],[9,9,6],[40,48])
-            cube('body',[-3,4,-4],[6,4,1],[0,70])
-            cube('body',[-4,0,2],[8,10,3],[20,70])
+            if(scav){
+                // Knit cap / cap brim, light jacket, sling bag; no PMC helmet or plate carrier silhouette.
+                cube('head',[-4.3,-8.7,-4.3],[8,3,8],[0,48])
+                cube('body',[-4.2,0,-2.4],[8,11,5],[40,48])
+                cube('body',[-3,5,-3],[6,3,1],[0,70])
+                cube('body',[-3,2,2],[6,6,2],[20,70])
+            }else{
+                cube('head',[-4.5,-9,-4.5],[9,4,9],[0,48])
+                cube('body',[-4.5,1,-3],[9,9,6],[40,48])
+                cube('body',[-3,4,-4],[6,4,1],[0,70])
+                cube('body',[-4,0,2],[8,10,3],[20,70])
+            }
             if(variant>=8){cube('head',[-4,-5,-5],[8,4,1],[0,96]);cube('body',[-5,2,-3],[1,6,6],[20,96]);cube('body',[4,2,-3],[1,6,6],[40,96])}
             cube('right_leg',[-2,8,-2.5],[4,4,5],[48,70])
             cube('left_leg',[-2,8,-2.5],[4,4,5],[70,70])
@@ -37,7 +46,9 @@ tasks.register('generateEnemyArt'){
             def rng=new Random(variant+2309L)
             def palette=[0x686b4e,0x485a53,0x76634b,0x657160,0x646850,0x514f43,0x3b4945,0x77725c,0x75654a,0x4a5550,0x343c37,0x887454,0x515e55,0x8c8170,0x575d47,0x505b69,0x655842,0x667a68,0x3c4a3d,0x5e6054,0x6a735c,0x393b45,0x454a59,0x414d64,0x5e3e39,0x3e3532,0x6a674b,0x252d2a]
             def tone=palette[variant]
-            def colors=[0xa18b71,tone,tone,tone,0x666650,0x666650,0x333c35,0x333e32,0x767b61,0x444c39,0x292c29,0x292c29,0x323c38,0x626960,0x626960]
+            def civilian=[0x9b593d,0x4a6179,0x966d42,0x78504d,0x697749,0x7d685a]
+            if(scav)tone=civilian[variant-2]
+            def colors = scav ? [0xc3a080,tone,tone,tone,0x434b58,0x434b58,0x514139,tone,0x9d8764,0x69543f,0x443832,0x443832] : [0xa18b71,tone,tone,tone,0x666650,0x666650,0x333c35,0x333e32,0x767b61,0x444c39,0x292c29,0x292c29,0x323c38,0x626960,0x626960]
             cubes.eachWithIndex { c,i ->
                 int u=c.uv[0],v=c.uv[1],w=c.size[0],h=c.size[1],d=c.size[2]
                 int rgb=colors[i] as int
@@ -50,7 +61,7 @@ tasks.register('generateEnemyArt'){
                     image.setRGB(x,y,(int)(0xff000000L|(r<<16)|(gr<<8)|b))
                 }
                 g.setColor(new Color(0x252e27))
-                if(i==0){g.fillRect(u+d+1,v+d+2,2,1);g.fillRect(u+d+5,v+d+2,2,1);g.fillRect(u+d,v+d+5,w,3)}
+                if(i==0){g.fillRect(u+d+1,v+d+2,2,1);g.fillRect(u+d+5,v+d+2,2,1);if(!scav)g.fillRect(u+d,v+d+5,w,3);else g.fillRect(u+d+3,v+d+6,2,1)}
                 if(i==7){g.fillRect(u+d,v+d+1,w,1);g.fillRect(u+d,v+d+7,w,1)}
                 if(i==8){g.fillRect(u+d+1,v+d,1,h);g.fillRect(u+d+4,v+d,1,h)}
             }

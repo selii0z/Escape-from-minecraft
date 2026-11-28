@@ -26,33 +26,10 @@ public final class ItemDiscovery {
         else key="item/"+BuiltInRegistries.ITEM.getKey(item);
         return key.length()<=MAX_KEY?key:"";
     }
-    static boolean inspect(ServerPlayer p,ItemStack s){
-        String key=identity(s);if(key.isEmpty())return false;
-        var account=SupplyContract.account(p);var known=account.getCompound(KEY);
-        if(known.getBoolean(key))return false;
-        if(known.getAllKeys().size()>=LIMIT){
-            p.displayClientMessage(Component.literal("Registre d'inspection plein."),true);return false;
-        }
-        known.putBoolean(key,true);account.put(KEY,known);
-        PacketDistributor.sendToPlayer(p,new DiscoveryState(false,java.util.List.of(key)));
-        p.displayClientMessage(Component.literal("Objet identifié : "+s.getHoverName().getString()),true);
-        return true;
-    }
-    private static void sync(ServerPlayer p){
-        var keys=SupplyContract.account(p).getCompound(KEY).getAllKeys().stream()
-            .filter(k->k.length()<=MAX_KEY).limit(LIMIT).sorted().toList();
-        PacketDistributor.sendToPlayer(p,new DiscoveryState(true,keys));
-    }
-    public static void login(PlayerEvent.PlayerLoggedInEvent e){if(e.getEntity() instanceof ServerPlayer p)sync(p);}
-    public static void respawn(PlayerEvent.PlayerRespawnEvent e){if(e.getEntity() instanceof ServerPlayer p)sync(p);}
-    public static void request(ServerPlayer p,InspectItem msg){
-        if(!p.isAlive()||p.isSpectator()||p.containerMenu.containerId!=msg.menuId()||!p.containerMenu.stillValid(p))return;
-        var menu=p.containerMenu;int row=msg.index();
-        if(menu instanceof OperationsMenu operations){operations.inspectOffer(p,msg.kind(),row);return;}
-        if(msg.kind()!=0||row<0||row>=menu.slots.size())return;
-        if(!(menu instanceof FieldInventoryMenu||menu instanceof RaidSearchMenu||menu==p.inventoryMenu))return;
-        if(menu instanceof RaidSearchMenu search&&row<27&&row>=search.discoveredSlots())return;
-        inspect(p,menu.getSlot(row).getItem());
-    }
+    // Retain legacy signatures and data; examination is no longer a gameplay mechanic.
+    static boolean inspect(ServerPlayer p,ItemStack s){return false;}
+    public static void login(PlayerEvent.PlayerLoggedInEvent e){}
+    public static void respawn(PlayerEvent.PlayerRespawnEvent e){}
+    public static void request(ServerPlayer p,InspectItem msg){}
     private ItemDiscovery(){}
 }

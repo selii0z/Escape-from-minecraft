@@ -1,0 +1,61 @@
+// Temporary vanilla icons until original Collector artwork is finished.
+def collectorSource=file('src/main/resources/data/taczoperations/campaign/collector-items.txt')
+def supplySource=file('src/main/resources/data/taczoperations/campaign/supplies.txt')
+def collectorModels=layout.buildDirectory.dir('generated/collectorModels')
+tasks.register('generateCollectorModels'){
+    inputs.file(collectorSource)
+    inputs.file(supplySource)
+    inputs.file('gradle/collector-art.gradle')
+    outputs.dir(collectorModels)
+    doLast {
+        collectorSource.readLines('UTF-8').findAll{!it.isBlank()}.each{ line ->
+            def fields=line.split('[|]',-1)
+            def model=new File(collectorModels.get().asFile,"assets/taczoperations/models/item/collector_"+fields[0]+".json")
+            model.parentFile.mkdirs()
+            model.text=groovy.json.JsonOutput.toJson([parent:'minecraft:item/generated',textures:[layer0:'minecraft:item/'+fields[2]]])
+        }
+
+        supplySource.readLines('UTF-8').findAll{!it.isBlank()}.each{ line ->
+            def fields=line.split('[|]',-1)
+            def model=new File(collectorModels.get().asFile,"assets/taczoperations/models/item/supply_"+fields[0]+".json")
+            model.parentFile.mkdirs()
+            model.text=groovy.json.JsonOutput.toJson([parent:'minecraft:item/generated',textures:[layer0:'minecraft:item/'+fields[2]]])
+        }
+        // Original metallic dog tag sprite: engraved plate and chain, transparent background.
+        def image=new java.awt.image.BufferedImage(64,64,java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        def g=image.createGraphics()
+        try {
+            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+            g.setStroke(new java.awt.BasicStroke(3f))
+            g.setColor(new java.awt.Color(0x303a40))
+            g.drawArc(9,3,36,32,12,315)
+            g.setStroke(new java.awt.BasicStroke(1.3f))
+            g.setColor(new java.awt.Color(0xb5c3c6))
+            g.drawArc(9,3,36,32,12,315)
+            g.translate(32,38);g.rotate(-0.27d)
+            g.setColor(new java.awt.Color(0x252c30))
+            g.fillRoundRect(-21,-15,43,32,9,9)
+            g.setPaint(new java.awt.GradientPaint(-19f,-14f,new java.awt.Color(0xe1e7e5),20f,15f,new java.awt.Color(0x64767d)))
+            g.fillRoundRect(-19,-14,39,28,8,8)
+            g.setColor(new java.awt.Color(0xf1f3eb))
+            g.drawRoundRect(-18,-13,37,26,7,7)
+            g.setColor(new java.awt.Color(0x465159))
+            g.fillOval(-16,-4,7,7)
+            g.setColor(new java.awt.Color(0x151d21))
+            g.fillOval(-14,-3,4,4)
+            g.setColor(new java.awt.Color(0x566367))
+            for(int y=-7;y<=8;y+=5)g.fillRoundRect(-5,y,19-(y==8?5:0),2,2,2)
+        } finally {g.dispose()}
+        def tagTexture=new File(collectorModels.get().asFile,'assets/taczoperations/textures/item/military_tag.png')
+        tagTexture.parentFile.mkdirs()
+        javax.imageio.ImageIO.write(image,'png',tagTexture)
+        // Original case silhouette already packaged by raid-art; make variants distinguishable.
+        ['alpha','beta','epsilon','gamma','kappa'].each{ id ->
+            def model=new File(collectorModels.get().asFile,"assets/taczoperations/models/item/secure_"+id+".json")
+            model.parentFile.mkdirs()
+            model.text=groovy.json.JsonOutput.toJson([parent:'taczoperations:item/secure_case'])
+        }
+    }
+}
+sourceSets.main.resources.srcDir(collectorModels)
+tasks.named('processResources'){dependsOn tasks.named('generateCollectorModels')}

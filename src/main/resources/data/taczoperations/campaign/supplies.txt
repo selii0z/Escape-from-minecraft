@@ -1,0 +1,143 @@
+577e1c9d2459773cd707c525|Printer paper|paper
+59faf98186f774067b6be103|Alkaline cleaner for heat exchangers|glass_bottle
+59e3596386f774176c10a2a2|PAID antiroach spray|glass_bottle
+59e3556c86f7741776641ac2|OX bleach|glass_bottle
+5e2af02c86f7746d420957d4|Pack of chlorine|paper
+5e2af00086f7746d3f3c33f7|Smoked Chimney drain cleaner|glass_bottle
+5e2aef7986f7746d3f3c33f5|Repellent|glass_bottle
+62a09ee4cf4a99369e262453|Can of white salt|sugar
+5d40412b86f7743cb332ac3a|Schaman shampoo|glass_bottle
+5c13cd2486f774072c757944|Soap|white_dye
+59e35abd86f7741778269d82|Pack of sodium bicarbonate|paper
+5c13cef886f774072e618e82|Toilet paper|paper
+5d4041f086f7743cac3f22a7|Ortodontox toothpaste|white_dye
+67586c61a0c49554ed0bb4a8|Shyshka Christmas tree life extender|glass_bottle
+59e358a886f7741776641ac3|Clin window cleaner|glass_bottle
+57347c93245977448d35f6e3|Toothpaste|white_dye
+60391b0fb847c71012789415|TP-200 TNT brick|brick
+56742c284bdc2d98058b456d|Crickent lighter|flint
+67586bee39b1b82b0d0f9d06|Special 40-degree fuel|glass_bottle
+59fafb5d86f774067a6f2084|Propane tank 5L|iron_ingot
+5e2af2bc86f7746d3f3c33fc|Hunting matches|stick
+5e2af37686f774755a234b65|SurvL survivor lighter|flint
+60391a8b3364dc22b04d0ce5|Can of thermite|iron_ingot
+590c5bbd86f774785762df04|WD-40 100ml|glass_bottle
+590c5c9f86f77477c91c36e7|WD-40 400ml|glass_bottle
+57347b8b24597737dd42e192|Classic matches|stick
+56742c2e4bdc2d95058b456d|Zibbo lighter|flint
+699f09de81a6c812900a77b7|AMG-10 hydraulic fluid|glass_bottle
+590a373286f774287540368b|Dry fuel|coal
+5b43575a86f77424f443fe62|Fuel conditioner|glass_bottle
+5d1b36a186f7742523398433|Metal fuel tank|iron_ingot
+5d1b371186f774253763a656|Expeditionary fuel tank|iron_ingot
+59e35cbb86f7741778269d83|Tuyau annelé|string
+590c5d4b86f774784e1b9c45|Ration Iskra|bread
+5448ff904bdc2d6f028b456e|Biscuits militaires|cookie
+57505f6224597709a92585a9|Chocolat Alyonka|cookie
+57347da92459774491567cf5|Ragoût de bœuf grand format|cooked_beef
+57347d3d245977448f7b7f61|Croûtons de seigle|bread
+57347d7224597744596b4e72|Ragoût de bœuf petit format|cooked_beef
+5734773724597737fd047c14|Lait concentré|milk_bucket
+5751487e245977207e26a315|Croûtons Emelya|bread
+57347d9c245977448b40fa85|Hareng en conserve|cooked_cod
+57347d5f245977448b40fa81|Saumon en conserve|cooked_salmon
+5673de654bdc2d180f8b456d|Balaou en conserve|cooked_cod
+590c5f0d86f77413997acfab|Ration MRE|bread
+69774bb0a247161ff1068335|Pâté de canard|cooked_chicken
+656df4fec921ad01000481a2|Nouilles instantanées|bowl
+67586b7e49c2fa592e0d8ed9|Salade Olivier|bowl
+65815f0e647e3d7246384e14|Viande séchée Tarker|cooked_beef
+5bc9c29cd4351e003562b8a3|Sprats en conserve|cooked_cod
+59e3577886f774176a362503|Sucre|sugar
+57347d90245977448f7b7f65|Flocons d'avoine|wheat
+57347d692459774491567cf1|Petits pois en conserve|beetroot_seeds
+544fb6cc4bdc2d34748b456e|Chocolat Slickers|cookie
+57347d8724597744596b4e76|Tartinade de courge|pumpkin_pie
+5bc9b156d4351e00367fbce9|Mayonnaise Devildog|glass_bottle
+635a758bfefc88a93f021b8a|Saucisse Salty Dog|cooked_beef
+593aa4be86f77457f56379f8|Clé chambre 303|tripwire_hook
+591afe0186f77431bd616a11|Clé ZB-014|tripwire_hook
+5913915886f774123603c392|Clé du poste militaire|tripwire_hook
+5913877a86f774432f15d444|Clé réserve station-service|tripwire_hook
+573477e124597737dd42e191|Processeur PC|iron_nugget
+590a358486f77429692b2790|Batterie rechargeable|iron_ingot
+590a3b0486f7743954552bdb|Circuit imprimé|green_dye
+5c94bbff86f7747ee735c08f|Carte d'accès Labs|paper
+5c10c8fd86f7743d7d706df3|Injecteur d'adrénaline|stick
+5d40407c86f774318526545a|Vodka Tarkovskaya|glass_bottle
+5d403f9186f7743cac3f229b|Whisky Dan Jackiel|glass_bottle
+5d1b33a686f7742523398398|Eau purifiée|water_bucket
+62a09f32621468534a797acb|Bière Pevko|glass_bottle
+5c0e874186f7745dc7616606|Casque Maska-1Sch de Killa (trophée)|iron_helmet
+6759af0f9c8a538dd70bfae6|Casque Maska-1Sch de Noël (trophée)|golden_helmet
+60a7acf20c5cb24b01346648|Casquette de Tagilla (trophée)|leather_helmet
+675aae1c26dc64e17800fee6|Chapeau à bois de renne (trophée)|leather_helmet
+6540d2162ae6d96b540afcaf|Matraque PR-Taran de Kollontay (trophée)|stick
+5733279d245977289b77ec24|Batterie de voiture|iron_ingot
+5734758f24597738025ee253|Chaîne en or|gold_ingot
+5734779624597737e04bf329|Ventilateur de processeur|iron_nugget
+5734781f24597737e04bf32a|Lecteur DVD|iron_ingot
+573478bc24597738002c6175|Figurine de cheval|brick
+57347baf24597738002c6178|Barrette de RAM|green_dye
+57347c2e24597744902c94a1|Bloc d'alimentation PC|iron_ingot
+57347ca924597744596b4e71|Carte graphique|green_dye
+57347cd0245977445a2d6ff1|Connecteur en T|iron_nugget
+5909e99886f7740c983b9984|Adaptateur USB|iron_nugget
+590a386e86f77429692b27ab|Disque dur endommagé|iron_ingot
+590a3c0a86f774385a33c450|Bougie d'allumage|iron_nugget
+590a3efd86f77437d351a25b|Analyseur de gaz|clock
+590c392f86f77444754deb29|Disque SSD|iron_ingot
+590c621186f774138d11ea29|Clé USB sécurisée|iron_nugget
+590de71386f774347051a052|Théière ancienne|flower_pot
+590de7e986f7741b096e5f32|Vase ancien|flower_pot
+59e3606886f77417674759a5|Solution saline|glass_bottle
+59e361e886f774176c10a2a5|Peroxyde d'hydrogène|glass_bottle
+59e3639286f7741777737013|Figurine de lion en bronze|copper_ingot
+59e3658a86f7741776641ac4|Figurine de chat|brick
+59faf7ca86f7740dbe19f6c2|Montre Roler en or|gold_nugget
+5af0534a86f7743b6f354284|Ophtalmoscope|spyglass
+5af0561e86f7745f5f3ad6ac|Batterie externe|iron_ingot
+5b4335ba86f7744d2837a264|Kit de transfusion|glass_bottle
+5c052e6986f7746b207bc3c9|Défibrillateur portable|redstone
+5c052f6886f7746b1e3db148|Émetteur militaire COFDM|redstone
+5c052fb986f7746b2101e909|Lecteur RFID UHF|redstone
+5c05300686f7746dce784e5d|Module de stockage VPX|iron_ingot
+5c05308086f7746b2101e90b|Processeur programmable Virtex|green_dye
+5c0530ee86f774697952d952|Transilluminateur LEDX|glowstone_dust
+5c06779c86f77426e00dd782|Faisceau de fils|string
+5c06782b86f77426df5407d2|Condensateurs|iron_nugget
+5c12613b86f7743bbe2c3f76|Dossier de renseignements|paper
+5d0375ff86f774186372f685|Câble militaire|string
+5d0376a486f7747d8050965c|Circuit imprimé militaire|green_dye
+5d0377ce86f774186372f689|Module thermique Iridium|iron_ingot
+5d03784a86f774203e7e0c4d|Gyrotachymètre militaire|redstone
+5d0378d486f77420421a5ff4|Filtre électrique militaire|iron_ingot
+5d03794386f77420415576f5|Batterie militaire|iron_ingot
+5d1b2ffd86f77425243e8d17|Objectif Nixxor|spyglass
+5d1b304286f774253763a528|Écran LCD fonctionnel|iron_ingot
+5d1b392c86f77425243e98fe|Ampoule|glowstone_dust
+5d1b3a5d86f774252167ba22|Lot de médicaments|paper
+5d1b3f2d86f774253763b735|Seringue jetable|stick
+5d235a5986f77443f6329bc6|Bague crâne en or|gold_nugget
+5e2af29386f7746d4159f077|Ruban adhésif Kektape|paper
+5e2af41e86f774755a234b67|Tissu Cordura|white_dye
+5e2af47786f7746d404f3aaa|Tissu polaire|white_dye
+5e2af4a786f7746d3f3c3400|Tissu Ripstop|white_dye
+5e2af4d286f7746d4159f07a|Tissu aramide|white_dye
+619cc01e0a7c3a1a2731940c|Instruments médicaux|iron_nugget
+62a0a124de7ac81993580542|Cartes topographiques|paper
+62a0a16d0b9d3c46de5b6e97|Clé USB militaire|iron_nugget
+6389c6c7dbfd5e4b95197e68|Pastilles Aquapeps|paper
+6389c70ca33d8c4cdf4932c6|Composants électroniques|green_dye
+6389c8c5dbfd5e4b95197e6b|Dossiers bleus TerraGroup|paper
+59e36c6f86f774176c10a2a7|Câble d'alimentation|string
+5991b51486f77447b112d44f|Balise MS2000|redstone
+675a0288c3102563bd01c9c3|Affiche publicitaire Arena|paper
+5ab8f20c86f7745cdb629fb2|Cagoule civile de récupération|leather_helmet
+5b3b713c5acfc4330140bd8d|Pistolet doré de Reshala (trophée)|gold_ingot
+5e997f0b86f7741ac73993e2|Sac de Sanitar (trophée)|leather
+609e860ebd219504d8507525|Gilet de Tagilla (trophée)|iron_ingot
+628baf0b967de16aab5a4f36|Gilet de Knight (trophée)|leather
+628bc7fb408e2b2e9c0801b1|Sac de Birdeye (trophée)|leather
+628b9c7d45122232a872358f|Protection de Big Pipe (trophée)|iron_ingot
+5fc64ea372b0dd78d51159dc|Lame de cultiste (trophée)|iron_ingot

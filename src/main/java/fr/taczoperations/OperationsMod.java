@@ -63,7 +63,7 @@ public final class OperationsMod {
             fr.taczoperations.operations.RaidFurnitureEntity::new,java.util.stream.Stream.concat(FURNITURE.stream(),DECOR.stream()).map(Supplier::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
 
     public static final Supplier<OperationsBoardBlock> BOARD = BLOCKS.registerBlock(
-        "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F));
+        "operations_board", OperationsBoardBlock::new, BlockBehaviour.Properties.of().strength(2.5F).noOcclusion());
     public static final Supplier<EntityType<GuardCorpse>> GUARD_CORPSE = ENTITIES.register("guard_corpse", () ->
         EntityType.Builder.<GuardCorpse>of(GuardCorpse::new, MobCategory.MISC)
             .sized(1.55F, .36F).clientTrackingRange(8).updateInterval(10).build(ID + ":guard_corpse"));
@@ -71,6 +71,8 @@ public final class OperationsMod {
         "hideout_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.HideoutControlMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.ProgressionControlMenu>> PROGRESSION_MENU=MENUS.register(
         "progression_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.ProgressionControlMenu::new));
+    public static final Supplier<MenuType<fr.taczoperations.operations.CampaignMenu>> CAMPAIGN_MENU=MENUS.register(
+        "campaign_control",()->IMenuTypeExtension.create(fr.taczoperations.operations.CampaignMenu::new));
     public static final Supplier<MenuType<OperationsMenu>> MENU = MENUS.register(
         "operations_board", () -> IMenuTypeExtension.create(OperationsMenu::new));
     public static final Supplier<MenuType<fr.taczoperations.operations.RaidSearchMenu>> SEARCH_MENU=MENUS.register(
@@ -88,6 +90,9 @@ public final class OperationsMod {
         GENERATORS.register("forest", () -> ForestChunkGenerator.CODEC);
         RaidRelic.register(ITEMS);
         fr.taczoperations.operations.TradeLoot.register(ITEMS);
+        fr.taczoperations.operations.CollectorItems.register(ITEMS);
+        ITEMS.registerItem("raid_grenade",fr.taczoperations.operations.RaidGrenade::new,new net.minecraft.world.item.Item.Properties().stacksTo(8));
+        fr.taczoperations.operations.CampaignSupplies.register(ITEMS);
         ITEMS.registerItem("night_vision_goggles", props -> new net.minecraft.world.item.ArmorItem(NVG_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("thermal_goggles", props -> new net.minecraft.world.item.ArmorItem(THERMAL_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, props), new net.minecraft.world.item.Item.Properties().stacksTo(1));
         for(int i=0;i<fr.taczoperations.operations.FieldPack.BAGS.length;i++){
@@ -100,6 +105,11 @@ public final class OperationsMod {
         }
         ITEMS.registerItem("tactical_headset",net.minecraft.world.item.Item::new,new net.minecraft.world.item.Item.Properties().stacksTo(1));
         ITEMS.registerItem("secure_case", fr.taczoperations.operations.SecureCaseItem::new, new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        for(var tier:fr.taczoperations.operations.SecureCaseItem.Tier.values()){
+            if(tier==fr.taczoperations.operations.SecureCaseItem.Tier.LEGACY)continue;
+            ITEMS.registerItem(tier.id,props->new fr.taczoperations.operations.SecureCaseItem(props,tier),
+                new net.minecraft.world.item.Item.Properties().stacksTo(1));
+        }
         for(String medical : new String[]{"bandage","hemostat","splint","medkit","salewa"}) {
             ITEMS.registerItem(medical,props -> new fr.taczoperations.operations.FieldMedicine(props,medical),new net.minecraft.world.item.Item.Properties().stacksTo(8));
         }
@@ -129,7 +139,28 @@ public final class OperationsMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("31");
+        var registrar = event.registrar("33");
+        registrar.playToServer(fr.taczoperations.operations.CampaignTabRequest.TYPE,fr.taczoperations.operations.CampaignTabRequest.CODEC,
+            (message,context)->context.enqueueWork(()->{
+                if(context.player() instanceof net.minecraft.server.level.ServerPlayer p&&p.containerMenu instanceof OperationsMenu menu)
+                    menu.campaignRequest(p,message);
+            }));
+        registrar.playToClient(fr.taczoperations.operations.CampaignTabData.TYPE,fr.taczoperations.operations.CampaignTabData.CODEC,
+            (message,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.CampaignDashboard.handle(message,context);
+            });
+        registrar.playToServer(fr.taczoperations.operations.CampaignAction.TYPE,fr.taczoperations.operations.CampaignAction.CODEC,
+            (message,context)->context.enqueueWork(()->{
+                if(context.player() instanceof net.minecraft.server.level.ServerPlayer p
+                    &&p.containerMenu instanceof fr.taczoperations.operations.CampaignMenu menu&&menu.containerId==message.menuId())
+                    menu.clickMenuButton(p,message.action());
+            }));
+        registrar.playToClient(fr.taczoperations.operations.RaidQuestPayload.TYPE,fr.taczoperations.operations.RaidQuestPayload.CODEC,
+            (message,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.RaidQuestHud.handle(message,context);
+            });
         registrar.playToServer(fr.taczoperations.operations.WipeAccount.TYPE,fr.taczoperations.operations.WipeAccount.CODEC,
             (message,context)->context.enqueueWork(()->{
                 if(context.player() instanceof net.minecraft.server.level.ServerPlayer p)
@@ -173,6 +204,11 @@ public final class OperationsMod {
                 if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
                     fr.taczoperations.client.RaidInjuryHud.handle(injury,context);
             });
+        registrar.playToClient(fr.taczoperations.operations.RaidPartnerPayload.TYPE,
+            fr.taczoperations.operations.RaidPartnerPayload.STREAM_CODEC,(partner,context)->{
+                if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
+                    fr.taczoperations.client.RaidPartnerHud.handle(partner,context);
+            });
         registrar.playToClient(fr.taczoperations.operations.RaidExitPayload.TYPE,
             fr.taczoperations.operations.RaidExitPayload.STREAM_CODEC,(exits,context)->{
                 if(net.neoforged.fml.loading.FMLEnvironment.dist.isClient())
@@ -209,33 +245,26 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.StoryMissions::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::commands);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::tick);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::interact);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.HideoutRange::tick);
-        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,fr.taczoperations.operations.HideoutRange::shoot);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.HideoutRange::interact);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.HideoutRange::interactSpecific);
-        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,fr.taczoperations.operations.HideoutRange::hit);
-        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.HideoutRange::fire);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectBreak);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectPlace);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.Hideout::protectExplosion);
         NeoForge.EVENT_BUS.addListener(ForestPreparation::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.FieldInventoryMenu::refresh);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::tick);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ScavRun::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidInjuries::tick);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSurvival::consumed);
         NeoForge.EVENT_BUS.addListener(ForestExpedition::interact);
         NeoForge.EVENT_BUS.addListener(ForestProtection::onBreak);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onEntityJoin);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onDrops);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidGrenade::impact);
         if(net.neoforged.fml.ModList.get().isLoaded("curios"))
             fr.taczoperations.compat.FieldCurios.registerRaidDropRules();
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::onDeathDrops);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.RaidSecurity::commands);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogout);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onLogin);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ItemDiscovery::login);
-        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.ItemDiscovery::respawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onServerTick);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, fr.taczoperations.operations.RaidSecurity::cloneCases);
@@ -243,10 +272,16 @@ public final class OperationsMod {
         NeoForge.EVENT_BUS.addListener(ForestRaid::onRespawn);
         NeoForge.EVENT_BUS.addListener(ForestRaid::deliverReport);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.BallisticVest::normalizePlayerEquipment);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.BallisticVest::onAttributes);
         NeoForge.EVENT_BUS.addListener(SupplyContract::assaultKill);
         NeoForge.EVENT_BUS.addListener(ForestRaid::onInspect);
         NeoForge.EVENT_BUS.addListener(ForestCombat::tick);
         NeoForge.EVENT_BUS.addListener(ForestCombat::onGunHurt);
+        NeoForge.EVENT_BUS.addListener(ForestCombat::onIncomingDamage);
+        NeoForge.EVENT_BUS.addListener(ForestCombat::onChangeTarget);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,ForestCombat::onPlayerFire);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.CampaignGunEvents::hit);
+        NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.CampaignGunEvents::kill);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.DetailedStats::fire);
         NeoForge.EVENT_BUS.addListener(fr.taczoperations.operations.DetailedStats::tick);
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,fr.taczoperations.operations.WeaponCondition::shoot);
