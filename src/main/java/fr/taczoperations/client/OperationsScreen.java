@@ -127,13 +127,14 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         var view = menu.view();
         for (int row = 0; row < SECTIONS.length; row++) {
             Section section = SECTIONS[row];
+            int navIndex = row;
             int iconIndex = row>2?row-1:row;
             int y = 81 + row * 39;
             widget(12, y, 136, 34, section.title, () -> send(section.tab),
                 () -> true, (g, hovered) -> {
-                    TacticalSkin.tile(g, 12, y, 136, 34, active(section.tab), hovered);
+                    TacticalSkin.navigation(g, navIndex, 12, y, 136, 34, active(section.tab), hovered);
                     if(section.tab==OperationsMenu.QUESTS)item(g,new ItemStack(Items.WRITTEN_BOOK),20,y+6,1.35F);else icon(g, iconIndex, 17, y + 4, 25);
-                    text(g, section.title, 52, y + 11, 1.16F, WHITE, false);
+                    text(g, section.title, 52, y + 11, 1.16F, WHITE, true);
                 });
         }
         if(questMode)return;

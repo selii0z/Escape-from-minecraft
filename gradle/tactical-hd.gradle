@@ -81,6 +81,80 @@ tasks.register('generateTacticalHd'){
             g.setColor(c(0x777b80));g.setStroke(new BasicStroke(3f));g.drawLine(0,2,2048,2)
             g.setColor(c(0xe0232a));g.drawLine(0,133,2048,133)
         }
+        // Render the brand independently at 8x the logical GUI dimensions.
+        // Never upscale the text from a screenshot.
+        render('blackzxne_brand',1872,432){g->
+            g.setPaint(new GradientPaint(0f,0f,c(0x181a1d),0f,432f,c(0x08090b)));g.fillRect(0,0,1872,432)
+            g.setColor(c(0x33161c));g.setStroke(new BasicStroke(6f))
+            g.drawPolyline([0,1710,1860,1710,0] as int[],[5,5,216,427,427] as int[],5)
+            g.setColor(c(0xe62833));g.fillPolygon([55,165,245,135] as int[],[123,28,28,123] as int[],4)
+            g.setColor(c(0x70212a));g.fillPolygon([1515,1630,1800,1685] as int[],[410,410,238,238] as int[],4)
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            Font brandFont=Font.createFont(Font.TRUETYPE_FONT,file('src/main/resources/assets/taczoperations/font/heading.ttf')).deriveFont(Font.BOLD|Font.ITALIC,245f)
+            def frc=g.getFontRenderContext()
+            def shapes=['BLACKZ','X','NE'].collect{part->brandFont.createGlyphVector(frc,part)}
+            double total=shapes.collect{it.getLogicalBounds().getWidth()}.sum()
+            double factor=Math.min(1d,1550d/total)
+            def transform=g.getTransform()
+            g.translate(155,245);g.scale(factor,1d)
+            double off=0
+            shapes.eachWithIndex{glyph,idx->
+                Shape shape=glyph.getOutline((float)off,0f)
+                g.setColor(new Color(0,0,0,190));g.setStroke(new BasicStroke(10f));g.draw(shape)
+                g.setPaint(new GradientPaint(0f,-185f,c(idx==1?0xff5a61:0xf8fafc),0f,0f,c(idx==1?0xb90a18:0x9ca3aa)))
+                g.fill(shape)
+                off+=glyph.getLogicalBounds().getWidth()
+            }
+            g.setTransform(transform)
+            g.setFont(brandFont.deriveFont(Font.BOLD,57f))
+            String tagline='E S C A P E   E X P E R I E N C E'
+            g.setColor(c(0xd0d5da));g.drawString(tagline,Math.max(60,(1740-g.getFontMetrics().stringWidth(tagline)).intdiv(2)),362)
+            g.setPaint(new GradientPaint(0f,0f,c(0xc9222c),1650f,0f,c(0x542027)));g.fillRect(24,407,1650,7)
+        }
+        // Seven distinct, text-free illustrations. Source artwork is original mod art;
+        // the additional silhouettes are drawn at full texture resolution.
+        def navSources=['forest','military','village','merchant_armorer','military','industrial','underground']
+        navSources.eachWithIndex{source,i->
+            BufferedImage art=ImageIO.read(new File(src,source+'.png'))
+            render('nav_'+i,1040,224){g->
+                g.setClip(new RoundRectangle2D.Double(0,0,1040,224,35,35))
+                double fit=Math.max(1040d/art.width,224d/art.height)
+                int aw=Math.round((float)(art.width*fit)),ah=Math.round((float)(art.height*fit))
+                g.drawImage(art,(1040-aw).intdiv(2),(224-ah).intdiv(2),aw,ah,null)
+                g.setColor(new Color(8,10,13,125));g.fillRect(0,0,1040,224)
+                g.setColor(new Color(170,180,190,115));g.setStroke(new BasicStroke(5f))
+                if(i==0){ // woodland operator silhouette
+                    g.setColor(new Color(15,18,21,210));g.fillRect(812,65,112,123);g.fillRoundRect(831,22,74,57,8,8)
+                    g.fillRect(785,79,31,77);g.fillRect(921,80,30,74);g.fillRect(834,188,30,36);g.fillRect(883,188,30,36)
+                    g.setColor(new Color(111,129,117,185));g.fillRect(826,79,86,87);g.fillRect(837,37,62,18)
+                }else if(i==1||i==2||i==5){
+                    int xx=785,yy=24
+                    g.setColor(new Color(12,15,18,205));g.fillRoundRect(xx-15,yy-7,194,182,14,14)
+                    g.setColor(new Color(189,195,198,150));g.drawRoundRect(xx,yy,160,169,8,8)
+                    for(int j=0;j<5;j++)g.drawLine(xx+23,yy+40+j*22,xx+128,yy+40+j*22)
+                    g.setColor(new Color(206,43,51,190))
+                    if(i==1){g.drawLine(xx+25,yy+120,xx+70,yy+78);g.drawLine(xx+70,yy+78,xx+120,yy+105)}
+                    else if(i==2){g.drawRect(xx+17,yy+18,125,133);g.drawLine(xx+80,yy+20,xx+80,yy+150)}
+                    else{g.fillRect(xx+10,yy+92,140,21)}
+                }else if(i==3){
+                    g.setColor(new Color(15,18,20,190));g.fillRoundRect(745,32,260,165,12,12)
+                    g.setColor(new Color(175,183,187,145));g.drawRoundRect(745,32,260,165,12,12)
+                    for(int j=0;j<3;j++){g.fillRect(770,55+j*45,168,10);g.fillRect(796,65+j*45,20,18)}
+                }else if(i==4){
+                    g.setColor(new Color(186,194,203,160));g.setStroke(new BasicStroke(13f))
+                    for(int j=0;j<3;j++)g.drawPolyline([785,872,959] as int[],[85+j*49,37+j*49,85+j*49] as int[],3)
+                }else{
+                    g.setColor(new Color(10,15,18,190));g.fillRoundRect(755,23,244,178,14,14)
+                    g.setColor(new Color(158,175,182,155));g.drawRect(776,42,199,76)
+                    for(int j=0;j<4;j++)g.drawLine(790,135+j*13,954,135+j*13)
+                    g.setColor(new Color(218,38,47,215));g.fillOval(950,147,17,17)
+                }
+                // Opaque left edge for the live icon and label, clear illustration at right.
+                g.setPaint(new GradientPaint(0f,0f,new Color(8,10,12,245),1040f,0f,new Color(8,10,12,35)))
+                g.fillRect(0,0,1040,224)
+                g.setClip(null)
+            }
+        }
         // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.
         ['forest','industrial','village','underground','quarantine','military','warehouse'].each { id->
             File source=new File(src,id+'.png')

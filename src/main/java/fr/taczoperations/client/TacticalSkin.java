@@ -9,7 +9,9 @@ import net.minecraft.resources.ResourceLocation;
 /** Antialiased, build-generated, nine-slice panels. Corners are never stretched. */
 final class TacticalSkin {
     private static ResourceLocation tex(String path){return ResourceLocation.fromNamespaceAndPath("taczoperations","textures/gui/hd/"+path+".png");}
-    private static final ResourceLocation FILL=tex("rounded_fill"),BORDER=tex("rounded_border"),HEADER=tex("header");
+    private static final ResourceLocation FILL=tex("rounded_fill"),BORDER=tex("rounded_border"),HEADER=tex("header"),BRAND=tex("blackzxne_brand");
+    private static final ResourceLocation[] NAV=new ResourceLocation[7];
+    static{for(int i=0;i<NAV.length;i++)NAV[i]=tex("nav_"+i);}
     private static final ResourceLocation[] PORTRAITS=new ResourceLocation[11];
     static{for(int i=0;i<PORTRAITS.length;i++)PORTRAITS[i]=tex("portrait_"+i);}
     static final int ORANGE=0xffff3838,PALE=0xffe2e4e6,EDGE=0xff74777b;
@@ -46,6 +48,21 @@ final class TacticalSkin {
         if(w>12&&h>12)g.fillGradient(x+5,y+5,x+w-5,y+h-5,selected?0xff50191d:0xff303337,selected?0xff180a0c:0xff101113);
         outline(g,x,y,w,h,selected?ORANGE:hover?0xffbfc3c7:0xff616468);
     }
+    static void navigation(GuiGraphics g,int index,int x,int y,int w,int h,boolean selected,boolean hover){
+        tile(g,x,y,w,h,selected,hover);
+        if(index<0||index>=NAV.length)return;
+        var id=NAV[index];
+        linear(id);
+        RenderSystem.enableBlend();
+        try{
+            g.blit(id,x+3,y+3,w-6,h-6,0,0,1040,224,1040,224);
+            if(selected)g.fill(x+3,y+3,x+w-3,y+h-3,0x45e51929);
+            else if(hover)g.fill(x+3,y+3,x+w-3,y+h-3,0x16ffffff);
+            g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x08000000,0x40000000);
+            g.flush();
+        }finally{RenderSystem.disableBlend();}
+        outline(g,x,y,w,h,selected?ORANGE:hover?0xffbfc3c7:0xff616468);
+    }
     static void stripes(GuiGraphics g,int x,int y,int color){
         for(int i=0;i<4;i++)for(int j=0;j<7;j++)g.fill(x+i*10+6-j,y+j,x+i*10+11-j,y+j+1,color);
     }
@@ -56,6 +73,7 @@ final class TacticalSkin {
     }
     static void logo(GuiGraphics g){
         linear(HEADER);g.blit(HEADER,10,9,814,54,0,0,2048,136,2048,136);
+        linear(BRAND);g.blit(BRAND,10,9,234,54,0,0,1872,432,1872,432);
         g.fill(12,61,821,62,0xffe9272c);
         stripes(g,775,16,0xffd9232c);
     }
