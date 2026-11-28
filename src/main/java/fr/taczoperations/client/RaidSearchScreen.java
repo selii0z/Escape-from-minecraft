@@ -13,8 +13,8 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMenu>{
-    private static final int BG=0xff191e1a,FRAME=0xff515b4c,OPEN=0xff30382e,UNKNOWN=0xff202620,
-        GOLD=0xffe5ce88,LIME=0xffa6bf7d,SOFT=0xffb8c0af;
+    private static final int BG=0xff191a1c,FRAME=0xff55595d,OPEN=0xff303236,UNKNOWN=0xff202124,
+        GOLD=0xffe5e6e8,LIME=0xffa6bf7d,SOFT=0xffb8c0af;
     public RaidSearchScreen(RaidSearchMenu menu,Inventory inventory,Component title){
         super(menu,inventory,title);
         imageWidth=176;imageHeight=187;
@@ -43,7 +43,7 @@ public final class RaidSearchScreen extends AbstractContainerScreen<RaidSearchMe
                     g.renderOutline(sx,sy,16,16,GOLD);
                     g.fill(sx+1,sy+13,sx+1+14*menu.itemProgress()/100,sy+15,LIME);
                     g.drawCenteredString(font,"?",sx+8,sy+3,GOLD);
-                }else g.drawCenteredString(font,"?",sx+8,sy+4,0xff6c7668);
+                }else g.drawCenteredString(font,"?",sx+8,sy+4,0xff6e7276);
             }
         }
         int barX=x+8,barY=y+176;

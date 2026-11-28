@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 /** Local page inside the original EFM operations screen. */
 public final class CampaignDashboard {
-    private static final int GOLD=0xffe6d9c4,WHITE=0xfff5f3e8,SOFT=0xffbdb9b2,OLIVE=0xffb4ca77,ORANGE=0xffffad55,FRAME=0xff625d55;
+    private static final int GOLD=0xffe5e6e8,WHITE=0xfff5f3e8,SOFT=0xffbdb9b2,OLIVE=0xffb4ca77,ORANGE=0xffff3a3f,FRAME=0xff62666a;
     private static final ResourceLocation FONT=ResourceLocation.fromNamespaceAndPath("taczoperations","interface"),HEAD=ResourceLocation.fromNamespaceAndPath("taczoperations","heading");
     private static final Pattern PROGRESS=Pattern.compile("^(.*) : (\\d+)/(\\d+)$");
     private static final Item[] ICONS={Items.CROSSBOW,Items.GOLDEN_APPLE,Items.IRON_NUGGET,Items.GOLD_INGOT,Items.ANVIL,Items.LEATHER_CHESTPLATE,Items.COMPASS,Items.ENDER_CHEST,Items.TARGET,Items.LANTERN,Items.MINECART};
@@ -106,7 +106,7 @@ public final class CampaignDashboard {
     }
     private static void accentButton(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled,int accent){
         tile(g,x,y,w,h,enabled&&accent==ORANGE,enabled&&hit(mx,my,x,y,w,h));
-        if(enabled){TacticalSkin.cut(g,x+1,y+1,w-2,h-2,accent==ORANGE?0xff392819:0xff303722);TacticalSkin.outline(g,x,y,w,h,accent);}
+        if(enabled){TacticalSkin.cut(g,x+1,y+1,w-2,h-2,accent==ORANGE?0xff361317:0xff303722);TacticalSkin.outline(g,x,y,w,h,accent);}
         text(g,s,x+(w-font().width(styled(s,true)))/2,y+(h-8)/2,1,enabled?accent:0xff777777,true);
     }
     private static void badge(GuiGraphics g,String s,int x,int y,int w,int h){
@@ -115,7 +115,7 @@ public final class CampaignDashboard {
         text(g,s,x+(w-Math.round(font().width(styled(s,false))*scale))/2,y+(h-8)/2,scale,c,false);
     }
     private static void section(GuiGraphics g,String s,int x,int y,int w){
-        text(g,s,x,y,1.08f,GOLD,true);g.fill(x,y+12,x+w,y+13,0xff655340);TacticalSkin.stripes(g,x+w-40,y+3,0xffa6642d);
+        text(g,s,x,y,1.08f,GOLD,true);g.fill(x,y+12,x+w,y+13,0xff82252b);TacticalSkin.stripes(g,x+w-40,y+3,0xffdf232c);
     }
     private static ItemStack questIcon(CampaignTabData.Quest q){
         return QUEST_ICONS.getOrDefault(q.status(),LOCKED_ICON);
@@ -124,14 +124,14 @@ public final class CampaignDashboard {
         g.pose().pushPose();g.pose().translate(x,y,0);g.pose().scale(scale,scale,1);g.renderItem(s,0,0);g.pose().popPose();
     }
     private static int status(String s){return switch(s){
-        case "Disponible"->OLIVE;case "En cours"->ORANGE;case "À valider","Terminée"->OLIVE;case "Échouée"->0xffdf8b80;default->SOFT;
+        case "Disponible"->OLIVE;case "En cours"->0xffffbc50;case "À valider","Terminée"->OLIVE;case "Échouée"->0xffdf8b80;default->SOFT;
     };}
     private static void scrollBar(GuiGraphics g,int x,int y,int h,int total,int rows,int offset){
-        g.fill(x,y+7,x+5,y+h-7,0xff111111);g.renderOutline(x,y+7,5,h-14,0xff554e46);
+        g.fill(x,y+7,x+5,y+h-7,0xff111111);g.renderOutline(x,y+7,5,h-14,0xff494c50);
         int track=h-16,size=Math.min(track,Math.max(14,track*rows/Math.max(1,total)));
         int top=y+8+(track-size)*offset/Math.max(1,total-rows);
-        g.fillGradient(x+1,top,x+4,top+size,0xffb0aaa0,0xff79736c);
-        TacticalSkin.chevron(g,x-1,y+1,false,0xffa29b90);TacticalSkin.chevron(g,x-1,y+h-5,true,0xffa29b90);
+        g.fillGradient(x+1,top,x+4,top+size,0xffff4149,0xff971820);
+        TacticalSkin.chevron(g,x-1,y+1,false,0xfff3454a);TacticalSkin.chevron(g,x-1,y+h-5,true,0xfff3454a);
     }
     private static void art(GuiGraphics g,String id,int x,int y,int w,int h){
         if(!List.of("forest","industrial","village","underground","quarantine","military").contains(id))id="military";
@@ -139,7 +139,7 @@ public final class CampaignDashboard {
         var textures=Minecraft.getInstance().getTextureManager();textures.bindForSetup(tex);textures.getTexture(tex).setFilter(true,false);
         // Center crop from the original 380x170 illustration; never stretch.
         TacticalSkin.picture(g,tex,x,y,w,h);
-        TacticalSkin.outline(g,x,y,w,h,0xff8a8070);
+        TacticalSkin.outline(g,x,y,w,h,0xff85898d);
     }
     private int mx(int i){return 169+(i-traderStart)*TRADER_STEP;}
     private void shiftTraders(int delta){traderStart=Math.clamp(traderStart+delta,0,Math.max(0,CampaignTrader.values().length-TRADER_VISIBLE));}
@@ -232,7 +232,7 @@ public final class CampaignDashboard {
         float titleScale=Math.min(1.35f,260f/Math.max(1,font().width(styled(q.name(),true))));
         text(g,fit(q.name(),350,true),508,119,Math.max(.78f,titleScale),WHITE,true);
         text(g,fit(q.lines().isEmpty()?q.status():q.lines().getFirst(),318,false),508,135,.91F,SOFT,false);
-        TacticalSkin.stripes(g,774,121,0xffa7612b);
+        TacticalSkin.stripes(g,774,121,0xffdf232c);
         art(g,q.art(),478,151,335,83);
         String state=q.followed()?"★ Quête suivie en raid":q.status();
         text(g,state,480,239,.94F,status(q.status()),false);
@@ -247,7 +247,7 @@ public final class CampaignDashboard {
                 if(l.progress()>=1)text(g,"✓",484,ry,1,OLIVE,true);
                 text(g,fit(l.label(),200,false),498,ry,.95f,l.color(),false);
                 g.fill(695,ry+2,775,ry+9,0xff111111);g.renderOutline(695,ry+2,80,7,0xff72695b);
-                int fill=(int)(76*Math.clamp(l.progress(),0f,1f));if(fill>0)g.fillGradient(697,ry+4,697+fill,ry+7,0xfff9bb73,l.progress()>=1?OLIVE:ORANGE);
+                int fill=(int)(76*Math.clamp(l.progress(),0f,1f));if(fill>0)g.fillGradient(697,ry+4,697+fill,ry+7,0xfff34d53,l.progress()>=1?OLIVE:ORANGE);
                 float countScale=Math.min(1,30f/Math.max(1,font().width(styled(l.count(),false))));
                 text(g,l.count(),808-Math.round(font().width(styled(l.count(),false))*countScale),ry,countScale,l.color(),false);
             }else text(g,l.label(),480,ry,.95F,l.color(),false);

@@ -30,11 +30,11 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static final int HEIGHT = 470;
     private static final int WHITE = 0xfff5f3e8;
     private static final int SOFT = 0xffcaccc0;
-    private static final int GOLD = 0xffe5ce88;
+    private static final int GOLD = 0xffe5e6e8;
     private static final int LIME = 0xffe9f9a1;
     private static final int OLIVE = 0xff70993d;
-    private static final int FRAME = 0xff716751;
-    private static final int DARK = 0xda111611;
+    private static final int FRAME = 0xff696d72;
+    private static final int DARK = 0xda111214;
     private static final ResourceLocation BODY = asset("interface");
     private static final ResourceLocation BOLD = asset("heading");
     private static final ResourceLocation DESK = texture("dashboard");
@@ -437,7 +437,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         item(g, new ItemStack(Items.GOLD_INGOT), 740, 19, 1.25F);
         text(g, "Crédits", 766, 16, 1.04F, SOFT, false);
         text(g, Integer.toString(questMode&&campaign.latest()!=null?campaign.latest().credits():menu.view().credits()), 766, 29, 1.40F, WHITE, true);
-        g.fillGradient(9, 65, 824, 68, 0xff71675b, 0xff292929);
+        g.fillGradient(9, 65, 824, 68, 0xffa42127, 0xff292929);
     }
 
     private void operationDetails(GuiGraphics g) {
@@ -445,7 +445,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
         boolean open = true;
         panel(g, 569, 85, 258, 83, 0xc5272e20);
         TacticalSkin.picture(g,area.texture(),574,91,87,69);
-        TacticalSkin.outline(g,572,89,91,73,0xffc4b68c);
+        TacticalSkin.outline(g,572,89,91,73,0xff93979c);
         icon(g, selectedArea + 6, 668, 100, 16);
         text(g, upper(area.title), 685, 102, area.title.length() > 19 ? 1.00F : 1.25F, WHITE, true);
         String[] lines = selectedArea == 0
@@ -687,7 +687,7 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
                 text(g,view.partner().isEmpty()?"Solo · invitations disponibles":"Équipier : "+view.partner(),585,197,.8F,SOFT,false);
                 panel(g,575,260,249,122,DARK);
                 text(g,"ZONE DE RÉINITIALISATION",585,273,1.0F,0xffe18979,true);
-                text(g,"Efface uniquement ta progression EFM.",585,294,.9F,SOFT,false);
+                text(g,"Efface uniquement ta progression BLACKZXNE.",585,294,.9F,SOFT,false);
                 text(g,"Action définitive.",585,309,.9F,SOFT,false);
                 return;
             }
@@ -1180,10 +1180,10 @@ public final class OperationsScreen extends AbstractContainerScreen<OperationsMe
     private static void frame(GuiGraphics g, int x, int y, int w, int h, boolean selected, boolean hover) {
         int border = selected ? TacticalSkin.ORANGE : hover ? GOLD : FRAME;
         if (selected || hover) {
-            g.renderOutline(x - 1, y - 1, w + 2, h + 2, selected ? 0x9fc27431 : 0x707e6b3a);
+            g.renderOutline(x - 1, y - 1, w + 2, h + 2, selected ? 0x9fed292e : 0x70858a8e);
         }
         g.renderOutline(x, y, w, h, border);
-        g.fill(x + 2, y + 1, x + w - 2, y + 2, selected ? 0x8affbd75 : 0x527c7257);
+        g.fill(x + 2, y + 1, x + w - 2, y + 2, selected ? 0x8aff5256 : 0x527c8084);
     }
 
     private static void progress(GuiGraphics g, int x, int y, int width, int height, int xp) {

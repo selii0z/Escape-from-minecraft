@@ -5,7 +5,7 @@ license = "All Rights Reserved"
 [[mods]]
 modId = "taczoperations"
 version = "${mod_version}"
-displayName = "Escape from Minecraft / TaCZ Operations"
+displayName = "BLACKZXNE - Escape Experience"
 description = "Raids d'extraction dans Minecraft."
 
 [[dependencies.taczoperations]]

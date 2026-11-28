@@ -18,7 +18,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class ProgressionControlScreen extends AbstractContainerScreen<ProgressionControlMenu>{
     private static final int W=760,H=420;
-    private static final int GOLD=0xffe5ce88,WHITE=0xfff5f3e8,SOFT=0xffbfc8b8,FRAME=0xff716751,LIME=0xffb5d78e;
+    private static final int GOLD=0xffe5e6e8,WHITE=0xfff5f3e8,SOFT=0xffc2c6ca,FRAME=0xff65696d,LIME=0xffb5d78e;
     private static final ResourceLocation DESK=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"textures/gui/dashboard.png");
     private static final ResourceLocation BODY=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"interface");
     private static final ResourceLocation HEADING=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"heading");
@@ -28,7 +28,7 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         minecraft.getTextureManager().bindForSetup(texture);
         minecraft.getTextureManager().getTexture(texture).setFilter(true,false);
         g.blit(texture,x,y,0,0,size,size,size,size);
-        g.renderOutline(x,y,size,size,0xff69765f);
+        g.renderOutline(x,y,size,size,0xff696d71);
     }
     private static final String[] SKILLS={"Endurance","Force","Médecine","Fouille","Discrétion","Survie","Maîtrise des armes","Commerce"};
     private static final String[] TRAIN={"Courir pendant les raids.","Se déplacer avec un inventaire chargé.","Utiliser des soins en raid.","Fouiller les conteneurs de butin.","Se déplacer accroupi en raid.","Réussir des extractions.","Éliminer des ennemis en raid.","Acheter et vendre chez les marchands."};
@@ -54,12 +54,12 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
     private boolean hit(double mx,double my,int x,int y,int w,int h){return mx>=x&&mx<x+w&&my>=y&&my<y+h;}
     private void button(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled){
         boolean hover=enabled&&hit(mx,my,x,y,w,h);
-        g.fillGradient(x,y,x+w,y+h,!enabled?0xff272c26:hover?0xff53633a:0xff394431,0xff171c16);
+        g.fillGradient(x,y,x+w,y+h,!enabled?0xff242628:hover?0xff512326:0xff312022,0xff161719);
         g.renderOutline(x,y,w,h,hover?GOLD:FRAME);
         text(g,s,x+(w-font.width(styled(s,true)))/2,y+(h-8)/2,1,enabled?WHITE:0xff8b9487,true);
     }
     private void tile(GuiGraphics g,int x,int y,int w,int h,boolean active,boolean hover){
-        g.fillGradient(x,y,x+w,y+h,active?0xff454f30:hover?0xff303b2c:0xff252d25,0xff141a15);
+        g.fillGradient(x,y,x+w,y+h,active?0xff3c2226:hover?0xff2c2e31:0xff25272a,0xff141517);
         g.renderOutline(x,y,w,h,active?GOLD:hover?0xff9aa583:FRAME);
     }
     private void icon(GuiGraphics g,ItemStack s,int x,int y,float scale){
@@ -71,7 +71,7 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         if(parts.length!=2)return 0;
         try{return Math.clamp(Float.parseFloat(parts[0].trim())/Math.max(1,Float.parseFloat(parts[1].trim())),0f,1f);}catch(NumberFormatException ex){return 0;}
     }
-    private void bar(GuiGraphics g,int x,int y,int w,int h,float f){g.fill(x,y,x+w,y+h,0xff414b3c);if(f>0)g.fill(x,y,x+Math.round(w*f),y+h,LIME);}
+    private void bar(GuiGraphics g,int x,int y,int w,int h,float f){g.fill(x,y,x+w,y+h,0xff414448);if(f>0)g.fill(x,y,x+Math.round(w*f),y+h,LIME);}
     private boolean acceptable(){return !stack(40).isEmpty()&&name(40).startsWith("Accepter : ")&&name(missionSlot(selected)).equals(name(40).substring("Accepter : ".length()));}
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         double x=(mx-leftPos)/scale,y=(my-topPos)/scale;
@@ -82,12 +82,12 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         g.pose().pushPose();g.pose().translate(leftPos,topPos,0);g.pose().scale(scale,scale,1);
         minecraft.getTextureManager().bindForSetup(DESK);minecraft.getTextureManager().getTexture(DESK).setFilter(true,false);
         g.blit(DESK,0,0,0,0,W,H,W,H);
-        panel(g,10,10,740,50,0xf0111612);
+        panel(g,10,10,740,50,0xf0111214);
         text(g,menu.campaign()?"CAMPAGNE MILITAIRE":"COMPÉTENCES PASSIVES",23,17,2,GOLD,true);
         text(g,menu.campaign()?"12 opérations · progression scénarisée":"8 compétences · 50 niveaux chacune",24,43,1,SOFT,false);
-        panel(g,10,68,412,292,0xe5111612);panel(g,430,68,320,292,0xe9111612);
+        panel(g,10,68,412,292,0xe5111214);panel(g,430,68,320,292,0xe9111214);
         if(menu.campaign())drawCampaign(g,x,y);else drawSkills(g,x,y);
-        panel(g,10,368,740,43,0xf0111612);
+        panel(g,10,368,740,43,0xf0111214);
         button(g,"Retour",20,377,178,25,x,y,true);
         text(g,menu.campaign()?"Sélectionne une opération pour consulter ses objectifs.":"Les compétences progressent automatiquement selon tes actions.",215,385,.95F,SOFT,false);
         g.pose().popPose();
@@ -121,7 +121,7 @@ public final class ProgressionControlScreen extends AbstractContainerScreen<Prog
         minecraft.getTextureManager().bindForSetup(texture);
         minecraft.getTextureManager().getTexture(texture).setFilter(true,false);
         g.blit(texture,x,y,0,0,w,h,w,h);
-        g.renderOutline(x,y,w,h,0xff69765f);
+        g.renderOutline(x,y,w,h,0xff696d71);
     }
     private void drawCampaign(GuiGraphics g,double mx,double my){
         int done=0;for(int i=0;i<12;i++)if(line(missionSlot(i),0).startsWith("Terminée"))done++;

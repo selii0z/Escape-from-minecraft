@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
     private static final int W=836,H=470, ROWS=12,ROW_H=29,DETAIL_Y=238,DETAIL_H=150;
-    private static final int GOLD=0xffdec38b,WHITE=0xffeeebe3,SOFT=0xffb8b8ac,FRAME=0xff696457,
+    private static final int GOLD=0xffe5e6e8,WHITE=0xffeeebe3,SOFT=0xffb8b8ac,FRAME=0xff65696d,
         LIME=0xffb8cf8c,ORANGE=0xffdba16b,DARK=0xff161716;
     private static final ResourceLocation BODY=asset("interface"),HEADING=asset("heading"),DESK=texture("dashboard");
     private static final Pattern PROGRESS=Pattern.compile("^(.*) : (\\d+)/(\\d+)$");
@@ -60,7 +60,7 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
         g.fill(x,y+2,x+1,y+h-2,FRAME);g.fill(x+w-1,y+2,x+w,y+h-2,FRAME);
     }
     private void tile(GuiGraphics g,int x,int y,int w,int h,boolean active,boolean hover){
-        g.fillGradient(x+1,y+1,x+w-1,y+h-1,active?0xff474430:hover?0xff343632:0xff292b28,0xff1a1b19);
+        g.fillGradient(x+1,y+1,x+w-1,y+h-1,active?0xff492327:hover?0xff343638:0xff292b2d,0xff191a1c);
         g.renderOutline(x,y,w,h,active?GOLD:hover?0xffaaa08b:0xff4b4d43);
     }
     private void item(GuiGraphics g,ItemStack s,int x,int y,float factor){
@@ -99,7 +99,7 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
     // Distinct compact Minecraft-style portraits, drawn at native pixel sizes.
     private void portrait(GuiGraphics g,int i,int x,int y){
         int[] uniforms={0xff555a37,0xffc7ccc6,0xff34394a,0xff8e8067,0xff53544d,0xff594b3d,0xff565a43,0xff22252a,0xff786341,0xff4d6967,0xff665d44};
-        int[] hair={0xff493623,0xff3b2b24,0xff342a24,0xff9a8059,0xff483a31,0xff4c3426,0xff68543a,0xff15171a,0xff5d3925,0xffb8b6a3,0xff463d2b};
+        int[] hair={0xff4b2025,0xff361d21,0xff302024,0xff9a8059,0xff483a31,0xff4c3426,0xff7a3239,0xff15171a,0xff5d3925,0xffb8b6a3,0xff463d2b};
         int skin=i==7?0xff777470:i==1?0xffdfb69b:0xffc18f6d;
         g.fill(x,y,x+26,y+26,0xff343731);
         g.fill(x+3,y+19,x+23,y+26,uniforms[i]);
@@ -133,9 +133,9 @@ public final class CampaignScreen extends AbstractContainerScreen<CampaignMenu>{
         minecraft.getTextureManager().bindForSetup(DESK);minecraft.getTextureManager().getTexture(DESK).setFilter(true,false);
         g.blit(DESK,0,0,0,0,W,H,W,H);
         panel(g,8,8,820,49);panel(g,8,64,158,369);panel(g,172,64,302,369);panel(g,480,64,348,369);panel(g,8,439,820,23);
-        text(g,"EFM",20,18,2.1F,GOLD,true);text(g,"ESCAPE FROM MINECRAFT",79,22,1.05F,WHITE,true);
+        TacticalSkin.logo(g);
         text(g,"CAMPAGNE  /  "+CampaignTrader.values()[menu.trader()].title,333,21,1.35F,GOLD,true);
-        g.fill(20,48,816,49,0xff8e6e44);
+        g.fill(20,48,816,49,0xffad343d);
         text(g,"MARCHANDS",17,73,1.15F,GOLD,true);
         for(int i=0;i<CampaignMenu.TRADERS;i++){
             int ry=90+i*30;var s=menu.traderStack(i);

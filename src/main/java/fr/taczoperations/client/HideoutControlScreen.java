@@ -18,7 +18,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class HideoutControlScreen extends AbstractContainerScreen<HideoutControlMenu>{
     private static final int W=760,H=420;
-    private static final int GOLD=0xffe5ce88,WHITE=0xfff5f3e8,SOFT=0xffbfc8b8,FRAME=0xff716751;
+    private static final int GOLD=0xffe5e6e8,WHITE=0xfff5f3e8,SOFT=0xffc2c6ca,FRAME=0xff65696d;
     private static final ResourceLocation DESK=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"textures/gui/dashboard.png");
     private static final ResourceLocation BODY=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"interface");
     private static final ResourceLocation HEADING=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"heading");
@@ -51,7 +51,7 @@ public final class HideoutControlScreen extends AbstractContainerScreen<HideoutC
     private boolean inside(double mx,double my,int x,int y,int w,int h){return mx>=x&&mx<x+w&&my>=y&&my<y+h;}
     private void button(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled){
         boolean hover=enabled&&inside(mx,my,x,y,w,h);
-        g.fillGradient(x,y,x+w,y+h,!enabled?0xff272c26:hover?0xff53633a:0xff394431,0xff171c16);
+        g.fillGradient(x,y,x+w,y+h,!enabled?0xff242628:hover?0xff512326:0xff312022,0xff161719);
         g.renderOutline(x,y,w,h,hover?GOLD:FRAME);centered(g,s,x+w/2,y+(h-8)/2,enabled?WHITE:0xff8b9487);
     }
     private String name(int slot){return stack(slot).isEmpty()?"Chargement…":stack(slot).getHoverName().getString();}
@@ -70,25 +70,25 @@ public final class HideoutControlScreen extends AbstractContainerScreen<HideoutC
         g.pose().pushPose();g.pose().translate(leftPos,topPos,0);g.pose().scale(scale,scale,1);
         minecraft.getTextureManager().bindForSetup(DESK);minecraft.getTextureManager().getTexture(DESK).setFilter(true,false);
         g.blit(DESK,0,0,0,0,W,H,W,H);
-        panel(g,10,10,740,50,0xf0111612);
+        panel(g,10,10,740,50,0xf0111214);
         label(g,"MA PLANQUE",23,17,2.0F,GOLD,true);
         label(g,"Base personnelle · gestion des installations",24,43,1,SOFT,false);
         label(g,fit(name(46),220),516,20,1,WHITE,true);
         label(g,fit(name(45),220),516,37,1,GOLD,false);
-        panel(g,10,68,412,292,0xe5111612);
+        panel(g,10,68,412,292,0xe5111214);
         label(g,"INSTALLATIONS",23,77,1.35F,GOLD,true);
         label(g,"Sélectionne une installation pour voir ses services.",23,95,1,SOFT,false);
         for(int i=0;i<8;i++){
             int x=20+(i%2)*196,y=113+(i/2)*59;
             boolean hover=inside(mx,my,x,y,190,54),active=selected==i;
-            g.fillGradient(x,y,x+190,y+54,active?0xff454f30:hover?0xff303b2c:0xff252d25,0xff141a15);
+            g.fillGradient(x,y,x+190,y+54,active?0xff3c2226:hover?0xff2c2e31:0xff25272a,0xff141517);
             g.renderOutline(x,y,190,54,active?GOLD:hover?0xff9aa583:FRAME);
             icon(g,stack(10+i),x+7,y+12,1.6F);
             label(g,NAMES[i],x+40,y+7,1.15F,WHITE,true);
             label(g,fit(USE[i],146),x+40,y+22,.9F,SOFT,false);
             label(g,"Niveau "+level(i),x+40,y+37,1,level(i).equals("0/3")?0xffa9afa1:0xffb6d58c,true);
         }
-        panel(g,430,68,320,292,0xe9111612);
+        panel(g,430,68,320,292,0xe9111214);
         label(g,NAMES[selected].toUpperCase(java.util.Locale.ROOT),444,78,1.65F,GOLD,true);
         label(g,USE[selected],444,100,1,SOFT,false);
         label(g,"Niveau actuel : "+level(selected),444,115,1.05F,WHITE,true);
@@ -102,7 +102,7 @@ public final class HideoutControlScreen extends AbstractContainerScreen<HideoutC
             button(g,LABELS[selected][i],444,264+i*29,292,25,mx,my,!stack(id).isEmpty());
         }
         label(g,"Survole un service pour connaître son coût.",444,330,.9F,SOFT,false);
-        panel(g,10,368,740,43,0xf0111612);
+        panel(g,10,368,740,43,0xf0111214);
         button(g,"Campagne",20,377,153,25,mx,my,true);
         button(g,"Compétences",180,377,153,25,mx,my,true);
         button(g,"Décoration",340,377,153,25,mx,my,true);

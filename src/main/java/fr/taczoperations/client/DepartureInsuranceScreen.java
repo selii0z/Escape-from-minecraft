@@ -17,7 +17,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 @EventBusSubscriber(modid=OperationsMod.ID,value=Dist.CLIENT,bus=EventBusSubscriber.Bus.MOD)
 public final class DepartureInsuranceScreen extends AbstractContainerScreen<DepartureInsuranceMenu>{
     private static final int W=DepartureInsuranceMenu.WIDTH,H=DepartureInsuranceMenu.HEIGHT;
-    private static final int GOLD=0xffe5ce88,WHITE=0xfff5f3e8,SOFT=0xffbfc8b8,FRAME=0xff716751,LIME=0xffb5d78e;
+    private static final int GOLD=0xffe5e6e8,WHITE=0xfff5f3e8,SOFT=0xffc2c6ca,FRAME=0xff65696d,LIME=0xffb5d78e;
     private static final ResourceLocation DESK=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"textures/gui/dashboard.png");
     private static final ResourceLocation BODY=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"interface");
     private static final ResourceLocation HEADING=ResourceLocation.fromNamespaceAndPath(OperationsMod.ID,"heading");
@@ -33,7 +33,7 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
     private boolean hit(double mx,double my,int x,int y,int w,int h){return mx>=x&&mx<x+w&&my>=y&&my<y+h;}
     private void button(GuiGraphics g,String s,int x,int y,int w,int h,double mx,double my,boolean enabled,boolean primary){
         boolean hover=enabled&&hit(mx,my,x,y,w,h);
-        g.fillGradient(x,y,x+w,y+h,!enabled?0xff272c26:hover?0xff66784a:primary?0xff4d6138:0xff303a2d,0xff171c16);
+        g.fillGradient(x,y,x+w,y+h,!enabled?0xff242628:hover?0xffa52b32:primary?0xff67282d:0xff2d3033,0xff161719);
         g.renderOutline(x,y,w,h,hover?GOLD:FRAME);
         text(g,s,x+(w-font.width(styled(s,true)))/2,y+(h-8)/2,1,enabled?WHITE:0xff8b9487,true);
     }
@@ -50,27 +50,27 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
         g.pose().pushPose();g.pose().translate(leftPos,topPos,0);g.pose().scale(scale,scale,1);
         minecraft.getTextureManager().bindForSetup(DESK);minecraft.getTextureManager().getTexture(DESK).setFilter(true,false);
         g.blit(DESK,0,0,0,0,W,H,W,H);
-        panel(g,10,10,740,52,0xf0111612);
+        panel(g,10,10,740,52,0xf0111214);
         text(g,menu.reviewing()?"CONFIRMATION DU DÉPART":"ASSURANCE AVANT RAID",23,17,2,GOLD,true);
         text(g,menu.reviewing()?"ÉTAPE 2 / 2 · Vérifie ton opération avant de partir":"ÉTAPE 1 / 2 · Sélectionne les équipements à protéger",24,44,1,SOFT,false);
         if(menu.reviewing())review(g,x,y);else insurance(g,x,y);
         g.pose().popPose();
     }
     private void insurance(GuiGraphics g,double mx,double my){
-        panel(g,10,70,480,290,0xe5111612);panel(g,500,70,250,290,0xe9111612);
+        panel(g,10,70,480,290,0xe5111214);panel(g,500,70,250,290,0xe9111214);
         text(g,"ÉQUIPEMENT ASSURABLE",24,82,1.35F,GOLD,true);
         button(g,"Tout sélectionner / retirer",24,105,232,24,mx,my,!menu.slots.isEmpty(),false);
         for(int i=0;i<45;i++){
             int x=24+(i%9)*50,y=139+(i/9)*41;
             int state=i<menu.slots.size()?menu.state(i):0;
             boolean hover=i<menu.slots.size()&&hit(mx,my,x,y,42,39);
-            int fill=state==2?0xff48613a:state==3?0xff304d4a:state==0?0x66141914:0xff222c22;
+            int fill=state==2?0xff48613a:state==3?0xff304d4a:state==0?0x66141517:0xff222c22;
             int border=hover?GOLD:state==2?LIME:state==3?0xff69b6ae:0xff505a4b;
             g.fill(x,y,x+42,y+39,fill);g.renderOutline(x,y,42,39,border);
             if(i<menu.slots.size())icon(g,menu.slots.get(i).getItem(),x+5,y+3);
         }
         if(menu.slots.isEmpty()){
-            g.fill(34,200,458,248,0xf0111612);
+            g.fill(34,200,458,248,0xf0111214);
             text(g,"Aucun équipement assurable",53,211,1.3F,WHITE,true);
             text(g,"Tu peux continuer sans nouvelle assurance.",53,231,1,SOFT,false);
         }
@@ -85,7 +85,7 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
         text(g,"Vert : sélectionné",514,281,1,LIME,false);
         text(g,"Bleu : déjà assuré",514,299,1,0xff83bdb8,false);
         text(g,"Paiement seulement au départ.",514,332,.9F,SOFT,false);
-        panel(g,10,368,740,43,0xf0111612);
+        panel(g,10,368,740,43,0xf0111214);
         button(g,"Annuler",20,377,150,25,mx,my,true,false);
         button(g,"Sans nouvelle assurance",180,377,260,25,mx,my,true,false);
         button(g,"Continuer vers le récapitulatif",450,377,290,25,mx,my,affordable(),true);
@@ -94,7 +94,7 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
         text(g,label,x,y,.95F,SOFT,false);text(g,value,x,y+16,1.35F,WHITE,true);
     }
     private void review(GuiGraphics g,double mx,double my){
-        panel(g,10,70,410,290,0xe5111612);panel(g,430,70,320,290,0xe9111612);
+        panel(g,10,70,410,290,0xe5111214);panel(g,430,70,320,290,0xe9111214);
         text(g,"OPÉRATION",24,83,1.5F,GOLD,true);
         detail(g,"CARTE",map(),24,117);
         detail(g,"HEURE DE DÉPART (JEU)",time(),24,165);
@@ -109,7 +109,7 @@ public final class DepartureInsuranceScreen extends AbstractContainerScreen<Depa
         text(g,"Coût au départ : "+cost()+" crédits",444,261,1.1F,GOLD,true);
         text(g,"Solde après paiement : "+(menu.balance()-cost())+" cr.",444,284,1,SOFT,false);
         text(g,menu.waiting()?"En attente de la validation de ton équipier.":menu.duo()?"Les deux joueurs doivent confirmer.":"Prêt à lancer le raid ?",444,332,1,menu.waiting()?GOLD:SOFT,true);
-        panel(g,10,368,740,43,0xf0111612);
+        panel(g,10,368,740,43,0xf0111214);
         button(g,"Annuler le départ",20,377,208,25,mx,my,true,false);
         button(g,"Modifier l'assurance",238,377,216,25,mx,my,!menu.waiting(),false);
         button(g,menu.waiting()?"En attente de l'équipier":"LANCER LE RAID",464,377,276,25,mx,my,!menu.waiting()&&affordable(),true);

@@ -30,10 +30,10 @@ tasks.register('generateTacticalHd'){
             }
         }
         render('header',2048,136){g->
-            g.setPaint(new GradientPaint(0f,0f,c(0x45413c),0f,136f,c(0x171719)));g.fillRect(0,0,2048,136)
+            g.setPaint(new GradientPaint(0f,0f,c(0x45484b),0f,136f,c(0x171719)));g.fillRect(0,0,2048,136)
             Random rng=new Random(831L)
             for(int layer=0;layer<3;layer++){
-                g.setColor(c([0x343632,0x292c29,0x181b19][layer]))
+                g.setColor(c([0x373a3d,0x25282b,0x141619][layer]))
                 for(int i=0;i<88;i++){
                     int x=rng.nextInt(2100),base=110+layer*11,h=24+rng.nextInt(75),w=12+rng.nextInt(22)
                     g.fillRect(x-2,base-h,4,h)
@@ -43,9 +43,25 @@ tasks.register('generateTacticalHd'){
                     }
                 }
             }
+            // Original military silhouette: depot, radio dish, watchtower, and red flare.
+            g.setColor(c(0x111315))
+            g.fillRect(1270,78,215,48);g.fillRect(1290,62,170,16)
+            for(int x=1300;x<1460;x+=27){g.setColor(c(0x42464a));g.fillRect(x,88,16,14)}
+            g.setColor(c(0x0d0f11));g.setStroke(new BasicStroke(6f))
+            g.drawLine(1573,125,1598,36);g.drawLine(1648,125,1624,36)
+            g.drawLine(1584,91,1639,91);g.drawLine(1591,64,1630,64)
+            g.drawLine(1584,91,1630,64);g.drawLine(1639,91,1591,64)
+            g.fillRect(1587,24,49,22);g.fillPolygon([1578,1612,1645] as int[],[24,7,24] as int[],3)
+            g.setColor(c(0x141619));g.fillRect(1514,50,5,39)
+            g.fillArc(1487,22,60,35,195,180)
+            for(int i=14;i>=0;i--){
+                g.setColor(new Color(220,18,28,12+i*2))
+                g.fillOval(1810+i*6,106-i*7,18+i*5,12+i*4)
+            }
+            g.setColor(c(0xff4749));g.fillOval(1811,108,11,7)
             g.setPaint(new GradientPaint(0f,0f,new Color(18,18,18,240),560f,0f,new Color(18,18,18,35)));g.fillRect(0,0,620,136)
-            g.setColor(c(0x666058));g.setStroke(new BasicStroke(3f));g.drawLine(0,2,2048,2)
-            g.setColor(c(0xa56632));g.drawLine(0,133,2048,133)
+            g.setColor(c(0x777b80));g.setStroke(new BasicStroke(3f));g.drawLine(0,2,2048,2)
+            g.setColor(c(0xe0232a));g.drawLine(0,133,2048,133)
         }
         // Preserve the approved map compositions. Bicubic enlargement improves sampling but cannot invent lost detail.
         ['forest','industrial','village','underground','quarantine','military'].each { id->
